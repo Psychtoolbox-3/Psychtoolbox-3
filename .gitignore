@@ -5,3 +5,5 @@ PsychSourceGL/Projects/MacOSX/build/*
 PsychSourceGL/Projects/MacOSX/PsychToolbox/PsychToolbox64.xcodeproj/.LSOverride
 xcuserdata/
 project.xcworkspace/
+.FBCLockFolder
+.FBCIndex
