@@ -477,10 +477,10 @@ if ~IsOctave
             % Look for the first instance of PsychJava in the classpath and
             % replace it with the new one.  All other instances will be
             % ignored.
-            if isempty(strfind('PsychJava', fileContents{i}))
+            if isempty(strfind(fileContents{i}, 'PsychJava'))
                 newFileContents{j, 1} = fileContents{i}; %#ok<AGROW>
                 j = j + 1;
-            elseif ~isempty(strfind('PsychJava', fileContents{i})) & ~pathInserted %#ok<AND2>
+            elseif ~isempty(strfind(fileContents{i}, 'PsychJava')) & ~pathInserted %#ok<AND2>
                 newFileContents{j, 1} = path_PsychJava; %#ok<AGROW>
                 pathInserted = 1;
                 j = j + 1;
