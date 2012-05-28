@@ -107,59 +107,68 @@ if ~isfield(Psychtoolbox,'version')
     
     if status==0
         % Parse output of svnversion: Find revision number of the working copy.
-        colpos=findstr(result, ':');
+        colpos=strfind(result, ':');
         if isempty(colpos)
             Psychtoolbox.version.revision=sscanf(result, '%d',1);
         else
             cvv = sscanf(result, '%d:%d',2);
             Psychtoolbox.version.revision=cvv(2);
         end
-        if isempty(findstr(result, 'M'))
+        if isempty(strfind(result, 'M'))
             Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d', Psychtoolbox.version.revision);
         else
             Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d but is *locally modified* !', Psychtoolbox.version.revision);
         end
         
-        % Ok, now find the flavor and such... This is super expensive - needs network access...
-        %[status , result] = system([svncmdpath 'svn info --xml -r ' num2str(Psychtoolbox.version.revision) '  ' PsychtoolboxRoot]);
-        status=-1;
-        if status<0 | status>0 %#ok<OR2>
-            % Fallback path:
-            if ~IsWin
-                [status , result] = system([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
-            else
-                [status , result] = dos([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
-            end
+        % Ok, now find the flavor and such...
+        if ~IsWin
+            [status , result] = system([svncmdpath 'svn info --xml ' PsychtoolboxRoot]); %#ok<*ASGLU>
+        else
+            [status , result] = dos([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
         end
         
         % First test for end-user branch:
         marker = '/github.com/Psychtoolbox-3/Psychtoolbox-3/branches/';
-        startdel = findstr(result, marker) + length(marker);
+        startdel = strfind(result, marker) + length(marker);
         
         if isempty(startdel)
+            % Nope: Search for developer branch aka 'trunk' aka 'master':
+            marker = '/github.com/Psychtoolbox-3/Psychtoolbox-3/';
+            startdel = strfind(result, marker) + length(marker);
+        end
+        
+        if isempty(startdel)
+            % Nope: Retry with a different query for older svn clients:
             if ~IsWin
                 [status , result] = system([svncmdpath 'svn info ' PsychtoolboxRoot]);
             else
                 [status , result] = dos([svncmdpath 'svn info ' PsychtoolboxRoot]);
             end
-            startdel = findstr(result, marker) + length(marker);
-        end
-
-        if isempty(startdel)
-            % Nope: Search for developer branch aka 'trunk' aka 'master':
-            marker = '/github.com/Psychtoolbox-3/Psychtoolbox-3/trunk/';
-            startdel = findstr(result, marker) + length(marker);
+            
+            % Retry first test for end-user branch:
+            marker = '/github.com/Psychtoolbox-3/Psychtoolbox-3/branches/';
+            startdel = strfind(result, marker) + length(marker);
+            
+            if isempty(startdel)
+                % Nope: Retry search for developer branch aka 'trunk' aka 'master':
+                marker = '/github.com/Psychtoolbox-3/Psychtoolbox-3/';
+                startdel = strfind(result, marker) + length(marker);
+            end
         end
         
-        findel = min(findstr(result(startdel:length(result)), '/Psychtoolbox')) + startdel - 2;
+        findel = min(strfind(result(startdel:length(result)), '/Psychtoolbox')) + startdel - 2;
         Psychtoolbox.version.flavor = result(startdel:findel);
         
-        % And the date of last commit:
-        startdel = findstr(result, '<date>') + length('<date>');
-        findel = findstr(result, 'T') - 1;
+        % Retrieve the date of last commit:
+        startdel = strfind(result, '<date>') + length('<date>');
+        findel = strfind(result, 'T') - 1;
         Psychtoolbox.date = result(startdel:findel);
+        
         % Build final SVN URL: This is the location where one can find detailled info about this working copy:
+        % MK TODO: This doesn't have much value as long as we can't
+        % correlate SVN revisions to GIT SHA-1's or something similar...
         Psychtoolbox.version.websvn = sprintf('https://github.com/Psychtoolbox-3/Psychtoolbox-3');
+        
         % Build final version string:
         Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
             Psychtoolbox.version.flavor, Psychtoolbox.version.revstring, Psychtoolbox.version.websvn);

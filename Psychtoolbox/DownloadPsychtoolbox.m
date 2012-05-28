@@ -269,6 +269,10 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %              - Change location of SVN repository to our SVN frontend for GIT:
 %                https://github.com/Psychtoolbox-3/Psychtoolbox-3
 %
+% 05/28/12 mk  Fix disasterous bug: Answering anything but 'y' to the
+%              question if old PTB folder should be deleted, caused
+%              *deletion* of the folder! Oh dear! This bug present since
+%              late 2011.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -608,7 +612,7 @@ while (exist('Psychtoolbox','dir') | exist(fullfile(targetdirectory,'Psychtoolbo
     fprintf('Success.\n');
 
     answer=input('Shall I delete the old Psychtoolbox folder and all its contents \n(recommended in most cases), (yes or no)? ','s');
-    if strcmpi(answer,'yes') || ~strcmpi(answer,'y')
+    if strcmpi(answer,'yes') || strcmpi(answer,'y')
         skipdelete = 0;
         fprintf('Now we delete "Psychtoolbox" itself.\n');
         [success,m,mm]=rmdir(p,'s');

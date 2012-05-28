@@ -10,6 +10,7 @@ function rc = IsMinimumOSXVersion(major, minor, point)
 
 % History:
 % 11/26/2007 Written (MK), based on code by Roger Woods (UCLA).
+% 05/28/2012 Fixed this bullshit (MK).
 
 if ~IsOSX
     rc = 0;
@@ -23,9 +24,19 @@ majorversion=bin2dec(char(49*gestaltbits+48*~gestaltbits));
 rc = 0;
 
 if majorversion >= major
+    if majorversion > major
+        rc = 1;
+        return;
+    end
+    
     gestaltbits=Gestalt('sys2');
     minorversion=bin2dec(char(49*gestaltbits+48*~gestaltbits));
     if minorversion >= minor
+        if minorversion > minor
+            rc = 1;
+            return;
+        end
+
         gestaltbits = Gestalt('sys3');
         pointversion=bin2dec(char(49*gestaltbits+48*~gestaltbits));
         if pointversion >= point
