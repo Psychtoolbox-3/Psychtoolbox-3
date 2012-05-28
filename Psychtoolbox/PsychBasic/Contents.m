@@ -24,7 +24,6 @@
 %     GetTicks             - Number of 60.15 Hz ticks since startup. 
 %     GetTicksTick         - Duration of one tick of the GetTicks clock.
 %     HideCursor           - Hide cursor.
-%     InitCocoaEventBridge - Prepare GetChar helper "CocoaEventBridge" 
 %     IOPort               - A I/O driver for access to serial ports.
 %     KbCheck              - Get instantaneous keyboard state.
 %     KbEventAvail         - Return number of pending keyboard events in ringbuffer.

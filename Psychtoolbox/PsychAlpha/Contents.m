@@ -5,7 +5,4 @@
 %
 %   KinectRawRecordingDemo   - Half finished, demo on how to record Kinect data.
 %   PrintStruct              - Print structure & cell array to any depth
-%   SoundRecordingTest       - Test recording feature of PsychSound.
-%   SoundTrigger             -
 %   ShowHDRDemo              - Incomplete demo of how to show HDR images.
-%   StoreBit                 - Demonstrate Cocoa API calls from .mex file C

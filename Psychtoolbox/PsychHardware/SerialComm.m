@@ -1,5 +1,11 @@
 function y = SerialComm(op, port, data)
 % SerialComm -- Serial port interface for OSX
+%
+% CAUTION: SerialComm() is deprecated! Not supported on Linux, Windows or
+% 64-Bit versions of Psychtoolbox for OSX, totally unsupported by us. Use
+% IOPort() instead as a future-proof, much more capable cross-platform
+% solution.
+%
 %  SerialComm( 'open', PORT, CONFIG ) opens comm port number PORT for reading and
 %    writing. The CONFIG string specifies the basic serial port (baud rate, 
 %    parity, #data bits, #stop bits) in standard DOS format. CONFIG defaults 
