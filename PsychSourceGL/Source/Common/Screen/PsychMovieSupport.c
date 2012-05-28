@@ -37,11 +37,8 @@
 
 #include "Screen.h"
 
-#if PSYCH_SYSTEM != PSYCH_LINUX
-#if !defined(__LP64__) && !defined(_M_IA64)
-#define PSYCHQTAVAIL 1
+#ifdef PSYCHQTAVAIL
 #include "PsychMovieSupportQuickTime.h"
-#endif
 #endif
 
 #if defined(__LP64__) || defined(_M_IA64)
@@ -85,6 +82,9 @@ static psych_bool usegs(void) {
 				doUsegs = TRUE;
 			}
 		}
+        
+        // Signal use of GStreamer to userspace via preference setting:
+        if (doUsegs) PsychPrefStateSet_UseGStreamer(1);
 	}
 
 	// Return cached engine use flag:
@@ -125,7 +125,6 @@ int PsychGetMovieCount(void)
 	#endif
 	}
 
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 	return(0);
 }
 
@@ -315,8 +314,6 @@ void PsychFreeMovieTexture(PsychWindowRecordType *win)
 	return;
 	#endif
 	}
-
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 }
 
 /*

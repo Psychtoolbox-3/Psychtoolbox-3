@@ -21,7 +21,7 @@ GetSecs;
 dst1 = [0, 0, 640, 480];
 dst2 = [650, 0, 650+640, 480];
 
-w = Screen('Openwindow', 0, 0, [0 0 1300 500]);
+w = Screen('Openwindow', 0, 0, [0 0 1300 500], [], [], [], [], [], 32);
 kinect = PsychKinect('Open');
 PsychKinect('Start', kinect);
 count = 0;

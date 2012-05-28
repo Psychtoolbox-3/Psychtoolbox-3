@@ -38,6 +38,9 @@
  * 
  * g++ -g -DHAVE_OPENGL_DIR -DGLU_TESS_CALLBACK_TRIPLEDOT -I.  -I/opt/local/include/ -I/opt/local/include/freetype2/ -L/opt/local/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp
  *
+ * The alternative OS/X 64-Bit build on 10.7 Lion assumes the default install locations for libfontconfig and libfreetype in /usr/X11R6/include and /usr/X11R6/lib:
+ *
+ * g++ -g -DHAVE_OPENGL_DIR -I.  -I/usr/X11R6/include/ -I/usr/X11R6/include/freetype2/ -L/usr/X11R6/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp
  *
  * Building for Linux:
  * 

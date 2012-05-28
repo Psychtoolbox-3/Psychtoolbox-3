@@ -856,7 +856,8 @@ static PaError OpenAndSetupOneAudioUnit(
 
                             OUTPUT_ELEMENT,
                             actualOutputFramesPerBuffer,
-                            sizeof(unsigned long) ) );
+// MK CHANGED PTB 64-BIT OSX sizeof(unsigned long) ) );
+                            sizeof(UInt32) ) );
        ERR_WRAP( AudioUnitGetProperty( *audioUnit,
                             kAudioUnitProperty_MaximumFramesPerSlice,
                             kAudioUnitScope_Global,
@@ -872,7 +873,9 @@ static PaError OpenAndSetupOneAudioUnit(
 							kAudioUnitScope_Input,
                             INPUT_ELEMENT,
                             actualInputFramesPerBuffer,
-                            sizeof(unsigned long) ) );
+// MK CHANGED PTB 64-BIT OSX sizeof(unsigned long) ) );
+                            sizeof(UInt32) ) );
+
 /* Don't know why this causes problems
        ERR_WRAP( AudioUnitGetProperty( *audioUnit,
                             kAudioUnitProperty_MaximumFramesPerSlice,
@@ -1005,6 +1008,8 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     int inputChannelCount, outputChannelCount;
     PaSampleFormat inputSampleFormat, outputSampleFormat;
     PaSampleFormat hostInputSampleFormat, hostOutputSampleFormat;
+    UInt32 inFrameLatency, outFrameLatency; /* MK ADDED FOR PTB */
+
     VVDBUG(("OpenStream(): in chan=%d, in fmt=%ld, out chan=%d, out fmt=%ld SR=%g, FPB=%ld\n",
                 inputParameters  ? inputParameters->channelCount  : -1,
                 inputParameters  ? inputParameters->sampleFormat  : -1,
@@ -1127,7 +1132,8 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
           /*requested a realtively low latency. make sure this is in range of devices */
           /*try to get the device's min natural buffer size and use that (but no smaller than 64).*/
           AudioValueRange audioRange;
-          size_t size = sizeof( audioRange );
+          // MK PTB CHANGED for 64-BIT OSX: size_t size = sizeof( audioRange );
+          UInt32 size = (UInt32) sizeof( audioRange );
           if( inputParameters ) {
              WARNING( result = AudioDeviceGetProperty( auhalHostApi->devIds[inputParameters->device],
                                           0,
@@ -1150,7 +1156,8 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
           /* requested a realtively high latency. make sure this is in range of devices */
           /*try to get the device's max natural buffer size and use that (but no larger than 1024).*/
           AudioValueRange audioRange;
-          size_t size = sizeof( audioRange );
+          // MK PTB CHANGED for 64-BIT OSX: size_t size = sizeof( audioRange );
+          UInt32 size = (UInt32) sizeof( audioRange );
           requested = MIN( requested, 1024 );
           if( inputParameters ) {
              WARNING( result = AudioDeviceGetProperty( auhalHostApi->devIds[inputParameters->device],
@@ -1336,13 +1343,19 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     stream->bufferProcessorIsInitialized = TRUE;
 
 	/* MK added for PTB: Query hardware and CoreAudio delays, do some accouting in debug mode for interested 3rd parties: */
+    inFrameLatency = outFrameLatency = 0;
+    
 	if (1) {
 		int rc;
 		UInt32 propSize;
 		UInt32 frameLatency1, frameLatency2;
 		rc = 0;
 		propSize = sizeof(UInt32);
-		rc = WARNING(AudioDeviceGetProperty(stream->outputDevice, 0, FALSE, kAudioDevicePropertyLatency, &propSize, &frameLatency1));
+        if (stream->outputDevice) {
+            rc = WARNING(AudioDeviceGetProperty(stream->outputDevice, 0, FALSE, kAudioDevicePropertyLatency, &propSize, &frameLatency1));
+        }
+        else rc = 1;
+        
 		if (!rc) {
 			propSize = sizeof(UInt32);
 			rc = WARNING(AudioDeviceGetProperty(stream->outputDevice, 0, FALSE, kAudioDevicePropertySafetyOffset, &propSize, &frameLatency2));
@@ -1353,7 +1366,11 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 				PA_DEBUG( ("Audio hardware FIFO delay is %i frames (%f msecs)\n", frameLatency1, 1000 * (double) frameLatency1 / (double) sampleRate) );
 				PA_DEBUG( ("Audio hostbuffersize is likely %i frames (%f msecs)\n", framesPerBuffer, 1000 * (double) framesPerBuffer / (double) sampleRate) );
 				PA_DEBUG( ("Bufferprocessor adds %i frames (%f msecs)\n", PaUtil_GetBufferProcessorOutputLatency(&stream->bufferProcessor), 1000 * (double) PaUtil_GetBufferProcessorOutputLatency(&stream->bufferProcessor) / (double) sampleRate) );
-				frameLatency1 = frameLatency1 + frameLatency2 + framesPerBuffer + PaUtil_GetBufferProcessorOutputLatency(&stream->bufferProcessor);
+
+                // outFrameLatency only covers the latency introduced by the system hardware (HW FIFO & DMA safety offset):
+                outFrameLatency = frameLatency1 + frameLatency2;
+				
+                frameLatency1 = frameLatency1 + frameLatency2 + framesPerBuffer + PaUtil_GetBufferProcessorOutputLatency(&stream->bufferProcessor);
 				PA_DEBUG( ("Estimated total output latency is %i frames (%f msecs)\n", frameLatency1, 1000 * (double) frameLatency1 / (double) sampleRate) );
 				PA_DEBUG( ("----------------------\n") );
 			}
@@ -1361,7 +1378,11 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 
 		rc = 0;
 		propSize = sizeof(UInt32);
-		rc = WARNING(AudioDeviceGetProperty(stream->inputDevice, 0, TRUE, kAudioDevicePropertyLatency, &propSize, &frameLatency1));
+        if (stream->inputDevice) {
+            rc = WARNING(AudioDeviceGetProperty(stream->inputDevice, 0, TRUE, kAudioDevicePropertyLatency, &propSize, &frameLatency1));
+        }
+        else rc = 1;
+        
 		if (!rc) {
 			propSize = sizeof(UInt32);
 			rc = WARNING(AudioDeviceGetProperty(stream->inputDevice, 0, TRUE, kAudioDevicePropertySafetyOffset, &propSize, &frameLatency2));
@@ -1372,6 +1393,10 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 				PA_DEBUG( ("Audio hardware FIFO delay is %i frames (%f msecs)\n", frameLatency1, 1000 * (double) frameLatency1 / (double) sampleRate) );
 				PA_DEBUG( ("Audio hostbuffersize is likely %i frames (%f msecs)\n", framesPerBuffer, 1000 * (double) framesPerBuffer / (double) sampleRate) );
 				PA_DEBUG( ("Bufferprocessor adds %i frames (%f msecs)\n", PaUtil_GetBufferProcessorInputLatency(&stream->bufferProcessor), 1000 * (double) PaUtil_GetBufferProcessorInputLatency(&stream->bufferProcessor) / (double) sampleRate) );
+
+                // inFrameLatency only covers the latency introduced by the system hardware (HW FIFO & DMA safety offset):
+                inFrameLatency = frameLatency1 + frameLatency2;
+
 				frameLatency1 = frameLatency1 + frameLatency2 + framesPerBuffer + PaUtil_GetBufferProcessorInputLatency(&stream->bufferProcessor);
 				PA_DEBUG( ("Estimated total input latency is %i frames (%f msecs)\n", frameLatency1, 1000 * (double) frameLatency1 / (double) sampleRate) );
 				PA_DEBUG( ("----------------------\n") );
@@ -1385,10 +1410,21 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         I think this is okay the way it is br 12/1/05
         maybe need to change input latency estimate if IO devs differ
     */
+    
+    /* MK CHANGED FOR PTB:  Take hardware latencies into account. */
+    /* Old code:
     stream->streamRepresentation.streamInfo.inputLatency =
             PaUtil_GetBufferProcessorInputLatency(&stream->bufferProcessor)/sampleRate;
     stream->streamRepresentation.streamInfo.outputLatency =
             PaUtil_GetBufferProcessorOutputLatency(&stream->bufferProcessor)/sampleRate;
+    */
+    
+    stream->streamRepresentation.streamInfo.inputLatency =
+    (inFrameLatency + PaUtil_GetBufferProcessorInputLatency(&stream->bufferProcessor))/sampleRate;
+    stream->streamRepresentation.streamInfo.outputLatency =
+    (outFrameLatency + PaUtil_GetBufferProcessorOutputLatency(&stream->bufferProcessor))/sampleRate;
+    
+    
     stream->streamRepresentation.streamInfo.sampleRate = sampleRate;
 
     stream->sampleRate  = sampleRate;
@@ -1511,16 +1547,27 @@ static OSStatus ringBufferIOProc( AudioConverterRef inAudioConverter,
 
    VVDBUG(("ringBufferIOProc()\n"));
 
-   assert( sizeof( UInt32 ) == sizeof( long ) );
+   // MK PTB CHANGED: This assert would fail on 64-Bit OSX: assert( sizeof( UInt32 ) == sizeof( long ) );
    if( RingBuffer_GetReadAvailable( rb ) == 0 ) {
       *outData = NULL;
       *ioDataSize = 0;
       return RING_BUFFER_EMPTY;
    }
-   RingBuffer_GetReadRegions( rb, *ioDataSize,
+
+   // MK PTB CHANGED FOR 64-BIT OSX: RingBuffer_GetReadRegions
+   // needs long* (64-Bit), but ioDataSize is int* (32-Bit).
+   // Need to translate here:
+    long ioDataSizeL = (long) *ioDataSize;
+    RingBuffer_GetReadRegions( rb, *ioDataSize,
+                              outData, &ioDataSizeL, 
+                              &dummyData, &dummySize );
+    *ioDataSize = (UInt32) ioDataSizeL;
+    
+/*   RingBuffer_GetReadRegions( rb, *ioDataSize,
                               outData, (long *)ioDataSize, 
                               &dummyData, &dummySize );
-      
+*/
+    
    assert( *ioDataSize );
    RingBuffer_AdvanceReadIndex( rb, *ioDataSize );
 

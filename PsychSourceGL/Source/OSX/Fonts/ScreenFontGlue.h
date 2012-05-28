@@ -7,7 +7,8 @@
 				
 	AUTHORS:
 	
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
+    Allen Ingling		awi		Allen.Ingling@nyu.edu
+    Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 	
@@ -26,13 +27,9 @@
 
 #include "Psych.h"
 
+// Only include this function when building Screen(), but not FontInfo():
+#ifdef PTBMODULE_Screen
 void PsychSetATSUStyleAttributesFromPsychWindowRecord(ATSUStyle atsuStyle,  PsychWindowRecordType *winRec);
-
 #endif
 
-
-
-
-
-    
-
+#endif

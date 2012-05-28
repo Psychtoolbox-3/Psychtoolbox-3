@@ -51,6 +51,11 @@
 
 #define kMyPathToSystemLog			"/var/log/system.log"
 
+// Disable warnings about deprecated API calls on OSX 10.7
+// of which we are aware and that we can't remove as long as
+// we need to stay compatible to 10.4 - 10.6
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 // file local variables
 unsigned int  fDeviceType = 0;
 unsigned int  fCardType = 0;
@@ -86,6 +91,64 @@ void PsychLaunchConsoleApp(void);
 void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo);
 void PsychOSKDGetGPUInfo(io_connect_t connect);
 unsigned int PsychOSKDGetRevision(io_connect_t connect);
+
+// Replacement routines for routines missing in 64-Bit OSX:
+
+#ifdef __LP64__
+// Reimplement deprecated 32-Bit kernel driver interface with new 64-Bit
+// kernel interface for OSX 10.5 and later:
+kern_return_t
+IOConnectMethodStructureIStructureO(
+                                    io_connect_t	connect,
+                                    uint32_t        index,
+                                    IOItemCount     structureInputSize,
+                                    IOByteCount *	structureOutputSize,
+                                    void *          inputStructure,
+                                    void *          ouputStructure )
+{
+    kern_return_t result;
+    size_t outputStructCnt = (size_t) *structureOutputSize;
+
+    // IOConnectCallStructMethod replaces IOConnectMethodStructureIStructureO
+    // in OS/X 10.5 and later, but luckily has almost the same semantic/syntax,
+    // just slightly different types and order of parameters, so we can wrap it:
+    result = IOConnectCallStructMethod((mach_port_t)    connect,
+                                                        index,
+                                       (const void*)    inputStructure,
+                                       (size_t)         structureInputSize,
+                                                        ouputStructure,
+                                                        &outputStructCnt);
+
+    *structureOutputSize = (IOByteCount) outputStructCnt;
+
+    return(result);
+}
+
+kern_return_t
+IOConnectMethodScalarIScalarO( 
+                              io_connect_t	connect,
+                              uint32_t      index,
+                              IOItemCount	scalarInputCount,
+                              IOItemCount	scalarOutputCount,
+                              ... )
+{
+    kern_return_t result;
+    uint32_t outputCnt = 0;
+
+    if ((scalarInputCount != 0) || (scalarOutputCount != 0))
+        PsychErrorExitMsg(PsychError_internal, "You *must not* call 64-Bit IOConnectMethodScalarIScalarO() shim with anything but 0,0 in/out argument counts! BUG!");
+
+    // IOConnectCallScalarMethod replaces IOConnectMethodScalarIScalarO
+    // in OS/X 10.5 and later, and it has an incompatible interface in general,
+    // but luckily we only use this method in its most simple form with 0 inputs
+    // and outputs. For this special case we have a very simple 1-to-1 mapping,
+    // and we reject any other kind of usage for this interface:
+    result = IOConnectCallScalarMethod((mach_port_t) connect, index, NULL, 0, NULL, &outputCnt);
+
+    return(result);
+}
+
+#endif
 
 //Initialization functions
 void InitializePsychDisplayGlue(void)

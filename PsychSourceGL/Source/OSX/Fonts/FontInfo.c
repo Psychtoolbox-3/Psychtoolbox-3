@@ -2,12 +2,13 @@
 	PsychToolbox2/Source/OSX/FontInfo/Fonts.c		
 
 	PROJECTS: 
-	
-	
 
+    FontInfo
+ 
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+    Allen Ingling		awi		Allen.Ingling@nyu.edu
+    Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	PLATFORMS:	
 	
@@ -33,12 +34,3 @@ PsychError FontsExitFunction(void)
     PsychFreeFontList();
     return(PsychError_none);
 }
-
-
-
-
-
-
-            
-
-

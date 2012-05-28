@@ -3,11 +3,12 @@
 
 	PROJECTS: 
 	
-		Screen only.  
+		FontInfo only.  
 
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu           awi
+        mario.kleiner@tuebingen.mpg.de  mk
 
 	PLATFORMS:	
 	
@@ -32,12 +33,6 @@
 
 #include "RegisterProject.h"
 
-
-// PsychModuleInit is in Screen.cpp
-// PsychProjectExit is in Screen.cpp
-// PsychProjectSelectFunction is in Screen.cpp
-
-
 PsychError PsychModuleInit(void)
 {
 	//register the project exit function
@@ -57,11 +52,7 @@ PsychError PsychModuleInit(void)
         
 	InitializeSynopsis();
 	PsychSetModuleAuthorByInitials("awi");
-        
+    PsychSetModuleAuthorByInitials("mk");
+
 	return(PsychError_none);
-
 }
-
-
-
-

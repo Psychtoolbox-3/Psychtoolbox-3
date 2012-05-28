@@ -27,11 +27,12 @@ function wheelDelta = GetMouseWheel(mouseIndex)
 
 % History:
 % 05/31/08  mk  Initial implementation.
+% 05/14/12  mk  Tweaks for more mice.
 
 % Cache the detected index of the first "real" wheel mouse to allow for lower
 % execution times:
 persistent wheelMouseIndex;
-if isempty(wheelMouseIndex)    
+if isempty(wheelMouseIndex) && ((nargin < 1) || isempty(mouseIndex))
         % On OS X we execute this script, otherwise either MATLAB found the mex file
         % file and exuted this, or else this file was exucuted and exited with
         % error on the AssertMex command above.
@@ -51,8 +52,8 @@ if isempty(wheelMouseIndex)
                 % 1 wheel for each detected mouse and hope for the best:
                 b = 1;
             end
-
-            if b > 0 && isempty(strfind(lower(allHidDevices(mousedices(i)).product), 'trackpad'))
+            
+            if any(b > 0) && isempty(strfind(lower(allHidDevices(mousedices(i)).product), 'trackpad'))
                 wheelMouseIndex = mousedices(i);
                 break;
             end
@@ -72,9 +73,9 @@ end
 % Use low-level access to get wheel state report: Refetch until empty
 % report is returned:
 wheelDelta = 0;
-rep = PsychHID('GetReport', mouseIndex, 1, 0, 4);
+rep = PsychHID('GetReport', mouseIndex, 1, 0, 10);
 while ~isempty(rep)
-    wheely = rep(4);
+    wheely = rep(end);
     switch wheely
         case 1,
             wheelDelta = wheelDelta + 1;

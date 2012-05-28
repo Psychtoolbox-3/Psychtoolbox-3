@@ -5,8 +5,9 @@
 			
 	
 	AUTHORS:
-	Allen Ingling		awi		Allen.Ingling@nyu.edu
-
+	Allen Ingling	awi		Allen.Ingling@nyu.edu
+    Mario Kleiner   mk      mario.kleiner@tuebingen.mpg.de
+ 
 	HISTORY:
 	8/08/02			awi		wrote it. 
         
@@ -146,8 +147,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     // for return structure
     //  ...outer
     const char *outerNames[] = 		{"threadID", "flavor", "policy", "policySize", "policyFillSize", "getDefault", "isDefault"};
-    int	numOuterDims=2, numOuterFields=7;
-    int	outerDims[2]={1,1};
+    mwSize numOuterDims=2, numOuterFields=7;
+    mwSize outerDims[2]={1,1};
     //	...inner
     const char *standardNames[] = 	{"no_data"};
     int numInnerFieldsStandard=		1;
@@ -159,8 +160,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     int numInnerFieldsTimeConstraint=	4;
     const char *precedenceNames[]=	{"imporantance"};
     int numInnerFieldsPrecedence=	1;
-    int	numInnerDims=2;
-    int	innerDims[2]={1,1};
+    mwSize numInnerDims=2;
+    mwSize innerDims[2]={1,1};
     // ...both
     mxArray  *tempFieldValue, *innerStruct, *outerStruct;
     
@@ -275,6 +276,3 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     
     free((void*)threadPolicy);        
 }
-
-
-

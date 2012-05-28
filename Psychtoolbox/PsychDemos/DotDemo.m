@@ -183,7 +183,8 @@ try
     % Create a vector with different point sizes for each single dot, if
     % requested:
     if (differentsizes>0)
-        s=(1+rand(1, ndots)*(differentsizes-1))*s;        
+        s = (1+rand(1, ndots)*(differentsizes-1))*s;
+        s = max(s, 1);
     end;
     
     % Wanna show textured sprites instead of dots?

@@ -20,6 +20,7 @@ function PsychHIDTest
 %             The reported number of outputs of the USB-1208FS has changed in Tiger.
 %             http://groups.yahoo.com/group/psychtoolbox/message/3610
 %             http://groups.yahoo.com/group/psychtoolbox/message/3614
+% 5/14/12  mk Cleanup and improve.
 
 fprintf('TestPsychHID\n');
 fprintf('Making a list of all your HID-compliant devices. ...');
@@ -29,7 +30,7 @@ for di=1:length(devices)
     d=devices(di);
     s=sprintf('device %d: %s, %s, %s',di,d.usageName,d.manufacturer,d.product);
     s=sprintf('%s, %d inputs, %d outputs',s,d.inputs,d.outputs);
-    if length(d.serialNumber)>0
+    if ~isempty(d.serialNumber)
         s=sprintf('%s, serialNumber %s',s,d.serialNumber);
     end
     fprintf('%s\n',s);
@@ -37,13 +38,15 @@ end
 fprintf('\n');
 
 % USB-1208FS
-daq=[];
-for di=1:length(devices)
-    if (streq(devices(di).product,'PMD-1208FS') | streq(devices(di).product,'USB-1208FS')) & devices(di).outputs>=70
-        % Select the main interface to represent the whole unit
-        daq(end+1)=di;
-    end
-end
+% daq=[];
+% for di=1:length(devices)
+%     if (streq(devices(di).product,'PMD-1208FS') || streq(devices(di).product,'USB-1208FS')) && devices(di).outputs>=70
+%         % Select the main interface to represent the whole unit
+%         daq(end+1)=di; %#ok<AGROW>
+%     end
+% end
+daq = DaqDeviceIndex;
+
 switch length(daq)
     case 0;
     case 1,
@@ -54,12 +57,7 @@ end
 
 % Keyboard.
 fprintf('\n');
-keyboard=[];
-for di=1:length(devices)
-    if streq('Keyboard',devices(di).usageName)
-        keyboard=[keyboard di];
-    end
-end
+keyboard = GetKeyboardIndices;
 switch length(keyboard)
     case 0;
     case 1,
@@ -93,7 +91,7 @@ for di=keyboard
     WaitSecs(0.1); % Wait a moment for key release.
     keydata=[];
     timeout=GetSecs+5;
-    while ~any(keydata) & GetSecs<timeout
+    while ~any(keydata) && GetSecs<timeout
         [r,err]=PsychHID('GetReport',di,1,0,8);
         if err.n
             fprintf('\nPsychHID: GetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
@@ -112,12 +110,7 @@ end
 
 % Mouse.
 fprintf('\n');
-mouse=[];
-for di=1:length(devices)
-    if streq('Mouse',devices(di).usageName)
-        mouse=[mouse di];
-    end
-end
+mouse = GetMouseIndices;
 switch length(mouse)
     case 0;
     case 1,
@@ -129,13 +122,13 @@ for di=mouse
     r=1;
     while ~isempty(r)
         % flush any old reports
-        [r,err]=PsychHID('GetReport',di,1,0,8);
+        r = PsychHID('GetReport',di,1,0,8);
     end
     fprintf('device %d: %s, %s\n',di,devices(di).manufacturer,devices(di).product);
     fprintf('Now reading your mouse. Move the mouse to continue. ... ');
     mousedata=[];
     timeout=GetSecs+5;
-    while GetSecs<timeout & ~any(mousedata)
+    while GetSecs<timeout && ~any(mousedata)
         [r,err]=PsychHID('GetReport',di,1,0,3);
         if err.n<0
             fprintf('\nPsychHID: GetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);

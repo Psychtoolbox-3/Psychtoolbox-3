@@ -166,7 +166,7 @@ void ReportCallback(void *target,IOReturn result,void *refcon,void *sender,psych
 	
 	CountReports("ReportCallback beginning.");
 	
-	deviceIndex = (int) refcon;
+	deviceIndex = (long int) refcon;
 	if(deviceIndex < 0 || deviceIndex >= MAXDEVICEINDEXS) {
 		printf("ReportCallback received out-of-range deviceIndex %d. Aborting.\n", deviceIndex);
 		return;
@@ -244,7 +244,8 @@ PsychError ReceiveReports(int deviceIndex)
 
 	device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
 	if(!HIDIsValidDevice(device))PrintfExit("PsychHID: Invalid device.\n");
-	interface=device->interface;
+
+	interface = PsychHIDGetDeviceInterfacePtrFromIndex(deviceIndex);
 	if(interface==NULL)PrintfExit("PsychHID: No interface for device.\n");
 	CheckRunLoopSource(deviceIndex,"ReceiveReports",__LINE__);
 	if(!ready[deviceIndex]){
@@ -273,7 +274,7 @@ PsychError ReceiveReports(int deviceIndex)
 		ready[deviceIndex]=1;
 		CheckRunLoopSource(deviceIndex,"ReceiveReports",__LINE__);
 		if(optionsPrintCrashers && createSource)printf("%d: setInterruptReportHandlerCallback\n",deviceIndex);
-		error=(*interface)->setInterruptReportHandlerCallback(interface,buffer,bufferSize,ReportCallback,buffer,(void *)deviceIndex);
+		error=(*interface)->setInterruptReportHandlerCallback(interface,buffer,bufferSize,ReportCallback,buffer,(void *)(long int) deviceIndex);
 		if(error)PrintfExit("ReceiveReports - setInterruptReportHandlerCallback error 0x%lx.",error);
 		if(optionsPrintCrashers && createSource)printf("%d: CFRunLoopRunInMode.\n",deviceIndex);
 	}
@@ -351,11 +352,15 @@ PsychError PsychHIDReceiveReportsCleanup(void)
 void CheckRunLoopSource(int deviceIndex,char *caller,int line){
 	CFRunLoopSourceRef currentSource;
 	pRecDevice device;
-	IOHIDDeviceInterface122** interface;
+	IOHIDDeviceInterface122** interface = NULL;
 	
+    // Skip this function if hardcore debugging is not enabled:
+    if (!optionsPrintCrashers) return;
+
 	device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
 	if(!HIDIsValidDevice(device))PrintfExit("PsychHID: Invalid device.\n");
-	interface=device->interface;
+
+	interface = PsychHIDGetDeviceInterfacePtrFromIndex(deviceIndex);
 	if(interface==NULL)PrintfExit("PsychHID: No interface for device.\n");
 	currentSource=(*interface)->getAsyncEventSource(interface);
 	if(source[deviceIndex] != currentSource)printf("%s (%d): source[%d] %4.4lx != current source %4.4lx.\n"

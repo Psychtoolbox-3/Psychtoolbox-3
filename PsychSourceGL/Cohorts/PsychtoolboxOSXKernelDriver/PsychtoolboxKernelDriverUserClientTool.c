@@ -3,7 +3,7 @@
 	
 	Description:	This file shows how to communicate with the I/O Kit user client of the PsychtoolboxKernelDriver.
 
-	Copyright:		Copyright © 2008-2011 Mario Kleiner, derived from an Apple example code.
+	Copyright:		Copyright © 2008-2012 Mario Kleiner, derived from an Apple example code.
 	
     This kernel driver and associated tools as a whole are licensed to you as follows: (MIT style license):
 

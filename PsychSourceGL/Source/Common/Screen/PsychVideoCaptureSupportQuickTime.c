@@ -29,7 +29,7 @@
 #include <float.h>
 
 // No Quicktime Sequence Grabber support for GNU/Linux:
-#if PSYCH_SYSTEM != PSYCH_LINUX
+#if (PSYCH_SYSTEM != PSYCH_LINUX) && defined(PTBVIDEOCAPTURE_QT)
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include <Quicktime/QuickTimeComponents.h>

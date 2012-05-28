@@ -230,7 +230,7 @@ if IsOSX
             %this is an illegitimate setting, so restore to standard priority
             %and go from there.
             MachSetStandardPriority;
-            oldPriority=0;      
+            oldPriority=0;
         else
             oldPriorityRatio= priorityStruct.policy.computation / priorityStruct.policy.period;
             % Make sure we never exceed an oldPriority of 9, even in case

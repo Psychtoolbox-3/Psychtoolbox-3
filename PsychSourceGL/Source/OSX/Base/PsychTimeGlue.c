@@ -355,7 +355,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
     mach_msg_type_number_t		policyCount, policyCountFilled;
     boolean_t					isDefault;
 	
-	if ((NULL != threadhandle) && (0x1 != (int) threadhandle)) {
+	if ((NULL != threadhandle) && ((psych_thread*) 0x1 != threadhandle)) {
 		// Retrieve thread handle of thread to change:
 		thread = *threadhandle;
 	}

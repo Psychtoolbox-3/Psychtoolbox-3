@@ -59,6 +59,9 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 %            Latest distros, e.g., FedoraCore or Ubuntu 11.10 use unusual NIC names, which
 %            makes Screen()'s parsing of MACID fail and thereby our online registration
 %            reject the registration.
+%
+% 28.5.2012  Cleanup for 3.0.10+ series. (MK)
+%
 
 % Address and port number of our statistics server:
 ptbserveraddress = 'psychtoolbox.org';
@@ -72,7 +75,7 @@ try
     if nargin < 2
         fprintf('PsychtoolboxRegistration: WARNING - Call arguments missing. Skipped...\n');
         return;
-    end;
+    end
     
     if IsOctave
         % No registration for GNU/Octave versions older than 3:
@@ -81,13 +84,10 @@ try
             fprintf('PsychtoolboxRegistration: Octave version < 3 detected. Skipping registration...\n');
             return;
         end
-    end;
-    
-    % Default path and name for netcat command:
-    nccommand = 'nc';
+    end
     
     compinfo = Screen('Computer');
-
+    
     % Query OS-Type:
     if IsOSX
         ostype = 'MacOS-X';
@@ -96,7 +96,7 @@ try
         [rc arch] = system('arch');
         arch=deblank(arch);
     end
-
+    
     if IsWin
         ostype = 'Windows';
         if ~IsOctave
@@ -111,20 +111,18 @@ try
                 osversion = deblank(osversion);
             catch
                 osversion = 'Unknown';
-            end            
+            end
         end
         
         
         if isempty(osversion)
-           osversion = 'Unknown';
+            osversion = 'Unknown';
         end
         
         % Define machine architecture to be Intel.
         arch = 'Intel';
-        % Define path to our own netcat executable for M$-Windows:
-        nccommand = strcat('"',[PsychtoolboxRoot 'PsychContributed\nc '],'"');
     end
-
+    
     if IsLinux
         ostype = 'LinuxOS';
         [rc osversion] = system('uname -r');
@@ -142,39 +140,39 @@ try
         runtimeenv = 'Matlab';
         runtimeversion = version;
     end
-
+    
     % Query what Matlab thinks as well:
     runtimearch = computer;
-
+    
     % Query MAC address as unique machine id:
     % We try to get the info from the 'Computer' subfunction of Screen:
     if isfield(compinfo, 'MACAddress')
         % Success. Use it.
         mac = compinfo.MACAddress;
-
-	% Valid? Some recent Linux distros assign unusual ethernet names,
-	% e.g., do not call the primary NIC eth0, so our Screen() code
-	% fails. In this case we fallback to the clumsy but hopefully
-	% effective method here:
+        
+        % Valid? Some recent Linux distros assign unusual ethernet names,
+        % e.g., do not call the primary NIC eth0, so our Screen() code
+        % fails. In this case we fallback to the clumsy but hopefully
+        % effective method here:
         if strcmp(mac, '00:00:00:00:00:00');
-	    % No: Try alternative way, if possible:
-	    if IsLinux
-	        [rc, res] = system('ifconfig | grep Ethernet | grep HWaddr');
-		if rc == 0
-		    % Find first valid HWaddr:
-		    idx = strfind(res, 'HWaddr ');
-		    for j = idx
-		        mymacid = res(j+7:j+7+16);
-		        if ~strcmp(mymacid, '00:00:00:00:00:00')
-		            % This one seems to be valid. Assign as final mac,
-		            % and we're done:
-		            mac = upper(mymacid);
-		            break;
-		        end
-		    end
-		end
-	    end
-	end
+            % No: Try alternative way, if possible:
+            if IsLinux
+                [rc, res] = system('ifconfig | grep Ethernet | grep HWaddr');
+                if rc == 0
+                    % Find first valid HWaddr:
+                    idx = strfind(res, 'HWaddr ');
+                    for j = idx
+                        mymacid = res(j+7:j+7+16);
+                        if ~strcmp(mymacid, '00:00:00:00:00:00')
+                            % This one seems to be valid. Assign as final mac,
+                            % and we're done:
+                            mac = upper(mymacid);
+                            break;
+                        end
+                    end
+                end
+            end
+        end
     else
         % Failed: Try harder...
         if IsWin
@@ -195,11 +193,11 @@ try
             mac = '00:00:00:00:00:00';
         end
     end
-
+    
     % Build unique id string for this system:
     uniqueID = ['<MACID>' mac '</MACID><OS>' ostype '-' osversion '</OS><ENVIRONMENT>' runtimeenv '</ENVIRONMENT><ENVVERSION>' ...
-                runtimeversion '</ENVVERSION><ENVARCH>' runtimearch '</ENVARCH><CPUARCH>' arch '</CPUARCH><FLAVOR>' ...
-                flavor '</FLAVOR><ISUPDATE>' num2str(isUpdate) '</ISUPDATE><DATE>' date '</DATE>'];
+        runtimeversion '</ENVVERSION><ENVARCH>' runtimearch '</ENVARCH><CPUARCH>' arch '</CPUARCH><FLAVOR>' ...
+        flavor '</FLAVOR><ISUPDATE>' num2str(isUpdate) '</ISUPDATE><DATE>' date '</DATE>'];
     
     fprintf('Online Registration: Will try to transmit the following string of data\n');
     fprintf('to the www.psychtoolbox.org website for statistical purpose:\n\n');
@@ -208,57 +206,30 @@ try
     fprintf('to learn about the purpose and scope of online registration.\n');
     fprintf('Type ''type PsychtoolboxRegistration'' to see the source code of this routine.\n\n');
     fprintf('Data transfer can take up to 10 seconds... The system reports:\n');
-
-    %if IsOctave
-    % MK: Octave now supports pnet, so we can disable this code branch:
-    if 0
-        % pnet not yet supported on Octave. Use netcat as in good ol' days:
-
-        % Execute transmission command: We time out after 10 seconds if it does not work.
-        ptbserveraddress = [ptbserveraddress ' 2000'];
-        syscmd = ['echo "' uniqueID '" | ' nccommand ' -w 10 -v ' ptbserveraddress ' '];
-
-        fflush(stdout);
+    
+    % Use pnet() for communication:
+    psychlasterror('reset');
+    rc = 0;
+    
+    con=pnet('tcpconnect', ptbserveraddress, 2000);
+    if con >= 0
+        % Connection established.
+        % Write our string, with a timeout of 10 seconds:
+        pnet(con, 'setwritetimeout', 10);
         
-        if IsWin
-            rc = dos(syscmd);
-        else
-            rc = system(syscmd);
+        try
+            % This try-catch is just to work around a bug in
+            % pnet('printf'), pretty annoying.
+            pnet(con, 'printf', '%s\n', uniqueID);
+        catch
+            psychlasterror('reset');
         end
-        fprintf('\n');
-        
-        fflush(stdout);
     else
-        % pnet supported: Use that...
-        % Specifically that means we will always use pnet() on MS-Windows,
-        % as we don't support Octave there. This will allow us to get rid
-        % of distributing our own nc netcat command, which makes trouble
-        % for some users with really idiotic configurations of virus
-        % scanners and incompetent IT staff.
-        %
-        psychlasterror('reset');
-        rc = 0;
-
-        con=pnet('tcpconnect', ptbserveraddress, 2000);
-        if con >= 0
-            % Connection established.
-            % Write our string, with a timeout of 10 seconds:
-            pnet(con, 'setwritetimeout', 10);
-
-            try
-                % This try-catch is just to work around a bug in
-                % pnet('printf'), pretty annoying.
-                pnet(con, 'printf', '%s\n', uniqueID);
-            catch
-                psychlasterror('reset');
-            end
-        else
-            % Failed!
-            rc = 1;
-        end
-
-        pnet('closeall');
+        % Failed!
+        rc = 1;
     end
+    
+    pnet('closeall');
     
     % Did it work?
     if rc==0

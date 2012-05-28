@@ -41,7 +41,7 @@ static char seeAlsoString[] = "";
  
 PsychError PSYCHHIDKbCheck(void) 
 {
-    int					deviceIndex, debuglevel = 0;
+    int					deviceIndex;
     int					m, n, p;
     double				*scanList = NULL;
     psych_bool                          isDeviceSpecified;
@@ -54,13 +54,9 @@ PsychError PSYCHHIDKbCheck(void)
 	
     // Choose the device index and its record
     isDeviceSpecified=PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
-    if (isDeviceSpecified) {
-	if (deviceIndex < 0) {
-		debuglevel = 1;
-		deviceIndex = -deviceIndex;
-	}
-    }else { // set the keyboard or keypad device to be the first keyboard device or, if no keyboard, the first keypad
-	deviceIndex = INT_MAX;
+    if (!isDeviceSpecified) {
+        // set the keyboard or keypad device to be the first keyboard device or, if no keyboard, the first keypad
+        deviceIndex = INT_MAX;
     }
 
     // Optional 2nd argument 'scanlist' provided?
@@ -79,7 +75,7 @@ PsychError PSYCHHIDKbCheck(void)
 PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 {
     pRecDevice			deviceRecord;
-    pRecElement			currentElement;
+    pRecElement			currentElement, lastElement = NULL;
     int					i, debuglevel = 0;
     static int			numDeviceIndices = -1;
     int					numDeviceUsages=NUMDEVICEUSAGES;
@@ -92,20 +88,22 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     int					m, n, p, nout;
     double				dummyKeyDown;
     double				dummykeyArrayOutput[256];
+    uint32_t            usage, usagePage;
+    int                 value;
 
     // We query keyboard and keypad devices only on first invocation, then cache and recycle the data:
     if (numDeviceIndices == -1) {
-	PsychHIDVerifyInit();
+        PsychHIDVerifyInit();
         PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &numDeviceIndices, deviceIndices, deviceRecords);
     }
 	
     // Choose the device index and its record
     isDeviceSpecified = (deviceIndex != INT_MAX);
     if(isDeviceSpecified){  //make sure that the device number provided by the user is really a keyboard or keypad.
-	if (deviceIndex < 0) {
-		debuglevel = 1;
-		deviceIndex = -deviceIndex;
-	}
+        if (deviceIndex < 0) {
+            debuglevel = 1;
+            deviceIndex = -deviceIndex;
+        }
 
         for(i=0;i<numDeviceIndices;i++){
             if(foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex))
@@ -113,7 +111,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
         }
         if(!foundUserSpecifiedDevice)
             PsychErrorExitMsg(PsychError_user, "Specified device number is not a keyboard or keypad device.");
-    }else{ // set the keyboard or keypad device to be the first keyboard device or, if no keyboard, the first keypad
+    } else { // set the keyboard or keypad device to be the first keyboard device or, if no keyboard, the first keypad
         i=0;
         if(numDeviceIndices==0)
             PsychErrorExitMsg(PsychError_user, "No keyboard or keypad devices detected.");
@@ -160,15 +158,58 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     if (PsychHIDWarnInputDisabled("PsychHID('KbCheck')")) return(PsychError_none);
 
     //step through the elements of the device.  Set flags in the return array for down keys.
-    for(currentElement=HIDGetFirstDeviceElement(deviceRecord, kHIDElementTypeInput); 
-        currentElement != NULL; 
-        currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput))
+    for(currentElement=HIDGetFirstDeviceElement(deviceRecord, kHIDElementTypeInput | kHIDElementTypeCollection); 
+        (currentElement != NULL) && (currentElement != lastElement);
+        currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput | kHIDElementTypeCollection))
     {
-        if(((currentElement->usagePage == kHIDPage_KeyboardOrKeypad) || (currentElement->usagePage == kHIDPage_Button)) && (currentElement->usage <= 256) && (currentElement->usage >= 1) &&
-			( (scanList == NULL) || (scanList[currentElement->usage - 1] > 0) ) ) {
-            if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]: usage: %x value: %d \n", currentElement->usage, HIDGetElementValue(deviceRecord, currentElement));
-            keyArrayOutput[currentElement->usage - 1]=((int) HIDGetElementValue(deviceRecord, currentElement) || (int) keyArrayOutput[currentElement->usage - 1]);
-            *isKeyDownOutput= keyArrayOutput[currentElement->usage - 1] || *isKeyDownOutput; 
+        // Keep track of last queried element:
+        lastElement = currentElement;
+        
+        #ifndef __LP64__
+        usage = currentElement->usage;
+        usagePage = currentElement->usagePage;
+        #else
+        usage = IOHIDElementGetUsage(currentElement);
+        usagePage = IOHIDElementGetUsagePage(currentElement);
+        // printf("PTB-DEBUG: [KbCheck]: ce %p page %d usage: %d isArray: %d\n", currentElement, usagePage, usage, IOHIDElementIsArray(currentElement));
+
+        if (IOHIDElementGetType(currentElement) == kIOHIDElementTypeCollection) {
+            CFArrayRef children = IOHIDElementGetChildren(currentElement);
+            if (!children) continue;
+            
+            CFIndex idx, cnt = CFArrayGetCount(children);
+            for ( idx = 0; idx < cnt; idx++ ) {
+                IOHIDElementRef tIOHIDElementRef = (IOHIDElementRef) CFArrayGetValueAtIndex(children, idx);
+                if (tIOHIDElementRef && ((IOHIDElementGetType(tIOHIDElementRef) == kIOHIDElementTypeInput_Button) ||
+                                         (IOHIDElementGetType(tIOHIDElementRef) == kIOHIDElementTypeInput_ScanCodes))) {
+                    usage = IOHIDElementGetUsage(tIOHIDElementRef);
+                    if ((usage <= 256) && (usage >= 1) && ( (scanList == NULL) || (scanList[usage - 1] > 0) )) {
+                        value = (int) IOHIDElement_GetValue(tIOHIDElementRef, kIOHIDValueScaleTypePhysical);
+                        if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]: usage: %x value: %d \n", usage, value);
+                        keyArrayOutput[usage - 1] = (value || (int) keyArrayOutput[usage - 1]);
+                        *isKeyDownOutput = keyArrayOutput[usage - 1] || *isKeyDownOutput;
+                    }
+                }
+            }
+            
+            // Done with this currentElement, which was a collection of buttons/keys.
+            // Iterate to next currentElement:
+            continue;
+        }
+        #endif
+
+        // Classic path, or 64-Bit path for non-collection elements:
+        if(((usagePage == kHIDPage_KeyboardOrKeypad) || (usagePage == kHIDPage_Button)) && (usage <= 256) && (usage >= 1) &&
+			( (scanList == NULL) || (scanList[usage - 1] > 0) ) ) {
+            #ifndef __LP64__
+            value = (int) HIDGetElementValue(deviceRecord, currentElement);
+            #else
+            value = (int) IOHIDElement_GetValue(currentElement, kIOHIDValueScaleTypePhysical);
+            #endif
+
+            if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]: usage: %x value: %d \n", usage, value);
+            keyArrayOutput[usage - 1]=(value || (int) keyArrayOutput[usage - 1]);
+            *isKeyDownOutput= keyArrayOutput[usage - 1] || *isKeyDownOutput; 
         }
     }
 

@@ -93,6 +93,10 @@ static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
 static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+extern void g_thread_init(GThreadFunctions *vtable) __attribute__((weak_import));
+#endif
+
 /*
  *     PsychGSMovieInit() -- Initialize movie subsystem.
  *     This routine is called by Screen's RegisterProject.c PsychModuleInit()
@@ -104,7 +108,7 @@ void PsychGSMovieInit(void)
     // Initialize movieRecordBANK with NULL-entries:
     int i;
     for (i=0; i < PSYCH_MAX_MOVIES; i++) {
-	memset(&movieRecordBANK[i], 0, sizeof(PsychMovieRecordType));
+        memset(&movieRecordBANK[i], 0, sizeof(PsychMovieRecordType));
     }    
     numMovieRecords = 0;
 
@@ -121,6 +125,28 @@ void PsychGSMovieInit(void)
         // GStreamer won't work as the relevant .dll's are missing on the system.
         // We silently return, skpipping the GLib init, as it is completely valid
         // for a Windows installation to not have GStreamer installed at all.
+        return;
+    }
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_OSX
+    // On OSX we also delay-load GLib and other GStreamer related stuff, a process
+    // called "weak-linking" in Apple terminology. Use of the -weak_library XXX option
+    // in our Makefile marks GLib, GStreamer et al. as weak-linked. The dynamic linker
+    // will link the libraries at first use and resolve all symbols. If a symbol can't
+    // get resolved, because libraries can't get loaded (missing on system, wrong permissions
+    // et.c) or are too old and don't contain the symbol, the linker will define the symbol
+    // as a NULL function pointer.
+    //
+    // Test here if GLib's g_thread_init() symbol is defined and take it as indicator
+    // that GLib could get linked properly.
+    if (g_thread_init == NULL) {
+        // Failed: GLib and its threading support isn't installed. This means that
+        // GStreamer won't work as the relevant libraries are missing on the system.
+        // We silently return, skpipping the GLib init, as it is completely valid
+        // for a OSX installation to not have GStreamer installed at all. On first active
+        // use of a GStreamer dependent function, Screen() will detect lack of GStreamer
+        // and error-out with a helpful error message to the user.
         return;
     }
     #endif
@@ -533,12 +559,12 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // We start GStreamer only on first invocation.
     if (firsttime) {        
         // Initialize GStreamer: The routine is defined in PsychVideoCaptureSupportGStreamer.c
-	PsychGSCheckInit("movie playback");
+        PsychGSCheckInit("movie playback");
 
-	// Enable use of YUV textures for movie playback on supported GPUs if environment variable
-	// is defined. YUV mode defaults to "off", because as of 1st December 2011, at least H264
-	// to YUV decoding was much slower than bog standard decoding to RGBA8 -- much to my surprise.
-	if (getenv("PSYCHTOOLBOX_USE_YUV_MOVIEDECODING") || (specialFlags1 & 1)) useYUVDecode = TRUE;
+        // Enable use of YUV textures for movie playback on supported GPUs if environment variable
+        // is defined. YUV mode defaults to "off", because as of 1st December 2011, at least H264
+        // to YUV decoding was much slower than bog standard decoding to RGBA8 -- much to my surprise.
+        if (getenv("PSYCHTOOLBOX_USE_YUV_MOVIEDECODING") || (specialFlags1 & 1)) useYUVDecode = TRUE;
 
         firsttime = FALSE;
     }

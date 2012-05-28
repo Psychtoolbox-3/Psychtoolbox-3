@@ -14,7 +14,6 @@
  * Written by Mario Kleiner.
  */
 
-#include <stdlib.h>
 #include "mex.h"
 
 /* Byte array with 640 x 480 RGB  pixels */

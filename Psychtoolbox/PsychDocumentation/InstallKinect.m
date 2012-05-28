@@ -1,6 +1,7 @@
 % InstallKinect - Kinect driver installation instructions.
 %
 % MS-Windows:
+% -----------
 %
 % 1. Unzip the file Psychtoolbox/PsychContributed/Kinect-v16-WindowsDrivers.zip
 %    into a temporary folder, e.g., C:\tmp\KinectDrivers.
@@ -36,6 +37,7 @@
 %
 %
 % GNU/Linux:
+% ----------
 %
 % If you use the Psychtoolbox distribution provided by the NeuroDebian
 % project (http://neuro.debian.net) there's nothing to do. It should "just
@@ -76,16 +78,37 @@
 % 3. After this procedure, the Kinect should be fully useable by Psychtoolbox.
 %
 %
-% CAVEAT:
+% Mac OS/X:
+% ---------
+%
+% See the OS/X section at http://openkinect.org/wiki/Getting_Started
+% You will need libfreenect version 0.1.2 or compatible for this to work.
+%
+% The easiest way to get these libraries on OSX is via Homebrew.
+% Get it at: http://mxcl.github.com/homebrew
+%
+% Once Homebrew is installed, one first needs to "brew install automake",
+% and "brew install autoconfig", and potentially cmake before one can
+% "brew install libfreenect".
+%     
+% PsychKinectCore links dynamically against those two libraries. We don't
+% distribute them for now, as that would require us to distribute the
+% corresponding source code of libusb-1.0.0 as well due to LGPLv2
+% requirements.
+%     
+%
+% CAVEATS:
+% --------
 %
 % This is still early prototype software, expect bugs, bumps and hickups.
+%
+% The Kinect driver has been successfully tested with "Microsoft XBox
+% Kinect". This version doesn't yet work with "Microsoft Kinect for
+% Windows", due to lack of support in the libfreenect-0.1.2 library.
 %
 % Further installation instructions for other systems can be found at
 % http://openkinect.org/wiki/Getting_Started
 %
-% Mac OS/X:
-% See the OS/X section at http://openkinect.org/wiki/Getting_Started
-% You will need libfreenect version 0.1.2 or compatible for this to work.
 %
 % Licenses: The driver consists of multiple components, which are licensed
 % under different free software / open source licenses. The drivers are
@@ -99,7 +122,8 @@
 %
 % The source code of the Windows version of the Kinect driver and libusb
 % can be found after checking out Psychtoolbox's C source code from the SVN
-% repository (see "help UseTheSource" for instructions) as a zip file under:
+% repository (see "help UseTheSource" for instructions) as a zip file
+% under:
 %
 % trunk/PsychSourceGL/Cohorts/Kinect-v16-withsource.zip
 %
@@ -120,19 +144,19 @@ fprintf('not see any visual feedback until you pressed ENTER and entered a valid
 drawnow;
 [rc, msg] = system(cmd);
 if rc == 0
-  fprintf('Success! Now disabling the Kinect video driver. If this does not complete within a second,\n');
-  fprintf('you may need to blindly type your password again + ENTER, but usually it just completes.\n');
-  drawnow;
-  [rc, msg] = system('sudo rmmod gspca_kinect');
-  if rc == 0
-    fprintf('Success! Your Kinect should now be useable by Psychtoolbox PsychKinect driver.\n');
-  else
-    fprintf('Failed! Maybe retry? Other than that, unplug your Kinect and reboot your machine to make it work.\n');
-    fprintf('Reported error was: %s\n', msg);
-  end
+    fprintf('Success! Now disabling the Kinect video driver. If this does not complete within a second,\n');
+    fprintf('you may need to blindly type your password again + ENTER, but usually it just completes.\n');
+    drawnow;
+    [rc, msg] = system('sudo rmmod gspca_kinect');
+    if rc == 0
+        fprintf('Success! Your Kinect should now be useable by Psychtoolbox PsychKinect driver.\n');
+    else
+        fprintf('Failed! Maybe retry? Other than that, unplug your Kinect and reboot your machine to make it work.\n');
+        fprintf('Reported error was: %s\n', msg);
+    end
 else
-  fprintf('Failed! Maybe retry? Or ask a system administrator for help.\n');
-  fprintf('Reported error was: %s\n', msg);
+    fprintf('Failed! Maybe retry? Or ask a system administrator for help.\n');
+    fprintf('Reported error was: %s\n', msg);
 end
 
 fprintf('If you want to enable use of Kinect as a regular webcam again, type the\n');

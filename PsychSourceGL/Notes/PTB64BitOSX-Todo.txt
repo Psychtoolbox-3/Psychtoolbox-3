@@ -1,0 +1,8 @@
+TODO 64-Bit OSX Port:
+
+Medium priority: (Possibly pre-release, but not a release-blocker):
+Low priority: (Post-Release)
+
+* 64-Bit Octave version.
+* Check why Videocapture works, but not VideoRecording.
+* Setup CMake & XCode-Project…

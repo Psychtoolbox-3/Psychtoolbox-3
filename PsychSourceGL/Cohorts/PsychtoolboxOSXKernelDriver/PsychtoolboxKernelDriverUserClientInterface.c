@@ -3,7 +3,7 @@
 	
 	Description:	Implements an abstraction layer between client applications and the user client.
 
-	Copyright:		Copyright © 2008 Mario Kleiner, derived from an Apple example code.
+	Copyright:		Copyright © 2008 - 2012 Mario Kleiner, derived from an Apple example code.
 
 	Change History of original Apple sample code (most recent first):
 

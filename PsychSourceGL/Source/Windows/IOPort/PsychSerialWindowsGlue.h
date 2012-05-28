@@ -29,8 +29,7 @@
 
 #include <time.h>
 
-/* Do we need the volatile qualifier as typedef volatile struct or not?! I don't know :-( */
-typedef volatile struct PsychSerialDeviceRecord {
+typedef struct PsychSerialDeviceRecord {
 	char				portSpec[1000];			// Name string of the device file - typically "COM0:", but we alloc large space for virtual device files etc.
 	HANDLE				fileDescriptor;			// Device handle.
 	DCB					OriginalTTYAttrs;		// Stores original settings of device to allow restore on close.

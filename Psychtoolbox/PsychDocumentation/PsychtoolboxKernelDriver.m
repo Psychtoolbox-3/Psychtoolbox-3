@@ -1,10 +1,11 @@
 % PsychtoolboxKernelDriver - A low level support driver for Apple OS-X
 %
 % The PsychtoolboxKernelDriver (PKD) is a MacOS-X kernel extension (a
-% kext). It currently should work with AMD/ATI Radeon graphics cards of the
-% X1000, HD2000, HD3000 and HD4000 series. It doesn't work with graphics chips from
-% other manufacturers and probably doesn't work with older ATI chips. It
-% works to some degree with the most recent HD-5000 series chips and later.
+% kext). It currently should fully work with AMD/ATI Radeon graphics cards
+% of the X1000, HD2000, HD3000 and HD4000 series. It works with the most
+% recent HD-5000 series chips and later, although some functionality (10
+% Bit native framebuffer support) is not yet available. On NVidia cards,
+% beamposition queries are supported.
 %
 % The driver needs to be manually loaded by a user with administrator
 % privileges and provides a few special services to PTB-3, ie., PTB's
@@ -14,9 +15,8 @@
 % * Beamposition queries (See help BeampositionQueries) allow for
 % especially robust and accurate stimulus onset timestamping. They are
 % supported by OS-X on all PowerPC systems and on Intel based systems with
-% NVidia graphics cards, but not on Intel systems with ATI graphics. The
-% driver restores this functionality on single display and dual display
-% setups.
+% NVidia graphics cards, but not on Intel systems with AMD/ATI graphics. The
+% driver restores this functionality.
 %
 % * Multihead display sync: The driver allows to synchronize the display
 % refresh cycles of the displays connected to a multihead graphics card
@@ -36,35 +36,68 @@
 %
 %
 % The driver only works if a *single* graphics card (single-head or
-% dual/multi-head) is installed in your machine. It won't work reliably if
-% more than one card is installed.
+% dual/multi-head) is active in your machine. It may not work reliably if
+% more than one card is installed and or active. Specifically, we never
+% tested how (well) it behaves in the presence of multiple active graphics
+% cards.
 %
 % As this driver accesses the hardware at a very low level, bypassing the
 % whole operating system, its graphics subsystem and the drivers from ATI,
 % there is some potential for things to go wrong. Although our testing so
 % far didn't show any such problems, it may happen on your system. That is
 % why this driver is an *experimental* feature and why you need to have
-% administrator privileges to enable/load the driver.
+% administrator privileges to install and load the driver the first time.
 %
 % How to install (one time setup):
+% --------------------------------
 %
-% Unzip the file Psychtoolbox/PsychAlpha/PsychtoolboxKernelDriver.zip, then
-% copy the driver PsychtoolboxKernelDriver.kext into a system folder, e.g.,
-% /System/Libary/Extensions/
-% The location doesn't really matter, but that is the common place for such
-% .kexts. You must do this from the terminal via:
+% There are two versions of the driver, one for 32-Bit OSX kernels, one for
+% 64-Bit kernels. You can find out which one you need by typing:
+% !uname -m
+%
+% If the output says "x86_64" you'll need the 64-Bit driver, otherwise the
+% 32-Bit driver.
+%
+% For 32-Bit OSX kernel:
+% ----------------------
+%
+% Unzip the file
+% Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver32Bit.zip, then copy
+% the unpacked driver PsychtoolboxKernelDriver.kext into the system folder
+% /System/Library/Extensions/
+% You must do this from the terminal via:
 %
 % sudo cp -R PsychtoolboxKernelDriver.kext /System/Library/Extensions/
 %
 % assuming the unzipped driver is in your current working directory.
 %
-% How to enable (each time after restarting your system):
+% For 64-Bit OSX kernel:
+% ----------------------
+%
+% Unzip the file
+% Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver64Bit.zip, then copy
+% the unpacked driver PsychtoolboxKernelDriver.kext into the system folder
+% /System/Library/Extensions/
+% You must do this from the terminal via:
+%
+% sudo cp -R PsychtoolboxKernelDriver.kext /System/Library/Extensions/
+%
+% assuming the unzipped driver is in your current working directory.
+%
+%
+% On modern OSX systems, this will automatically load the driver after a
+% few seconds, and also after each system restart. On older systems you
+% have to load the driver manually - on new systems you could do this for
+% debugging purposes: How to enable (each time after restarting your system):
+%
 %
 % In a terminal type:
 % sudo kextload /System/Library/Extensions/PsychtoolboxKernelDriver.kext
 %
 % Both sudo commands will ask you for your password.
 %
-% USE THIS DRIVER AT YOUR OWN RISK - BUGS OR MALFUNCTIONS MAY CRASH YOUR
-% MACHINE AND CAUSE DATA LOSS!
+% If everything went well, Psychtoolbox will report availability (and its
+% use) of the driver the first time the Screen() mex file gets loaded and
+% used. If it doesn't happen immediately, type "clear Screen" to force a
+% reload of Screen.
 %

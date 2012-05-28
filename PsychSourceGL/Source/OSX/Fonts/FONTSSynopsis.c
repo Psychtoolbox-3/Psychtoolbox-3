@@ -3,10 +3,12 @@
 
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+        Allen Ingling		awi		Allen.Ingling@nyu.edu
+        Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	PLATFORMS: 
-	
+
+        OSX only.
 
 	PROJECTS:
 	
@@ -21,7 +23,9 @@
   
 
 */
-#include "Screen.h"
+
+//#include "Screen.h"
+#include "Psych.h"
 
 #define MAX_SYNOPSIS_STRINGS 500  
 
@@ -30,20 +34,19 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 void InitializeSynopsis()
 {
-	int i=0;
-	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
+    int i=0;
+    const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
 
-	synopsis[i++] = "Usage:";
+    synopsis[i++] = "Usage:";
+
+    synopsis[i++] = "numFonts=FontInfo('NumFonts')";
+    synopsis[i++] = "fontInfoStructArray=FontInfo('Fonts')";
+    synopsis[i++] = "versionInfo=FontInfo('Version')";
 
 
-        synopsis[i++] = "numFonts=FontInfo('NumFonts')";
-	synopsis[i++] = "fontInfoStructArray=FontInfo('Fonts')";
-        synopsis[i++] = "versionInfo=FontInfo('Version')";
-
-
-	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
+    synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
-		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
+        PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
 	}
 }
 
@@ -57,8 +60,3 @@ PsychError PsychDisplayATSSynopsis(void)
 		
 	return(PsychError_none);
 }
-
-
-
-
-

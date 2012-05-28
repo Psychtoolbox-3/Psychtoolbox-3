@@ -1,0 +1,1632 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>1356</key>
+	<dict>
+		<key>616</key>
+		<dict>
+			<key>1:67</key>
+			<string>Acceleration X</string>
+			<key>1:68</key>
+			<string>Acceleration Y</string>
+			<key>1:69</key>
+			<string>Acceleration Z</string>
+			<key>1:48</key>
+			<string>Left Stick X Axis</string>
+			<key>1:49</key>
+			<string>Left Stick Y Axis</string>
+			<key>1:50</key>
+			<string>Right Stick X Axis</string>
+			<key>1:53</key>
+			<string>Right Stick Y Axis</string>
+			<key>Name</key>
+			<string>PLAYSTATION(R)3 Controller</string>
+			<key>9:1</key>
+			<string>Select Button</string>
+			<key>9:2</key>
+			<string>L3 Button</string>
+			<key>9:3</key>
+			<string>R3 Button</string>
+			<key>9:4</key>
+			<string>Start Button</string>
+			<key>9:5</key>
+			<string>Up Button</string>
+			<key>9:6</key>
+			<string>Right Button</string>
+			<key>9:7</key>
+			<string>Down Button</string>
+			<key>9:8</key>
+			<string>Left Button</string>
+			<key>9:9</key>
+			<string>L2 Button</string>
+			<key>9:10</key>
+			<string>R2 Button</string>
+			<key>9:11</key>
+			<string>L1 Button</string>
+			<key>9:12</key>
+			<string>R1 Button</string>
+			<key>9:13</key>
+			<string>Triangle Button</string>
+			<key>9:14</key>
+			<string>Circle Button</string>
+			<key>9:15</key>
+			<string>X Button</string>
+			<key>9:16</key>
+			<string>Square Button</string>
+			<key>9:17</key>
+			<string>PS Button</string>
+		</dict>
+		<key>Name</key>
+		<string>Sony</string>
+	</dict>
+	<key>1118</key>
+	<dict>
+		<key>26</key>
+		<dict>
+			<key>1:48</key>
+			<string>Wheel</string>
+			<key>1:49</key>
+			<string>Left Pedal [Brake]</string>
+			<key>1:50</key>
+			<string>Right Pedal [Gas]</string>
+			<key>9:1</key>
+			<string>Button A</string>
+			<key>9:2</key>
+			<string>Button B</string>
+			<key>9:3</key>
+			<string>Button C</string>
+			<key>9:4</key>
+			<string>Button X</string>
+			<key>9:5</key>
+			<string>Button Y</string>
+			<key>9:6</key>
+			<string>Button Z</string>
+			<key>9:7</key>
+			<string>Left Trigger</string>
+			<key>9:8</key>
+			<string>Right Trigger</string>
+			<key>Name</key>
+			<string>SideWinder Precision Racing Wheel USB v1.0</string>
+		</dict>
+		<key>27</key>
+		<dict>
+			<key>10:1</key>
+			<string>Ordinal Instance 1</string>
+			<key>10:2</key>
+			<string>Ordinal Instance 2</string>
+			<key>15:-1</key>
+			<string>PID Usage 0xffffffff</string>
+			<key>15:100</key>
+			<string>Condition Negative Saturation</string>
+			<key>15:101</key>
+			<string>Condition Dead Band</string>
+			<key>15:105</key>
+			<string>Custom Force Data</string>
+			<key>15:108</key>
+			<string>Custom Force Data Offset</string>
+			<key>15:109</key>
+			<string>Custom Force Sample Count</string>
+			<key>15:111</key>
+			<string>Periodic Offset</string>
+			<key>15:112</key>
+			<string>Periodic Magnitude</string>
+			<key>15:113</key>
+			<string>Periodic Phase</string>
+			<key>15:114</key>
+			<string>Periodic Period</string>
+			<key>15:117</key>
+			<string>Ramp Start</string>
+			<key>15:118</key>
+			<string>Ramp End</string>
+			<key>15:121</key>
+			<string>Op Effect Start</string>
+			<key>15:122</key>
+			<string>Op Effect Start Solo</string>
+			<key>15:123</key>
+			<string>Op Effect Stop</string>
+			<key>15:124</key>
+			<string>Op Effect Loop Count</string>
+			<key>15:126</key>
+			<string>Device Gain</string>
+			<key>15:128</key>
+			<string>RAM Pool Size</string>
+			<key>15:131</key>
+			<string>Simultaneous Effects Max</string>
+			<key>15:140</key>
+			<string>Block Load Success</string>
+			<key>15:141</key>
+			<string>Block Load Full</string>
+			<key>15:142</key>
+			<string>Block Load Error</string>
+			<key>15:148</key>
+			<string>Effect Playing</string>
+			<key>15:151</key>
+			<string>Device Control Enable Actuators</string>
+			<key>15:152</key>
+			<string>Device Control Disable Actuators</string>
+			<key>15:153</key>
+			<string>Device Control Stop All Effects</string>
+			<key>15:154</key>
+			<string>Device Control Reset</string>
+			<key>15:155</key>
+			<string>Device Control Pause</string>
+			<key>15:156</key>
+			<string>Device Control Continue</string>
+			<key>15:159</key>
+			<string>Device Paused</string>
+			<key>15:160</key>
+			<string>Actuators Enabled</string>
+			<key>15:164</key>
+			<string>Safety Switch</string>
+			<key>15:165</key>
+			<string>Actuator Override Switch</string>
+			<key>15:166</key>
+			<string>Actuator Power</string>
+			<key>15:167</key>
+			<string>Start Delay</string>
+			<key>15:169</key>
+			<string>Device Managed Pool</string>
+			<key>15:170</key>
+			<string>Shared Parameter Blocks</string>
+			<key>15:172</key>
+			<string>RAM Pool Available</string>
+			<key>15:34</key>
+			<string>Effect Block Index</string>
+			<key>15:35</key>
+			<string>Parameter Block Offset</string>
+			<key>15:38</key>
+			<string>Effect Type Constant Force</string>
+			<key>15:39</key>
+			<string>Effect Type Ramp</string>
+			<key>15:40</key>
+			<string>Effect Type Custom Force Data</string>
+			<key>15:48</key>
+			<string>Effect Type Square</string>
+			<key>15:49</key>
+			<string>Effect Type Sine</string>
+			<key>15:50</key>
+			<string>Effect Type Triangle</string>
+			<key>15:51</key>
+			<string>Effect Type Sawtooth Up</string>
+			<key>15:52</key>
+			<string>Effect Type Sawtooth Down</string>
+			<key>15:64</key>
+			<string>Effect Type Spring</string>
+			<key>15:65</key>
+			<string>Effect Type Damper</string>
+			<key>15:66</key>
+			<string>Effect Type Inertia</string>
+			<key>15:67</key>
+			<string>Effect Type Friction</string>
+			<key>15:80</key>
+			<string>Effect Duration</string>
+			<key>15:81</key>
+			<string>Effect Sample Period</string>
+			<key>15:82</key>
+			<string>Effect Gain</string>
+			<key>15:83</key>
+			<string>Effect Trigger Button</string>
+			<key>15:84</key>
+			<string>Effect Trigger Repeat Interval</string>
+			<key>15:86</key>
+			<string>Direction Enable</string>
+			<key>15:91</key>
+			<string>Envelope Attack Level</string>
+			<key>15:92</key>
+			<string>Envelope Attack Time</string>
+			<key>15:93</key>
+			<string>Envelope Fade Level</string>
+			<key>15:94</key>
+			<string>Envelope Fade Time</string>
+			<key>15:96</key>
+			<string>Condition CP Offset</string>
+			<key>15:97</key>
+			<string>Condition Positive Coefficient</string>
+			<key>15:98</key>
+			<string>Condition Negative Coefficient</string>
+			<key>15:99</key>
+			<string>Condition Positive Saturation</string>
+			<key>1:48</key>
+			<string>Generic Desktop X</string>
+			<key>1:49</key>
+			<string>Generic Desktop Y</string>
+			<key>1:53</key>
+			<string>Generic Desktop Rz</string>
+			<key>1:54</key>
+			<string>Generic Desktop Slider</string>
+			<key>1:59</key>
+			<string>ByteCount</string>
+			<key>9:1</key>
+			<string>Button 1 [Trigger]</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>9:7</key>
+			<string>Button 7</string>
+			<key>9:8</key>
+			<string>Button 8</string>
+			<key>Name</key>
+			<string>SideWinder FFB 2 Joystick</string>
+		</dict>
+		<key>39</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>9:1</key>
+			<string>Button 1</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>Name</key>
+			<string>SideWinder Plug and Play Game Pad</string>
+		</dict>
+		<key>56</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:53</key>
+			<string>Rz-Axis</string>
+			<key>1:54</key>
+			<string>Throttle</string>
+			<key>1:57</key>
+			<string>Hat Switch</string>
+			<key>9:1</key>
+			<string>Button 1 [Trigger]</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>9:7</key>
+			<string>Button 7</string>
+			<key>9:8</key>
+			<string>Button 8</string>
+			<key>Name</key>
+			<string>SideWinder Precision 2 Joystick</string>
+		</dict>
+		<key>60</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:54</key>
+			<string>Throttle</string>
+			<key>9:1</key>
+			<string>Button 1 [Trigger]</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>9:7</key>
+			<string>Button 7</string>
+			<key>9:8</key>
+			<string>Button 8</string>
+			<key>Name</key>
+			<string>SideWinder Joystick</string>
+		</dict>
+		<key>7</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>9:1</key>
+			<string>Button A</string>
+			<key>9:10</key>
+			<string>Secondary Option 1</string>
+			<key>9:2</key>
+			<string>Button B</string>
+			<key>9:3</key>
+			<string>Button C</string>
+			<key>9:4</key>
+			<string>Button X</string>
+			<key>9:5</key>
+			<string>Button Y</string>
+			<key>9:6</key>
+			<string>Button Z</string>
+			<key>9:7</key>
+			<string>Left Trigger</string>
+			<key>9:8</key>
+			<string>Right Trigger</string>
+			<key>9:9</key>
+			<string>Secondary Option 2</string>
+			<key>Name</key>
+			<string>SideWinder Game Pad USB</string>
+		</dict>
+		<key>Name</key>
+		<string>Microsoft</string>
+	</dict>
+	<key>1133</key>
+	<dict>
+		<key>49200</key>
+		<dict>
+			<key>1:1</key>
+			<string>Pointer</string>
+			<key>1:2</key>
+			<string>Mouse</string>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:56</key>
+			<string>Wheel</string>
+			<key>9:1</key>
+			<string>Left Button</string>
+			<key>9:2</key>
+			<string>Right Button</string>
+			<key>9:3</key>
+			<string>Middle Button</string>
+			<key>Name</key>
+			<string>iFeel Mouse</string>
+		</dict>
+		<key>49671</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:53</key>
+			<string>Rz-Axis</string>
+			<key>1:54</key>
+			<string>Throttle</string>
+			<key>1:57</key>
+			<string>Hat Switch</string>
+			<key>9:1</key>
+			<string>Button 1 [Trigger]</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>9:7</key>
+			<string>Button 7</string>
+			<key>Name</key>
+			<string>WingMan Extreme Digital 3D</string>
+		</dict>
+		<key>50726</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:50</key>
+			<string>Z-Axis</string>
+			<key>1:51</key>
+			<string>Rx-Axis</string>
+			<key>1:52</key>
+			<string>Ry-Axis</string>
+			<key>1:53</key>
+			<string>Rz-Axis</string>
+			<key>9:2</key>
+			<string>Right-Button</string>
+			<key>9:1</key>
+			<string>Left-Button</string>
+			<key>Name</key>
+			<string>3Dconnexion-SpaceNavigator</string>
+		</dict>
+		<key>49797</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:53</key>
+			<string>Rz-Axis</string>
+			<key>1:54</key>
+			<string>Throttle</string>
+			<key>1:57</key>
+			<string>Hat Switch 1</string>
+			<key>65280:2</key>
+			<string>Thumb Wheel</string>
+			<key>9:1</key>
+			<string>Button 1 [Trigger]</string>
+			<key>9:10</key>
+			<string>Hat Switch 2 - Up</string>
+			<key>9:11</key>
+			<string>Hat Switch 2 - Right</string>
+			<key>9:12</key>
+			<string>Hat Switch 2 - Down</string>
+			<key>9:13</key>
+			<string>Hat Switch 2 - Left</string>
+			<key>9:14</key>
+			<string>Hat Switch 2 - Up Right</string>
+			<key>9:15</key>
+			<string>Hat Switch 2 - Down Right</string>
+			<key>9:16</key>
+			<string>Hat Switch 2 - Down Left</string>
+			<key>9:17</key>
+			<string>Hat Switch 2 - Up Left</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>9:7</key>
+			<string>Button 7</string>
+			<key>9:8</key>
+			<string>Button 8</string>
+			<key>9:9</key>
+			<string>Button 9</string>
+			<key>Name</key>
+			<string>WingMan Strike Force 3D</string>
+		</dict>
+		<key>49795</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:53</key>
+			<string>Rz-Axis</string>
+			<key>1:54</key>
+			<string>Throttle</string>
+			<key>1:57</key>
+			<string>Hat Switch</string>
+			<key>9:1</key>
+			<string>Button 1 [Trigger]</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>9:7</key>
+			<string>Button 7</string>
+			<key>Name</key>
+			<string>WingMan Force 3D</string>
+		</dict>
+		<key>49811</key>
+		<dict>
+			<key>1:48</key>
+			<string>Wheel</string>
+			<key>1:49</key>
+			<string>Pedals</string>
+			<key>65280:1</key>
+			<string>Left Pedal [Brake]</string>
+			<key>9:1</key>
+			<string>Button 1</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>Name</key>
+			<string>WingMan Formula Force GP</string>
+		</dict>
+		<key>49812</key>
+		<dict>
+			<key>1:48</key>
+			<string>Generic Desktop X</string>
+			<key>1:49</key>
+			<string>Generic Desktop Y</string>
+			<key>1:57</key>
+			<string>Generic Desktop Hatswitch</string>
+			<key>65280:1</key>
+			<string>Page: 0xff00, Usage: 0x1</string>
+			<key>65280:2</key>
+			<string>Page: 0xff00, Usage: 0x2</string>
+			<key>65280:3</key>
+			<string>Page: 0xff00, Usage: 0x3</string>
+			<key>9:1</key>
+			<string>Button #1</string>
+			<key>9:10</key>
+			<string>Button #10</string>
+			<key>9:11</key>
+			<string>Button #11</string>
+			<key>9:12</key>
+			<string>Button #12</string>
+			<key>9:2</key>
+			<string>Button #2</string>
+			<key>9:3</key>
+			<string>Button #3</string>
+			<key>9:4</key>
+			<string>Button #4</string>
+			<key>9:5</key>
+			<string>Button #5</string>
+			<key>9:6</key>
+			<string>Button #6</string>
+			<key>9:7</key>
+			<string>Button #7</string>
+			<key>9:8</key>
+			<string>Button #8</string>
+			<key>9:9</key>
+			<string>Button #9</string>
+			<key>Name</key>
+			<string>Logitech Driving Force</string>
+		</dict>
+		<key>50180</key>
+		<dict>
+			<key>1:1</key>
+			<string>Pointer</string>
+			<key>1:2</key>
+			<string>Mouse</string>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:56</key>
+			<string>Wheel</string>
+			<key>1:60</key>
+			<string>Motion Wakeup</string>
+			<key>8:61</key>
+			<string>LED Indicator On</string>
+			<key>8:63</key>
+			<string>LED Indicator Slow Blink</string>
+			<key>8:64</key>
+			<string>LED Indicator Fast Blink</string>
+			<key>8:65</key>
+			<string>LED Indicator Off</string>
+			<key>8:75</key>
+			<string>LED Generic Indicator</string>
+			<key>9:1</key>
+			<string>Left Button</string>
+			<key>9:2</key>
+			<string>Right Button</string>
+			<key>9:3</key>
+			<string>Middle Button</string>
+			<key>Name</key>
+			<string>TrackMan Wheel</string>
+		</dict>
+		<key>50433</key>
+		<dict>
+			<key>1:1</key>
+			<string>Pointer</string>
+			<key>1:2</key>
+			<string>Mouse</string>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:56</key>
+			<string>Wheel</string>
+			<key>1:60</key>
+			<string>Generic Desktop Motion Wakeup</string>
+			<key>8:75</key>
+			<string>LED Generic Indicator</string>
+			<key>9:1</key>
+			<string>Left Button</string>
+			<key>9:2</key>
+			<string>Right Button</string>
+			<key>9:3</key>
+			<string>Middle Button</string>
+			<key>9:4</key>
+			<string>Button #4</string>
+			<key>9:5</key>
+			<string>Button #5</string>
+			<key>Name</key>
+			<string>Cordless Mouse</string>
+		</dict>
+		<key>Name</key>
+		<string>Logitech</string>
+	</dict>
+	<key>1149</key>
+	<dict>
+		<key>12293</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:50</key>
+			<string>Throttle</string>
+			<key>1:57</key>
+			<string>Hat Switch</string>
+			<key>9:1</key>
+			<string>Button 1 [Trigger]</string>
+			<key>9:10</key>
+			<string>Button 10 [Thumb Wheel Right]</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6 [Thumb Wheel Button]</string>
+			<key>9:7</key>
+			<string>Button 7</string>
+			<key>9:8</key>
+			<string>Button 8</string>
+			<key>9:9</key>
+			<string>Button 9 [Thumb Wheel Left]</string>
+			<key>Name</key>
+			<string>Gravis Eliminator Precision Pro Joystick</string>
+		</dict>
+		<key>16390</key>
+		<dict>
+			<key>1:1</key>
+			<string>Pointer</string>
+			<key>1:48</key>
+			<string>Left Stick X-Axis</string>
+			<key>1:49</key>
+			<string>Left Stick Y-Axis</string>
+			<key>1:5</key>
+			<string>GamePad</string>
+			<key>1:50</key>
+			<string>Right Stick Y-Axis</string>
+			<key>1:51</key>
+			<string>Throttle 51</string>
+			<key>1:53</key>
+			<string>Right Stick X-Axis</string>
+			<key>1:55</key>
+			<string>Throttle 55</string>
+			<key>9:1</key>
+			<string>Button 1</string>
+			<key>9:10</key>
+			<string>Button 10</string>
+			<key>9:165</key>
+			<string>Button 11</string>
+			<key>9:166</key>
+			<string>Button 12</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Top Left Trigger</string>
+			<key>9:6</key>
+			<string>Top Right Trigger</string>
+			<key>9:7</key>
+			<string>Bottom Left Trigger</string>
+			<key>9:8</key>
+			<string>Bottom Right Trigger</string>
+			<key>9:9</key>
+			<string>Button 9</string>
+			<key>Name</key>
+			<string>Gravis Eliminator AfterShock GamePad</string>
+		</dict>
+		<key>16391</key>
+		<dict>
+			<key>1:1</key>
+			<string>Pointer</string>
+			<key>1:4</key>
+			<string>Joystick</string>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>255:1025</key>
+			<string>Left Flipper</string>
+			<key>255:1026</key>
+			<string>Right Flipper</string>
+			<key>2:186</key>
+			<string>Rudder</string>
+			<key>9:1</key>
+			<string>Button 1</string>
+			<key>9:10</key>
+			<string>Button 10</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>9:7</key>
+			<string>Left Trigger</string>
+			<key>9:8</key>
+			<string>Right Trigger</string>
+			<key>9:9</key>
+			<string>Button 9</string>
+			<key>Name</key>
+			<string>Gravis Xterminator Force Joystick</string>
+		</dict>
+		<key>4121</key>
+		<dict>
+			<key>1:1</key>
+			<string>Pointer</string>
+			<key>1:2</key>
+			<string>Mouse</string>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>9:1</key>
+			<string>Left Button</string>
+			<key>9:2</key>
+			<string>Right Button</string>
+			<key>Name</key>
+			<string>Kensington USB Trackball</string>
+		</dict>
+		<key>Name</key>
+		<string>Kensington</string>
+	</dict>
+	<key>1293</key>
+	<dict>
+		<key>2051</key>
+		<dict>
+			<key>1:48</key>
+			<string>Left Stick X-Axis</string>
+			<key>1:49</key>
+			<string>Left Stick Y-Axis</string>
+			<key>1:50</key>
+			<string>Right Stick Y-Axis</string>
+			<key>1:53</key>
+			<string>Right Stick X-Axis</string>
+			<key>1:57</key>
+			<string>Direction Pad</string>
+			<key>9:1</key>
+			<string>Button 1</string>
+			<key>9:10</key>
+			<string>Mouse</string>
+			<key>9:11</key>
+			<string>Eater</string>
+			<key>9:12</key>
+			<string>Right Stick Button</string>
+			<key>9:13</key>
+			<string>Left Stick Button</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Top Left Trigger</string>
+			<key>9:6</key>
+			<string>Bottom Left Trigger</string>
+			<key>9:7</key>
+			<string>Top Right Trigger</string>
+			<key>9:8</key>
+			<string>Bottom Right Trigger</string>
+			<key>9:9</key>
+			<string>ESC</string>
+			<key>Name</key>
+			<string>Nostromo n45</string>
+		</dict>
+		<key>Name</key>
+		<string>Belkin</string>
+	</dict>
+	<key>1452</key>
+	<dict>
+		<key>516</key>
+		<dict>
+			<key>7:-1</key>
+			<string>Keyboard Usage 0xffffffff</string>
+			<key>7:1</key>
+			<string>Error Roll Over</string>
+			<key>7:10</key>
+			<string>G</string>
+			<key>7:100</key>
+			<string>Non-US Backslash</string>
+			<key>7:101</key>
+			<string> Application </string>
+			<key>7:102</key>
+			<string> Power </string>
+			<key>7:103</key>
+			<string>Keypad Equal</string>
+			<key>7:104</key>
+			<string>F13</string>
+			<key>7:105</key>
+			<string>F14</string>
+			<key>7:106</key>
+			<string>F15</string>
+			<key>7:107</key>
+			<string>F16</string>
+			<key>7:108</key>
+			<string>F17</string>
+			<key>7:109</key>
+			<string>F18</string>
+			<key>7:11</key>
+			<string>H</string>
+			<key>7:110</key>
+			<string>F19</string>
+			<key>7:111</key>
+			<string>F20</string>
+			<key>7:112</key>
+			<string>F21</string>
+			<key>7:113</key>
+			<string>F22</string>
+			<key>7:114</key>
+			<string>F23</string>
+			<key>7:115</key>
+			<string>F24</string>
+			<key>7:116</key>
+			<string>Execute</string>
+			<key>7:117</key>
+			<string>Help</string>
+			<key>7:118</key>
+			<string>Menu</string>
+			<key>7:119</key>
+			<string>Select</string>
+			<key>7:12</key>
+			<string>I</string>
+			<key>7:120</key>
+			<string>Stop</string>
+			<key>7:121</key>
+			<string>Again</string>
+			<key>7:122</key>
+			<string>Undo</string>
+			<key>7:123</key>
+			<string>Cut</string>
+			<key>7:124</key>
+			<string>Copy</string>
+			<key>7:125</key>
+			<string>Paste</string>
+			<key>7:126</key>
+			<string>Find</string>
+			<key>7:127</key>
+			<string>Mute</string>
+			<key>7:128</key>
+			<string>Volume Up</string>
+			<key>7:129</key>
+			<string>Volume Down</string>
+			<key>7:13</key>
+			<string>J</string>
+			<key>7:130</key>
+			<string>Locking Caps Lock</string>
+			<key>7:131</key>
+			<string>Locking Num Lock</string>
+			<key>7:132</key>
+			<string>Locking Scroll Lock</string>
+			<key>7:133</key>
+			<string>Keypad Comma</string>
+			<key>7:134</key>
+			<string>Keypad Equal Sign for AS-400</string>
+			<key>7:135</key>
+			<string>International1</string>
+			<key>7:136</key>
+			<string>International2</string>
+			<key>7:137</key>
+			<string>International3</string>
+			<key>7:138</key>
+			<string>International4</string>
+			<key>7:139</key>
+			<string>International5</string>
+			<key>7:14</key>
+			<string>K</string>
+			<key>7:140</key>
+			<string>International6</string>
+			<key>7:141</key>
+			<string>International7</string>
+			<key>7:142</key>
+			<string>International8</string>
+			<key>7:143</key>
+			<string>International9</string>
+			<key>7:144</key>
+			<string>LANG1</string>
+			<key>7:145</key>
+			<string>LANG2</string>
+			<key>7:146</key>
+			<string>LANG3</string>
+			<key>7:147</key>
+			<string>LANG4</string>
+			<key>7:148</key>
+			<string>LANG5</string>
+			<key>7:149</key>
+			<string>LANG6</string>
+			<key>7:15</key>
+			<string>L</string>
+			<key>7:150</key>
+			<string>LANG7</string>
+			<key>7:151</key>
+			<string>LANG8</string>
+			<key>7:152</key>
+			<string>LANG9</string>
+			<key>7:153</key>
+			<string>Alternate Erase</string>
+			<key>7:154</key>
+			<string>SysReq or Attention</string>
+			<key>7:155</key>
+			<string>Cancel</string>
+			<key>7:156</key>
+			<string>Clear</string>
+			<key>7:157</key>
+			<string>Prior</string>
+			<key>7:158</key>
+			<string>Return</string>
+			<key>7:159</key>
+			<string> Separator </string>
+			<key>7:16</key>
+			<string>M</string>
+			<key>7:160</key>
+			<string>Out</string>
+			<key>7:161</key>
+			<string>Oper</string>
+			<key>7:162</key>
+			<string>Clear or Again</string>
+			<key>7:163</key>
+			<string>CrSel or Props</string>
+			<key>7:164</key>
+			<string>ExSel</string>
+			<key>7:165</key>
+			<string>Keyboard Usage 0xa5</string>
+			<key>7:166</key>
+			<string>Keyboard Usage 0xa6</string>
+			<key>7:167</key>
+			<string>Keyboard Usage 0xa7</string>
+			<key>7:168</key>
+			<string>Keyboard Usage 0xa8</string>
+			<key>7:169</key>
+			<string>Keyboard Usage 0xa9</string>
+			<key>7:17</key>
+			<string>N</string>
+			<key>7:170</key>
+			<string>Keyboard Usage 0xaa</string>
+			<key>7:171</key>
+			<string>Keyboard Usage 0xab</string>
+			<key>7:172</key>
+			<string>Keyboard Usage 0xac</string>
+			<key>7:173</key>
+			<string>Keyboard Usage 0xad</string>
+			<key>7:174</key>
+			<string>Keyboard Usage 0xae</string>
+			<key>7:175</key>
+			<string>Keyboard Usage 0xaf</string>
+			<key>7:176</key>
+			<string>Keyboard Usage 0xb0</string>
+			<key>7:177</key>
+			<string>Keyboard Usage 0xb1</string>
+			<key>7:178</key>
+			<string>Keyboard Usage 0xb2</string>
+			<key>7:179</key>
+			<string>Keyboard Usage 0xb3</string>
+			<key>7:18</key>
+			<string>O</string>
+			<key>7:180</key>
+			<string>Keyboard Usage 0xb4</string>
+			<key>7:181</key>
+			<string>Keyboard Usage 0xb5</string>
+			<key>7:182</key>
+			<string>Keyboard Usage 0xb6</string>
+			<key>7:183</key>
+			<string>Keyboard Usage 0xb7</string>
+			<key>7:184</key>
+			<string>Keyboard Usage 0xb8</string>
+			<key>7:185</key>
+			<string>Keyboard Usage 0xb9</string>
+			<key>7:186</key>
+			<string>Keyboard Usage 0xba</string>
+			<key>7:187</key>
+			<string>Keyboard Usage 0xbb</string>
+			<key>7:188</key>
+			<string>Keyboard Usage 0xbc</string>
+			<key>7:189</key>
+			<string>Keyboard Usage 0xbd</string>
+			<key>7:19</key>
+			<string>P</string>
+			<key>7:190</key>
+			<string>Keyboard Usage 0xbe</string>
+			<key>7:191</key>
+			<string>Keyboard Usage 0xbf</string>
+			<key>7:192</key>
+			<string>Keyboard Usage 0xc0</string>
+			<key>7:193</key>
+			<string>Keyboard Usage 0xc1</string>
+			<key>7:194</key>
+			<string>Keyboard Usage 0xc2</string>
+			<key>7:195</key>
+			<string>Keyboard Usage 0xc3</string>
+			<key>7:196</key>
+			<string>Keyboard Usage 0xc4</string>
+			<key>7:197</key>
+			<string>Keyboard Usage 0xc5</string>
+			<key>7:198</key>
+			<string>Keyboard Usage 0xc6</string>
+			<key>7:199</key>
+			<string>Keyboard Usage 0xc7</string>
+			<key>7:2</key>
+			<string>POST Fail</string>
+			<key>7:20</key>
+			<string>Q</string>
+			<key>7:200</key>
+			<string>Keyboard Usage 0xc8</string>
+			<key>7:201</key>
+			<string>Keyboard Usage 0xc9</string>
+			<key>7:202</key>
+			<string>Keyboard Usage 0xca</string>
+			<key>7:203</key>
+			<string>Keyboard Usage 0xcb</string>
+			<key>7:204</key>
+			<string>Keyboard Usage 0xcc</string>
+			<key>7:205</key>
+			<string>Keyboard Usage 0xcd</string>
+			<key>7:206</key>
+			<string>Keyboard Usage 0xce</string>
+			<key>7:207</key>
+			<string>Keyboard Usage 0xcf</string>
+			<key>7:208</key>
+			<string>Keyboard Usage 0xd0</string>
+			<key>7:209</key>
+			<string>Keyboard Usage 0xd1</string>
+			<key>7:21</key>
+			<string>R</string>
+			<key>7:210</key>
+			<string>Keyboard Usage 0xd2</string>
+			<key>7:211</key>
+			<string>Keyboard Usage 0xd3</string>
+			<key>7:212</key>
+			<string>Keyboard Usage 0xd4</string>
+			<key>7:213</key>
+			<string>Keyboard Usage 0xd5</string>
+			<key>7:214</key>
+			<string>Keyboard Usage 0xd6</string>
+			<key>7:215</key>
+			<string>Keyboard Usage 0xd7</string>
+			<key>7:216</key>
+			<string>Keyboard Usage 0xd8</string>
+			<key>7:217</key>
+			<string>Keyboard Usage 0xd9</string>
+			<key>7:218</key>
+			<string>Keyboard Usage 0xda</string>
+			<key>7:219</key>
+			<string>Keyboard Usage 0xdb</string>
+			<key>7:22</key>
+			<string>S</string>
+			<key>7:220</key>
+			<string>Keyboard Usage 0xdc</string>
+			<key>7:221</key>
+			<string>Keyboard Usage 0xdd</string>
+			<key>7:222</key>
+			<string>Keyboard Usage 0xde</string>
+			<key>7:223</key>
+			<string>Keyboard Usage 0xdf</string>
+			<key>7:224</key>
+			<string>Left Control</string>
+			<key>7:225</key>
+			<string>Left Shift</string>
+			<key>7:226</key>
+			<string>Left Alt</string>
+			<key>7:227</key>
+			<string>Left GUI</string>
+			<key>7:228</key>
+			<string>Right Control</string>
+			<key>7:229</key>
+			<string>Right Shift</string>
+			<key>7:23</key>
+			<string>T</string>
+			<key>7:230</key>
+			<string>Right Alt</string>
+			<key>7:231</key>
+			<string>Right GUI</string>
+			<key>7:232</key>
+			<string>Keyboard Usage 0xe8</string>
+			<key>7:233</key>
+			<string>Keyboard Usage 0xe9</string>
+			<key>7:234</key>
+			<string>Keyboard Usage 0xea</string>
+			<key>7:235</key>
+			<string>Keyboard Usage 0xeb</string>
+			<key>7:236</key>
+			<string>Keyboard Usage 0xec</string>
+			<key>7:237</key>
+			<string>Keyboard Usage 0xed</string>
+			<key>7:238</key>
+			<string>Keyboard Usage 0xee</string>
+			<key>7:239</key>
+			<string>Keyboard Usage 0xef</string>
+			<key>7:24</key>
+			<string>U</string>
+			<key>7:240</key>
+			<string>Keyboard Usage 0xf0</string>
+			<key>7:241</key>
+			<string>Keyboard Usage 0xf1</string>
+			<key>7:242</key>
+			<string>Keyboard Usage 0xf2</string>
+			<key>7:243</key>
+			<string>Keyboard Usage 0xf3</string>
+			<key>7:244</key>
+			<string>Keyboard Usage 0xf4</string>
+			<key>7:245</key>
+			<string>Keyboard Usage 0xf5</string>
+			<key>7:246</key>
+			<string>Keyboard Usage 0xf6</string>
+			<key>7:247</key>
+			<string>Keyboard Usage 0xf7</string>
+			<key>7:248</key>
+			<string>Keyboard Usage 0xf8</string>
+			<key>7:249</key>
+			<string>Keyboard Usage 0xf9</string>
+			<key>7:25</key>
+			<string>V</string>
+			<key>7:250</key>
+			<string>Keyboard Usage 0xfa</string>
+			<key>7:251</key>
+			<string>Keyboard Usage 0xfb</string>
+			<key>7:252</key>
+			<string>Keyboard Usage 0xfc</string>
+			<key>7:253</key>
+			<string>Keyboard Usage 0xfd</string>
+			<key>7:254</key>
+			<string>Keyboard Usage 0xfe</string>
+			<key>7:255</key>
+			<string>Keyboard Usage 0xff</string>
+			<key>7:26</key>
+			<string>W</string>
+			<key>7:27</key>
+			<string>X</string>
+			<key>7:28</key>
+			<string>Y</string>
+			<key>7:29</key>
+			<string>Z</string>
+			<key>7:3</key>
+			<string>Error Undefined</string>
+			<key>7:30</key>
+			<string>1</string>
+			<key>7:31</key>
+			<string>2</string>
+			<key>7:32</key>
+			<string>3</string>
+			<key>7:33</key>
+			<string>4</string>
+			<key>7:34</key>
+			<string>5</string>
+			<key>7:35</key>
+			<string>6</string>
+			<key>7:36</key>
+			<string>7</string>
+			<key>7:37</key>
+			<string>8</string>
+			<key>7:38</key>
+			<string>9</string>
+			<key>7:39</key>
+			<string>0</string>
+			<key>7:4</key>
+			<string>A</string>
+			<key>7:40</key>
+			<string>Return</string>
+			<key>7:41</key>
+			<string>Escape</string>
+			<key>7:42</key>
+			<string>Delete</string>
+			<key>7:43</key>
+			<string>Tab</string>
+			<key>7:44</key>
+			<string>Spacebar</string>
+			<key>7:45</key>
+			<string>Dash</string>
+			<key>7:46</key>
+			<string>Equal</string>
+			<key>7:47</key>
+			<string>Left Square Bracket</string>
+			<key>7:48</key>
+			<string>Right Square Bracket</string>
+			<key>7:49</key>
+			<string>Slash</string>
+			<key>7:5</key>
+			<string>B</string>
+			<key>7:50</key>
+			<string>Non-US #</string>
+			<key>7:51</key>
+			<string>Semi-Colan</string>
+			<key>7:52</key>
+			<string>Single Quote</string>
+			<key>7:53</key>
+			<string>Grave Accent</string>
+			<key>7:54</key>
+			<string>Comma</string>
+			<key>7:55</key>
+			<string>Period</string>
+			<key>7:56</key>
+			<string>Slash</string>
+			<key>7:57</key>
+			<string>Caps Lock</string>
+			<key>7:58</key>
+			<string>F1</string>
+			<key>7:59</key>
+			<string>F2</string>
+			<key>7:6</key>
+			<string>C</string>
+			<key>7:60</key>
+			<string>F3</string>
+			<key>7:61</key>
+			<string>F4</string>
+			<key>7:62</key>
+			<string>F5</string>
+			<key>7:63</key>
+			<string>F6</string>
+			<key>7:64</key>
+			<string>F7</string>
+			<key>7:65</key>
+			<string>F8</string>
+			<key>7:66</key>
+			<string>F9</string>
+			<key>7:67</key>
+			<string>F10</string>
+			<key>7:68</key>
+			<string>F11</string>
+			<key>7:69</key>
+			<string>F12</string>
+			<key>7:7</key>
+			<string>D</string>
+			<key>7:70</key>
+			<string>Print Screen</string>
+			<key>7:71</key>
+			<string>Scroll Lock</string>
+			<key>7:72</key>
+			<string>Pause</string>
+			<key>7:73</key>
+			<string>Insert</string>
+			<key>7:74</key>
+			<string>Home</string>
+			<key>7:75</key>
+			<string>Page Up</string>
+			<key>7:76</key>
+			<string>Delete Forward</string>
+			<key>7:77</key>
+			<string>End</string>
+			<key>7:78</key>
+			<string>Page Down</string>
+			<key>7:79</key>
+			<string>Right Arrow</string>
+			<key>7:8</key>
+			<string>E</string>
+			<key>7:80</key>
+			<string>Left Arrow</string>
+			<key>7:81</key>
+			<string>Down Arrow</string>
+			<key>7:82</key>
+			<string>Up Arrow</string>
+			<key>7:83</key>
+			<string>Keypad NumLock</string>
+			<key>7:84</key>
+			<string>Keypad Slash</string>
+			<key>7:85</key>
+			<string>Keypad Asterisk</string>
+			<key>7:86</key>
+			<string>Keypad Dash</string>
+			<key>7:87</key>
+			<string>Keypad Plus</string>
+			<key>7:88</key>
+			<string>Keypad Enter</string>
+			<key>7:89</key>
+			<string>Keypad 1</string>
+			<key>7:9</key>
+			<string>F</string>
+			<key>7:90</key>
+			<string>Keypad 2</string>
+			<key>7:91</key>
+			<string>Keypad 3</string>
+			<key>7:92</key>
+			<string>Keypad 4</string>
+			<key>7:93</key>
+			<string>Keypad 5</string>
+			<key>7:94</key>
+			<string>Keypad 6</string>
+			<key>7:95</key>
+			<string>Keypad 7</string>
+			<key>7:96</key>
+			<string>Keypad 8</string>
+			<key>7:97</key>
+			<string>Keypad 9</string>
+			<key>7:98</key>
+			<string>Keypad 0</string>
+			<key>7:99</key>
+			<string>Keypad Period</string>
+			<key>8:1</key>
+			<string>LED Num Lock</string>
+			<key>8:2</key>
+			<string>LED Caps Lock</string>
+			<key>8:3</key>
+			<string>LED Scroll Lock</string>
+			<key>8:4</key>
+			<string>LED Compose</string>
+			<key>8:5</key>
+			<string>LED Kana</string>
+			<key>Name</key>
+			<string>Apple Extended USB Keyboard</string>
+		</dict>
+		<key>770</key>
+		<dict>
+			<key>1:1</key>
+			<string>Pointer</string>
+			<key>1:2</key>
+			<string>Mouse</string>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>9:1</key>
+			<string>Button</string>
+			<key>Name</key>
+			<string>Apple Optical USB Mouse</string>
+		</dict>
+		<key>Name</key>
+		<string>Mitsumi Electric</string>
+	</dict>
+	<key>1635</key>
+	<dict>
+		<key>38916</key>
+		<dict>
+			<key>1:48</key>
+			<string>Left Stick X-Axis</string>
+			<key>1:49</key>
+			<string>Left Stick Y-Axis</string>
+			<key>1:57</key>
+			<string>Hat Switch</string>
+			<key>2:186</key>
+			<string>Right Stick X-Axis</string>
+			<key>2:187</key>
+			<string>Right Stick Y-Axis</string>
+			<key>9:1</key>
+			<string>Button 1</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>L1 Trigger</string>
+			<key>9:6</key>
+			<string>R1 Trigger</string>
+			<key>9:7</key>
+			<string>L2 Trigger</string>
+			<key>9:8</key>
+			<string>R2 Trigger</string>
+			<key>Name</key>
+			<string>FunPad F-107</string>
+		</dict>
+		<key>Name</key>
+		<string>Macsense</string>
+	</dict>
+	<key>1650</key>
+	<dict>
+		<key>20480</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:50</key>
+			<string>Z-Axis</string>
+			<key>1:51</key>
+			<string>X-Rotation</string>
+			<key>1:52</key>
+			<string>Y-Rotation</string>
+			<key>1:53</key>
+			<string>Z-Rotation</string>
+			<key>9:1</key>
+			<string>Button 1</string>
+			<key>9:10</key>
+			<string>Button 10</string>
+			<key>9:11</key>
+			<string>Button 11</string>
+			<key>9:12</key>
+			<string>Button 12</string>
+			<key>9:13</key>
+			<string>Button 13</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>9:5</key>
+			<string>Button 5</string>
+			<key>9:6</key>
+			<string>Button 6</string>
+			<key>9:7</key>
+			<string>Button 7</string>
+			<key>9:8</key>
+			<string>Button 8</string>
+			<key>9:9</key>
+			<string>Button 9</string>
+			<key>Name</key>
+			<string>Spaceball 4000</string>
+		</dict>
+		<key>Name</key>
+		<string>Labtec</string>
+	</dict>
+	<key>1699</key>
+	<dict>
+		<key>65284</key>
+		<dict>
+			<key>1:48</key>
+			<string>Wheel</string>
+			<key>1:49</key>
+			<string>Left Pedal [Brake]</string>
+			<key>1:50</key>
+			<string>Right Pedal [Gas]</string>
+			<key>9:1</key>
+			<string>Top Left Thumb</string>
+			<key>9:2</key>
+			<string>Top Right Thumb</string>
+			<key>9:3</key>
+			<string>Bottom Left Thumb</string>
+			<key>9:4</key>
+			<string>Bottom Right Thumb</string>
+			<key>9:5</key>
+			<string>Right Horn</string>
+			<key>9:6</key>
+			<string>Left Horn</string>
+			<key>Name</key>
+			<string>R440 Force Feedback</string>
+		</dict>
+		<key>Name</key>
+		<string>Saitek</string>
+	</dict>
+	<key>1973</key>
+	<dict>
+		<key>39169</key>
+		<dict>
+			<key>1:48</key>
+			<string>X-Axis</string>
+			<key>1:49</key>
+			<string>Y-Axis</string>
+			<key>1:54</key>
+			<string>Throttle</string>
+			<key>1:57</key>
+			<string>Hat Switch</string>
+			<key>9:1</key>
+			<string>Button 1 [Trigger]</string>
+			<key>9:2</key>
+			<string>Button 2</string>
+			<key>9:3</key>
+			<string>Button 3</string>
+			<key>9:4</key>
+			<string>Button 4</string>
+			<key>Name</key>
+			<string>X8-33GU 2 IN 1 Joystick</string>
+		</dict>
+		<key>Name</key>
+		<string>Saitek</string>
+	</dict>
+	<key>8738</key>
+	<dict>
+		<key>16400</key>
+		<dict>
+			<key>1:48</key>
+			<string>Left Stick X-Axis</string>
+			<key>1:49</key>
+			<string>Left Stick Y-Axis</string>
+			<key>1:53</key>
+			<string>Right Stick X-Axis</string>
+			<key>1:54</key>
+			<string>Right Stick Y-Axis</string>
+			<key>9:1</key>
+			<string>D-Pad Up</string>
+			<key>9:10</key>
+			<string>Button B [Select]</string>
+			<key>9:11</key>
+			<string>Button A [Start]</string>
+			<key>9:12</key>
+			<string>Button F</string>
+			<key>9:13</key>
+			<string>R1 Trigger</string>
+			<key>9:14</key>
+			<string>R2 Trigger</string>
+			<key>9:15</key>
+			<string>L1 Trigger</string>
+			<key>9:16</key>
+			<string>L2 Trigger</string>
+			<key>9:17</key>
+			<string>Left Stick Button</string>
+			<key>9:18</key>
+			<string>Right Stick Button</string>
+			<key>9:19</key>
+			<string>D Button</string>
+			<key>9:2</key>
+			<string>D-Pad Down</string>
+			<key>9:20</key>
+			<string>E Button</string>
+			<key>9:3</key>
+			<string>D-Pad Left</string>
+			<key>9:4</key>
+			<string>D-Pad Right</string>
+			<key>9:5</key>
+			<string>Button 5 ( Triangle )</string>
+			<key>9:6</key>
+			<string>Button 6 ( Circle )</string>
+			<key>9:7</key>
+			<string>Button 7 ( Cross )</string>
+			<key>9:8</key>
+			<string>Button 8 ( Square )</string>
+			<key>9:9</key>
+			<string>Button C</string>
+			<key>Name</key>
+			<string>iShock</string>
+		</dict>
+		<key>16416</key>
+		<dict>
+			<key>1:1</key>
+			<string>Pointer</string>
+			<key>1:48</key>
+			<string>Left Stick X-Axis</string>
+			<key>1:49</key>
+			<string>Left Stick Y-Axis</string>
+			<key>1:5</key>
+			<string>GamePad</string>
+			<key>1:53</key>
+			<string>Right Stick X-Axis</string>
+			<key>1:54</key>
+			<string>Right Stick Y-Axis</string>
+			<key>9:1</key>
+			<string>D-Pad Up</string>
+			<key>9:10</key>
+			<string>Button 2 [Select]</string>
+			<key>9:11</key>
+			<string>Button 3 [Start]</string>
+			<key>9:12</key>
+			<string>R1 Button</string>
+			<key>9:13</key>
+			<string>R2 Trigger</string>
+			<key>9:14</key>
+			<string>L1 Trigger</string>
+			<key>9:15</key>
+			<string>L2 Trigger</string>
+			<key>9:16</key>
+			<string>Left Stick Button</string>
+			<key>9:17</key>
+			<string>Right Stick Button</string>
+			<key>9:2</key>
+			<string>D-Pad Down</string>
+			<key>9:3</key>
+			<string>D-Pad Left</string>
+			<key>9:4</key>
+			<string>D-Pad Right</string>
+			<key>9:5</key>
+			<string>A Button</string>
+			<key>9:6</key>
+			<string>B Button</string>
+			<key>9:7</key>
+			<string>C Button</string>
+			<key>9:8</key>
+			<string>D Button</string>
+			<key>9:9</key>
+			<string>Button 1</string>
+			<key>Name</key>
+			<string>iShock II FFB Game Controler</string>
+		</dict>
+		<key>Name</key>
+		<string>Macally</string>
+	</dict>
+</dict>
+</plist>

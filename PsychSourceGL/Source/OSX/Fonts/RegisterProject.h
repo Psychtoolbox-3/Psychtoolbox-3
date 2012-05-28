@@ -5,7 +5,8 @@
   
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+        Allen Ingling		awi		Allen.Ingling@nyu.edu
+        Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
   
 	PLATFORMS:	
 	
@@ -32,7 +33,3 @@ PsychError PsychModuleInit(void);
 
 //end include once
 #endif
-
-
-
-

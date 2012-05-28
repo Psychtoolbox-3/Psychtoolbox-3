@@ -43,43 +43,51 @@ function SetupPsychtoolbox
 %
 % 05/31/09 mk  Add support for Octave-3.
 % 06/07/09 mk  Apply smallish fix to fix counting, contributed by Chuan Zeng.
+% 05/27/12 mk  Strip backwards compatibility support to pre-R2007a.
+%              Remove PowerPC support.
 
 % Flush all MEX files: This is needed at least on M$-Windows to
 % work if Screen et al. are still loaded.
 clear mex
 
 % Check if this is a 64-bit Matlab or Octave, which we don't support at all:
-if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | ...
-  (~isempty(findstr(computer, '_64')) & isempty(findstr(computer, 'linux'))) %#ok<OR2>
-    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave on MS-Windows or Apple-OSX.\n');
+if strcmp(computer,'PCWIN64') || ...
+  (~isempty(strfind(computer, '_64')) && isempty(strfind(computer, 'linux')) && isempty(strfind(computer, 'apple'))) 
+    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave on MS-Windows.\n');
     fprintf('You need to install a 32 bit Matlab or Octave to install and use Psychtoolbox.\n');
-    fprintf('Use with 64 bit Matlab or Octave is fully supported on GNU/Linux.\n');
+    fprintf('Use with 64 bit Matlab or (soon) Octave is fully supported on GNU/Linux and MacOSX.\n');
     fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
     error('Tried to setup on a 64 bit version of Matlab or Octave, which is not supported on this operating system.');
 end
 
+if strcmp(computer,'MAC')
+    fprintf('This version of Psychtoolbox is no longer supported under MacOSX on the Apple PowerPC hardware platform.\n');
+    fprintf('You can get modern versions of Psychtoolbox-3 for Linux if you choose to install GNU/Linux on your PowerPC\n');
+    fprintf('machine. These are available from the GNU/Debian project and a future Ubuntu 12.10 release\n.');
+    fprintf('Alternatively you can download old - totally unsupported - releases of Psychtoolbox version 3.0.9 from GoogleCode:\n');
+    fprintf('http://code.google.com/p/psychtoolbox-3/ \n\n');
+    error('Apple MacOSX on Apple PowerPC computers is no longer supported by this Psychtoolbox version.');
+end
+
 % Check OS
-isWin=strcmp(computer,'PCWIN')| strcmp(computer, 'i686-pc-mingw32');
-isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
-isLinux=strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, 'linux-gnu'));
+isWin = strcmp(computer,'PCWIN') || strcmp(computer, 'i686-pc-mingw32');
+isOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
+isLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~isWin & ~isOSX & ~isLinux %#ok<AND2>
-    os=computer;
-
+if ~isWin && ~isOSX && ~isLinux
+    os = computer;
     if strcmp(os,'MAC2')
-        os='Mac OS9';
+        os = 'Mac OS9';
     end
-
-    fprintf('Sorry, this installer doesn''t support your operating system: %s.\n',os);
+    fprintf('Sorry, this updater doesn''t support your operating system: %s.\n', os);
     fprintf([mfilename ' can only install the new (OSX, Linux and Windows) \n'...
-        'OpenGL-based versions of the Psychtoolbox. To install the older (OS9 and Windows) \n'...
-        'versions (not based on OpenGL) please go to the psychtoolbox website: \n'...
-        'web http://psychtoolbox.org\n']);
+        'OpenGL-based versions of the Psychtoolbox-3. To install the older (OS9 and Windows) \n'...
+        'versions (not based on OpenGL, aka PTB-2) please go to the legacy Psychtoolbox website: \n'...
+        'web http://psychtoolbox.org/PTB-2/index.html\n']);
     error(['Your operating system is not supported by ' mfilename '.']);
 end
 
 % Locate ourselves:
-% Old style Pre Octave: targetdirectory=fileparts(which(fullfile('Psychtoolbox','SetupPsychtoolbox.m')))
 targetdirectory=fileparts(mfilename('fullpath'));
 if ~strcmpi(targetdirectory, pwd)
     error('You need to change your working directory to the Psychtoolbox folder before running this routine!');
@@ -87,10 +95,6 @@ end
 
 fprintf('Will setup working copy of the Psychtoolbox folder inside: %s\n',targetdirectory);
 fprintf('\n');
-% if any(isspace(targetdirectory))
-%     fprintf('Sorry. There cannot be any spaces in the target directory name:\n%s\n',targetdirectory);
-%     error('Cannot be any spaces in "targetdirectory" name.');
-% end
 
 % Does SAVEPATH work?
 if exist('savepath') %#ok<EXIST>
@@ -106,7 +110,7 @@ if err
         fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
             'Please ask a user with administrator privileges to enable \n'...
             'write by everyone for the file:\n\n''%s''\n\n'],p);
-    catch
+    catch %#ok<CTCH>
         % Probably on Octave:
         fprintf(['Sorry, SAVEPATH failed. Probably your ~/.octaverc file lacks write permission. \n'...
             'Please ask a user with administrator privileges to enable \n'...
@@ -198,12 +202,12 @@ fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox
     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
 
 try
-    if isOSX | isLinux %#ok<OR2>
+    if isOSX || isLinux
         [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
     else
         [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
     end
-catch
+catch %#ok<CTCH>
     s = 0;
     m = 'Setting file attributes is not supported under Octave.';
 end

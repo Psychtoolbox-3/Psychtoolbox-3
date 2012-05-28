@@ -144,22 +144,19 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % 11/03/10 mk   Return window focus state 'focus' as optional 4th return argument.
 % 07/29/11 mk   Allow specification of 'mouseDev' mouse device index.
 % 08/05/11 mk   Allow query of additional valuators and info about them. Help update.
+% 05/02/12 mk   Add workaround for 64-Bit OS/X to compensate for Apple braindamage.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
 % This gives a tenfold speedup - important for tight realtime-loops.
 persistent numMouseButtons;
 if isempty(numMouseButtons)    
-    if IsOSX
-        % On OS X we execute this script, otherwise either MATLAB found the mex file
-        % file and exuted this, or else this file was exucuted and exited with
-        % error on the AssertMex command above.
-        
-        %get the number of mouse buttons from PsychHID
-        mousedices=GetMouseIndices;
+    if IsOSX        
+        % Try to get the number of mouse buttons from PsychHID
+        mousedices = GetMouseIndices;
         numMice = length(mousedices);
         if numMice == 0
-            error('GetMouse could not find any mice connected to your computer');
+            error('GetMouse could not find any mice connected to your computer.');
         end
 
         allHidDevices=PsychHID('Devices');
@@ -168,12 +165,18 @@ if isempty(numMouseButtons)
             b=allHidDevices(mousedices(i)).buttons;
             numMouseButtons=max(b, numMouseButtons);
         end
+        
+        % Invalid number of mouse buttons or no number at all returned by
+        % PsychHID? Assign a reasonable value of 5 buttons.
+        if isempty(numMouseButtons) || (numMouseButtons < 1)
+            numMouseButtons = 5;
+        end
     else
-        % Windows: Currently only support three mouse buttons.
-        % Linux: A >= zero value (like 3 here) triggers mouse query.
+        % Windows: Currently only supports three mouse buttons.
+        % Linux: A greater than zero value (like 3 here) triggers mouse query.
         numMouseButtons = 3;
-    end;
-end;
+    end
+end
 
 if nargin < 1
     windowPtrOrScreenNumber = [];

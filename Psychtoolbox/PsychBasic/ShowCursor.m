@@ -20,7 +20,7 @@ function oldType = ShowCursor(type, screenid, mouseid)
 % 'Arrow' = Standard mouse-pointer arrow.
 % 'CrossHair' = A cross-hair cursor.
 % 'Hand' = A hand symbol.
-% 'SandClock' = Some sort of sand clock/hour-glass whatever...
+% 'SandClock' = Some sort of sand clock/hour-glass (not available on 64-Bit OSX).
 %
 %  Apart from that names, you can pass integral numbers for type to select
 %  further shapes. The mapping of numbers to shapes is operating system
@@ -29,8 +29,8 @@ function oldType = ShowCursor(type, screenid, mouseid)
 %  select from a wide range of numbers from 0 up to (at least) 152, maybe
 %  more, depending on your setup. See the C header file "X11/cursorfont.h"
 %  for a mapping of numbers to shapes. Passing invalid numbers can create
-%  errors. On OS/X, numbers between zero and 17 are currently valid. You
-%  can find a list of mappings from type to number for OS/X at:
+%  errors. On 32-Bit OS/X, numbers between zero and 17 are currently valid.
+%  You can find a list of mappings from type to number for 32-Bit OS/X at:
 %  http://developer.apple.com/documentation/macos8/HumanInterfaceToolbox/Ap
 %  pManager/ProgWithAppearanceMgr/Appearance.9d.html#10244
 %

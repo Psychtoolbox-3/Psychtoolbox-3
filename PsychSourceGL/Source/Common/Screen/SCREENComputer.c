@@ -121,27 +121,26 @@ static void ReportSysctlError(int errorValue)
 PsychError SCREENComputer(void) 
 {
     const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
-	                                     "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system" };
+	                                     "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system", "gstreamer" };
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
-    int numMajorStructFieldNames=14, numKernStructFieldNames=5, numHwStructFieldNames=7;
+    int numMajorStructFieldNames=15, numKernStructFieldNames=5, numHwStructFieldNames=7;
     PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
     //char tempStr[CTL_MAXNAME];   //this seems like a bug in Darwin, CTL_MAXNAME is shorter than the longest name.  
     char						tempStr[256], *ethernetMACStr;
     size_t						tempIntSize,  tempStrSize, tempULongIntSize; 	
 	int							mib[2];
 	int							tempInt;
-	unsigned long int			tempULongInt;
+	psych_uint64                tempULongInt;
 	char						*tempStrPtr;
 	CFStringRef					tempCFStringRef;
 	psych_bool						stringSuccess;
 	int							stringLengthChars, ethernetMACStrSizeBytes;
 	long						gestaltResult;
 	OSErr						gestaltError;
-//	Str255						systemVersionStr, systemVersionStrForward;
 	int							i,strIndex, bcdDigit, lengthSystemVersionString;
-	long						osMajor, osMinor, osBugfix;
+	SInt32						osMajor, osMinor, osBugfix;
 	char						systemVersionStr[256];
 	
     //all subfunctions should have these two lines
@@ -158,6 +157,13 @@ PsychError SCREENComputer(void)
     PsychSetStructArrayDoubleElement("linux", 0, 0, majorStruct);
     PsychSetStructArrayDoubleElement("osx", 0, 1, majorStruct);
 
+    // GStreamer availability:
+    #if defined(PTB_USE_GSTREAMER)
+    PsychSetStructArrayDoubleElement("gstreamer", 0, 1, majorStruct);
+    #else
+    PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
+    #endif
+    
     //fill the kern struct and implant it within the major struct
     PsychAllocOutStructArray(-1, FALSE, numKernStructDimensions, numKernStructFieldNames, kernStructFieldNames, &kernStruct);
     mib[0]=CTL_KERN;

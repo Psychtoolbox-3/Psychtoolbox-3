@@ -1,8 +1,8 @@
 % GStreamer - Installation instructions for the GStreamer media framework.
 %
-% Psychtoolbox in all versions for GNU/Linux, and in (future) 64 bit
-% versions for Mac OS/X and MS-Windows uses the GStreamer multi-media
-% framework for all multi-media related operations.
+% Psychtoolbox for all versions of GNU/Linux and MS-Windows, as well as
+% 64 bit versions of Mac OS/X uses the GStreamer multi-media framework for
+% all multi-media related operations.
 %
 % All movie playback, movie creation, video capture and video recording
 % operations are based on GStreamer. These functions won't work without a
@@ -15,7 +15,7 @@
 % performance if you don't use a recent version of GStreamer.
 %
 % By default, the 32-bit versions of Psychtoolbox for Windows and MacOS/X
-% use Apple's Quicktime for those operations, so GStreamer isn't strictly
+% use Apple's Quicktime for those operations, so GStreamer is not strictly
 % needed there. You can however use GStreamer (once installed) instead of
 % Quicktime if you add the following command to the top of your experiment
 % script, before any other Screen() command:
@@ -52,11 +52,6 @@
 % also Android) based tablets and Smartphones. It is also used on many 
 % Linux based embedded devices.
 %
-% GStreamer itself is very high performance, mature and stable.
-% Psychtoolbox's support however is in its early stage, so don't be
-% surprised if you find bugs or limitations. Report them on the forum
-% instead, so we can fix them.
-%
 % Installation instructions:
 %
 % GNU/Linux: Any half-way recent Linux distribution will include support
@@ -88,16 +83,12 @@
 %
 % MS-Windows:
 %
-% We currently provide GStreamer support on Windows with 32-bit Matlab V7.4
-% (R2007a) and later, as well as on Octave. In fact, a fully working GStreamer
-% installation is mandatory for Psychtoolbox to work on Octave for Windows,
-% otherwise the Screen() function will fail to work at all, regardless if
-% you use multi-media functions or not. For Matlab, GStreamer is still
-% optional. We don't intend to ever provide GStreamer support for Matlab
-% versions older than Version 7.4.
-%
-% The current Windows implementation is a sneak-preview for people interested in
-% testing and giving feedback, not neccessarily for the average user.
+% We currently provide GStreamer support on Windows with 32-bit Matlab and Octave.
+% In fact, a fully working GStreamer installation is mandatory for
+% Psychtoolbox to work on Octave for Windows, otherwise the Screen()
+% function will fail to work at all, regardless if you use multi-media
+% functions or not. For Matlab, GStreamer is still optional, but this will
+% change very soon!
 %
 % You can download and run a standard MS-Windows setup.exe installer from:
 %
@@ -109,8 +100,8 @@
 %
 % <http://ossbuild.googlecode.com/files/GStreamer-WinBuilds-GPL-x86-Beta04-0.10.7.msi>
 %
-% If you are a fan of stable versions, we recommend this one:
-% "GStreamer WinBuilds v0.10.6, LGPL (x86)"
+% If you are a fan of stable versions with more limited functionality, we
+% recommend this one: "GStreamer WinBuilds v0.10.6, LGPL (x86)"
 %
 % However, some features may be disabled or limited with such an older
 % version.
@@ -130,5 +121,21 @@
 %
 % Mac OS/X:
 %
-% No support for GStreamer yet. Stay tuned!
+% For 64-Bit versions of Mac OS/X 10.6 "Snow Leopard" and later, you can
+% download and install GStreamer via an easy to use installer from here:
+%
+% <http://itee.uq.edu.au/~davel/gstreamer/>
+%
+% Another way to install GStreamer, which provides you with the latest
+% versions of the framework and all plugins is to install it via Homebrew:
+% Get Homebrew at: http://mxcl.github.com/homebrew
+%
+% Then install all components via:
+% brew install gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-ffmpeg
+%
+% After a couple minutes of download and compile time, you'll have a fully
+% functional GStreamer compiled from source - assuming everything goes
+% well, that is.
+%
+% For 32-Bit versions of OS/X we don't support GStreamer yet. Stay tuned...
 %

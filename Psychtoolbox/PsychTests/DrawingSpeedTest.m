@@ -209,8 +209,8 @@ telapsed = GetSecs - t1;
 tavg = telapsed;
 tperrect = tavg / n;
 
-fprintf('Rendered 1000 frames, each with %i rectangles of size %i x %i.\n', n, sizeX,sizeY);
-fprintf('Total time %6.6f seconds. Time per rectangle %6.6f msecs.\n', telapsed, tperrect);
+fprintf('Rendered 1000 frames, each with %i primitives of size %i x %i.\n', n, sizeX,sizeY);
+fprintf('Total cpu time %6.6f seconds. Time per primitive %6.6f msecs.\n', telapsed, tperrect);
 
 %Done.
 Screen('CloseAll');
@@ -218,7 +218,8 @@ Screen('CloseAll');
 if any(gpudur)
     gpudur = 1000 * gpudur;
     plot(gpudur);
-    fprintf('Mean drawtime on GPU is %f msecs, stddev = %f msecs.\n', mean(gpudur), std(gpudur));
+    title('Drawtime in msecs per frame');
+    fprintf('Mean drawtime on GPU is %f msecs per frame, stddev = %f msecs, median %f msecs, time per primitive %6.6f msecs.\n', mean(gpudur), std(gpudur), median(gpudur), mean(gpudur)/n);
 end
 
 return;

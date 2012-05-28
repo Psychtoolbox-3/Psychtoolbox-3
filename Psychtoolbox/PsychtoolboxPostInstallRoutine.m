@@ -42,7 +42,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 10/31/2011 Add call to SwitchToNewPsychtoolboxHoster for switch to
 %            GoogleCode, if needed. (MK)
 % 01/06/2012 Add support for calling PsychLinuxConfiguration on Linux. (MK)
-%
+% 04/30/2012 Add support for 64-Bit OSX. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -139,7 +139,7 @@ end
 % Check for operating system minor version on Mac OS/X when running under
 % Matlab:
 if IsOSX
-    if ~IsOctave %#ok<AND2>
+    if ~IsOctave & ~IsOSX(1) %#ok<AND2>
         % Running on Matlab + OS/X. Find the operating system minor version,
         % i.e., the 'y' in the x.y.z number, e.g., y=3 for 10.3.7:
 
@@ -202,19 +202,19 @@ end
 
 % Matlab specific setup:
 if ~IsOctave
-    % Check if this is Matlab of version prior to V 6.5:
+    % Check if this is Matlab of version prior to V 7.4:
     v = ver('matlab');
     if ~isempty(v)
         v = v(1).Version; v = sscanf(v, '%i.%i.%i');
-        if (v(1) < 6) | ((v(1) == 6) & (v(2) < 5)) %#ok<AND2,OR2>
-            % Matlab version < 6.5 detected. This is no longer
+        if (v(1) < 7) | ((v(1) == 7) & (v(2) < 4)) %#ok<AND2,OR2>
+            % Matlab version < 7.4 detected. This is no longer
             % supported.
-            fprintf('\n\nYou are using a Matlab version older than Version 6.5.\n');
+            fprintf('\n\nYou are using a Matlab version older than Version 7.4.\n');
             fprintf('The current "beta" flavor is no longer compatible with your version of Matlab.\n');
-            fprintf('Current "beta" only works on Matlab Version 6.5 or later.\n\n');
+            fprintf('Current "beta" only works on Matlab Version 7.4 (R2007a) or later.\n\n');
             fprintf('I will try to finish setup, but most functions will not work for you.\n');
-            fprintf('Please run the DownloadPsychtoolbox downloader now to download an outdated,\n');
-            fprintf('but functional older version of Psychtoolbox for your Matlab setup or to\n');
+            fprintf('Please run some legacy DownloadPsychtoolbox downloader to download an outdated,\n');
+            fprintf('but functional older version of Psychtoolbox (e.g., V3.0.9) for your Matlab setup or to\n');
             fprintf('receive further instructions.\n');
             fprintf('\n\nPress any key to continue after you have read and understood above message completely.\n\n');
             pause;
@@ -243,6 +243,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
         end
         
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles64']);
+        end
+        
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
         end
@@ -260,12 +264,17 @@ if IsOctave
         end
         
         if IsLinux(1)
-	    % 64 bit Octave on 64 bit Linux. Select 64 bit mex file folder:
+            % 64 bit Octave on 64 bit Linux. Select 64 bit mex file folder:
             rdir = [rdir '64'];
         end
         
         if IsOSX
             rdir = [rdir 'OSXFiles'];
+        end
+        
+        if IsOSX(1)
+            % 64 bit Octave on 64 bit OSX. Select 64 bit mex file folder:
+            rdir = [rdir '64'];
         end
         
         if IsWin
@@ -276,11 +285,7 @@ if IsOctave
         fprintf(' %s ...\n', rdir);
         addpath(rdir);
         
-        if exist('savepath') %#ok<EXIST>
-            rc = savepath;
-        else
-            rc = path2rc;
-        end
+        rc = savepath;
     catch
         rc = 2;
     end
@@ -350,11 +355,12 @@ if IsWin & ~IsOctave %#ok<AND2>
     rc = 0; %#ok<NASGU>
     
     if strfind(cd,'system32')
-        % the below code fails i've the current directory is system32 (e.g.
+        % the below code fails if the current directory is system32 (e.g.
         % C:\Windows\system32), as it contains dlls like version.dll, which
         % get called instead of the built-in functions....
         cd(PsychtoolboxRoot);
     end
+    
     try
         % Remove DLL folders from path:
         rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR11\']);
@@ -364,7 +370,10 @@ if IsWin & ~IsOctave %#ok<AND2>
         if ~isempty(strfind(version, '2007')) | ~isempty(strfind(version, '2008')) | ...
            ~isempty(strfind(version, '2009')) | ~isempty(strfind(version, '2010')) | ...
            ~isempty(strfind(version, '2011')) | ~isempty(strfind(version, '2012')) | ...
-           ~isempty(strfind(version, '2013')) | ~isempty(strfind(version, '2014')) %#ok<OR2>
+           ~isempty(strfind(version, '2013')) | ~isempty(strfind(version, '2014')) | ...
+           ~isempty(strfind(version, '2015')) | ~isempty(strfind(version, '2016')) | ...
+           ~isempty(strfind(version, '2017')) | ~isempty(strfind(version, '2018')) | ...
+           ~isempty(strfind(version, '2019')) | ~isempty(strfind(version, '2020')) %#ok<OR2>
            
             % This is a R2007a or post R2007a Matlab:
             % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab
@@ -374,20 +383,15 @@ if IsWin & ~IsOctave %#ok<AND2>
             fprintf('folder to your Matlab path: %s ...\n', rdir);
             addpath(rdir);
         else
-            % This is a pre-R2007a Matlab:
-            % Add PsychBasic/MatlabWindowsFilesR11/ subfolder to Matlab
-            % path:
-            rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR11\'];
-            fprintf('Matlab release prior to R2007a detected. Will prepend the following\n');
-            fprintf('folder to your Matlab path: %s ...\n', rdir);
-            addpath(rdir);
+            % This is a pre-R2007a Matlab: No longer supported by V 3.0.10+
+            fprintf('Matlab release prior to R2007a detected. This version is no longer\n');
+            fprintf('supported by Psychtoolbox 3.0.10 and later. Aborted.');
+            
+            fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
+            return;
         end
 
-        if exist('savepath') %#ok<EXIST>
-            rc = savepath;
-        else
-            rc = path2rc;
-        end
+        rc = savepath;
     catch
         rc = 2;
     end
@@ -420,15 +424,6 @@ if IsWin & ~IsOctave %#ok<AND2>
     catch
         % Failed! Either screwed setup of path or missing VC++ 2005 runtime
         % libraries.
-        %         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
-        %         fprintf('ERROR: Most likely cause: The Visual C++ 2005 runtime libraries are missing on your system.\n\n');
-        %         fprintf('ERROR: Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
-        %         fprintf('ERROR: fix this problem. That document tells you how to download and install the required runtime\n');
-        %         fprintf('ERROR: libraries. It is important that you download the libraries for Visual C++ 2005 SP1\n');
-        %         fprintf('ERROR: - The Service Pack 1! Follow the link under the text "For VS 2005 SP1 vcredist_x86.exe:"\n');
-        %         fprintf('ERROR: If you install the wrong runtime, it will still not work.\n\n');
-        %         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
-
         fprintf('ERROR: Most likely cause: The most recent security updates to the Visual C++ 2005 runtime libraries\n');
         fprintf('ERROR: are missing on your system. Go to the following URL:\n\n');
         fprintf('http://www.microsoft.com/downloads/details.aspx?familyid=766A6AF7-EC73-40FF-B072-9112BAB119C2&displaylang=en#filelist\n\n');
@@ -482,10 +477,10 @@ if ~IsOctave
             % Look for the first instance of PsychJava in the classpath and
             % replace it with the new one.  All other instances will be
             % ignored.
-            if isempty(findstr('PsychJava', fileContents{i}))
+            if isempty(strfind('PsychJava', fileContents{i}))
                 newFileContents{j, 1} = fileContents{i}; %#ok<AGROW>
                 j = j + 1;
-            elseif ~isempty(findstr('PsychJava', fileContents{i})) & ~pathInserted %#ok<AND2>
+            elseif ~isempty(strfind('PsychJava', fileContents{i})) & ~pathInserted %#ok<AND2>
                 newFileContents{j, 1} = path_PsychJava; %#ok<AGROW>
                 pathInserted = 1;
                 j = j + 1;
@@ -602,11 +597,11 @@ try
     AssertOpenGL;
 
     if IsLinux
-	% Setup Desktop compositor ("Compiz") to un-redirect fullscreen windows.
-	% This allows to bypass desktop composition for PTB fullscreen onscreen windows,
-	% so we get the deterministic timing and high performance we want for visual
-	% stimulus presentation. The command is a no-op 
-	PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
+        % Setup Desktop compositor ("Compiz") to un-redirect fullscreen windows.
+        % This allows to bypass desktop composition for PTB fullscreen onscreen windows,
+        % so we get the deterministic timing and high performance we want for visual
+        % stimulus presentation. The command is a no-op
+        PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
     end
 
     % Try to execute online registration routine: This should be fail-safe in case
@@ -648,8 +643,8 @@ end
 % Run Linux post-configuration script try-catch protected:
 if IsLinux
     try
-	% This script modifies/extends system configuration files
-	% to optimize the system for use with Psychtoolbox:
+        % This script modifies/extends system configuration files
+        % to optimize the system for use with Psychtoolbox:
         PsychLinuxConfiguration;
     catch
     end

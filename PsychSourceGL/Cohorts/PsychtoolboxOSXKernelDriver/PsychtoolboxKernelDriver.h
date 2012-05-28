@@ -3,7 +3,7 @@
 	
 	Description:	This file implements the I/O Kit driver kernel extension for Psychtoolbox (KEXT).
 
-	Copyright:		Copyright © 2008-2011 Mario Kleiner, derived from an Apple example code.
+	Copyright:		Copyright © 2008-2012 Mario Kleiner, derived from an Apple example code.
 
 	Change History of original Apple sample code (most recent first):
 
@@ -23,6 +23,24 @@
 
 // Definitions of GPU registers etc.:
 #include "PsychGraphicsCardRegisterSpecs.h"
+
+// Handy IOLog/printf format strings for dealing with types that have a different
+// length on LP64.
+#if __LP64__
+#define UInt32_FORMAT       "%u"
+#define UInt32_x_FORMAT     "0x%08x"
+#define PhysAddr_FORMAT     "0x%016llx"
+#define PhysLen_FORMAT      "%llu"
+#define VirtAddr_FORMAT     "0x%016llx"
+#define ByteCount_FORMAT    "%llu"
+#else
+#define UInt32_FORMAT       "%lu"
+#define UInt32_x_FORMAT     "0x%08lx"
+#define PhysAddr_FORMAT     "0x%08lx"
+#define PhysLen_FORMAT      UInt32_FORMAT
+#define VirtAddr_FORMAT     "0x%08x"
+#define ByteCount_FORMAT    UInt32_FORMAT
+#endif
 
 // PTB driver revision:
 #define PTBKDRevision 0
@@ -93,10 +111,19 @@ private:
     UInt32 LoadIdentityLUT(UInt32 headId);
 
 	// Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine?
-	bool PsychtoolboxKernelDriver::isDCE4(void);
+	bool isDCE4(void);
+
+	// Is a given ATI/AMD GPU a DCE4.1 type ASIC, i.e., with the new display engine?
+	bool isDCE41(void);
 
 	// Is a given ATI/AMD GPU a DCE5 type ASIC, i.e., with the new display engine?
-	bool PsychtoolboxKernelDriver::isDCE5(void);
+	bool isDCE5(void);
+
+	// Is a given ATI/AMD GPU a DCE6 type ASIC, i.e., with the new display engine?
+	bool isDCE6(void);
+
+	// Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine?
+	bool isDCE61(void);
 
 public:
 	// IOService methods

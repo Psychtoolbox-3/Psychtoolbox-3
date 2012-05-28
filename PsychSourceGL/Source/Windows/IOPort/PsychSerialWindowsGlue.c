@@ -569,7 +569,16 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 				if (verbosity > 1) printf("IOPort: Warning: Requested per-byte 'ReceiveTimeout' value %f secs is positive but smaller than supported minimum of 1 millisecond on Windows. Changed value to 0.001 secs.\n", infloat);
 				infloat = 0.001f;
 			}
-			device->readTimeout = infloat;
+
+            // Make sure we don't change non-mutex-protected variables behind the
+            // back of our readerThread by only allowing this function to be called
+            // with inactive thread:
+            if (device->readerThread) {
+                if (verbosity > 0) printf("Assigned ReceiveTimeout= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+                return(PsychError_user);			
+            }
+			
+            device->readTimeout = infloat;
 		}
 	}
 	
@@ -603,6 +612,14 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 			if (verbosity > 0) printf("Invalid parameter for Terminator= set!\n");
 			return(PsychError_invalidIntegerArg);
 		}
+
+        // Make sure we don't change non-mutex-protected variables behind the
+        // back of our readerThread by only allowing this function to be called
+        // with inactive thread:
+        if (device->readerThread) {
+            if (verbosity > 0) printf("Assigned Terminator= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+            return(PsychError_user);			
+        }
 
 		device->lineTerminator = (unsigned char) inint;
 		
@@ -857,6 +874,14 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 
 	// Set input buffer size for receive ops:
 	if ((p = strstr(configString, "InputBufferSize="))) {
+        // Make sure we don't change non-mutex-protected variables behind the
+        // back of our readerThread by only allowing this function to be called
+        // with inactive thread:
+        if (device->readerThread) {
+            if (verbosity > 0) printf("Assigned InputBufferSize= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+            return(PsychError_user);			
+        }
+        
 		if ((1!=sscanf(p, "InputBufferSize=%i", &inint)) || (inint < 1)) {
 			if (verbosity > 0) printf("Invalid parameter for InputBufferSize set! Typo or requested buffer size smaller than 1 byte.\n");
 			return(PsychError_invalidIntegerArg);
@@ -916,6 +941,14 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 			return(PsychError_user);
 		}
 		else {
+            // Make sure we don't change non-mutex-protected variables behind the
+            // back of our readerThread by only allowing this function to be called
+            // with inactive thread:
+            if (device->readerThread) {
+                if (verbosity > 0) printf("Assigned PollLatency= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+                return(PsychError_user);			
+            }
+
 			device->pollLatency = infloat;
 		}
 	}
@@ -925,6 +958,15 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 			if (verbosity > 0) printf("Invalid parameter for BlockingBackgroundRead= set!\n");
 			return(PsychError_invalidIntegerArg);
 		}
+
+        // Make sure we don't change non-mutex-protected variables behind the
+        // back of our readerThread by only allowing this function to be called
+        // with inactive thread:
+        if (device->readerThread) {
+            if (verbosity > 0) printf("Assigned BlockingBackgroundRead= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+            return(PsychError_user);			
+        }
+
 		device->isBlockingBackgroundRead = inint;
 	}
 
@@ -933,7 +975,16 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 			if (verbosity > 0) printf("Invalid parameter for ReadFilterFlags= set!\n");
 			return(PsychError_invalidIntegerArg);
 		}
-		device->readFilterFlags = (unsigned int) inint;
+
+        // Make sure we don't change non-mutex-protected variables behind the
+        // back of our readerThread by only allowing this function to be called
+        // with inactive thread:
+        if (device->readerThread) {
+            if (verbosity > 0) printf("Assigned ReadFilterFlags= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+            return(PsychError_user);			
+        }
+		
+        device->readFilterFlags = (unsigned int) inint;
 	}
 
 	// Stop a background reader?
@@ -983,6 +1034,13 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 				printf("PTB-ERROR: In StartBackgroundReadCould(): Could not create readerLock mutex lock.\n");
 				return(PsychError_system);
 			}
+            
+            // Perform lock->unlock mutex sequence to inject some memory ordering barriers here, so all our
+            // settings are picked up by the newborn thread:
+            if ((rc=PsychLockMutex(&(device->readerLock))) || (rc=PsychUnlockMutex(&(device->readerLock)))) {
+				printf("PTB-ERROR: In StartBackgroundRead(): Could not lock + unlock readerLock mutex lock [%s].\n", strerror(rc));
+				return(PsychError_system);
+            }
 			
 			// Create and startup thread:
 			if ((rc=PsychCreateThread(&(device->readerThread), NULL, PsychSerialWindowsGlueReaderThreadMain, (void*) device))) {

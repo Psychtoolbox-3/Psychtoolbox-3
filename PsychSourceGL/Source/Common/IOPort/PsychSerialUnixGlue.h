@@ -60,7 +60,7 @@
 // None yet.
 #endif
 
-typedef volatile struct PsychSerialDeviceRecord {
+typedef struct PsychSerialDeviceRecord {
 	char				portSpec[1000];			// Name string of the device file.
 	int					fileDescriptor;			// Device handle.
 	struct termios		OriginalTTYAttrs;		// Stores original settings of device to allow restore on close.

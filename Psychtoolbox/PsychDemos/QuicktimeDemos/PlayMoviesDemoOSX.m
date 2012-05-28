@@ -115,17 +115,21 @@ try
         moviefiles = [];
         
         % On GStreamer setups we add a few more movies to the playlist, before the pathetic Apple
-        % commercials. Can't use them on OS/X yet, as Apple's QT engine does not handle them
-        % with the default codec set:
-        if IsLinux || (Screen('Preference', 'OverrideMultimediaEngine') == 1)
+        % commercials. Can't use them on 32-Bit OS/X yet, as Apple's QT engine does not handle them
+        % with the default codec set. However, 64-Bit OS/X has GStreamer:
+        if IsLinux || IsOSX(1) || (Screen('Preference', 'OverrideMultimediaEngine') == 1)
             % Promotional videos for the best OS for cognitive science and technical/educational
             % videos some users may find of practical use:
 
-            % ELC 2012 talk: Gstreamer-1.0 No-longer-compromise-flexibility-for-performance:
-            moviefiles(end+1).name = 'http://d17mmld7179ppq.cloudfront.net/gstreamer-10-no-longer-compromise-flexibility-for-performance_52ca47/hd_ready.webm';
-
-            % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
-            moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';
+            % These are VP-8 encoded and OSX GStreamer 0.10.29 does not
+            % ship required vpi-8 video decoder plugin...
+            if ~IsOSX
+                % ELC 2012 talk: Gstreamer-1.0 No-longer-compromise-flexibility-for-performance:
+                moviefiles(end+1).name = 'http://d17mmld7179ppq.cloudfront.net/gstreamer-10-no-longer-compromise-flexibility-for-performance_52ca47/hd_ready.webm';
+                
+                % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
+                moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';
+            end
         end
 
         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_group_20080512_480x272.mov';

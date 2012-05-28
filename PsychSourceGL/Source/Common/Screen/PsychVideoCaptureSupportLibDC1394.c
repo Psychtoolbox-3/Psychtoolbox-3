@@ -196,6 +196,10 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
   return;
 }
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+extern dc1394_t* dc1394_new(void) __attribute__((weak_import));
+#endif
+
 /* CHECKED
  *      PsychOpenVideoCaptureDevice() -- Create a video capture object.
  *
@@ -225,7 +229,25 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     *capturehandle = -1;
     
     if (firsttime) {
-      // First time invocation: Initialize library:
+      // First time invocation:
+        
+      // Check if linker was able to dynamically runtime-link
+      // the library on OSX, where we weak-link the library to
+      // allow operation of Screen() without need to have libdc1394
+      // installed, as long as user doesn't want to use it.
+      #if PSYCH_SYSTEM == PSYCH_OSX
+        if (NULL == dc1394_new) {
+            printf("\n\n");
+            printf("PTB-ERROR: Could not load and link libdc1394 firewire video capture library!\n");
+            printf("PTB-ERROR: Most likely because the library is not (properly) installed on this\n");
+            printf("PTB-ERROR: machine. Please read 'help VideoCaptureDC1394' for installation or\n");
+            printf("PTB-ERROR: troubleshooting instructions. Firewire capture support is disabled\n");
+            printf("PTB-ERROR: until you have resolved the problem.\n\n");
+            PsychErrorExitMsg(PsychError_user, "Failed to load and link libDC1394 V2 Firewire video capture library! Capture engine unavailable.");
+        }
+      #endif
+        
+      // Initialize library:
 	  libdc = dc1394_new();
 	  if (libdc == NULL) PsychErrorExitMsg(PsychError_user, "Failed to initialize libDC1394 V2 Firewire video capture library! Capture engine unavailable.");
       firsttime = FALSE;

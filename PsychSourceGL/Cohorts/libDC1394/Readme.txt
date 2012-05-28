@@ -12,7 +12,7 @@ http://sourceforge.net/projects/libdc1394/
 
 How to rebuild:
 
-On OS/X you'd follow the follwing instructions. On Linux you'll usually
+On OS/X you'd follow the following instructions. On Linux you'll usually
 just download the latest development libraries with your distributions
 package management system.
 
@@ -37,6 +37,10 @@ these.
 4. Rebuild Screen.
 
 -> Done.
+
+Note: On Linux we always link dynamically against the system installed lidc1394, this way the Linux package management system can keep the library up to date with the latest features, enhancements and bug-fixes.
+
+On OSX for 64-Bit pub we also weak-link dynamically. We use libdc v-2.2.0, which is contained in the libdc1394-2.2.0.tar file. A precompiled v2.2.0 64-Bit .dylib is contained inside the Psychtoolbox/PsychVideoCapture/ subfolder.
 
 
 In PsychSourceGL/Cohorts/ARToolkit:

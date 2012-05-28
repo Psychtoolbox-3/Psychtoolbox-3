@@ -230,8 +230,8 @@ typedef unsigned char		psych_bool;
         typedef psych_bool			mxLogical;
         #endif
 
-        typedef GLubyte				psych_uint8;
-        typedef GLubyte				ubyte;
+        typedef UInt8				psych_uint8;
+        typedef UInt8				ubyte;
 		typedef UInt16				psych_uint16;
         typedef UInt32				psych_uint32;
         typedef unsigned long long	psych_uint64;

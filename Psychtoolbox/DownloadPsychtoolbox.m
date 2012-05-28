@@ -2,18 +2,15 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % DownloadPsychtoolbox([targetdirectory] [,downloadmethod=0] [,targetRevision][,flavor])
 %
 % This script downloads the latest Mac OSX, GNU/Linux or Windows
-% Psychtoolbox from the Subversion master server to your disk, creating
-% your working copy, ready to use as a new toolbox in your MATLAB/OCTAVE
-% application. Subject to your permission, any old installation of the
-% Psychtoolbox is first removed. It's a careful program, checking for all
-% required resources and privileges before it starts.
+% Psychtoolbox-3 from our server to your disk, creating your working copy,
+% ready to use as a new toolbox in your MATLAB/OCTAVE application. Subject
+% to your permission, any old installation of the Psychtoolbox is first
+% removed. It's a careful program, checking for all required resources and
+% privileges before it starts.
 %
-% CAUTION: Psychtoolbox *will not work* with 64 bit versions of Matlab or
-% Octave, except if you use a GNU/Linux system, e.g., Debian GNU/Linux or
-% Ubuntu Linux 10.04 or later. The NeuroDebian project (see
-% http://neuro.debian.net) provides a very convinient installation of
-% Psychtoolbox for both 32 bit and 64 bit versions of Octave and Matlab via
-% the regular package management system of your Linux distribution.
+% CAUTION: Psychtoolbox *will not work* yet with 64 bit versions of Matlab or
+% Octave on Microsoft Windows. It will work with 64 bit Matlab and Octave
+% on Linux and 64-Bit Matlab on OSX, with 64-Bit Octave on OSX planned.
 %
 % On Mac OSX, all parameters are optional. On MS-Windows and GNU/Linux, the
 % first parameter "targetdirectory" with the path to the installation
@@ -33,62 +30,56 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % The desired flavor of a Psychtoolbox release can be selected via the
 % optional "flavor" parameter: By default, 'beta' (aka 'current') will be
 % installed if you don't specify otherwise, as this is almost always the
-% best possible choice. You can download an old versioned release via a
-% namestring like 'Psychtoolbox-x.y.z', e.g., 'Psychtoolbox-3.0.7' if you'd
-% want to download version 3.0.7. This is only useful if you run a very old
-% operating system or Matlab version that isn't supported by the current
-% "beta" anymore, so you'd need to stick with an old versioned release.
-% People that really love trouble can also download the 'unsupported'
-% flavor. "Unsupported" was formerly known as "stable" but the new name
-% reflects reality much better and accurately describes the level of support
-% you can expect from us if you use it and run into any trouble!
-%
+% best possible choice. You may be able to download an old versioned
+% release via a namestring like 'Psychtoolbox-x.y.z', e.g.,
+% 'Psychtoolbox-3.0.7' if you'd want to download version 3.0.7. This is
+% only useful if you run a very old operating system or Matlab version that
+% isn't supported by the current "beta" anymore, so you'd need to stick
+% with an old versioned release.
 %
 % Normally your download should just work(TM). The installer knows three
 % different methods of download and tries all of them if neccessary, ie.,
 % if the preferred method fails, the 2nd best is tried etc. Should the
 % installer get stuck for an inappropriate amount of time (More than 5-10
 % minutes), you can try to abort it and restart it, providing the
-% additional 'downloadmethod' parameter with a setting of either 0 or 1,
-% to change the order of tried download methods to prevent the downloader
-% from getting stuck with a specific method in rare cases. Very
-% infrequently, the download servers may be overloaded or down for
-% maintenance, resulting in download failure. In that case, please retry a
-% few hours later.
+% additional 'downloadmethod' parameter with a setting of either 0 or 1, to
+% change the order of tried download methods to prevent the downloader from
+% getting stuck with a specific method in rare cases. Very infrequently,
+% the download servers may be overloaded or down for maintenance, resulting
+% in download failure. In that case, please retry a few hours later.
 %
 %
 % The "targetRevision" argument is optional and should be normally omitted.
-% Normal behaviour is to download the latest revision of Psychtoolbox.
-% If you provide a specific targetRevision, then this script will
-% install a copy of Psychtoolbox according to the specified revision.
+% Normal behaviour is to download the latest revision of Psychtoolbox. If
+% you provide a specific targetRevision, then this script will install a
+% copy of Psychtoolbox according to the specified revision.
 %
-% This is only useful if you experience problems and want
-% to revert to an earlier known-to-be-good release.
+% This is only useful if you experience problems and want to revert to an
+% earlier known-to-be-good release.
 %
-% Revisions can be specified by a revision number, a specific date, or by
-% the special flag 'PREV' which will choose the revision before the
-% most current one.
+% Revisions can be specified by a revision number or by the special flag
+% 'PREV' which will choose the revision before the most current one.
 %
 %
 % INSTALLATION INSTRUCTIONS: The Wiki contains much more up to date
 % instructions. If in doubt, follow instructions on the Wiki!
 %
 % 1. If you don't already have it, you must install the Subversion client.
-% For Mac OSX, download the latest Mac OSX Subversion client from:
+% For Mac OSX 10.4, download the latest Mac OSX Subversion client from:
 % web http://metissian.com/projects/macosx/subversion/
 % (You can ignore the Subversion README file. If you do read it, you can
 % skip the instruction to manually add /usr/local/bin to your unix path.
 % That's tricky to do, and not needed for installation and updates because
 % we always specify the full path.) Please note that OS/X 10.5 "Leopard"
-% and later often come already with Subversion preinstalled, so you may
-% be able to skip step 1.
+% and later already have Subversion preinstalled, so you may be able to
+% skip step 1.
 %
 % For Windows, download the Windows Subversion client from:
-% web http://subversion.tigris.org/files/documents/15/34093/svn-1.4.0-setup.exe
+% web http://subversion.apache.org/packages.html#windows
 % Install the Subversion client on your machine by double-clicking the
 % installer and following the instructions. After installation of the
-% Subversion client, you will need to exit and restart Matlab or Octave, so it
-% can find the new subversion executable. In many cases it may be
+% Subversion client, you will need to exit and restart Matlab or Octave, so
+% it can find the new subversion executable. In many cases it may be
 % neccessary to even reboot your computer after installation of subversion.
 % Btw. you should avoid to install the client into a path that contains
 % blanks/spaces/white-space as this can lead to download failures in some
@@ -98,8 +89,8 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % Alternatively, if you don't have the neccessary permissions to install
 % Subversion into a system folder, you can install Subversion into an
 % arbitrary folder on your system (excluding ones with blanks in their
-% path) and then add that folder to your Matlab or Octave path. E.g. you installed
-% into D:\MyOwnFolder\Subversion\ . Then you can do this:
+% path) and then add that folder to your Matlab or Octave path. E.g. you
+% installed into D:\MyOwnFolder\Subversion\ . Then you can do this:
 % addpath('D:\MyOwnFolder\Subversion\'). Our installer should find the
 % client then.
 %
@@ -111,8 +102,8 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % Our standard option is in the Applications folder, but note that, as with
 % installation of any software, you'll need administrator privileges. Also
 % note that if you put the toolbox in the Applications folder, you'll need
-% to reinstall it when MATLAB / OCTAVE is updated on your machine. If you must
-% install without access to an administrator, we offer the option of
+% to reinstall it when MATLAB / OCTAVE is updated on your machine. If you
+% must install without access to an administrator, we offer the option of
 % installing into the /Users/Shared/ folder instead. If you must install
 % the Psychtoolbox in some other folder, then specify it in the optional
 % first argument of your call.
@@ -122,14 +113,15 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %
 % That's it. Any pre-existing installation of the Psychtoolbox will be
 % removed (if you approve). The program will then download the latest
-% Psychtoolbox and update your MATLAB / OCTAVE path and other relevant system settings.
+% Psychtoolbox and update your MATLAB / OCTAVE path and other relevant
+% system settings.
 %
 % Enjoy! If you're new to this, you might start by typing "help
 % Psychtoolbox".
 %
-% P.S. If you get stuck, first check the FAQ section and Download section of
-% our Wiki at http://www.psychtoolbox.org. If that doesn't help, post your
-% question to the forum by email or web:
+% P.S. If you get stuck, first check the FAQ section and Download section
+% of our Wiki at http://www.psychtoolbox.org. If that doesn't help, post
+% your question to the forum by email or web:
 %
 % web mailto:psychtoolbox@yahoogroups.com
 % web http://groups.yahoo.com/group/psychtoolbox/messages/
@@ -144,17 +136,16 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % latest bug fixes, enhancements, and new features, just type:
 % UpdatePsychtoolbox
 % 
-% UpdatePsychtoolbox cannot change the flavor of your
-% Psychtoolbox. To change the flavor, run DownloadPsychtoolbox to
-% completely discard your old installation and get a fresh copy with the
-% requested flavor.
+% UpdatePsychtoolbox cannot change the flavor of your Psychtoolbox. To
+% change the flavor, run DownloadPsychtoolbox to completely discard your
+% old installation and get a fresh copy with the requested flavor.
 % 
 % PERMISSIONS:
 %
-% There's a thorny issue with permissions on OS/X. It may not be possible to
-% install into /Applications (or whatever the targetdirectory is) with the
-% user's existing privileges. The normal situation on Mac OSX is that a few
-% users have "administrator" privileges, and many don't. By default,
+% There's a thorny issue with permissions on OS/X. It may not be possible
+% to install into /Applications (or whatever the targetdirectory is) with
+% the user's existing privileges. The normal situation on Mac OSX is that a
+% few users have "administrator" privileges, and many don't. By default,
 % writing to the /Applications folder requires administrator privileges.
 %
 % Thus all OSX installers routinely demand an extra authorization (if
@@ -174,9 +165,9 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %
 % SAVEPATH
 %
-% Normally all users of MATLAB / OCTAVE use the same path. This path is normally
-% saved in MATLABROOT/toolbox/local/pathdef.m, where "MATLABROOT" stands
-% for the result returned by running that function in MATLAB, e.g.
+% Normally all users of MATLAB / OCTAVE use the same path. This path is
+% normally saved in MATLABROOT/toolbox/local/pathdef.m, where "MATLABROOT"
+% stands for the result returned by running that function in MATLAB, e.g.
 % '/Applications/MATLAB.app/Contents/Matlab14.1'. Since pathdef.m is inside
 % the MATLAB package, which is normally in the Applications folder,
 % ordinary users (not administrators) cannot write to pathdef.m. They'll
@@ -185,6 +176,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % solution is very simple, ask an administrator to use File Get Info to set
 % the pathdef.m file permissions to allow write by everyone. This needs to
 % be done only once, after installing MATLAB.
+%
 % web http://www.mathworks.com/access/helpdesk/help/techdoc/matlab_env/ws_pat18.html
 %
 %
@@ -270,37 +262,76 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % 10/31/11 mk  Change location of SVN repository to
 %              http://psychtoolbox-3.googlecode.com/svn/
 %              our new home, now that Berlios is shutting down.
+%
+% 05/27/12 mk  - Strip backwards compatibility support to Matlab pre-R2007a.
+%              - Remove PowerPC support.
+%              - Strip support for 'stable' / 'unsupported' flavors et al.
+%              - Change location of SVN repository to our SVN frontend for GIT:
+%                https://github.com/Psychtoolbox-3/Psychtoolbox-3
+%
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
 clear mex
 
 % Check if this is a 64-bit Matlab or Octave, which we don't support at all:
-if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | ...
-  (~isempty(findstr(computer, '_64')) & isempty(findstr(computer, 'linux'))) %#ok<OR2>
-    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave on MS-Windows or Apple-OSX.\n');
+if strcmp(computer,'PCWIN64') | ...
+  (~isempty(strfind(computer, '_64')) & isempty(strfind(computer, 'linux')) & isempty(strfind(computer, 'apple'))) 
+    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave on MS-Windows.\n');
     fprintf('You need to install a 32 bit Matlab or Octave to install and use Psychtoolbox.\n');
-    fprintf('Use with 64 bit Matlab or Octave is fully supported on GNU/Linux.\n');
+    fprintf('Use with 64 bit Matlab or (soon) Octave is fully supported on GNU/Linux and MacOSX.\n');
     fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
-    error('Tried to install on a 64 bit version of Matlab or Octave, which is not supported on this operating system.');
+    error('Tried to setup on a 64 bit version of Matlab or Octave, which is not supported on this operating system.');
+end
+
+if strcmp(computer,'MAC')
+    fprintf('This version of Psychtoolbox is no longer supported under MacOSX on the Apple PowerPC hardware platform.\n');
+    fprintf('You can get modern versions of Psychtoolbox-3 for Linux if you choose to install GNU/Linux on your PowerPC\n');
+    fprintf('machine. These are available from the GNU/Debian project and a future Ubuntu 12.10 release\n.');
+    fprintf('Alternatively you can download old - totally unsupported - releases of Psychtoolbox version 3.0.9 from GoogleCode:\n');
+    fprintf('http://code.google.com/p/psychtoolbox-3/ \n\n');
+    error('Apple MacOSX on Apple PowerPC computers is no longer supported by this Psychtoolbox version.');
 end
 
 % Check OS
-isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64')| strcmp(computer, 'i686-pc-mingw32');
-isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
-isLinux=strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, 'linux-gnu'));
+isWin = strcmp(computer,'PCWIN') | strcmp(computer, 'i686-pc-mingw32');
+isOSX = ~isempty(strfind(computer, 'MAC')) | ~isempty(strfind(computer, 'apple-darwin'));
+isLinux = strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
 
 if ~isWin & ~isOSX & ~isLinux
-    os=computer;
+    os = computer;
     if strcmp(os,'MAC2')
-        os='Mac OS9';
+        os = 'Mac OS9';
     end
-    fprintf('Sorry, this installer doesn''t support your operating system: %s.\n',os);
+    fprintf('Sorry, this updater doesn''t support your operating system: %s.\n', os);
     fprintf([mfilename ' can only install the new (OSX, Linux and Windows) \n'...
-        'OpenGL-based versions of the Psychtoolbox. To install the older (OS9 and Windows) \n'...
-        'versions (not based on OpenGL) please go to the psychtoolbox website: \n'...
-        'web http://psychtoolbox.org/download.html\n']);
+        'OpenGL-based versions of the Psychtoolbox-3. To install the older (OS9 and Windows) \n'...
+        'versions (not based on OpenGL, aka PTB-2) please go to the legacy Psychtoolbox website: \n'...
+        'web http://psychtoolbox.org/PTB-2/index.html\n']);
     error(['Your operating system is not supported by ' mfilename '.']);
+end
+
+% Check if this is a Matlab of version prior to V 7.4 aka R2007a:
+v = ver('matlab');
+if ~isempty(v)
+    v = v(1).Version; v = sscanf(v, '%i.%i.%i');
+    if (v(1) < 7) | ((v(1) == 7) & (v(2) < 4)) %#ok<AND2,OR2>
+        % Matlab version < 7.4 detected. This is no longer
+        % supported by current PTB beta. Redirect to the last
+        % functional PTB for such ancient Matlab's:
+        fprintf('\n\n\n\n');
+        fprintf('Psychtoolbox 3.0.10 and later are no longer available for your version of Matlab.\n');
+        fprintf('Current versions only work on Matlab Version 7.4 (R2007a) or later.\n');
+        fprintf('Please consider upgrading to a recent Matlab version or switching to GNU/Octave 3.2.x.\n');
+        fprintf('Both will provide better support, performance and a richer feature set.\n\n');
+        fprintf('\n\n');
+        fprintf('If you insist on use of an older Matlab version, go to our GoogleCode site ...\n\n');
+        fprintf('http://code.google.com/p/psychtoolbox-3/ \n\n');
+        fprintf('... and get yourself an older version of DownloadPsychtoolbox.m which will allow you\n');
+        fprintf('to retrieve a legacy version of Psychtoolbox 3.0.9 or earlier. In that case,\n');
+        fprintf('you are entirely on your own, as such versions are not supported in any way.\n\n');
+        error('This Downloader does not support Matlab versions before V7.4 (R2007a) anymore.');
+    end
 end
 
 if nargin < 1
@@ -331,11 +362,11 @@ if nargin < 2
 end
 
 if isempty(downloadmethod)
-    % Try 0 by default (http://):
+    % Try 0 by default (https://):
     downloadmethod = 0;
 else
-    if downloadmethod < 0 | downloadmethod > 1
-        error('Invalid downloadmethod provided. Valid are values 0 and 1.');
+    if downloadmethod < 0 || downloadmethod > 1
+        error('Invalid downloadmethod provided. Valid are values 0 (https) and 1 (http).');
     end
 end
 
@@ -395,6 +426,17 @@ switch (flavor)
 
         fprintf('\n\nPress any key to continue...\n');
         pause;
+
+        if ~strcmp(flavor, 'beta')
+            fprintf('\n\n\n\n');
+            fprintf('Psychtoolbox 3.0.10 and later do no longer provide the "unsupported" flavor.\n');
+            fprintf('If you insist on use of the "unsupported" flavor, go to our GoogleCode site ...\n\n');
+            fprintf('http://code.google.com/p/psychtoolbox-3/ \n\n');
+            fprintf('... and get yourself an older version of DownloadPsychtoolbox.m which will allow you\n');
+            fprintf('to retrieve such a legacy version of Psychtoolbox 3.0.9 or earlier. In that case,\n');
+            fprintf('you are entirely on your own, as such versions are not supported in any way.\n\n');
+            error('This Downloader does not support the "unsupported" aka "stable" flavor anymore.');
+        end
         
     otherwise
         fprintf('\n\n\nHmm, requested flavor is the unusual flavor: %s\n',flavor);
@@ -402,32 +444,6 @@ switch (flavor)
         fprintf('We will see. If you get an error, this might be the first thing to check.\n');
         fprintf('Press any key to continue...\n');
         pause;
-end
-
-if strcmp(flavor, 'beta')
-    % Check if this is Matlab of version prior to V 6.5:
-    v = ver('matlab');
-    if ~isempty(v)
-        v = v(1).Version; v = sscanf(v, '%i.%i.%i');
-        if (v(1) < 6) | ((v(1) == 6) & (v(2) < 5)) %#ok<AND2,OR2>
-            % Matlab version < 6.5 detected. This is no longer
-            % supported by current PTB beta. Redirect to the last
-            % functional PTB for such ancient Matlab's:
-            flavor = 'Psychtoolbox-3.0.8-PreMatlab6.5';
-            fprintf('\n\n\nYou request download of the "beta" flavor of Psychtoolbox.\n');
-            fprintf('The "beta" flavor is no longer available for your version of Matlab.\n');
-            fprintf('Current "beta" only works on Matlab Version 6.5 or later.\n');
-            fprintf('I will download "%s" instead, which is the last working\n', flavor);
-            fprintf('version of Psychtoolbox for older Matlab releases. Please consider\n');
-            fprintf('upgrading to a recent Matlab version or switching to GNU/Octave 3.2.x. Both\n');
-            fprintf('should provide better support, performance and a richer feature set.\n\n');
-            fprintf('Running on your ancient Matlab should work, but is not supported\n');
-            fprintf('anymore. If you run into any problems or bugs, you are on your own.\n');
-
-            fprintf('\n\nPress any key to continue installation or abort now via CTRL+C...\n\n\n');
-            pause;
-        end
-    end
 end
 
 fprintf('DownloadPsychtoolbox(''%s'',''%s'')\n',targetdirectory, flavor);
@@ -673,12 +689,19 @@ p=fullfile(targetdirectory,'Psychtoolbox');
 % Create quoted version of 'p'ath, so blanks in path are handled properly:
 pt = strcat('"',p,'"');
 
-% Choose initial download method. Defaults to zero, ie. http protocol:
-if downloadmethod < 1
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
+if ~strcmp(flavor, 'trunk')
+    dflavor = ['branches/' flavor];
 else
-    % Good to get through many firewalls and proxies:
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
+    dflavor = flavor;    
+end
+
+% Choose initial download method. Defaults to zero, ie. https protocol:
+if downloadmethod < 1
+    % HTTPS:
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
+else
+    % HTTP:
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
 end
 
 fprintf('The following CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
@@ -693,13 +716,13 @@ else
     [err,result]=dos(checkoutcommand, '-echo');
 end
 
-if err & (downloadmethod == 1)
+if err & (downloadmethod < 1)
     % Failed! Let's retry it via http protocol. This may work-around overly
     % restrictive firewalls or otherwise screwed network proxies:
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
     fprintf('Will retry now by use of alternative http protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux
@@ -710,13 +733,13 @@ if err & (downloadmethod == 1)
     end    
 end
 
-if err & (downloadmethod == 0)
+if err & (downloadmethod > 0)
     % Failed! Let's retry it via https protocol. This may work-around overly
     % restrictive firewalls or otherwise screwed network proxies:
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
     fprintf('Will retry now by use of alternative https protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux

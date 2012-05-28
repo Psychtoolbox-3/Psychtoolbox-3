@@ -21,6 +21,13 @@
 
 #include "Screen.h"
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+// Disable warnings about deprecated API calls on OSX 10.7
+// of which we are aware and that we can't remove as long as
+// we need to stay compatible to 10.4 - 10.6
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "[gammatable, dacbits, reallutsize] = Screen('ReadNormalizedGammaTable', windowPtrOrScreenNumber [, physicalDisplay]);";
 static char synopsisString[] = 

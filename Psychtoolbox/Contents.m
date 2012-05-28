@@ -1,5 +1,5 @@
 % Psychtoolbox.
-% Version 3.0.9       12 April 2011
+% Version 3.0.10      28 May 2012
 % 
 % The Psychophysics Toolbox is a collection of Matlab functions
 % that extend the language to give you exquisite control of your

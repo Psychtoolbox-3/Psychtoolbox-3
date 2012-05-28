@@ -50,8 +50,14 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-// OS/X: Default engine is Quicktime SequenceGrabbers:
+// OS/X: Default engine is...
+#ifdef __LP64__
+// ...  GStreamer (3) on 64-Bit OSX:
+#define PTB_DEFAULTVIDCAPENGINE 3
+#else
+// ... Quicktime SequenceGrabbers (0) on 32-Bit OSX:
 #define PTB_DEFAULTVIDCAPENGINE 0
+#endif
 #define INITIAL_DEFAULT_FONT_NAME		"Geneva"
 #define INITIAL_DEFAULT_FONT_SIZE		12
 #define INITIAL_DEFAULT_FONT_STYLE		0

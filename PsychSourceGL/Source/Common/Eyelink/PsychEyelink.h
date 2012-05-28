@@ -27,11 +27,17 @@
 // PsychToolbox Includes
 #include "Psych.h"
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+// Eyelink Includes
+#include "eyelink_core/eyelink.h"
+#include "eyelink_core/core_expt.h"
+#else
 // Eyelink Includes
 #include "eyelink.h"
 
 // MK: core_expt.h must be included for M$-Windows build:
 #include "core_expt.h"
+#endif
 
 // FIXME TODO:
 // Even more weird: Except for UInt16, none of this integer

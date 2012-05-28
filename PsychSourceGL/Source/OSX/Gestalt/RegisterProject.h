@@ -16,9 +16,6 @@
 	HISTORY:
 		
 		12/6/04		awi		Created.
-		
-  
-  
 */
 
 //begin include once 
@@ -32,7 +29,3 @@ PsychError PsychModuleInit(void);
 
 //end include once
 #endif
-
-
-
-

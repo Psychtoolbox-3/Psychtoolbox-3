@@ -15,13 +15,8 @@
 %                          bonus information. It also contains a few more
 %                          datapoints collected after ECVP.
 %
-% ExperimentalStuff      - Read this for a description of features that
-%                          are currently in a beta state, i.e., they
-%                          are not yet fully mature and polished, so
-%                          use of them may require some extra attention.
-%
 % GStreamer              - Installation instructions for the GStreamer
-%                          media framework on Linux.
+%                          media framework.
 %
 % InstallKinect          - Installation instructions for the Kinect
 %                          drivers.

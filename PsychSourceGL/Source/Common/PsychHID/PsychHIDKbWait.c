@@ -68,13 +68,16 @@ PsychError PSYCHHIDKbWait(void)
     psych_bool 			isDeviceSpecified, foundUserSpecifiedDevice;
     double				*timeValueOutput;
     psych_bool 			isKeyDown;
-    	 
+    uint32_t            usage, usagePage;
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(1));  	//Specifies the number of the keyboard or keypad to scan.  
+
+    // We don't support this deprecated function on 64-Bit OSX anymore:
+#ifndef __LP64__
     
     PsychHIDVerifyInit();
     
@@ -109,8 +112,11 @@ PsychError PSYCHHIDKbWait(void)
             currentElement != NULL; 
             currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput))
         {
-            if(((currentElement->usagePage == kHIDPage_KeyboardOrKeypad) || (currentElement->usagePage == kHIDPage_Button)) && currentElement->usage <= 256 && currentElement->usage >=1){
-                if(HIDGetElementValue(deviceRecord, currentElement)){
+            usage = currentElement->usage;
+            usagePage = currentElement->usagePage;
+
+            if(((usagePage == kHIDPage_KeyboardOrKeypad) || (usagePage == kHIDPage_Button)) && (usage <= 256) && (usage >= 1)){
+                if (HIDGetElementValue(deviceRecord, currentElement)) {
                     isKeyDown=TRUE;
                     break;  //break out of inner for loop.  
                 }
@@ -118,7 +124,10 @@ PsychError PSYCHHIDKbWait(void)
         }
     }
     PsychGetPrecisionTimerSeconds(timeValueOutput);
-        
+
+#else
+    PsychErrorExitMsg(PsychError_unimplemented, "This function is not supported by the 64-Bit version of PsychHID.");
+#endif
     return(PsychError_none);	
 }
 

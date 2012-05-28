@@ -31,7 +31,7 @@
 //these are all constants defined only for reporting versioning.  They are returned by Module('Version')
 #define PSYCHTOOLBOX_MAJOR_VERSION				3
 #define PSYCHTOOLBOX_MINOR_VERSION				0
-#define PSYCHTOOLBOX_POINT_VERSION				9
+#define PSYCHTOOLBOX_POINT_VERSION				10
 //If you fork my source please change this name.  - awi 
 #define PSYCHTOOLBOX_PROJECT_NAME				"OpenGL Psychtoolbox"
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -47,19 +47,25 @@
 #define PSYCHTOOLBOX_OS_NAME                                    "GNU/Linux X11"
 #endif
 
+#ifdef __LP64__
+#define PTB_ARCHITECTURE " 64-Bit"
+#else
+#define PTB_ARCHITECTURE
+#endif
+
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 #ifndef PTBOCTAVE3MEX
 //Placeholder for the MATLAB version at build time.
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "Matlab"
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "Matlab" PTB_ARCHITECTURE
 #else
 // Binary plugin for Octave-3 or later via the MEX interface:
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "GNU/Octave-3"
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "GNU/Octave-3" PTB_ARCHITECTURE
 #endif
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 //Placeholder for the Octave version at build time.
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "GNU/Octave"
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "GNU/Octave" PTB_ARCHITECTURE
 #endif
 	
 char *PsychGetBuildDate(void);

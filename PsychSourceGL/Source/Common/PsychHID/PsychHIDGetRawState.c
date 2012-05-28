@@ -49,17 +49,20 @@ PsychError PSYCHHIDGetRawState(void)
 
 PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel)
 {
-    long 		elementValue;
-    pRecDevice          deviceRecord;
+    double          elementValue;
+    pRecDevice      deviceRecord;
     pRecElement		elementRecord;
-    int                 elementIndex = axisId;
+    int             elementIndex = axisId;
 
     PsychHIDVerifyInit();
     deviceRecord= PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
     elementRecord= PsychHIDGetElementRecordFromDeviceRecordAndElementIndex(deviceRecord, elementIndex);
-    elementValue= HIDGetElementValue(deviceRecord, elementRecord);
-
-    if (val) *val = (double) elementValue;
+#ifndef __LP64__
+    elementValue = (double) HIDGetElementValue(deviceRecord, elementRecord);
+#else
+    elementValue = IOHIDElement_GetValue(elementRecord, kIOHIDValueScaleTypePhysical);
+#endif
+    if (val) *val = elementValue;
     return(PsychError_none);
 }
 

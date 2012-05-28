@@ -70,6 +70,9 @@ void ScreenCloseAllWindows(void)
     
     recursionLevel++;
     
+    // Cold-Reset the drawing target:
+    PsychColdResetDrawingTarget();
+
 	// Reset the "userspaceGL" flag which tells PTB that userspace GL rendering was active
 	// due to Screen('BeginOpenGL') command.
 	PsychSetUserspaceGLFlag(FALSE);

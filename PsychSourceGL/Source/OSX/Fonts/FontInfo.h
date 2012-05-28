@@ -7,7 +7,8 @@
 
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+        Allen Ingling		awi		Allen.Ingling@nyu.edu
+        Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	PLATFORMS:
 	
@@ -65,9 +66,6 @@
 		
 	TO DO:
 
-		Replace "Apple Type Services" with "Apple Type Solution" because the former is incorrect.
-
-  
 */ 
 
 //begin include once 
@@ -77,8 +75,6 @@
 
 //project includes 
 #include "PsychFontGlue.h"
-
-
 
 //prototypes for functions defined in this moduel
 
@@ -92,8 +88,5 @@ PsychError MODULEVersion(void);
 PsychError FONTSNumFonts(void);
 PsychError FONTSFonts(void);
 
-
 //end include once
 #endif
-
-	

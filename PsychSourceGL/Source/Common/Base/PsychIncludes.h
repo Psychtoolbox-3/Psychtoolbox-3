@@ -40,7 +40,9 @@
 // Platform independent include for glew: This is a catch-all
 // for all OpenGL definitions and functions, currently up to
 // OpenGL 2.1:
+#if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)
 #include "../Screen/glew.h"
+#endif
 
 //platform dependent includes stage 1
 #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -100,28 +102,31 @@
     #include <sys/time.h>
 	#include <pthread.h>
 
-        // If we are included from PsychScriptingGlue.cc, which
-        // is indicated by PTBINSCRIPTINGGLUE, then we must only
-        // include MacTypes.h, not the rest of Carbon, ApplicationServices
-        // et al. -> Some of the Octave header files conflict with Apple
-        // system header files --> do not include the Apple headers when
-        // building Scriptingglue - they are not needed but would prevent
-        // the build.
-        #ifndef PTBINSCRIPTINGGLUE
-        // File included during compile of some PTB file other than ScriptingGlue...
-        #include <Carbon/Carbon.h>
-        #include <CoreServices/CoreServices.h>
-        #include <ApplicationServices/ApplicationServices.h>
-        #include <CoreAudio/HostTime.h>
-        #else
-        // File included from ScriptingGlue - only import minimal amount of headers...
-        #include <CoreServices/../Frameworks/CarbonCore.framework/Headers/MacTypes.h>
-        #endif
+    // If we are included from PsychScriptingGlue.cc, which
+    // is indicated by PTBINSCRIPTINGGLUE, then we must only
+    // include MacTypes.h, not the rest of Carbon, ApplicationServices
+    // et al. -> Some of the Octave header files conflict with Apple
+    // system header files --> do not include the Apple headers when
+    // building Scriptingglue - they are not needed but would prevent
+    // the build.
+    #ifndef PTBINSCRIPTINGGLUE
+    // File included during compile of some PTB file other than ScriptingGlue...
+    #include <Carbon/Carbon.h>
+    #include <CoreServices/CoreServices.h>
+    #include <ApplicationServices/ApplicationServices.h>
+    #include <CoreAudio/HostTime.h>
+    #include <CoreVideo/CoreVideo.h>
+    #else
+    // File included from ScriptingGlue - only import minimal amount of headers...
+    // MK TODO FIXME! OCTAVE!
+    #include <CoreServices/CoreServices.h>
+    // Does not work: #include <CarbonCore.framework/MacTypes.h>
+    // Used to work on Tiger/32-Bit, but does not work now: #include <CoreServices/Frameworks/CarbonCore.framework/Headers/MacTypes.h>
+    #endif
 
-	#include <OpenGL/OpenGL.h>
-	//#include <OpenGL/gl.h>
-	//#include <OpenGL/glext.h>
-	//#include <OpenGL/glu.h>
+    #if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)
+    #include <OpenGL/OpenGL.h>
+    #endif
 #endif 
 
 //C standard library headers

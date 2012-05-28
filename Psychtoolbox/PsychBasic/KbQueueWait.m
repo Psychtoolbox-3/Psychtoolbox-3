@@ -128,6 +128,7 @@ function secs=KbQueueWait(deviceIndex)
 
 % 8/19/07    rpw  Wrote it.
 % 8/23/07    rpw  Modifications to add KbQueueFlush
+% 5/14/12    mk   Small fixes: Use 1 msec wait interval.
 
 if nargin < 1
 	deviceIndex = [];
@@ -143,9 +144,11 @@ while(1)
 		break;
 	end
 
-	% Wait for 5 msecs to prevent system overload
-	WaitSecs('Yieldsecs', 0.005);
+	% Wait for 1 msec to prevent system overload:
+	WaitSecs('Yieldsecs', 0.001);
 end
 
 presses=find(firstPress);
-secs=min(firstPress(presses));
+secs=min(firstPress(presses)); %#ok<FNDSB>
+
+return;

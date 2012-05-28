@@ -21,6 +21,8 @@
 
 #include "PsychMovieSupportQuickTime.h"
 
+#ifdef PSYCHQTAVAIL
+
 // MK: Experimental switch: If set to 1, then we use old-style
 // GWorlds for Quicktime rendering and manually convert them
 // into OpenGL textures. This should default to zero for releases
@@ -1091,3 +1093,4 @@ double PsychQTSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     return(oldtime);
 }
 
+#endif

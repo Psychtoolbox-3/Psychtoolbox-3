@@ -1029,7 +1029,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		// On OS-X we can query the OS if the bound shader is running on the GPU or if it is running in emulation mode on the CPU.
 		// This is an expensive operation - it triggers OpenGL internal state revalidation. Only use for debugging and testing!
 		if (PsychPrefStateGet_Verbosity() > 10) {
-			long vsgpu=0, fsgpu=0;
+			GLint vsgpu=0, fsgpu=0;
 			CGLGetParameter(CGLGetCurrentContext(), kCGLCPGPUVertexProcessing, &vsgpu);
 			CGLGetParameter(CGLGetCurrentContext(), kCGLCPGPUFragmentProcessing, &fsgpu);
 			printf("PTB-DEBUG: In Screen('DrawTexture') aka PsychBlitTextureToDisplay():  GPU shading state: Vertex processing on %s : Fragment processing on %s.\n", (vsgpu) ? "GPU" : "CPU!!", (fsgpu) ? "GPU" : "CPU!!");

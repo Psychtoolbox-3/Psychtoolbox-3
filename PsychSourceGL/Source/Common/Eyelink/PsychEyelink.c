@@ -26,8 +26,6 @@
 */
 
 #include "PsychEyelink.h"
-// added by NJ 13/9/2010
-#include "core_expt.h"
 #include <math.h>
 
 /////////////////////////////////////////////////////////////////////////
@@ -307,11 +305,11 @@ void PsychEyelink_init_core_graphics(const char* callback)
 	// Assign runtime environment display callback function:
 	memset(eyelinkDisplayCallbackFunc, 0, sizeof(eyelinkDisplayCallbackFunc));
 
-	snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, callback);
+	snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, "%s", callback);
 //    #if PSYCH_SYSTEM != PSYCH_WINDOWS
-//	snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, callback);
+//	snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, "%s", callback);
 //    #else
-//	_snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, callback);
+//	_snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, "%s", callback);
 //    #endif
     
 	// Assign hooks to Eyelink runtime:

@@ -11,8 +11,9 @@
 
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
-		
+		Allen.Ingling@nyu.edu           awi
+        mario.kleiner@tuebingen.mpg.de  mk
+
 	DESCRIPTION:
 	
 		Gestalt is a work-alike replacement for the Gestalt function build into MATLAB 5.  Mathworks omitted it from MATLAB 6.  For backwards  compatability
@@ -58,9 +59,9 @@ PsychError GESTALTGestalt(void)
 	OSType					selectorConstant;
 	CFStringRef				selectorCFString;
 	OSErr					callError;
-	long					responseLong, i;
+	SInt32					responseLong, i;
 	PsychNativeBooleanType	*responseArray;
-	psych_bool					returnResponse;
+	psych_bool				returnResponse;
 
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(1));

@@ -1,0 +1,559 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		BF9257E70C039F6200D7A82A /* Build All */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = BF9257F60C039FA200D7A82A /* Build configuration list for PBXAggregateTarget "Build All" */;
+			buildPhases = (
+			);
+			dependencies = (
+				BF9257E90C039F6C00D7A82A /* PBXTargetDependency */,
+				BF9257EB0C039F6C00D7A82A /* PBXTargetDependency */,
+				BF9257ED0C039F6C00D7A82A /* PBXTargetDependency */,
+			);
+			name = "Build All";
+			productName = "Build All";
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		BF9257EF0C039FA200D7A82A /* PsychUserKernelShared.h in Headers */ = {isa = PBXBuildFile; fileRef = BF9257EE0C039FA200D7A82A /* PsychUserKernelShared.h */; };
+		BF9257FF0C039FC200D7A82A /* PsychtoolboxKernelDriver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BF9257FB0C039FC200D7A82A /* PsychtoolboxKernelDriver.cpp */; };
+		BF9258000C039FC200D7A82A /* PsychtoolboxKernelDriver.h in Headers */ = {isa = PBXBuildFile; fileRef = BF9257FC0C039FC200D7A82A /* PsychtoolboxKernelDriver.h */; };
+		BF9258010C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BF9257FD0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.cpp */; };
+		BF9258020C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.h in Headers */ = {isa = PBXBuildFile; fileRef = BF9257FE0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.h */; };
+		BF9258060C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c in Sources */ = {isa = PBXBuildFile; fileRef = BF9258030C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c */; };
+		BF9258070C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c in Sources */ = {isa = PBXBuildFile; fileRef = BF9258050C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c */; };
+		BF9258080C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c in Sources */ = {isa = PBXBuildFile; fileRef = BF9258030C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c */; };
+		BF9258090C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c in Sources */ = {isa = PBXBuildFile; fileRef = BF9258050C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c */; };
+		BF92580D0C03A02C00D7A82A /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580A0C03A02C00D7A82A /* ApplicationServices.framework */; };
+		BF92580E0C03A02C00D7A82A /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580B0C03A02C00D7A82A /* CoreFoundation.framework */; };
+		BF92580F0C03A02C00D7A82A /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580C0C03A02C00D7A82A /* IOKit.framework */; };
+		BF9258100C03A02C00D7A82A /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580A0C03A02C00D7A82A /* ApplicationServices.framework */; };
+		BF9258110C03A02C00D7A82A /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580B0C03A02C00D7A82A /* CoreFoundation.framework */; };
+		BF9258120C03A02C00D7A82A /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580C0C03A02C00D7A82A /* IOKit.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BF9257E80C039F6C00D7A82A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 32D94FC30562CBF700B6AF17;
+			remoteInfo = SimpleUserClient;
+		};
+		BF9257EA0C039F6C00D7A82A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BF9257DF0C039F3300D7A82A;
+			remoteInfo = SimpleUserClientTool;
+		};
+		BF9257EC0C039F6C00D7A82A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BF9257E40C039F4E00D7A82A;
+			remoteInfo = SimpleUserClientTool_ppc;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		32D94FCF0562CBF700B6AF17 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		32D94FD00562CBF700B6AF17 /* PsychtoolboxKernelDriver.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PsychtoolboxKernelDriver.kext; sourceTree = BUILT_PRODUCTS_DIR; };
+		83066A9C0D39B19D0009C12B /* PsychGraphicsCardRegisterSpecs.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = PsychGraphicsCardRegisterSpecs.h; sourceTree = SOURCE_ROOT; };
+		8DA8362C06AD9B9200E5AC22 /* Kernel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Kernel.framework; path = /System/Library/Frameworks/Kernel.framework; sourceTree = "<absolute>"; };
+		BF9257E00C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = PsychtoolboxKernelDriverUserClientTool; sourceTree = BUILT_PRODUCTS_DIR; };
+		BF9257E50C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = PsychtoolboxKernelDriverUserClientTool_ppc; sourceTree = BUILT_PRODUCTS_DIR; };
+		BF9257EE0C039FA200D7A82A /* PsychUserKernelShared.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PsychUserKernelShared.h; sourceTree = "<group>"; };
+		BF9257FB0C039FC200D7A82A /* PsychtoolboxKernelDriver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PsychtoolboxKernelDriver.cpp; sourceTree = "<group>"; };
+		BF9257FC0C039FC200D7A82A /* PsychtoolboxKernelDriver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PsychtoolboxKernelDriver.h; sourceTree = "<group>"; };
+		BF9257FD0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PsychtoolboxKernelDriverUserClient.cpp; sourceTree = "<group>"; };
+		BF9257FE0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PsychtoolboxKernelDriverUserClient.h; sourceTree = "<group>"; };
+		BF9258030C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = PsychtoolboxKernelDriverUserClientInterface.c; sourceTree = "<group>"; };
+		BF9258040C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PsychtoolboxKernelDriverUserClientInterface.h; sourceTree = "<group>"; };
+		BF9258050C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = PsychtoolboxKernelDriverUserClientTool.c; sourceTree = "<group>"; };
+		BF92580A0C03A02C00D7A82A /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = /System/Library/Frameworks/ApplicationServices.framework; sourceTree = "<absolute>"; };
+		BF92580B0C03A02C00D7A82A /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = /System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<absolute>"; };
+		BF92580C0C03A02C00D7A82A /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = /System/Library/Frameworks/IOKit.framework; sourceTree = "<absolute>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		32D94FCB0562CBF700B6AF17 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF9257DE0C039F3300D7A82A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF92580D0C03A02C00D7A82A /* ApplicationServices.framework in Frameworks */,
+				BF92580E0C03A02C00D7A82A /* CoreFoundation.framework in Frameworks */,
+				BF92580F0C03A02C00D7A82A /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF9257E30C039F4E00D7A82A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF9258100C03A02C00D7A82A /* ApplicationServices.framework in Frameworks */,
+				BF9258110C03A02C00D7A82A /* CoreFoundation.framework in Frameworks */,
+				BF9258120C03A02C00D7A82A /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		089C166AFE841209C02AAC07 /* SimpleUserClient */ = {
+			isa = PBXGroup;
+			children = (
+				247142CAFF3F8F9811CA285C /* Source */,
+				BF92543D0C039EAD00D7A82A /* Frameworks */,
+				089C167CFE841241C02AAC07 /* Resources */,
+				19C28FB6FE9D52B211CA2CBB /* Products */,
+			);
+			name = SimpleUserClient;
+			sourceTree = "<group>";
+		};
+		089C167CFE841241C02AAC07 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				32D94FCF0562CBF700B6AF17 /* Info.plist */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		19C28FB6FE9D52B211CA2CBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				32D94FD00562CBF700B6AF17 /* PsychtoolboxKernelDriver.kext */,
+				BF9257E00C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */,
+				BF9257E50C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		247142CAFF3F8F9811CA285C /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				83066A9C0D39B19D0009C12B /* PsychGraphicsCardRegisterSpecs.h */,
+				BF9257EE0C039FA200D7A82A /* PsychUserKernelShared.h */,
+				BF92543A0C039E6F00D7A82A /* PsychtoolboxKernelDriverUserClient */,
+				BF9254370C039E6C00D7A82A /* PsychtoolboxKernelDriverUserClientTool */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		BF9254370C039E6C00D7A82A /* PsychtoolboxKernelDriverUserClientTool */ = {
+			isa = PBXGroup;
+			children = (
+				BF9258030C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c */,
+				BF9258040C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.h */,
+				BF9258050C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c */,
+			);
+			name = PsychtoolboxKernelDriverUserClientTool;
+			sourceTree = "<group>";
+		};
+		BF92543A0C039E6F00D7A82A /* PsychtoolboxKernelDriverUserClient */ = {
+			isa = PBXGroup;
+			children = (
+				BF9257FB0C039FC200D7A82A /* PsychtoolboxKernelDriver.cpp */,
+				BF9257FC0C039FC200D7A82A /* PsychtoolboxKernelDriver.h */,
+				BF9257FD0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.cpp */,
+				BF9257FE0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.h */,
+			);
+			name = PsychtoolboxKernelDriverUserClient;
+			sourceTree = "<group>";
+		};
+		BF92543D0C039EAD00D7A82A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BF92580A0C03A02C00D7A82A /* ApplicationServices.framework */,
+				BF92580B0C03A02C00D7A82A /* CoreFoundation.framework */,
+				BF92580C0C03A02C00D7A82A /* IOKit.framework */,
+				8DA8362C06AD9B9200E5AC22 /* Kernel.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		32D94FC50562CBF700B6AF17 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF9257EF0C039FA200D7A82A /* PsychUserKernelShared.h in Headers */,
+				BF9258000C039FC200D7A82A /* PsychtoolboxKernelDriver.h in Headers */,
+				BF9258020C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		32D94FC30562CBF700B6AF17 /* PsychtoolboxKernelDriverUserClient */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DEB91D908733DB10010E9CD /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClient" */;
+			buildPhases = (
+				32D94FC50562CBF700B6AF17 /* Headers */,
+				32D94FC70562CBF700B6AF17 /* Resources */,
+				32D94FC90562CBF700B6AF17 /* Sources */,
+				32D94FCB0562CBF700B6AF17 /* Frameworks */,
+				32D94FCC0562CBF700B6AF17 /* Rez */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PsychtoolboxKernelDriverUserClient;
+			productInstallPath = "$(SYSTEM_LIBRARY_DIR)/Extensions";
+			productName = SimpleUserClient;
+			productReference = 32D94FD00562CBF700B6AF17 /* PsychtoolboxKernelDriver.kext */;
+			productType = "com.apple.product-type.kernel-extension.iokit";
+		};
+		BF9257DF0C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BF9257F00C039FA200D7A82A /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClientTool" */;
+			buildPhases = (
+				BF9257DD0C039F3300D7A82A /* Sources */,
+				BF9257DE0C039F3300D7A82A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PsychtoolboxKernelDriverUserClientTool;
+			productName = SimpleUserClientTool;
+			productReference = BF9257E00C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */;
+			productType = "com.apple.product-type.tool";
+		};
+		BF9257E40C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BF9257F30C039FA200D7A82A /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClientTool_ppc" */;
+			buildPhases = (
+				BF9257E20C039F4E00D7A82A /* Sources */,
+				BF9257E30C039F4E00D7A82A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PsychtoolboxKernelDriverUserClientTool_ppc;
+			productName = SimpleUserClientTool_ppc;
+			productReference = BF9257E50C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		089C1669FE841209C02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0430;
+			};
+			buildConfigurationList = 1DEB91DD08733DB10010E9CD /* Build configuration list for PBXProject "PsychtoolboxKernelDriver-64Bit" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 1;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 089C166AFE841209C02AAC07 /* SimpleUserClient */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BF9257E70C039F6200D7A82A /* Build All */,
+				32D94FC30562CBF700B6AF17 /* PsychtoolboxKernelDriverUserClient */,
+				BF9257DF0C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */,
+				BF9257E40C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		32D94FC70562CBF700B6AF17 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXRezBuildPhase section */
+		32D94FCC0562CBF700B6AF17 /* Rez */ = {
+			isa = PBXRezBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXRezBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		32D94FC90562CBF700B6AF17 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF9257FF0C039FC200D7A82A /* PsychtoolboxKernelDriver.cpp in Sources */,
+				BF9258010C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF9257DD0C039F3300D7A82A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF9258060C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c in Sources */,
+				BF9258070C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF9257E20C039F4E00D7A82A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF9258080C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c in Sources */,
+				BF9258090C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BF9257E90C039F6C00D7A82A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 32D94FC30562CBF700B6AF17 /* PsychtoolboxKernelDriverUserClient */;
+			targetProxy = BF9257E80C039F6C00D7A82A /* PBXContainerItemProxy */;
+		};
+		BF9257EB0C039F6C00D7A82A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BF9257DF0C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */;
+			targetProxy = BF9257EA0C039F6C00D7A82A /* PBXContainerItemProxy */;
+		};
+		BF9257ED0C039F6C00D7A82A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BF9257E40C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */;
+			targetProxy = BF9257EC0C039F6C00D7A82A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1DEB91DA08733DB10010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1.0.0d1;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_PREPROCESS = YES;
+				INFOPLIST_PREPROCESSOR_DEFINITIONS = "$(GCC_PREPROCESSOR_DEFINITIONS)";
+				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
+				MODULE_NAME = PsychtoolboxKernelDriver;
+				MODULE_VERSION = 1.1;
+				PRODUCT_NAME = PsychtoolboxKernelDriver;
+				WRAPPER_EXTENSION = kext;
+				ZERO_LINK = NO;
+			};
+			name = Debug;
+		};
+		1DEB91DB08733DB10010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1.0.0d1;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				GCC_VERSION_i386 = 4.0;
+				GCC_VERSION_ppc = 3.3;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_PREPROCESS = YES;
+				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
+				MACOSX_DEPLOYMENT_TARGET_i386 = 10.4;
+				MACOSX_DEPLOYMENT_TARGET_ppc = 10.2;
+				MODULE_NAME = PsychtoolboxKernelDriver;
+				MODULE_VERSION = 1.1;
+				PRODUCT_NAME = PsychtoolboxKernelDriver;
+				SDKROOT_i386 = /Developer/SDKs/MacOSX10.4u.sdk;
+				SDKROOT_ppc = /Developer/SDKs/MacOSX10.4u.sdk;
+				WRAPPER_EXTENSION = kext;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		1DEB91DE08733DB10010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
+				GCC_VERSION_i386 = 4.2.1;
+				GCC_VERSION_ppc = 3.3;
+				GCC_VERSION_x64 = 4.2;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.4;
+				MACOSX_DEPLOYMENT_TARGET_i386 = 10.4;
+				MACOSX_DEPLOYMENT_TARGET_ppc = 10.2;
+				SDKROOT_i386 = /Developer/SDKs/MacOSX10.6.sdk;
+				SDKROOT_ppc = /Developer/SDKs/MacOSX10.2.8.sdk;
+				SYMROOT = /tmp/PsychtoolboxKernelDriver;
+				WARNING_CFLAGS = "-Wall";
+			};
+			name = Debug;
+		};
+		1DEB91DF08733DB10010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				GCC_VERSION_i386 = 4.2.1;
+				GCC_VERSION_ppc = 3.3;
+				GCC_VERSION_x64 = 4.2;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.4;
+				MACOSX_DEPLOYMENT_TARGET_i386 = 10.4;
+				MACOSX_DEPLOYMENT_TARGET_ppc = 10.2;
+				SDKROOT_i386 = /Developer/SDKs/MacOSX10.6.sdk;
+				SDKROOT_ppc = /Developer/SDKs/MacOSX10.4u.sdk;
+				SYMROOT = /tmp/PsychtoolboxKernelDriver;
+			};
+			name = Release;
+		};
+		BF9257F10C039FA200D7A82A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = "$(HOME)/bin";
+				PRODUCT_NAME = PsychtoolboxKernelDriverUserClientTool;
+			};
+			name = Debug;
+		};
+		BF9257F20C039FA200D7A82A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = "$(HOME)/bin";
+				PRODUCT_NAME = PsychtoolboxKernelDriverUserClientTool;
+				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.4u.sdk";
+			};
+			name = Release;
+		};
+		BF9257F40C039FA200D7A82A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = ppc;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = "$(HOME)/bin";
+				PRODUCT_NAME = PsychtoolboxKernelDriverUserClientTool_ppc;
+			};
+			name = Debug;
+		};
+		BF9257F50C039FA200D7A82A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = ppc;
+				COPY_PHASE_STRIP = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = "$(HOME)/bin";
+				PRODUCT_NAME = PsychtoolboxKernelDriverUserClientTool_ppc;
+				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.4u.sdk";
+			};
+			name = Release;
+		};
+		BF9257F70C039FA200D7A82A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = "Build All";
+			};
+			name = Debug;
+		};
+		BF9257F80C039FA200D7A82A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				PRODUCT_NAME = "Build All";
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB91D908733DB10010E9CD /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClient" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB91DA08733DB10010E9CD /* Debug */,
+				1DEB91DB08733DB10010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1DEB91DD08733DB10010E9CD /* Build configuration list for PBXProject "PsychtoolboxKernelDriver-64Bit" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB91DE08733DB10010E9CD /* Debug */,
+				1DEB91DF08733DB10010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BF9257F00C039FA200D7A82A /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClientTool" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF9257F10C039FA200D7A82A /* Debug */,
+				BF9257F20C039FA200D7A82A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BF9257F30C039FA200D7A82A /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClientTool_ppc" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF9257F40C039FA200D7A82A /* Debug */,
+				BF9257F50C039FA200D7A82A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BF9257F60C039FA200D7A82A /* Build configuration list for PBXAggregateTarget "Build All" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF9257F70C039FA200D7A82A /* Debug */,
+				BF9257F80C039FA200D7A82A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 089C1669FE841209C02AAC07 /* Project object */;
+}

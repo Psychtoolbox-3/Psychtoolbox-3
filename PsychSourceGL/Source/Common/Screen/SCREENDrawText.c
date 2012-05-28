@@ -139,6 +139,11 @@ static char seeAlsoString[] = "TextBounds TextSize TextFont TextStyle TextColor 
 // OS/X specific default renderer:
 #if PSYCH_SYSTEM == PSYCH_OSX
 
+// Disable warnings about deprecated API calls on OSX 10.7
+// of which we are aware and that we can't remove as long as
+// we need to stay compatible to 10.4 - 10.6
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #define USE_ATSU_TEXT_RENDER	1
 
 //Specify arguments to glTexImage2D when creating a texture to be held in client RAM. The choices are dictated  by our use of Apple's 

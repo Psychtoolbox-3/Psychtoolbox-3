@@ -124,7 +124,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "images from the Kinect depth camera.\n";
 	synopsis[i++] = "It uses and requires the free software drivers and libraries from the OpenKinect";
 	synopsis[i++] = "project (Thanks!): http://openkinect.org\n";
-	synopsis[i++] = "Libfreenect is Copyright (C) 2010, 2011 individual OpenKinect contributors.";
+	synopsis[i++] = "Libfreenect is Copyright (C) 2010 - 2012 individual OpenKinect contributors.";
 	synopsis[i++] = "Libfreenect requires libusb-1.0, which is licensed under LGPL v2 or later.";
 	synopsis[i++] = "See 'help InstallKinect' for more detailed license information.\n";
 	synopsis[i++] = "The PsychKinectCore driver is licensed to you under the terms of the MIT license,";
@@ -274,10 +274,10 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 		// Repeat processing loop:
 	}
 	
-	// Stop capture: Unless we're on Linux where the libfreenect ppa
-	// has some bug and calling this would cause a hang in the device
-	// close routine later...
-	#if PSYCH_SYSTEM != PSYCH_LINUX
+	// Stop capture: Unless we're on Linux or OSX where libfreenect-0.1.2
+	// (or its specific use of libusb-1.0) has some bug and calling this
+    // would cause a hang in the device close routine later...
+	#if (PSYCH_SYSTEM != PSYCH_LINUX) && (PSYCH_SYSTEM != PSYCH_OSX)
 	freenect_stop_depth(kinect->dev);
 	freenect_stop_rgb(kinect->dev);
 	#endif

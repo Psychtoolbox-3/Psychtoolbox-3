@@ -153,6 +153,10 @@ PsychVidcapRecordType* PsychGetGSVidcapRecord(int deviceIndex)
 	return(&vidcapRecordBANK[deviceIndex]);
 }
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+extern gboolean	gst_init_check(int *argc, char **argv[], GError **err) __attribute__((weak_import));
+#endif
+
 /* Internal: Check if GStreamer is already initialized. Initialize it,
  * if neccessary.
  */
@@ -162,24 +166,47 @@ void PsychGSCheckInit(const char* engineName)
 
 	if (gs_firsttime) {
 		// First time invocation:
-        #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        // On Windows, we need to delay-load the GStreamer DLL's. This loading
-        // and linking will automatically happen downstream. However, if delay loading
-        // would fail, we would end up with a crash! For that reason, we try here to
-        // load the DLL, just to probe if the real load/link/bind op later on will
-        // likely succeed. If the following LoadLibrary() call fails and returns NULL,
-        // then we know we would end up crashing. Therefore we'll output some helpful
-        // error-message instead:
-        if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
-            // Failed:
-            printf("\n\nPTB-ERROR: Tried to startup GStreamer. This didn't work,\n");
-            printf("PTB-ERROR: because one of the required GStreamer DLL libraries failed to load. Probably because they\n");
-            printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
-            printf("PTB-ERROR: or they aren't installed on this machine at all.\n\n");
-            printf("PTB-ERROR: Please read the online help by typing 'help GStreamer' for troubleshooting\nand installation instructions.\n\n");
-			printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is out of order.\n", engineName);
-			PsychErrorExitMsg(PsychError_user, "GStreamer initialization failed due to DLL loading problems. Aborted.");
-        }
+        
+        // Check if GStreamer is properly installed and (can be) dynamically loaded and linked:
+        #if PSYCH_SYSTEM != PSYCH_LINUX
+            // On Windows and OSX, we need to delay-load the GStreamer libraries. This loading
+            // and linking will automatically happen downstream. However, if delay loading
+            // would fail, we would end up with a crash! For that reason, on MS-Windows, we
+            // try to load the DLL, just to probe if the real load/link/bind op later on will
+            // likely succeed. If the following LoadLibrary() call fails and returns NULL,
+            // then we know we would end up crashing.
+            // On OSX we check if the gst_init_check() function is defined, aka non-NULL. The
+            // OSX linker sets the symbol to NULL if dynamic weak linking during runtime failed.
+            // On failure we'll output some helpful error-message instead:
+            #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
+            #endif
+            #if PSYCH_SYSTEM == PSYCH_OSX
+                if (NULL == gst_init_check) {
+            #endif
+                // Failed:
+                printf("\n\n\n");
+                printf("PTB-ERROR: Tried to startup GStreamer multi-media framework. This didn't work, because one\n");
+                printf("PTB-ERROR: of the required GStreamer runtime libraries failed to load, probably because it\n");
+                printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
+                printf("PTB-ERROR: or most likely because GStreamer isn't installed on this machine at all.\n\n");
+                printf("PTB-ERROR: Please read the help by typing 'help GStreamer' for installation and troubleshooting\n");
+                printf("PTB-ERROR: instructions.\n\n");
+                printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is disabled for this session.\n\n", engineName);
+
+                // Quicktime supported on this setup?
+                #if (PSYCH_SYSTEM != PSYCH_LINUX) && defined(PSYCHQTAVAIL)
+                    // Yes. Give user a hint about this alternative, at least for movie playback or video capture,
+                    // but not for movie writing:
+                    if (NULL == strstr(engineName, "movie writing")) {
+                        printf("PTB-TIP: As a stop-gap measure until you've installed or fixed GStreamer on your system,\n");
+                        printf("PTB-TIP: you could try to use the legacy Quicktime based %s engine instead via use of the\n", engineName);
+                        printf("PTB-TIP: override Screen('Preference', ...); switches 'DefaultVideoCaptureEngine' and\n");
+                        printf("PTB-TIP: 'OverrideMultimediaEngine'.\n\n");
+                    }
+                #endif
+                PsychErrorExitMsg(PsychError_user, "GStreamer initialization failed due to library loading problems. Aborted.");
+            }
         #endif
 
 		// Initialize GStreamer:
@@ -207,6 +234,8 @@ void PsychGSCheckInit(const char* engineName)
         else {
             // Other OS: Zero-Point of GStreamer clock is identical to Zero-Point
             // of our GetSecs() clock, so apply zero-correction:
+            // TODO FIXME: Check if this assumption holds on OSX for the Video capture engine.
+            // We can only test this once we have 
             gs_startupTime = 0.0;
         }
 
@@ -415,6 +444,8 @@ static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 
 	PsychLockMutex(&capdev->mutex);
 	printf("PTB-DEBUG: Videosink reached EOS.\n");
+    // Signal EOS to trigger an abort of device open sequence:
+    capdev->grabber_active = true;
 	PsychUnlockMutex(&capdev->mutex);
 
 	return;
@@ -582,7 +613,7 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
  */
 void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const char* className, const char* devHandlePropName, unsigned int flags)
 {
-	int					i, n;
+	int					i, n, nmaxp, dopoke;
 	char				port_str[64];
 	char				class_str[64];
 	int					inputIndex;
@@ -604,22 +635,27 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 	// Nothing to do if no such video plugin available:
 	if (!videosource) return;
 
-	// No property probe interface for dc1394src, but "enumeration by trying" requested?
+	// No property probe interface for dc1394src or qtkitvideosrc, but "enumeration by trying" requested?
 	// This is what we need to do for IIDC IEEE-1394 video sources via the dc1394src,
 	// as it doesn't support property probe interface:
-	if (!strcmp(srcname, "dc1394src")) {
-		// Try a reasonable range of cameras, e.g., up to 10 cameras:
+	if (!strcmp(srcname, "dc1394src") || !strcmp(srcname, "qtkitvideosrc")) {
+		// Try a reasonable range of cameras, e.g., up to 100 cameras:
 		n = 0;
-		for (i = 0; i < 100; i++) {
-			// Set suspected camera id (select i'th camera on bus):
-			g_object_set(G_OBJECT(videosource), devHandlePropName, i, NULL);
-			// Try to set it to "paused" state, which should fail if no such
-			// camera is connected:
-			if (gst_element_set_state(videosource, GST_STATE_PAUSED) == GST_STATE_CHANGE_FAILURE) {
-				// No such camera connected. Game over, no need to probe further non-existent cams:
-				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: No camera %i connected to IIDC-1394 bus. Probe finished.\n", i);
-				break;
-			}
+        nmaxp  = (!strcmp(srcname, "dc1394src")) ? 100 : 5;
+        dopoke = (!strcmp(srcname, "dc1394src")) ? 1   : 0;
+		for (i = 0; i < nmaxp; i++) {
+            // Only really probe if dopoke:
+            if (dopoke) {
+                // Set suspected camera id (select i'th camera on bus):
+                g_object_set(G_OBJECT(videosource), devHandlePropName, i, NULL);
+                // Try to set it to "paused" state, which should fail if no such
+                // camera is connected:
+                if (gst_element_set_state(videosource, GST_STATE_PAUSED) == GST_STATE_CHANGE_FAILURE) {
+                    // No such camera connected. Game over, no need to probe further non-existent cams:
+                    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: No camera %i connected to %s video input bus. Probe finished.\n", i, srcname);
+                    break;
+                }
+            }
 
 			// i'th camera exists. Probe and assign:
 			inputIndex = i;
@@ -639,15 +675,15 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 			n++;
 
 			// Reset this cam:
-			gst_element_set_state(videosource, GST_STATE_READY);
+			if (dopoke) gst_element_set_state(videosource, GST_STATE_READY);
 
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: %i'th IIDC-1394 camera enumerated.\n", inputIndex);
+			if (dopoke && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-INFO: %i'th %s camera enumerated.\n", inputIndex, srcname);
 		}
 
 		// Release videosource:
 		gst_element_set_state(videosource, GST_STATE_NULL);
 		gst_object_unref(GST_OBJECT(videosource));
-	
+
 		// Any success?
 		if (n == 0) {
 			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: No video devices to enumerate for plugin '%s'.\n", class_str);
@@ -835,8 +871,14 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	}
 	
 	if (PSYCH_SYSTEM == PSYCH_OSX) {
-		// Try OSX Quicktime sequence grabber video source:
+		// Try OSX Quicktime sequence grabber video source for 32-Bit systems with Quicktime-7:
 		PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", 0);
+
+        // Try OSX MIO video source:
+		PsychGSEnumerateVideoSourceType("miovideosrc", 3, "OSXMIOVideoSource", "device-name", 0);
+        
+        // Try OSX QTKit video source for 64-Bit systems with Quicktime-X aka QTKit:
+		PsychGSEnumerateVideoSourceType("qtkitvideosrc", 2, "OSXQuicktimeKitVideoSource", "device-index", 1);        
 	}
 	
 	// Try DV-Cameras:
@@ -852,7 +894,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	if (ntotal <= 0) {
 		if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-INFO: Could not detect any supported video devices on this system.\n");
-            printf("PTB-INFO: Trying to fake an auto-detected default device...\n");
+            printf("PTB-INFO: Trying to fake an auto-detected default device and a test video source...\n");
         }
         
         // Create a fake entry for the autovideosrc:
@@ -860,8 +902,14 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
         sprintf(devices[0].deviceVideoPlugin, "autovideosrc");
         sprintf(devices[0].deviceSelectorProperty, "");
         sprintf(devices[0].deviceHandle, "");
-        ntotal= 1;
-        return(&devices[0]);
+        
+        // Create a fake entry for the videotestsrc:
+        devices[1].deviceIndex = 1;
+        sprintf(devices[1].deviceVideoPlugin, "videotestsrc");
+        sprintf(devices[1].deviceSelectorProperty, "");
+        sprintf(devices[1].deviceHandle, "");
+
+        ntotal= 2;
 	}
 
     // Add fake entry for deviceIndex zero, as a copy of the first real entry:
@@ -1238,6 +1286,36 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 		else {
 			sprintf(outCodecName, "x264enc");
+		}
+	}
+
+	// Try then Apple OSX specific H264 encoder:
+	if (strstr(codecSpec, "vtenc_h264") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+		sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
+        
+		// Videoencoder not yet created? If so, we have to do it now:
+		if (!capdev->videoenc) {
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=vtenc_h264 ");
+            
+			// Bitrate specified?
+			if (videoBitrate >= 0) {
+				sprintf(codecoption, "bitrate=%i ", (int) videoBitrate);
+				strcat(videocodec, codecoption);
+			}
+            
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+        
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'vtenc_h264' H.264 MacOSX specific video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			sprintf(outCodecName, "vtenc_h264");
 		}
 	}
 
@@ -1628,11 +1706,6 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		if (bigFiles >= 0) {
 			g_object_set(muxer_elt, "large-file", (bigFiles > 0) ? 1 : 0, NULL);
 			sprintf(codecoption, " large-file=%i", (bigFiles > 0) ? 1 : 0);
-			strcat(muxer, codecoption);
-		} else {
-			// Enforce default of "on":
-			g_object_set(muxer_elt, "large-file", 1, NULL);
-			sprintf(codecoption, " large-file=%i", 1);
 			strcat(muxer, codecoption);
 		}
 
@@ -2378,8 +2451,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             
             // The usual Windows crap. Enumeration of supported resolutions doesn't work, so
             // we skip validation and trust blindly that the usercode is right if this is the
-            // DirectShow video source:
-            if (!strstr(plugin_name, "dshowvideosrc")) {
+            // DirectShow video source. Ditto for autovideosrc and videotestsrc:
+            if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc")) {
                 // Query camera if it supports the requested resolution:
                 capdev->fps = -1;
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth)) {
@@ -2407,8 +2480,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             capdev->height = -1;
             capdev->fps = -1;
 
-            // Auto-Detection doesn't work with Windows DirectShow video plugin :-( Skip it.
-            if (!strstr(plugin_name, "dshowvideosrc")) {
+            // Auto-Detection doesn't work with Windows DirectShow video plugin :-( Skip it. Ditto for autovideosrc and videotestsrc:
+            if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc")) {
                 // Ask camera to provide auto-detected parameters:
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth)) {
                     // Unsupported resolution. Game over!
@@ -2706,6 +2779,18 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         capdev->height = height;
     }
     
+    // Sanity check: grabber_active should be false, because we initialized it so.
+    // It will be true if the videosink went EOS during the open and preroll sequence
+    // due to something going wrong (see PsychEOSCallback()). We try to catch this here
+    // and abort the open sequence instead of later hanging the whole app...
+    PsychLockMutex(&capdev->mutex);
+    if (capdev->grabber_active) {
+        capdev->grabber_active = false;
+        PsychUnlockMutex(&capdev->mutex);
+        PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during preroll due to premature EOS.");
+    }
+    PsychUnlockMutex(&capdev->mutex);
+
     // Reset framecounter:
     capdev->nrframes = 0;
     capdev->grabber_active = 0;
@@ -2860,6 +2945,18 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    printf("PTB-INFO: Camera %i opened [Source resolution width x height = %i x %i, video image size %i x %i]\n",
 		   slotid, capdev->width, capdev->height, capdev->frame_width, capdev->frame_height);
     }
+
+    // Sanity check: grabber_active should be false, because we initialized it so.
+    // It will be true if the videosink went EOS during the open and preroll sequence
+    // due to something going wrong (see PsychEOSCallback()). We try to catch this here
+    // and abort the open sequence instead of later hanging the whole app...
+    PsychLockMutex(&capdev->mutex);
+    if (capdev->grabber_active) {
+        capdev->grabber_active = false;
+        PsychUnlockMutex(&capdev->mutex);
+        PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during preroll due to premature EOS.");
+    }
+    PsychUnlockMutex(&capdev->mutex);
 
     return(TRUE);
 }

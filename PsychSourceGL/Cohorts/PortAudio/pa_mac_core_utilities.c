@@ -532,7 +532,8 @@ PaError setBestFramesPerBuffer( const AudioDeviceID device,
                                        unsigned long requestedFramesPerBuffer, 
                                        unsigned long *actualFramesPerBuffer )
 {
-   UInt32 afpb;
+   // MK PTB CHANGED FOR OSX 64BIT: UInt32 afpb;
+   unsigned long afpb = 0;
    const bool isInput = !isOutput;
    UInt32 propsize = sizeof(UInt32);
    OSErr err;

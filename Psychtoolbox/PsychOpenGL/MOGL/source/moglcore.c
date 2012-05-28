@@ -319,7 +319,7 @@ void mogl_checkerrors(const char* cmd, const mxArray *prhs[])
     // Check for glErrors():
     if ((err=glGetError())>0) {
         // Last command caused an OpenGL error condition: Report it and abort.
-        sprintf(errtxt, "MOGL-Error: Your OpenGL command %s() caused the following OpenGL error: %s. Aborted.\n", cmd, gluErrorString(err));
+        sprintf(errtxt, "MOGL-Error: Your OpenGL command %s() caused the following OpenGL error: %s. Aborted.\n", cmd, (const char*) gluErrorString(err));
         // Exit to Matlab prompt with error message:
         glBeginLevel = 0;
         mexErrMsgTxt(errtxt);
@@ -330,24 +330,24 @@ void mogl_checkerrors(const char* cmd, const mxArray *prhs[])
         // A GLSL shader got just compiled. Check its compile status...
         handle = (GLuint) mxGetScalar(prhs[1]);
         glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
-        if (status!=GL_TRUE) printf("MOGL-ERROR: Compilation of the GLSL shader object %i via glCompileShader(%i) failed!\n", handle, handle);
-        if (debuglevel>1 || status!=GL_TRUE) {
+        if (!status) printf("MOGL-ERROR: Compilation of the GLSL shader object %i via glCompileShader(%i) failed!\n", handle, handle);
+        if (debuglevel>1 || !status) {
             // Output shader info-log:
             glGetShaderInfoLog(handle, 9999, NULL, (GLchar*) &errtxt);
             printf("The shader info log for shader %i tells us the following:\n", handle);
             printf("%s \n\n", errtxt);
         }
-        
+
         // Exit to Matlab prompt with error message if an error happened.
-        if (status!=GL_TRUE) mexErrMsgTxt("Shader compilation failed!"); else return;
+        if (!status) mexErrMsgTxt("Shader compilation failed!"); else return;
     }
         
     if (strcmp(cmd, "glLinkProgram")==0) {
         // A GLSL shader got just compiled. Check its compile status...
         handle = (GLuint) mxGetScalar(prhs[1]);
         glGetProgramiv(handle, GL_LINK_STATUS, &status);
-        if (status!=GL_TRUE) printf("MOGL-ERROR: Linking of the GLSL shader program %i via glLinkProgram(%i) failed!\n", handle, handle);
-        if (debuglevel>1 || status!=GL_TRUE) {
+        if (!status) printf("MOGL-ERROR: Linking of the GLSL shader program %i via glLinkProgram(%i) failed!\n", handle, handle);
+        if (debuglevel>1 || !status) {
             // Output shader info-log:
             glGetProgramInfoLog(handle, 9999, NULL, (GLchar*) &errtxt);
             printf("The program info log for program %i tells us the following:\n", handle);
@@ -361,9 +361,9 @@ void mogl_checkerrors(const char* cmd, const mxArray *prhs[])
             printf("The program info log for program %i tells us the following after calling glValidateProgram():\n", handle);
             printf("%s \n\n", errtxt);
         }
-        
+
         // Exit to Matlab prompt with error message if an error happened.
-        if (status!=GL_TRUE) mexErrMsgTxt("GLSL link operation failed!"); else return;
+        if (!status) mexErrMsgTxt("GLSL link operation failed!"); else return;
     }
 
     return;

@@ -43,7 +43,6 @@ alGetString(alGetError)
 
 % Try to load some impressive sound...
 sounddir = [PsychtoolboxRoot 'PsychDemos/SoundFiles/'];
-sounddir = [PsychHomeDir];
 soundfiles = dir([sounddir '*.wav'])
 
 alListenerfv(AL.POSITION, [0, 0, 0]);

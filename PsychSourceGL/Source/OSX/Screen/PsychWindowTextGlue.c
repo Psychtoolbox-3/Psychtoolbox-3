@@ -8,6 +8,7 @@
 	AUTHORS:
 
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
+        Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 		
@@ -48,15 +49,22 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
     settings->textPositionX=0;
     settings->textPositionY=0;
 	settings->textSize= PsychPrefStateGet_DefaultTextSize();
-	settings->textStyle= PsychPrefStateGet_DefaultTextStyle();	// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend	
+	settings->textStyle= PsychPrefStateGet_DefaultTextStyle();	// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
+
+	// Set default font number and name:
+    strcpy((char*) settings->textFontName, "");
+	settings->textFontNumber = 0;
+    
 	/* to initialize the font record to coherent settings, we choose a default font and lookup the matching number */
 	foundFont=PsychGetFontRecordFromFontFamilyNameAndFontStyle((char*) tryFontName, settings->textStyle, &initFontRecord);
-	if(!foundFont)
+	if(foundFont) {
+        // Use detected font name and number:
+        strcpy((char*) settings->textFontName, tryFontName);
+        settings->textFontNumber=initFontRecord->fontNumber;
+    }
+    else {
 		PsychErrorExitMsg(PsychError_internal,"Failed to initialze the window record because the default font for DrawText, Geneva, was not found.");
-	strcpy((char*) settings->textFontName, tryFontName);
-	settings->textFontNumber=initFontRecord->fontNumber;
-    //settings->textFontName[0]='\0';		//should be read from preferences but for now we just make it up.
-    //settings->textFontNumber=kPsychNoFont;	//should be read from preferences but for now we just use a constant meaning no setting.
+    }
 	
 	PsychLoadColorStruct(&(settings->textColor), kPsychIndexColor,  0.0);  //index type which may be coerced into anything.
 	PsychLoadColorStruct(&(settings->textBackgroundColor), kPsychRGBAColor, 0.0, 0.0, 0.0, 0.0); // Assign black with zero alpha -- transparent.
@@ -100,8 +108,3 @@ psych_bool PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawi
     } //for
     return(TRUE);
 }
-
-
-
-                               
-

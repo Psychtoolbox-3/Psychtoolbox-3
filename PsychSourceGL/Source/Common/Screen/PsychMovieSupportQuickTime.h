@@ -25,6 +25,8 @@
 
 #include "Screen.h"
 
+#ifdef PSYCHQTAVAIL
+
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 #include <Movies.h>
 #else
@@ -43,6 +45,8 @@ int PsychQTPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 void PsychQTExitMovies(void);
 double PsychQTGetMovieTimeIndex(int moviehandle);
 double PsychQTSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames);
+
+#endif
 
 //end include once
 #endif

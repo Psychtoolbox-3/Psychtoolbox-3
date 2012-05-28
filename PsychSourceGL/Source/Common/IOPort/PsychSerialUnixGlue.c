@@ -40,14 +40,6 @@
 #include <linux/serial.h>
 #endif
 
-// TODO FIXME: Do we really need volatile access to the device struct?
-// Or is our current locking sufficient to do without it? It doesn't hurt
-// at runtime, but creates ugly compiler warnings...
-
-#define PSYCHVOLATILE volatile
-
-//#define PSYCHVOLATILE 
-
 // Externally defined level of verbosity:
 extern int verbosity;
 
@@ -132,7 +124,7 @@ static int ConstantToBaud(int inint)
 	return(inint);
 }
 
-int PsychSerialUnixGlueFcntl(PSYCHVOLATILE PsychSerialDeviceRecord* device, int newVal)
+int PsychSerialUnixGlueFcntl(PsychSerialDeviceRecord* device, int newVal)
 {
 	int rc;
 	
@@ -147,7 +139,7 @@ int PsychSerialUnixGlueFcntl(PSYCHVOLATILE PsychSerialDeviceRecord* device, int 
 	return(rc);
 }
 
-int PsychSerialUnixGlueSetBlockingMinBytes(PSYCHVOLATILE PsychSerialDeviceRecord* device, int minBytes)
+int PsychSerialUnixGlueSetBlockingMinBytes(PsychSerialDeviceRecord* device, int minBytes)
 {
 	struct termios	options;
 	int rc;
@@ -208,7 +200,7 @@ int PsychSerialUnixGlueSetBlockingMinBytes(PSYCHVOLATILE PsychSerialDeviceRecord
 	return(rc);
 }
 
-int PsychSerialUnixGlueAsyncReadbufferBytesAvailable(PSYCHVOLATILE PsychSerialDeviceRecord* device)
+int PsychSerialUnixGlueAsyncReadbufferBytesAvailable(PsychSerialDeviceRecord* device)
 {	
 	int navail = 0;
 	
@@ -225,7 +217,7 @@ int PsychSerialUnixGlueAsyncReadbufferBytesAvailable(PSYCHVOLATILE PsychSerialDe
 	return(navail);
 }
 
-void* PsychSerialUnixGlueReaderThreadMain(PSYCHVOLATILE void* deviceToCast)
+void* PsychSerialUnixGlueReaderThreadMain( void* deviceToCast)
 {
 	int rc, nread, oldstate;
 	int navail;
@@ -236,7 +228,7 @@ void* PsychSerialUnixGlueReaderThreadMain(PSYCHVOLATILE void* deviceToCast)
 	int doBlockingRead = 0;
 
 	// Get a handle to our device struct: These pointers must not be NULL!!!
-	PSYCHVOLATILE PsychSerialDeviceRecord* device = (PSYCHVOLATILE PsychSerialDeviceRecord*) deviceToCast;
+    PsychSerialDeviceRecord* device = (PsychSerialDeviceRecord*) deviceToCast;
 
 	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
 	// realtime scheduling, with a tweakPriority of +1, ie., raise the relative
@@ -466,7 +458,7 @@ void* PsychSerialUnixGlueReaderThreadMain(PSYCHVOLATILE void* deviceToCast)
 	return(NULL);
 }
 
-void PsychIOOSShutdownSerialReaderThread(PSYCHVOLATILE PsychSerialDeviceRecord* device)
+void PsychIOOSShutdownSerialReaderThread(PsychSerialDeviceRecord* device)
 {
 	if (device->readerThread) {
 		// Cancel the thread:
@@ -496,7 +488,7 @@ void PsychIOOSShutdownSerialReaderThread(PSYCHVOLATILE PsychSerialDeviceRecord* 
  * Emits a 0xff triggerbyte over serial port at time device->triggerWhen.
  *
  */
-void* PsychSerialUnixGlueJLTriggerThreadMain(PSYCHVOLATILE void* deviceToCast)
+void* PsychSerialUnixGlueJLTriggerThreadMain( void* deviceToCast)
 {
 	int rc;
 	unsigned char writedata = 0xff;
@@ -505,7 +497,7 @@ void* PsychSerialUnixGlueJLTriggerThreadMain(PSYCHVOLATILE void* deviceToCast)
 	errmsg[0] = 0;
 	
 	// Get a handle to our device struct: These pointers must not be NULL!!!
-	PSYCHVOLATILE PsychSerialDeviceRecord* device = (PSYCHVOLATILE PsychSerialDeviceRecord*) deviceToCast;
+    PsychSerialDeviceRecord* device = (PsychSerialDeviceRecord*) deviceToCast;
 
 	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
 	// realtime scheduling, with a tweakPriority of +2, ie., raise the relative
@@ -707,7 +699,7 @@ void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device)
  *
  * Returns success- or failure status.
  */
-PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* device, const char* configString)
+PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const char* configString)
 {
 #if PSYCH_SYSTEM == PSYCH_LINUX
 	struct serial_struct serialstruct;
@@ -794,6 +786,14 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 				infloat = 25.5;
 				inint = 255;
 			}
+
+            // Make sure we don't change non-mutex-protected variables behind the
+            // back of our readerThread by only allowing this function to be called
+            // with inactive thread:
+            if (device->readerThread) {
+                if (verbosity > 0) printf("Assigned ReceiveTimeout= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+                return(PsychError_user);			
+            }
 			
 			options.c_cc[VTIME] = inint;
 			device->readTimeout = infloat;
@@ -808,6 +808,14 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 			return(PsychError_invalidIntegerArg);
 		}
 
+        // Make sure we don't change non-mutex-protected variables behind the
+        // back of our readerThread by only allowing this function to be called
+        // with inactive thread:
+        if (device->readerThread) {
+            if (verbosity > 0) printf("Assigned Terminator= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+            return(PsychError_user);			
+        }
+        
 		device->lineTerminator = (unsigned char) inint;
 		
 		// We also assign the line terminator as VEOL, which will be effective in
@@ -1176,7 +1184,16 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 
 	// Set input buffer size for receive ops:
 	if ((p = strstr(configString, "InputBufferSize="))) {
-		if ((1!=sscanf(p, "InputBufferSize=%i", &inint)) || (inint < 1)) {
+
+        // Make sure we don't change non-mutex-protected variables behind the
+        // back of our readerThread by only allowing this function to be called
+        // with inactive thread:
+        if (device->readerThread) {
+            if (verbosity > 0) printf("Assigned InputBufferSize= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+            return(PsychError_user);			
+        }
+		
+        if ((1!=sscanf(p, "InputBufferSize=%i", &inint)) || (inint < 1)) {
 			if (verbosity > 0) printf("Invalid parameter for InputBufferSize set! Typo or requested buffer size smaller than 1 byte.\n");
 			return(PsychError_invalidIntegerArg);
 		}
@@ -1217,7 +1234,16 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 
 	if ((p = strstr(configString, "PollLatency="))) {
 		// Set polling latency for busy-waiting read operations:
-		if ((1!=sscanf(p, "PollLatency=%f", &infloat)) || (infloat < 0)) {
+
+        // Make sure we don't change non-mutex-protected variables behind the
+        // back of our readerThread by only allowing this function to be called
+        // with inactive thread:
+        if (device->readerThread) {
+            if (verbosity > 0) printf("Assigned PollLatency= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+            return(PsychError_user);			
+        }
+		
+        if ((1!=sscanf(p, "PollLatency=%f", &infloat)) || (infloat < 0)) {
 			if (verbosity > 0) printf("Invalid parameter for PollLatency set! Typo, or negative value provided.\n");
 			return(PsychError_user);
 		}
@@ -1231,6 +1257,14 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 			if (verbosity > 0) printf("Invalid parameter for BlockingBackgroundRead= set!\n");
 			return(PsychError_invalidIntegerArg);
 		}
+
+        // Make sure we don't change non-mutex-protected variables behind the
+        // back of our readerThread by only allowing this function to be called
+        // with inactive thread:
+        if (device->readerThread) {
+            if (verbosity > 0) printf("Assigned BlockingBackgroundRead= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+            return(PsychError_user);			
+        }
 		device->isBlockingBackgroundRead = inint;
 	}
 
@@ -1239,7 +1273,16 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 			if (verbosity > 0) printf("Invalid parameter for ReadFilterFlags= set!\n");
 			return(PsychError_invalidIntegerArg);
 		}
-		device->readFilterFlags = (unsigned int) inint;
+
+        // Make sure we don't change non-mutex-protected variables behind the
+        // back of our readerThread by only allowing this function to be called
+        // with inactive thread:
+        if (device->readerThread) {
+            if (verbosity > 0) printf("Assigned ReadFilterFlags= while background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+            return(PsychError_user);			
+        }
+		
+        device->readFilterFlags = (unsigned int) inint;
 	}
 
 	// Stop a background reader?
@@ -1292,6 +1335,13 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 				printf("PTB-ERROR: In StartBackgroundRead(): Could not create readerLock mutex lock [%s].\n", strerror(rc));
 				return(PsychError_system);
 			}
+
+            // Perform lock->unlock mutex sequence to inject some memory ordering barriers here, so all our
+            // settings are picked up by the newborn thread:
+            if ((rc=PsychLockMutex(&(device->readerLock))) || (rc=PsychUnlockMutex(&(device->readerLock)))) {
+				printf("PTB-ERROR: In StartBackgroundRead(): Could not lock + unlock readerLock mutex lock [%s].\n", strerror(rc));
+				return(PsychError_system);
+            }
 			
 			// Create and startup thread:
 			if ((rc=PsychCreateThread(&(device->readerThread), NULL, PsychSerialUnixGlueReaderThreadMain, (void*) device))) {
@@ -1450,7 +1500,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 	return(nwritten);
 }
 
-int PsychIOOSReadSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int blocking, char* errmsg, double* timestamp)
+int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int blocking, char* errmsg, double* timestamp)
 {
 	struct termios	options;
 	double timeout;
@@ -1721,7 +1771,7 @@ void PsychIOOSFlushSerialPort(PsychSerialDeviceRecord* device)
 	return;
 }
 
-void PsychIOOSPurgeSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* device)
+void PsychIOOSPurgeSerialPort(PsychSerialDeviceRecord* device)
 {
 	if (tcflush(device->fileDescriptor, TCIOFLUSH)!=0) {
 		if (verbosity > 0) printf("Error during 'Purge': tcflush(TCIFLUSH) on device %s returned %s(%d)\n", device->portSpec, strerror(errno), errno);

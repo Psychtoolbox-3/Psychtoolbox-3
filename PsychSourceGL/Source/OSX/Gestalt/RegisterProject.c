@@ -11,27 +11,20 @@
 
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu           awi
+        mario.kleiner@tuebingen.mpg.de  mk
+
 	  
 	HISTORY:
 		
 		12/6/04		awi		Created.
-		
-  
-  
 */
 
-//begin include once 
-
-
+//begin include once
 #include "Gestalt.h"
-
-
 
 PsychError PsychModuleInit(void)
 {
-//        InitializeSynopsis();  //first initialize the list of synopsis strings.
-        
 	//register the project function which is called when the module
 	//is invoked with no arguments:
 	PsychRegister(NULL,  &GESTALTGestalt);
@@ -43,14 +36,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
 
 	PsychSetModuleAuthorByInitials("awi");
-
-	//register the module exit function
-	//PsychRegisterExit(&PsychHIDCleanup);
+	PsychSetModuleAuthorByInitials("mk");
 
 	return(PsychError_none);
-
 }
-
-
-
-

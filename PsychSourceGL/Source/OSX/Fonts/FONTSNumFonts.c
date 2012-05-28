@@ -49,15 +49,3 @@ PsychError FONTSNumFonts(void)
         
     return(PsychError_none);	
 }
-
-
-
-
-
-
-
-
-
-
-
-

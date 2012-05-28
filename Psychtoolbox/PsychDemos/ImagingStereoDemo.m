@@ -281,9 +281,14 @@ nmax = 100000;
 % with video frames of size 512 x 512 pixels at a framerate of 60fps.
 if writeMovie
     if writeMovie > 1
-        % Add a sound track to the movie: 2 channel stereo, 48 kHz:
-        movie = Screen('CreateMovie', windowPtr, ['MyTestMovie.mov'], 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000');
-
+        if ~IsOSX(1)
+            % Add a sound track to the movie: 2 channel stereo, 48 kHz:
+            movie = Screen('CreateMovie', windowPtr, ['MyTestMovie.mov'], 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000');
+        else
+            % Same, but for 64-Bit OSX, where the default codec does not
+            % work due to too old GStreamer version. Use XVid instead:
+            movie = Screen('CreateMovie', windowPtr, ['MyTestMovie.avi'], 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000:CodecType=VideoCodec=xvidenc profile=244 max-key-interval=10 bitrate=9708400 quant-type=1');
+        end
         % Create a sequence of 10 tones, each of 1 second duration, each 100 Hz higher
         % than its predecessor. Each of the two stereo channels gets a slightly different sound:
         for freq=100:100:1000

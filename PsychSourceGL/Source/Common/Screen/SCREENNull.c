@@ -189,7 +189,7 @@ PsychError SCREENNull(void)
 
 			if (verbose > 1 || verbose < 0) {
 //				printf("%i\n", (PsychOSKDReadRegister(crtcid, 0x616340 + crtco + 4 * verbose, NULL)));
-				int i;
+				long int i;
 				
 				// crtc stride for CRTC control block (CRTC_VAL at offset 0xa00, stride 0x540)
 				crtco = (crtcid > 0) ? 0x540 : 0;
@@ -200,7 +200,7 @@ PsychError SCREENNull(void)
 //no					unsigned int base = 0x600000;
 //					unsigned int base = 0x00008000;
 					//crtco = 0x540;
-					unsigned int base = 0x610000 + 0xa00 + crtco;
+					unsigned long int base = 0x610000 + 0xa00 + crtco;
 					vblcount = PsychOSKDReadRegister(crtcid, base + i, NULL);
 					unsigned int hi = vblcount >> 16;
 					unsigned int lo = vblcount & 0xffff;

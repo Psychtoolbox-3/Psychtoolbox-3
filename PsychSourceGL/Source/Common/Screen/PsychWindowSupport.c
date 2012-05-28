@@ -218,8 +218,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     CGDirectDisplayID				cgDisplayID;
     int attribcount=0;
     int ringTheBell=-1;
-    long VRAMTotal=0;
-    long TexmemTotal=0;
+    GLint VRAMTotal=0;
+    GLint TexmemTotal=0;
     psych_bool multidisplay = FALSE;
     psych_bool sync_trouble = false;
     psych_bool sync_disaster = false;
@@ -709,6 +709,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	// Get final synctest setting after GPU caps detection:
 	skip_synctests = PsychPrefStateGet_SkipSyncTests();
 
+    // If this is a windowed onscreen window, be lenient with synctests. Make sure they never fail,
+    // because miserable timing is expected in windowed mode:
+    if (!((*windowRecord)->specialflags & kPsychIsFullscreenWindow) && (skip_synctests < 1)) skip_synctests = 1;
+
 #if PSYCH_SYSTEM == PSYCH_OSX
     CGLRendererInfoObj				rendererInfo;
     CGOpenGLDisplayMask 			displayMask;
@@ -717,7 +721,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
     if (true) {
-        long numRenderers, i;
+        GLint numRenderers, i;
         error= CGLQueryRendererInfo(displayMask, &rendererInfo, &numRenderers);
         if(numRenderers>1) numRenderers=1;
         for(i=0;i<numRenderers;i++) {
@@ -739,7 +743,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		// Yes. Is this an ATI GPU?
 		if (strstr((char*) glGetString(GL_VENDOR), "ATI")) {
 			// Is this OS/X 10.5.7 or later?
-			long osMinor, osBugfix, osArch;
+			SInt32 osMinor, osBugfix, osArch;
 			Gestalt(gestaltSystemVersionMinor, &osMinor);
 			Gestalt(gestaltSystemVersionBugFix, &osBugfix);
 			Gestalt(gestaltSysArchitecture, &osArch);
@@ -846,16 +850,16 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// Yes: Adapt clear color to color of top-left splash pixel,
 			// so colors match:
 			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: glClear splash image top-left reference pixel: %i %i %i\n", splash_image.pixel_data[0],splash_image.pixel_data[1],splash_image.pixel_data[2]);
-			glClearColor(((float) splash_image.pixel_data[0]) / 255.0, ((float) splash_image.pixel_data[1]) / 255.0, ((float) splash_image.pixel_data[2]) / 255.0, 0.0);
+			glClearColor(((float) splash_image.pixel_data[0]) / 255.0, ((float) splash_image.pixel_data[1]) / 255.0, ((float) splash_image.pixel_data[2]) / 255.0, 1.0);
 		}
 		else {
 			// No: Clear to white to prepare drawing of our default hard-coded logo:
-			glClearColor(1,1,1,0);
+			glClearColor(1,1,1,1);
 		}
     }
     else {
       // Clear to black:
-      glClearColor(0,0,0,0);
+      glClearColor(0,0,0,1);
     }
 
     glDrawBuffer(GL_BACK_LEFT);
@@ -4116,7 +4120,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     h=PsychGetHeightFromRect(windowRecord->rect);
     
     // Clear out both buffers so it doesn't lool like junk:
-    glClearColor(0,0,0,0);
+    glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT);
     PsychOSFlipWindowBuffers(windowRecord);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -4137,13 +4141,13 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         
         switch (belltype) {
             case 0: // Info - Make it blue
-                glClearColor(0,0,v,0);
+                glClearColor(0,0,v,1);
                 break;
             case 1: // Warning - Make it yellow
-                glClearColor(v,v,0,0);
+                glClearColor(v,v,0,1);
                 break;
             case 2: // Error - Make it red
-                glClearColor(v,0,0,0);
+                glClearColor(v,0,0,1);
             break;
             case 3: // Test-Sheet - Don't clear...
                 // Draw some flickering area (alternating black-white flicker)
@@ -4804,6 +4808,12 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 PsychWindowRecordType* PsychGetDrawingTarget(void)
 {
 	return(currentRendertarget);
+}
+
+/* Hard-Reset the current rendertarget. Only call this from the ScreenCloseAllWindows() function! */
+void PsychColdResetDrawingTarget(void)
+{
+    currentRendertarget = NULL;
 }
 
 /* PsychSetDrawingTarget - Set the target window for following drawing ops.

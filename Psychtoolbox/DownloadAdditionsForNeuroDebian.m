@@ -28,6 +28,12 @@ function DownloadAdditionsForNeuroDebian(targetdirectory, flavor)
 % 29.09.2011  mk  Written.
 % 30.11.2011  mk  Bugfix: Get from trunk, not beta.
 %                 Bugfix: On Linux + Octave, get Datapixx.mex as well.
+%
+% 05/27/12    mk  - Strip backwards compatibility support to Matlab pre-R2007a.
+%                 - Strip support for 'stable' / 'unsupported' flavors et al.
+%                 - Change location of SVN repository to our SVN frontend for GIT:
+%                   https://github.com/Psychtoolbox-3/Psychtoolbox-3
+%
 
 % NeuroDebian package installed?
 if ~exist('/usr/share/octave/site/m/psychtoolbox-3/', 'dir')
@@ -44,7 +50,7 @@ addpath(genpath('/usr/share/octave/site/m/psychtoolbox-3/'));
 savepath;
 
 % From here on we should have access to all Psychtoolbox-3 M-Files, but not
-% yet to mex files -- those are what we wanna get from Berlios-SVN after all...
+% yet to mex files -- those are what we wanna get from GitHub after all...
 
 %
 % Get svn revision number for this octave-psychtoolbox3 installation from the
@@ -104,30 +110,7 @@ switch (flavor)
     case 'beta'
     case 'current'
         flavor = 'beta';        
-    case 'stable'
-        fprintf('\n\n\nYou request download of the "stable" flavor of Psychtoolbox.\n');
-        fprintf('The "stable" flavor is no longer available, it has been renamed to "unsupported".\n');
-        fprintf('If you really want to use the former "stable" flavor, please retry the download\n');
-        fprintf('under the new name "unsupported".\n\n');
-        error('Flavor "stable" requested. This is no longer available.');
-    case 'unsupported'
-        % Very bad choice! Give user a chance to reconsider...
-        fprintf('\n\n\nYou request download of the "unsupported" flavor of Psychtoolbox.\n');
-        fprintf('Use of the "unsupported" flavor is strongly discouraged! It is outdated and contains\n');
-        fprintf('many bugs and deficiencies that have been fixed in the recommended "beta" flavor years ago.\n');
-        fprintf('"unsupported" is no longer maintained and you will not get any support if you have problems with it.\n');
-        fprintf('Please choose "beta" unless you have very good reasons not to do so.\n\n');
-        fprintf('If you answer "no" to the following question, i will download the recommended "beta" flavor instead.\n');
-        answer=input('Do you want to continue download of "unsupported" flavor despite the warnings (yes or no)? ','s');
-        if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
-            flavor = 'beta';
-            fprintf('Download of "unsupported" flavor cancelled, will download recommended "beta" flavor instead...\n');
-        else
-            fprintf('Download of "unsupported" flavor proceeds. You are in for quite a bit of pain...\n');            
-        end
 
-        fprintf('\n\nPress any key to continue...\n');
-        pause;
     case 'trunk'
         % This is our default. Possibly the only reasonable choice at all for
         % NeuroDebian.
@@ -140,28 +123,22 @@ switch (flavor)
         pause;
 end
 
-if strcmp(flavor, 'beta') | strcmp(flavor, 'trunk')
-    % Check if this is Matlab of version prior to V 6.5:
+if ~strcmp(flavor, 'trunk')
+    flavor = ['branches/' flavor];
+end
+
+% Check if this is Matlab of version prior to V 7.4:
+if ~IsOctave
     v = ver('matlab');
     if ~isempty(v)
         v = v(1).Version; v = sscanf(v, '%i.%i.%i');
-        if (v(1) < 6) | ((v(1) == 6) & (v(2) < 5)) %#ok<AND2,OR2>
-            % Matlab version < 6.5 detected. This is no longer
-            % supported by current PTB beta. Redirect to the last
-            % functional PTB for such ancient Matlab's:
-            flavor = 'Psychtoolbox-3.0.8-PreMatlab6.5';
-            fprintf('\n\n\nYou request download of the "beta" flavor of Psychtoolbox.\n');
-            fprintf('The "beta" flavor is no longer available for your version of Matlab.\n');
-            fprintf('Current "beta" only works on Matlab Version 6.5 or later.\n');
-            fprintf('I will download "%s" instead, which is the last working\n', flavor);
-            fprintf('version of Psychtoolbox for older Matlab releases. Please consider\n');
-            fprintf('upgrading to a recent Matlab version or switching to GNU/Octave 3.2.x. Both\n');
-            fprintf('should provide better support, performance and a richer feature set.\n\n');
-            fprintf('Running on your ancient Matlab should work, but is not supported\n');
-            fprintf('anymore. If you run into any problems or bugs, you are on your own.\n');
-
-            fprintf('\n\nPress any key to continue installation or abort now via CTRL+C...\n\n\n');
-            pause;
+        if (v(1) < 7) | ((v(1) == 7) & (v(2) < 4)) %#ok<AND2,OR2>
+            % Matlab version < 7.4 detected. This is no longer
+            % supported by current PTB beta.
+            fprintf('\n\n\nYou request download of Psychtoolbox V 3.0.10 or later.\n');
+            fprintf('This is no longer available for your version of Matlab.\n');
+            fprintf('Current versions only work on Matlab Version 7.4 or later.\n\n\n');
+            error('Unsupported Matlab version detected. Only support V7.4 (R2007a) and later.');
         end
     end
 end
@@ -223,7 +200,7 @@ if ~IsOctave
   end
   
   % Build final checkout command string:
-  checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
+  checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
 else
   % Additional Octave mex files:
   % Get Eyelink:
@@ -240,7 +217,7 @@ else
   pt = strcat('"',p,'/Eyelink.mex"');
 
   % Build final checkout command string:
-  checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
+  checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
   checkoutcommand = [checkoutcommand ' ; '];
 
   % Get Datapixx:
@@ -253,7 +230,7 @@ else
   pt = strcat('"',p,'/Datapixx.mex"');
 
   % Build final checkout command string:
-  checkoutcommand = [checkoutcommand ' ' svnpath 'svn export --force -N ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
+  checkoutcommand = [checkoutcommand ' ' svnpath 'svn export --force -N ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
   checkoutcommand = [checkoutcommand ' ; '];
 end
 
@@ -289,12 +266,7 @@ end
 fprintf('Now adding the new Psychtoolbox add-on folder (and all its subfolders) to your MATLAB / OCTAVE path.\n');
 pp=genpath(p);
 addpath(pp);
-
-if exist('savepath')
-   err=savepath;
-else
-   err=path2rc;
-end
+err=savepath;
 
 if err
     fprintf('SAVEPATH failed. Psychtoolbox is now already installed and configured for use on your Computer,\n');
@@ -304,28 +276,6 @@ if err
     fprintf('to add the path to the Psychtoolbox folder and all of its subfolders whenever you restart MATLAB / OCTAVE.\n\n\n');
 else 
     fprintf('Success.\n\n');
-end
-
-% Matlab specific setup:
-if ~IsOctave
-    % Check if this is Matlab of version prior to V 6.5:
-    v = ver('matlab');
-    if ~isempty(v)
-        v = v(1).Version; v = sscanf(v, '%i.%i.%i');
-        if (v(1) < 6) | ((v(1) == 6) & (v(2) < 5)) %#ok<AND2,OR2>
-            % Matlab version < 6.5 detected. This is no longer
-            % supported.
-            fprintf('\n\nYou are using a Matlab version older than Version 6.5.\n');
-            fprintf('The current "beta" flavor is no longer compatible with your version of Matlab.\n');
-            fprintf('Current "beta" only works on Matlab Version 6.5 or later.\n\n');
-            fprintf('I will try to finish setup, but most functions will not work for you.\n');
-            fprintf('Please run the DownloadPsychtoolbox downloader now to download an outdated,\n');
-            fprintf('but functional older version of Psychtoolbox for your Matlab setup or to\n');
-            fprintf('receive further instructions.\n');
-            fprintf('\n\nPress any key to continue after you have read and understood above message completely.\n\n');
-            pause;
-        end
-    end
 end
 
 % If we're using Matlab then add the PsychJava stuff to the static
@@ -350,10 +300,10 @@ if ~IsOctave
             % Look for the first instance of PsychJava in the classpath and
             % replace it with the new one.  All other instances will be
             % ignored.
-            if isempty(findstr('PsychJava', fileContents{i}))
+            if isempty(strfind('PsychJava', fileContents{i}))
                 newFileContents{j, 1} = fileContents{i}; %#ok<AGROW>
                 j = j + 1;
-            elseif ~isempty(findstr('PsychJava', fileContents{i})) & ~pathInserted %#ok<AND2>
+            elseif ~isempty(strfind('PsychJava', fileContents{i})) & ~pathInserted %#ok<AND2>
                 newFileContents{j, 1} = path_PsychJava; %#ok<AGROW>
                 pathInserted = 1;
                 j = j + 1;

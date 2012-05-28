@@ -1,24 +1,23 @@
 function secs = KbTriggerWait(keyCode, deviceNumber)
 % secs = KbTriggerWait(keyCode, [deviceNumber])
 %
-% Waits until trigger has been pressed and returns the time in seconds.
-% The keyCode argument should be a single number. For example, to check
-% for the 't' key as the trigger use KbTriggerWait(KbName('t'))
+% Waits until one or more trigger keys have been pressed and returns the
+% time of the first key press in seconds. The keyCode argument can be a
+% vector of key indices. For example, to check for the 't' key as the
+% trigger use KbTriggerWait(KbName('t')), to check for 't' and the escape
+% key, use KbTriggerWait([KbName('t'), KbName('ESCAPE')]).
 %
 % You cannot use KbTriggerWait while a queue created by KbQueueCreate
 % exists. To shut down such a queue, use KbQueueRelease.
 %
-% On platforms other than Mac OS X 10.3 and later, this function simply
+% On Matlab versions older than R2007a on MS-Windows, this function simply
 % serves as a convenient substitute for using KbCheck to detect the
 % trigger of interest.
 %
-% OSX 10.3 and later: ____________________________________________________
-%
-% This function will allow triggers to be reliably detected from devices
+% This function should allow triggers to be reliably detected from devices
 % that only briefly report that the key is down. KbCheck is not reliable
 % with such devices because it may not poll often enough to detect the
-% key down state. This function will not address this problem on other
-% platforms or with earlier Macintosh operating system versions.
+% key down state.
 %
 % KbTriggerWait uses the PsychHID function, a general purpose function for
 % reading from the Human Interface Device (HID) class of USB devices.
@@ -53,15 +52,45 @@ function secs = KbTriggerWait(keyCode, deviceNumber)
 % 8/10/07    rpw  Wrote it.
 % 8/21/07	 rpw  Added comments about KbQueueWait as alternative
 % 8/23/07    rpw  Added warning about incompatibility with KbQueueCreate, et al.
-
-% Unless we are running Mac OS X 10.3 or later, default to KbCheck based
-% method. We sort this out on the first call and then store the result
-% in macosrecent for subsequent calls
+% 5/14/12    mk   Add new OSX path, MS-Windows pre R2007a path, other
+%                 tweaks.
 
 persistent macosxrecent;
 if isempty(macosxrecent)
     macosxrecent = IsOSX;
     LoadPsychHID;
+end
+
+% OSX? We no longer use PsychHID('KbTriggerWait'). Instead we emulate via
+% the KbQueueXXX interface. This has two advantages:
+% a) It works on 64-Bit OSX despite the incompatibilities and additional
+%    brain-damage added to the low-level interface by our friendly iPhone
+%    company.
+% b) It allows to wait for multiple keys, just as on Linux and Windows.
+%
+% Timestamp precision won't suffer, as past improvements to PsychHID's
+% KbQueue routines now query timestamps from the OS itself for high
+% precision.
+%
+if macosxrecent
+    if nargin==2
+        % Nothing to do.
+    elseif nargin == 1
+        deviceNumber = [];
+    elseif nargin == 0
+        error('Trigger key code(s) must be specified in KbTriggerWait');
+    elseif nargin > 2
+        error('Too many arguments supplied to KbTriggerWait');
+    end
+    
+    % Emulate KbTriggerWait via KbQueueWait:
+    keyCodes = zeros(1, 256);
+    keyCodes(keyCode) = 1;
+    KbQueueCreate(deviceNumber, keyCodes);
+    secs = KbQueueWait(deviceNumber);
+    KbQueueStop(deviceNumber);
+    KbQueueRelease(deviceNumber);
+    return;
 end
 
 if ~IsWinMatlabR11Style
@@ -75,14 +104,12 @@ if ~IsWinMatlabR11Style
         error('Too many arguments supplied to KbTriggerWait');
     end
 else
-    % We use the built-in KbCheck facility of Screen on GNU/Linux and MS-Windows
-    % for KbChecks until a PsychHID implementation is ready.
-
+    % Pre R2007a Matlab on MS-Windows: We use the built-in KbCheck facility as fallback.
     if nargin==2
         while(1)
             [isDown,secs,code] = KbCheck(deviceNumber);
             if isDown
-                if code(keyCode)
+                if any(ismember(find(code), keyCode))
                     return;
                 end
             end
@@ -93,7 +120,7 @@ else
         while(1)
             [isDown,secs,code] = KbCheck();
             if isDown
-                if code(keyCode)
+                if any(ismember(find(code), keyCode))
                     return;
                 end
             end

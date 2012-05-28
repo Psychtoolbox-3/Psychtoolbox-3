@@ -1,0 +1,666 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		97F808D910347D6C00D58924 /* Aggregate */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 97F809D810347DB200D58924 /* Build configuration list for PBXAggregateTarget "Aggregate" */;
+			buildPhases = (
+			);
+			dependencies = (
+				97F809D610347D9400D58924 /* PBXTargetDependency */,
+				97F809D410347D9400D58924 /* PBXTargetDependency */,
+			);
+			name = Aggregate;
+			productName = Aggregate;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		83571B061551F7FD00EE961F /* HID_Utilities_External.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DB31033682400AD1095 /* HID_Utilities_External.h */; };
+		83571B081551F7FD00EE961F /* HID_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB61033682400AD1095 /* HID_Utilities.c */; };
+		83571B091551F7FD00EE961F /* IOHIDDevice_.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC41033682B00AD1095 /* IOHIDDevice_.c */; };
+		83571B0A1551F7FD00EE961F /* HID_Queue_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB41033682400AD1095 /* HID_Queue_Utilities.c */; };
+		83571B0B1551F7FD00EE961F /* HID_Error_Handler.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB71033682400AD1095 /* HID_Error_Handler.c */; };
+		83571B0C1551F7FD00EE961F /* HID_Name_Lookup.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB51033682400AD1095 /* HID_Name_Lookup.c */; };
+		83571B0D1551F7FD00EE961F /* IOHIDElement_.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC61033682B00AD1095 /* IOHIDElement_.c */; };
+		83571B0E1551F7FD00EE961F /* HID_Config_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB91033682400AD1095 /* HID_Config_Utilities.c */; };
+		83571B0F1551F7FD00EE961F /* ImmrHIDUtilAddOn.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC21033682B00AD1095 /* ImmrHIDUtilAddOn.c */; };
+		83571B111551F7FD00EE961F /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F57103368D600AD1095 /* CoreFoundation.framework */; };
+		83571B121551F7FD00EE961F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F661033698600AD1095 /* CoreServices.framework */; };
+		83571B131551F7FD00EE961F /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F51103368B900AD1095 /* IOKit.framework */; };
+		8D07F2C00486CC7A007CD1D0 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C1666FE841158C02AAC07 /* InfoPlist.strings */; };
+		974497E61034A4D9003588F5 /* HID_Utilities_External.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DB31033682400AD1095 /* HID_Utilities_External.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		974497E71034A4D9003588F5 /* ImmrHIDUtilAddOn.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DC31033682B00AD1095 /* ImmrHIDUtilAddOn.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		974497E81034A4D9003588F5 /* IOHIDDevice_.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DC51033682B00AD1095 /* IOHIDDevice_.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		974497E91034A4D9003588F5 /* IOHIDElement_.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DC71033682B00AD1095 /* IOHIDElement_.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		974497EA1034A4D9003588F5 /* IOHIDLib_.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DC81033682B00AD1095 /* IOHIDLib_.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		97876DBB1033682400AD1095 /* HID_Queue_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB41033682400AD1095 /* HID_Queue_Utilities.c */; };
+		97876DBC1033682400AD1095 /* HID_Name_Lookup.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB51033682400AD1095 /* HID_Name_Lookup.c */; };
+		97876DBD1033682400AD1095 /* HID_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB61033682400AD1095 /* HID_Utilities.c */; };
+		97876DBE1033682400AD1095 /* HID_Error_Handler.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB71033682400AD1095 /* HID_Error_Handler.c */; };
+		97876DC01033682400AD1095 /* HID_Config_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB91033682400AD1095 /* HID_Config_Utilities.c */; };
+		97876DC91033682B00AD1095 /* ImmrHIDUtilAddOn.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC21033682B00AD1095 /* ImmrHIDUtilAddOn.c */; };
+		97876DCB1033682B00AD1095 /* IOHIDDevice_.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC41033682B00AD1095 /* IOHIDDevice_.c */; };
+		97876DCD1033682B00AD1095 /* IOHIDElement_.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC61033682B00AD1095 /* IOHIDElement_.c */; };
+		97876DD61033683500AD1095 /* HID_cookie_strings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 97876DD01033683500AD1095 /* HID_cookie_strings.plist */; };
+		97876DD71033683500AD1095 /* HID_device_usage_strings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 97876DD21033683500AD1095 /* HID_device_usage_strings.plist */; };
+		97876DD81033683500AD1095 /* HID_usage_strings.plist in Resources */ = {isa = PBXBuildFile; fileRef = 97876DD41033683500AD1095 /* HID_usage_strings.plist */; };
+		97876F52103368B900AD1095 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F51103368B900AD1095 /* IOKit.framework */; };
+		97876F58103368D600AD1095 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F57103368D600AD1095 /* CoreFoundation.framework */; };
+		97876F671033698600AD1095 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F661033698600AD1095 /* CoreServices.framework */; };
+		97F808CC10347CFD00D58924 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F57103368D600AD1095 /* CoreFoundation.framework */; };
+		97F808CD10347CFE00D58924 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F661033698600AD1095 /* CoreServices.framework */; };
+		97F808CF10347D1700D58924 /* HID_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB61033682400AD1095 /* HID_Utilities.c */; };
+		97F808D010347D1800D58924 /* HID_Utilities_External.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DB31033682400AD1095 /* HID_Utilities_External.h */; };
+		97F808D110347D1900D58924 /* IOHIDDevice_.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC41033682B00AD1095 /* IOHIDDevice_.c */; };
+		97F808D210347D1A00D58924 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F51103368B900AD1095 /* IOKit.framework */; };
+		97F808D310347D1B00D58924 /* HID_Queue_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB41033682400AD1095 /* HID_Queue_Utilities.c */; };
+		97F808D410347D1C00D58924 /* HID_Error_Handler.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB71033682400AD1095 /* HID_Error_Handler.c */; };
+		97F808D510347D1C00D58924 /* HID_Name_Lookup.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB51033682400AD1095 /* HID_Name_Lookup.c */; };
+		97F808D610347D1D00D58924 /* IOHIDElement_.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC61033682B00AD1095 /* IOHIDElement_.c */; };
+		97F808D710347D1E00D58924 /* HID_Config_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB91033682400AD1095 /* HID_Config_Utilities.c */; };
+		97F808D810347D1F00D58924 /* ImmrHIDUtilAddOn.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC21033682B00AD1095 /* ImmrHIDUtilAddOn.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		97F809D310347D9400D58924 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0867D690FE84028FC02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 97F808C610347C9A00D58924;
+			remoteInfo = "HID Utilities dylib";
+		};
+		97F809D510347D9400D58924 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0867D690FE84028FC02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8D07F2BC0486CC7A007CD1D0;
+			remoteInfo = "HID Utilities Framework";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		089C1667FE841158C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		32BAE0B70371A74B00C91783 /* HID Utilities_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "HID Utilities_Prefix.pch"; sourceTree = "<group>"; };
+		83571B171551F7FD00EE961F /* libstatic library.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = "libstatic library.dylib"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8D07F2C70486CC7A007CD1D0 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8D07F2C80486CC7A007CD1D0 /* HID Utilities.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = "HID Utilities.framework"; sourceTree = BUILT_PRODUCTS_DIR; };
+		97876DB31033682400AD1095 /* HID_Utilities_External.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HID_Utilities_External.h; sourceTree = "<group>"; };
+		97876DB41033682400AD1095 /* HID_Queue_Utilities.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = HID_Queue_Utilities.c; sourceTree = "<group>"; };
+		97876DB51033682400AD1095 /* HID_Name_Lookup.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = HID_Name_Lookup.c; sourceTree = "<group>"; };
+		97876DB61033682400AD1095 /* HID_Utilities.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = HID_Utilities.c; sourceTree = "<group>"; };
+		97876DB71033682400AD1095 /* HID_Error_Handler.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = HID_Error_Handler.c; sourceTree = "<group>"; };
+		97876DB91033682400AD1095 /* HID_Config_Utilities.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = HID_Config_Utilities.c; sourceTree = "<group>"; };
+		97876DC21033682B00AD1095 /* ImmrHIDUtilAddOn.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ImmrHIDUtilAddOn.c; sourceTree = "<group>"; };
+		97876DC31033682B00AD1095 /* ImmrHIDUtilAddOn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImmrHIDUtilAddOn.h; sourceTree = "<group>"; };
+		97876DC41033682B00AD1095 /* IOHIDDevice_.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = IOHIDDevice_.c; sourceTree = "<group>"; };
+		97876DC51033682B00AD1095 /* IOHIDDevice_.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOHIDDevice_.h; sourceTree = "<group>"; };
+		97876DC61033682B00AD1095 /* IOHIDElement_.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = IOHIDElement_.c; sourceTree = "<group>"; };
+		97876DC71033682B00AD1095 /* IOHIDElement_.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOHIDElement_.h; sourceTree = "<group>"; };
+		97876DC81033682B00AD1095 /* IOHIDLib_.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOHIDLib_.h; sourceTree = "<group>"; };
+		97876DD11033683500AD1095 /* English */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = English; path = English.lproj/HID_cookie_strings.plist; sourceTree = "<group>"; };
+		97876DD31033683500AD1095 /* English */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = English; path = English.lproj/HID_device_usage_strings.plist; sourceTree = "<group>"; };
+		97876DD51033683500AD1095 /* English */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = English; path = English.lproj/HID_usage_strings.plist; sourceTree = "<group>"; };
+		97876F51103368B900AD1095 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = /System/Library/Frameworks/IOKit.framework; sourceTree = "<absolute>"; };
+		97876F57103368D600AD1095 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = /System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<absolute>"; };
+		97876F661033698600AD1095 /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = /System/Library/Frameworks/CoreServices.framework; sourceTree = "<absolute>"; };
+		97F808C710347C9A00D58924 /* libHID_Utilities.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libHID_Utilities.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		83571B101551F7FD00EE961F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				83571B111551F7FD00EE961F /* CoreFoundation.framework in Frameworks */,
+				83571B121551F7FD00EE961F /* CoreServices.framework in Frameworks */,
+				83571B131551F7FD00EE961F /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8D07F2C30486CC7A007CD1D0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97876F52103368B900AD1095 /* IOKit.framework in Frameworks */,
+				97876F58103368D600AD1095 /* CoreFoundation.framework in Frameworks */,
+				97876F671033698600AD1095 /* CoreServices.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		97F808C510347C9A00D58924 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97F808CC10347CFD00D58924 /* CoreFoundation.framework in Frameworks */,
+				97F808CD10347CFE00D58924 /* CoreServices.framework in Frameworks */,
+				97F808D210347D1A00D58924 /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		034768DDFF38A45A11DB9C8B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8D07F2C80486CC7A007CD1D0 /* HID Utilities.framework */,
+				97F808C710347C9A00D58924 /* libHID_Utilities.dylib */,
+				83571B171551F7FD00EE961F /* libstatic library.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0867D691FE84028FC02AAC07 /* HID Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				08FB77ACFE841707C02AAC07 /* Source */,
+				089C1665FE841158C02AAC07 /* Resources */,
+				0867D69AFE84028FC02AAC07 /* External Frameworks and Libraries */,
+				034768DDFF38A45A11DB9C8B /* Products */,
+			);
+			name = "HID Utilities";
+			sourceTree = "<group>";
+		};
+		0867D69AFE84028FC02AAC07 /* External Frameworks and Libraries */ = {
+			isa = PBXGroup;
+			children = (
+				97876F661033698600AD1095 /* CoreServices.framework */,
+				97876F57103368D600AD1095 /* CoreFoundation.framework */,
+				97876F51103368B900AD1095 /* IOKit.framework */,
+			);
+			name = "External Frameworks and Libraries";
+			sourceTree = "<group>";
+		};
+		089C1665FE841158C02AAC07 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				8D07F2C70486CC7A007CD1D0 /* Info.plist */,
+				97876DD01033683500AD1095 /* HID_cookie_strings.plist */,
+				97876DD21033683500AD1095 /* HID_device_usage_strings.plist */,
+				97876DD41033683500AD1095 /* HID_usage_strings.plist */,
+				089C1666FE841158C02AAC07 /* InfoPlist.strings */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		08FB77ACFE841707C02AAC07 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				32BAE0B70371A74B00C91783 /* HID Utilities_Prefix.pch */,
+				97876DB31033682400AD1095 /* HID_Utilities_External.h */,
+				97876DB41033682400AD1095 /* HID_Queue_Utilities.c */,
+				97876DB51033682400AD1095 /* HID_Name_Lookup.c */,
+				97876DB61033682400AD1095 /* HID_Utilities.c */,
+				97876DB71033682400AD1095 /* HID_Error_Handler.c */,
+				97876DB91033682400AD1095 /* HID_Config_Utilities.c */,
+				97876DC11033682B00AD1095 /* IOHIDManager */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		97876DC11033682B00AD1095 /* IOHIDManager */ = {
+			isa = PBXGroup;
+			children = (
+				97876DC21033682B00AD1095 /* ImmrHIDUtilAddOn.c */,
+				97876DC31033682B00AD1095 /* ImmrHIDUtilAddOn.h */,
+				97876DC41033682B00AD1095 /* IOHIDDevice_.c */,
+				97876DC51033682B00AD1095 /* IOHIDDevice_.h */,
+				97876DC61033682B00AD1095 /* IOHIDElement_.c */,
+				97876DC71033682B00AD1095 /* IOHIDElement_.h */,
+				97876DC81033682B00AD1095 /* IOHIDLib_.h */,
+			);
+			path = IOHIDManager;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		83571B051551F7FD00EE961F /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				83571B061551F7FD00EE961F /* HID_Utilities_External.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		974497ED1034A503003588F5 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				974497E61034A4D9003588F5 /* HID_Utilities_External.h in Headers */,
+				974497E71034A4D9003588F5 /* ImmrHIDUtilAddOn.h in Headers */,
+				974497E81034A4D9003588F5 /* IOHIDDevice_.h in Headers */,
+				974497E91034A4D9003588F5 /* IOHIDElement_.h in Headers */,
+				974497EA1034A4D9003588F5 /* IOHIDLib_.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		97F808C310347C9A00D58924 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97F808D010347D1800D58924 /* HID_Utilities_External.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		83571B041551F7FD00EE961F /* static library */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 83571B141551F7FD00EE961F /* Build configuration list for PBXNativeTarget "static library" */;
+			buildPhases = (
+				83571B051551F7FD00EE961F /* Headers */,
+				83571B071551F7FD00EE961F /* Sources */,
+				83571B101551F7FD00EE961F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "static library";
+			productName = "HID Utilities dylib";
+			productReference = 83571B171551F7FD00EE961F /* libstatic library.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		8D07F2BC0486CC7A007CD1D0 /* Framework */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4FADC24208B4156D00ABE55E /* Build configuration list for PBXNativeTarget "Framework" */;
+			buildPhases = (
+				974497ED1034A503003588F5 /* Headers */,
+				8D07F2BF0486CC7A007CD1D0 /* Resources */,
+				8D07F2C10486CC7A007CD1D0 /* Sources */,
+				8D07F2C30486CC7A007CD1D0 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Framework;
+			productInstallPath = "$(HOME)/Library/Frameworks";
+			productName = "HID Utilities";
+			productReference = 8D07F2C80486CC7A007CD1D0 /* HID Utilities.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		97F808C610347C9A00D58924 /* dynamic library */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 97F808CA10347CBA00D58924 /* Build configuration list for PBXNativeTarget "dynamic library" */;
+			buildPhases = (
+				97F808C310347C9A00D58924 /* Headers */,
+				97F808C410347C9A00D58924 /* Sources */,
+				97F808C510347C9A00D58924 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "dynamic library";
+			productName = "HID Utilities dylib";
+			productReference = 97F808C710347C9A00D58924 /* libHID_Utilities.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0867D690FE84028FC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0430;
+			};
+			buildConfigurationList = 4FADC24608B4156D00ABE55E /* Build configuration list for PBXProject "HID Utilities" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 1;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 0867D691FE84028FC02AAC07 /* HID Utilities */;
+			productRefGroup = 034768DDFF38A45A11DB9C8B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8D07F2BC0486CC7A007CD1D0 /* Framework */,
+				97F808C610347C9A00D58924 /* dynamic library */,
+				97F808D910347D6C00D58924 /* Aggregate */,
+				83571B041551F7FD00EE961F /* static library */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8D07F2BF0486CC7A007CD1D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D07F2C00486CC7A007CD1D0 /* InfoPlist.strings in Resources */,
+				97876DD61033683500AD1095 /* HID_cookie_strings.plist in Resources */,
+				97876DD71033683500AD1095 /* HID_device_usage_strings.plist in Resources */,
+				97876DD81033683500AD1095 /* HID_usage_strings.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		83571B071551F7FD00EE961F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				83571B081551F7FD00EE961F /* HID_Utilities.c in Sources */,
+				83571B091551F7FD00EE961F /* IOHIDDevice_.c in Sources */,
+				83571B0A1551F7FD00EE961F /* HID_Queue_Utilities.c in Sources */,
+				83571B0B1551F7FD00EE961F /* HID_Error_Handler.c in Sources */,
+				83571B0C1551F7FD00EE961F /* HID_Name_Lookup.c in Sources */,
+				83571B0D1551F7FD00EE961F /* IOHIDElement_.c in Sources */,
+				83571B0E1551F7FD00EE961F /* HID_Config_Utilities.c in Sources */,
+				83571B0F1551F7FD00EE961F /* ImmrHIDUtilAddOn.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8D07F2C10486CC7A007CD1D0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97876DBB1033682400AD1095 /* HID_Queue_Utilities.c in Sources */,
+				97876DBC1033682400AD1095 /* HID_Name_Lookup.c in Sources */,
+				97876DBD1033682400AD1095 /* HID_Utilities.c in Sources */,
+				97876DBE1033682400AD1095 /* HID_Error_Handler.c in Sources */,
+				97876DC01033682400AD1095 /* HID_Config_Utilities.c in Sources */,
+				97876DC91033682B00AD1095 /* ImmrHIDUtilAddOn.c in Sources */,
+				97876DCB1033682B00AD1095 /* IOHIDDevice_.c in Sources */,
+				97876DCD1033682B00AD1095 /* IOHIDElement_.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		97F808C410347C9A00D58924 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97F808CF10347D1700D58924 /* HID_Utilities.c in Sources */,
+				97F808D110347D1900D58924 /* IOHIDDevice_.c in Sources */,
+				97F808D310347D1B00D58924 /* HID_Queue_Utilities.c in Sources */,
+				97F808D410347D1C00D58924 /* HID_Error_Handler.c in Sources */,
+				97F808D510347D1C00D58924 /* HID_Name_Lookup.c in Sources */,
+				97F808D610347D1D00D58924 /* IOHIDElement_.c in Sources */,
+				97F808D710347D1E00D58924 /* HID_Config_Utilities.c in Sources */,
+				97F808D810347D1F00D58924 /* ImmrHIDUtilAddOn.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		97F809D410347D9400D58924 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 97F808C610347C9A00D58924 /* dynamic library */;
+			targetProxy = 97F809D310347D9400D58924 /* PBXContainerItemProxy */;
+		};
+		97F809D610347D9400D58924 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8D07F2BC0486CC7A007CD1D0 /* Framework */;
+			targetProxy = 97F809D510347D9400D58924 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		089C1666FE841158C02AAC07 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				089C1667FE841158C02AAC07 /* English */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		97876DD01033683500AD1095 /* HID_cookie_strings.plist */ = {
+			isa = PBXVariantGroup;
+			children = (
+				97876DD11033683500AD1095 /* English */,
+			);
+			name = HID_cookie_strings.plist;
+			sourceTree = "<group>";
+		};
+		97876DD21033683500AD1095 /* HID_device_usage_strings.plist */ = {
+			isa = PBXVariantGroup;
+			children = (
+				97876DD31033683500AD1095 /* English */,
+			);
+			name = HID_device_usage_strings.plist;
+			sourceTree = "<group>";
+		};
+		97876DD41033683500AD1095 /* HID_usage_strings.plist */ = {
+			isa = PBXVariantGroup;
+			children = (
+				97876DD51033683500AD1095 /* English */,
+			);
+			name = HID_usage_strings.plist;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		4FADC24308B4156D00ABE55E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_VERSION = A;
+				GCC_PREFIX_HEADER = "HID Utilities_Prefix.pch";
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = "@executable_path/../Frameworks/";
+				LIBRARY_STYLE = DYNAMIC;
+				MACH_O_TYPE = mh_dylib;
+				PRODUCT_NAME = "HID Utilities";
+				WRAPPER_EXTENSION = framework;
+			};
+			name = Debug;
+		};
+		4FADC24408B4156D00ABE55E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_VERSION = A;
+				GCC_PREFIX_HEADER = "HID Utilities_Prefix.pch";
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = "@executable_path/../Frameworks/";
+				LIBRARY_STYLE = DYNAMIC;
+				MACH_O_TYPE = mh_dylib;
+				PRODUCT_NAME = "HID Utilities";
+				WRAPPER_EXTENSION = framework;
+			};
+			name = Release;
+		};
+		4FADC24708B4156D00ABE55E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEPLOYMENT_LOCATION = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_FAST_OBJC_DISPATCH = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(value)",
+					"DEBUG=1",
+					"_NDEBUG=1",
+					"NDEBUG=1",
+				);
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_CHECK_SWITCH_STATEMENTS = YES;
+				GCC_WARN_EFFECTIVE_CPLUSPLUS_VIOLATIONS = NO;
+				GCC_WARN_FOUR_CHARACTER_CONSTANTS = NO;
+				GCC_WARN_INITIALIZER_NOT_FULLY_BRACKETED = YES;
+				GCC_WARN_MISSING_PARENTHESES = YES;
+				GCC_WARN_PEDANTIC = NO;
+				GCC_WARN_SHADOW = NO;
+				GCC_WARN_TYPECHECK_CALLS_TO_PRINTF = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = NO;
+				GCC_WARN_UNKNOWN_PRAGMAS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_LABEL = YES;
+				GCC_WARN_UNUSED_PARAMETER = YES;
+				GCC_WARN_UNUSED_VALUE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_DYLIB_INSTALL_NAME = /usr/local/lib/libHID_Utilities64.a;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"$(value)",
+					"-Wimplicit-function-declaration",
+				);
+				OTHER_CPLUSPLUSFLAGS = "";
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wcast-align",
+					"-Wchar-subscripts",
+					"-Wextra",
+					"-Wextra-tokens",
+					"-Wformat=2",
+					"-Wmissing-field-initializers",
+					"-Wpointer-arith",
+					"-Wshadow",
+					"-Wswitch-default",
+					"-Wundef",
+					"-Wwrite-strings",
+				);
+				ZERO_LINK = NO;
+			};
+			name = Debug;
+		};
+		4FADC24808B4156D00ABE55E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEPLOYMENT_LOCATION = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_FAST_OBJC_DISPATCH = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_WARN_FOUR_CHARACTER_CONSTANTS = NO;
+				LD_DYLIB_INSTALL_NAME = /usr/local/lib/libHID_Utilities64.a;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				ONLY_ACTIVE_ARCH = NO;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		83571B151551F7FD00EE961F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				MACH_O_TYPE = staticlib;
+				PRODUCT_NAME = HIDUtilities;
+			};
+			name = Debug;
+		};
+		83571B161551F7FD00EE961F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				INSTALL_PATH = /usr/local/lib;
+				MACH_O_TYPE = staticlib;
+				PRODUCT_NAME = HIDUtilities;
+			};
+			name = Release;
+		};
+		97F808C810347C9C00D58924 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				PRODUCT_NAME = HID_Utilities;
+			};
+			name = Debug;
+		};
+		97F808C910347C9C00D58924 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				INSTALL_PATH = /usr/local/lib;
+				PRODUCT_NAME = HID_Utilities;
+			};
+			name = Release;
+		};
+		97F808DA10347D6D00D58924 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = Aggregate;
+			};
+			name = Debug;
+		};
+		97F808DB10347D6D00D58924 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = Aggregate;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4FADC24208B4156D00ABE55E /* Build configuration list for PBXNativeTarget "Framework" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4FADC24308B4156D00ABE55E /* Debug */,
+				4FADC24408B4156D00ABE55E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4FADC24608B4156D00ABE55E /* Build configuration list for PBXProject "HID Utilities" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4FADC24708B4156D00ABE55E /* Debug */,
+				4FADC24808B4156D00ABE55E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		83571B141551F7FD00EE961F /* Build configuration list for PBXNativeTarget "static library" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				83571B151551F7FD00EE961F /* Debug */,
+				83571B161551F7FD00EE961F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		97F808CA10347CBA00D58924 /* Build configuration list for PBXNativeTarget "dynamic library" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				97F808C810347C9C00D58924 /* Debug */,
+				97F808C910347C9C00D58924 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		97F809D810347DB200D58924 /* Build configuration list for PBXAggregateTarget "Aggregate" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				97F808DA10347D6D00D58924 /* Debug */,
+				97F808DB10347D6D00D58924 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 0867D690FE84028FC02AAC07 /* Project object */;
+}

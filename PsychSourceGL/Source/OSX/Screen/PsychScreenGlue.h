@@ -75,7 +75,7 @@ psych_bool					PsychRestoreScreenSettings(int screenNumber);
 void						PsychHideCursor(int screenNumber, int deviceIdx);
 void						PsychShowCursor(int screenNumber, int deviceIdx);
 void						PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx);
-void			    PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable);
+void                        PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable);
 unsigned int                PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable);
 int                         PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber);
 PsychError					PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual);

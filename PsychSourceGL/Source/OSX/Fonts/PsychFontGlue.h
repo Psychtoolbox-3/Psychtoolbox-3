@@ -7,8 +7,8 @@
 				
 	AUTHORS:
 	
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
-		
+         Allen Ingling		awi		Allen.Ingling@nyu.edu
+         Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 	
@@ -87,12 +87,7 @@ typedef struct _PsychFontStructType_{
         PsychFontMetricsStructType		verticalMetrics;
 } PsychFontStructType;
 
-
-
 // function prototypes//functions for ATSU
-//void PsychSetATSUStyleAttributes(void *atsuStyle,  PsychWindowRecordType *winRec);
-//void SuperFooBar(void *atsuStyleFoo, PsychWindowRecordType *winRec);
-
 
 //functions for handling psych font lists
 int 			PsychFreeFontList(void);
@@ -106,16 +101,5 @@ void 			PsychCopyFontRecordsToNativeStructArray(int numFonts, PsychFontStructTyp
 int				PsychFindNumFMFontStylesFromStyle(FMFontStyle fmStyleFlag);
 void 			PsychGetFMFontStyleNameFromIndex(int styleIndex, FMFontStyle fontStyle, char *styleName, int styleNameLength);
 
-
-//psych_bool	PsychGetFontNameAndStyleFromFontNumber(char *fontName, int fontNameSize, FMFontStyle *fontStyle, int fontNumber);
-//psych_bool	PsychGetFontNumberFromFontNameAndStyle(char *fontName, FMFontStyle fontStyle, int *fontNumber);
-
 //end include once
 #endif
-
-
-
-
-
-    
-

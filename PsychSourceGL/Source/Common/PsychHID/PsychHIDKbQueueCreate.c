@@ -661,7 +661,8 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 	long				KbDeviceUsagePages[NUMDEVICEUSAGES]= {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
 	long				KbDeviceUsages[NUMDEVICEUSAGES]={kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
 	int					numDeviceUsages=NUMDEVICEUSAGES;
-	
+    int                 i;
+
 	HRESULT result;
 	IOHIDDeviceInterface122** interface=NULL;	// This requires Mac OS X 10.3 or higher
 
@@ -686,7 +687,6 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 		int deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
 		pRecDevice deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
 		int numDeviceIndices;
-		int i;
 		PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &numDeviceIndices, deviceIndices, deviceRecords);  
 		{
 			// A negative device number causes the default device to be used:
@@ -709,7 +709,8 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 					PsychErrorExitMsg(PsychError_user, "No keyboard or keypad devices detected.");
 			}
 		}
-		deviceRecord=deviceRecords[i]; 
+		deviceRecord = deviceRecords[i];
+        deviceIndex  = deviceIndices[i];
 	}
 
 	// The queue key list is already assigned, if present at all, ie. non-NULL.
@@ -719,8 +720,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 	// to the queue and events from that key will not be detected.
 	// Note that psychHIDKbQueueList does not need to be freed because it is allocated
 	// within PsychAllocInIntegerListArg using mxMalloc
-
-	interface=deviceRecord->interface;
+	interface = PsychHIDGetDeviceInterfacePtrFromIndex(deviceIndex);
 	if(!interface)
 		PsychErrorExitMsg(PsychError_system, "Could not get interface to device.");
 		

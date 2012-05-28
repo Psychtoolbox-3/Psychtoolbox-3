@@ -25,4 +25,3 @@ DEFUN_DLD(FontInfo, args, nargout,
   return octFunction(args, nargout);
 }
 #endif
-

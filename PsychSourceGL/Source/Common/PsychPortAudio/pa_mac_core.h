@@ -56,6 +56,11 @@ typedef struct paMacCoreStreamInfo
     unsigned long flags;        /* flags to modify behaviour */
 } paMacCoreStreamInfo;
 
+#if 0
+/* MK: Disabled here in PsychPortAudio's private version of pa_mac_core.h
+ * to avoid conflicting duplicate declaration of this function and symbols in
+ * PsychPortAudio.o and the Portaudio library.
+ */
 /* Use this function to initialize a paMacCoreStreamInfo struct
    using the requested flags. */
 void paSetupMacCoreStreamInfo( paMacCoreStreamInfo *data, unsigned long flags )
@@ -66,6 +71,7 @@ void paSetupMacCoreStreamInfo( paMacCoreStreamInfo *data, unsigned long flags )
    data->version = 0x01;
    data->flags = flags;
 }
+#endif
 
 /*
  * The following flags alter the behaviour of PA on the mac platform.
@@ -76,20 +82,20 @@ void paSetupMacCoreStreamInfo( paMacCoreStreamInfo *data, unsigned long flags )
  * which allows for much lower latency, but might disrupt the device
  * if other programs are using it, even when you are just Querying
  * the device. */
-const unsigned long paMacCore_ChangeDeviceParameters      = 0x01;
+#define paMacCore_ChangeDeviceParameters       0x01
 
 /* In combination with the above flag,
  * causes the stream opening to fail, unless the exact sample rates
  * are supported by the device. */
-const unsigned long paMacCore_FailIfConversionRequired    = 0x02;
+#define paMacCore_FailIfConversionRequired     0x02
 
 /* These flags set the SR conversion quality, if required. The wierd ordering
  * allows Maximum Quality to be the default.*/
-const unsigned long paMacCore_ConversionQualityMin    = 0x0100;
-const unsigned long paMacCore_ConversionQualityMedium = 0x0200;
-const unsigned long paMacCore_ConversionQualityLow    = 0x0300;
-const unsigned long paMacCore_ConversionQualityHigh   = 0x0400;
-const unsigned long paMacCore_ConversionQualityMax    = 0x0000;
+#define paMacCore_ConversionQualityMin     0x0100
+#define paMacCore_ConversionQualityMedium  0x0200
+#define paMacCore_ConversionQualityLow     0x0300
+#define paMacCore_ConversionQualityHigh    0x0400
+#define paMacCore_ConversionQualityMax     0x0000
 
 /*
  * Here are some "preset" combinations of flags (above) to get to some
@@ -98,14 +104,14 @@ const unsigned long paMacCore_ConversionQualityMax    = 0x0000;
  */
 /*This is the default setting: do as much sample rate conversion as possible
  * and as little mucking with the device as possible. */
-const unsigned long paMacCorePlayNice = 0x00;
+#define paMacCorePlayNice  0x00
 /*This setting is tuned for pro audio apps. It allows SR conversion on input
   and output, but it tries to set the appropriate SR on the device.*/
-const unsigned long paMacCorePro      = 0x01;
+#define paMacCorePro       0x01
 /*This is a setting to minimize CPU usage and still play nice.*/
-const unsigned long paMacCoreMinimizeCPUButPlayNice = 0x0100;
+#define paMacCoreMinimizeCPUButPlayNice  0x0100
 /*This is a setting to minimize CPU usage, even if that means interrupting the device. */
-const unsigned long paMacCoreMinimizeCPU = 0x0101;
+#define paMacCoreMinimizeCPU  0x0101
 
 
 #ifdef __cplusplus
