@@ -1,5 +1,5 @@
-function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flavor)
-% DownloadPsychtoolbox([targetdirectory] [,downloadmethod=0] [,targetRevision][,flavor])
+function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
+% DownloadPsychtoolbox([targetdirectory][, flavor][, targetRevision])
 %
 % This script downloads the latest Mac OSX, GNU/Linux or Windows
 % Psychtoolbox-3 from our server to your disk, creating your working copy,
@@ -37,16 +37,9 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % isn't supported by the current "beta" anymore, so you'd need to stick
 % with an old versioned release.
 %
-% Normally your download should just work(TM). The installer knows three
-% different methods of download and tries all of them if neccessary, ie.,
-% if the preferred method fails, the 2nd best is tried etc. Should the
-% installer get stuck for an inappropriate amount of time (More than 5-10
-% minutes), you can try to abort it and restart it, providing the
-% additional 'downloadmethod' parameter with a setting of either 0 or 1, to
-% change the order of tried download methods to prevent the downloader from
-% getting stuck with a specific method in rare cases. Very infrequently,
-% the download servers may be overloaded or down for maintenance, resulting
-% in download failure. In that case, please retry a few hours later.
+% Normally your download should just work(TM). Very infrequently, the
+% download servers may be overloaded or down for maintenance, resulting in
+% download failure. In that case, please retry a few hours later.
 %
 %
 % The "targetRevision" argument is optional and should be normally omitted.
@@ -360,19 +353,8 @@ if targetdirectory(end) == filesep
     targetdirectory = targetdirectory(1:end-1);
 end
 
-% Override for download method provided?
-if nargin < 2
-    downloadmethod = [];
-end
-
-if isempty(downloadmethod)
-    % Try 0 by default (https://):
-    downloadmethod = 0;
-else
-    if downloadmethod < 0 || downloadmethod > 1
-        error('Invalid downloadmethod provided. Valid are values 0 (https) and 1 (http).');
-    end
-end
+% Hard-Code downloadmethod to zero aka https protocol:
+downloadmethod = 0;
 
 if nargin < 3
     targetRevision = [];
@@ -385,13 +367,13 @@ else
     targetRevision = [' -r ' targetRevision ' '];
 end
 
-% Set flavor defaults and synonyms
-if nargin < 4
+% Set flavor defaults and synonyms:
+if nargin < 2
     flavor = [];
 end
 
 if isempty(flavor)
-    flavor='beta';
+    flavor = 'beta';
 end
 
 % Make sure that flavor is lower-case, unless its a 'Psychtoolbox-x.y.z'
@@ -450,7 +432,7 @@ switch (flavor)
         pause;
 end
 
-fprintf('DownloadPsychtoolbox(''%s'',''%s'')\n',targetdirectory, flavor);
+fprintf('DownloadPsychtoolbox(''%s'',''%s'',''%s'')\n',targetdirectory, flavor, targetRevision);
 fprintf('Requested flavor is: %s\n',flavor);
 fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetdirectory);
 fprintf('\n');
@@ -704,7 +686,7 @@ if downloadmethod < 1
     % HTTPS:
     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
 else
-    % HTTP:
+    % HTTP: This is unsupported by GitHub - just left as a reference for now.
     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
 end
 
@@ -720,39 +702,42 @@ else
     [err,result]=dos(checkoutcommand, '-echo');
 end
 
-if err & (downloadmethod < 1)
-    % Failed! Let's retry it via http protocol. This may work-around overly
-    % restrictive firewalls or otherwise screwed network proxies:
-    fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
-    fprintf('%s\n\n',result);
-    fprintf('Will retry now by use of alternative http protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
-    fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
-    fprintf('%s\n\n',checkoutcommand);
-    if isOSX | isLinux
-        [err]=system(checkoutcommand);
-        result = 'For reason, see output above.';
-    else
-        [err,result]=dos(checkoutcommand, '-echo');
-    end    
-end
-
-if err & (downloadmethod > 0)
-    % Failed! Let's retry it via https protocol. This may work-around overly
-    % restrictive firewalls or otherwise screwed network proxies:
-    fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
-    fprintf('%s\n\n',result);
-    fprintf('Will retry now by use of alternative https protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
-    fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
-    fprintf('%s\n\n',checkoutcommand);
-    if isOSX | isLinux
-        [err]=system(checkoutcommand);
-        result = 'For reason, see output above.';
-    else
-        [err,result]=dos(checkoutcommand, '-echo');
-    end    
-end
+% MK: Pointless fallbacks disabled, as GitHub only supports https protocol, so a
+% failure of the first try is game over.
+%
+% if err & (downloadmethod < 1)
+%     % Failed! Let's retry it via http protocol. This may work-around overly
+%     % restrictive firewalls or otherwise screwed network proxies:
+%     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
+%     fprintf('%s\n\n',result);
+%     fprintf('Will retry now by use of alternative http protocol...\n');
+%     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
+%     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
+%     fprintf('%s\n\n',checkoutcommand);
+%     if isOSX | isLinux
+%         [err]=system(checkoutcommand);
+%         result = 'For reason, see output above.';
+%     else
+%         [err,result]=dos(checkoutcommand, '-echo');
+%     end    
+% end
+% 
+% if err & (downloadmethod > 0)
+%     % Failed! Let's retry it via https protocol. This may work-around overly
+%     % restrictive firewalls or otherwise screwed network proxies:
+%     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
+%     fprintf('%s\n\n',result);
+%     fprintf('Will retry now by use of alternative https protocol...\n');
+%     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
+%     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
+%     fprintf('%s\n\n',checkoutcommand);
+%     if isOSX | isLinux
+%         [err]=system(checkoutcommand);
+%         result = 'For reason, see output above.';
+%     else
+%         [err,result]=dos(checkoutcommand, '-echo');
+%     end    
+% end
 
 if err
     fprintf('Sorry, the download command "CHECKOUT" failed with error code %d: \n',err);
@@ -761,6 +746,8 @@ if err
     fprintf('few minutes. It could also be that the subversion client was not (properly) installed. On Microsoft\n');
     fprintf('Windows you will need to exit and restart Matlab or Octave after installation of the Subversion client. If that\n');
     fprintf('does not help, you will need to reboot your machine before proceeding.\n');
+    fprintf('Another reason for download failure could be if an old working copy - a Psychtoolbox folder - still exists.\n');
+    fprintf('In that case, it may help to manually delete that folder. Or maybe you do not have write permissions for the target folder?\n\n');
     error('Download failed.');
 end
 fprintf('Download succeeded!\n\n');
