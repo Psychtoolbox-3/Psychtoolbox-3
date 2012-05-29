@@ -198,6 +198,50 @@ if IsOSX
         fprintf('Press any key on keyboard to continue with setup...\n');
         pause;
     end
+    
+    % Is the operating system minor version 'minorver' < 5 on 64-Bit OSX?
+    if (minorver < 5) & IsOSX(1)
+        % Yes. This is MacOS/X 10.4 or earlier, i.e., older than 10.5
+        % Leopard. In all likelihood, this current PTB release won't work on
+        % such a system anymore, because the binary 64-Bit MEX files are
+        % linked against incompatible runtimes and frameworks. Output a
+        % clear warning message about this, with tips on how to resolve the
+        % problem:
+        fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
+        fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
+        fprintf('This 64-Bit release of Psychtoolbox-3 is not compatible\n');
+        fprintf('to OS/X versions older than 10.5 "Leopard".\n\n');
+        fprintf('That means that some or many crucial functions will fail.\n');
+        fprintf('You may encounter errors or failures during the remainder of\n');
+        fprintf('this installation procedure, or later during use of the toolkit.\n\n');
+        fprintf('You can either use a version of 32-Bit Matlab to use the 32-Bit Psychtoolbox\n');
+        fprintf('on your system, or a 32-Bit version of GNU/Octave. Alternatively update your\n');
+        fprintf('operating system to at least version 10.5, but better 10.6 Snow Leopard or later.\n');
+        fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
+        fprintf('Press any key on keyboard to continue with setup...\n');
+        pause;
+    end
+
+    % Is the operating system minor version 'minorver' < 6 on 64-Bit OSX?
+    if (minorver < 6) & IsOSX(1)
+        % Yes. This is MacOS/X 10.5 or earlier, i.e., older than 10.6
+        % Snow Leopard. 64-Bit PTB will only provide limited functionality:
+        fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
+        fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
+        fprintf('This 64-Bit release of Psychtoolbox-3 is not fully compatible\n');
+        fprintf('to OS/X versions older than 10.6 "Snow Leopard".\n\n');
+        fprintf('That means that some functionality will be limited or missing.\n');
+        fprintf('E.g., video capture, video recording, movie playback and movie writing\n');
+        fprintf('will be disabled. High precision framebuffer display modes and some parts of\n');
+        fprintf('OpenGL 3D graphics support will be disabled or limited in performance and functionality.\n');
+        fprintf('General graphics performance may be lower and resource consumption may be higher.\n\n');
+        fprintf('You can either use a version of 32-Bit Matlab to use the 32-Bit Psychtoolbox\n');
+        fprintf('on your system, or a 32-Bit version of GNU/Octave to get better results.\n');
+        fprintf('Alternatively update your operating system to at least version 10.6 Snow Leopard or later.\n');
+        fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
+        fprintf('Press any key on keyboard to continue with setup...\n');
+        pause;
+    end
 end
 
 % Matlab specific setup:
@@ -213,7 +257,7 @@ if ~IsOctave
             fprintf('The current "beta" flavor is no longer compatible with your version of Matlab.\n');
             fprintf('Current "beta" only works on Matlab Version 7.4 (R2007a) or later.\n\n');
             fprintf('I will try to finish setup, but most functions will not work for you.\n');
-            fprintf('Please run some legacy DownloadPsychtoolbox downloader to download an outdated,\n');
+            fprintf('Please run the legacy DownloadLegacyPsychtoolbox() downloader to download an outdated,\n');
             fprintf('but functional older version of Psychtoolbox (e.g., V3.0.9) for your Matlab setup or to\n');
             fprintf('receive further instructions.\n');
             fprintf('\n\nPress any key to continue after you have read and understood above message completely.\n\n');
