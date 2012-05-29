@@ -8,10 +8,11 @@ function values = SearchGammaTable(targets, input, table)
 % The table is assumed to be a column vector.
 % The returned indices and values are are row vectors.
 %
-% Works by exhaustive search.  A binary search might be faster
-% but would be harder to vectorize.  I suspect that this is
-% a fast Matlab implementation, but those who want to try are
-% welcome to try to do better.  (Remember, though, that this
+% Works by using Matlab's interp1, with the output as the x values and
+% the input as the f(x) values.
+% 
+% I suspect that this is a fast Matlab implementation, but those who want
+% to try are welcome to try to do better.  (Remember, though, that this
 % routine gains in efficiency the more searches are done at once.
 % This is because it contains no dreaded loops.)
 %
@@ -25,6 +26,7 @@ function values = SearchGammaTable(targets, input, table)
 %                       name and interface.
 % 11/20/06      dhb     Finish update by calling through MATLAB's interpolation function.
 % 9/15/08       dhb     Handle case where there are a bunch of zeros at the beginning of gamma table.
+% 5/26/12       dhb     Improve comment.  This was not doing exhaustive search.
 
 % Check dimensions
 [m,n] = size(targets);

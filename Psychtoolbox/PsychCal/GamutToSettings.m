@@ -19,6 +19,7 @@ function settings = GamutToSettings(cal, gamut)
 % 4/13/02	 awi   Replaced SettingsToDevice with new name SettingsToPrimary.
 % 11/16/06   dhb   Adjust for [0,1] world.  Involves changing what's passed
 %                  in and out
+% 5/26/12    dhb   Add gammaMode == 2 case.
 
 % Error checking
 if isempty(cal.gammaTable)
@@ -36,6 +37,8 @@ elseif cal.gammaMode == 1
 		error('Inverse gamma table not present for gammaMode == 1');
 	end
 	settings = GamutToSettingsTbl(cal.iGammaTable, gamut);
+elseif cal.gammaMode == 2
+    settings = GamutToSettingsExhaust(cal.gammaInput, cal.gammaTable, gamut);
 else
 	error('Requested gamma inversion mode %g is not yet implemented', cal.gammaMode);
 end

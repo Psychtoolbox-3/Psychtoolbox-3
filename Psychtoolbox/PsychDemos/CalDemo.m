@@ -64,13 +64,12 @@ ylabel('Linear output');
 title('Device Gamma');
 
 %% Gamma correction without worrying about color
-% Show how to linearize a gamma table, assuming 8-bits channel in the frame
-% buffer (256 entry lookup table for each channel).  If there were no
+% Show how to linearize a gamma table.  If there were no
 % quantization in the DAC, these values would linearize perfectly.
 % Actually linearization will be affected by the precision of the DACs.
 
-% Set inversion method.  Method 0 does an exahaustive search of the values
-% from the smooth fit to the data that are in the table.
+% Set inversion method.  See SetGammaMethod for information on available
+% methods.
 defaultGammaMethod = 0;
 gammaMethod = input(sprintf('Enter gamma method [%d]:',defaultGammaMethod));
 if (isempty(gammaMethod))
@@ -81,6 +80,7 @@ cal = SetGammaMethod(cal,gammaMethod);
 % Make the desired linear output, then convert.
 linearValues = ones(3,1)*linspace(0,1,256);
 clutValues = PrimaryToSettings(cal,linearValues);
+predValues = SettingsToPrimary(cal,clutValues);
 
 % Make a plot of the inverse lookup table.
 figure; clf;
@@ -102,6 +102,27 @@ axis([0 1 0 1]); axis('square');
 xlabel('Linear output');
 ylabel('Input value');
 title('Inverse Gamma');
+
+% Make a plot of the obtained linear values.
+figure; clf;
+subplot(1,3,1); hold on
+plot(linearValues,predValues(1,:)','r');
+axis([0 1 0 1]); axis('square');
+xlabel('Desired value');
+ylabel('Predicted value');
+title('Gamma Correction');
+subplot(1,3,2); hold on
+plot(linearValues,predValues(2,:)','g');
+axis([0 1 0 1]); axis('square');
+xlabel('Desired value');
+ylabel('Predicted value');
+title('Gamma Correction');
+subplot(1,3,3); hold on
+plot(linearValues,predValues(3,:)','b');
+axis([0 1 0 1]); axis('square');
+xlabel('Desired value');
+ylabel('Predicted value');
+title('Gamma Correction');
 
 %% Color space conversions  - CIE 1931
 % Let's see how to do some standard color conversions
