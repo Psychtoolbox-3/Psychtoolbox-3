@@ -2,6 +2,8 @@
 %
 % Refit the gamma data from a calibration.
 %
+% See also CalDemo, CalibrateFitGamma, SetGammaMethod, GamutToSettings
+%
 % 3/27/02  dhb  Wrote it.
 % 8/26/03  dhb, jl  Allow changing dacsize of calibraiton.  Useful for dropping from 10 to 8.
 % 2/2/05   dhb, dam Ask for filename to save to, rather than automatically overwrite.
@@ -17,9 +19,10 @@
 % 5/28/10  dhb      Add yoked fitting routine to calls.  Should have no effect when yoked isn't set, but do the right thing when it is.
 % 6/5/10   dhb      Update type list provided to user.
 %          dhb      Better plots, using plot subroutines.
+% 5/26/12  dhb      Added ability to use raw measured data as the fit gamma table.  See comment where that's done below.
 
 % Enter load code
-defaultFileName = 'monitor';
+defaultFileName = 'PTB3TestCal';
 thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
 newFileName = input(thePrompt,'s');
 if (isempty(newFileName))
@@ -43,8 +46,8 @@ fprintf('Gamma table available at %g levels\n',...
 fprintf('Old gamma fit type was: %s\n',cal.describe.gamma.fitType);
 oldType = cal.describe.gamma.fitType;
 fprintf('Possible fit types are defined by routine CalibrateFitGamma\n');
-fprintf('See "help CalibrateFitGamma for most up to date options\n');
-fprintf('Current (June, 2010) options are:\n');
+fprintf('See "help CalibrateFitGamma for most up to date options (except for rawdata)\n');
+fprintf('Current (May 2012) options are:\n');
 fprintf('\tsimplePower\n');
 fprintf('\tcrtLinear\n');
 fprintf('\tcrtPolyLinear\n');
@@ -53,6 +56,7 @@ fprintf('\tcrtSumPow\n');
 fprintf('\tbetacdf\n');
 fprintf('\tsigmoid\n');
 fprintf('\tweibull\n');
+fprintf('\trawdata\n');
 
 gamma.fitType= GetWithDefault('Enter new fit type',oldType);
 cal.describe.gamma = gamma;
@@ -76,7 +80,36 @@ end
 % Now refit
 cal = CalibrateFitLinMod(cal);
 cal = CalibrateFitYoked(cal);
-cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
+
+% Switch about whether to call standard routine
+switch (gamma.fitType)
+    % Literally use the measured data as the fit data.
+    % You only want to do this under very unusual circumstances.
+    % The reason I'm putting it in is to deal with a DLP projector
+    % whose filter wheel I ripped out, and for which the light output
+    % is highly non-monotonic with input.  So, I'll measure at every
+    % possible input settings and then use exhaustive search of the
+    % gamma table to invert.  This is where the output of the standard
+    % calibration program pushes the raw data into the typical field.
+    % 
+    % This is probably a fairly fragile bit of code and should only be used
+    % with caution and knowledge aforethought.
+    %
+    % I put this here rather than in CalibrateFitGamma to avoid a lot of
+    % massaging done by that routine, which we do not want.
+    case 'rawdata'
+        if (size(cal.rawdata.rawGammaTable,2) ~= cal.nDevices*cal.nPrimaryBases)
+            error('Dimensions of raw data are not correct, given number of devices and linear model size')
+        end
+        cal.gammaInput = cal.rawdata.rawGammaInput;
+        cal.gammaTable = cal.rawdata.rawGammaTable;
+        cal.gammaTable(cal.gammaTable < 0) = 0;
+        cal.gammaTable(cal.gammaTable > 1) = 1;
+        
+    % Fit the measured data using standard PTB methods
+    otherwise 
+        cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
+end
 
 % Put up a plot of the essential data
 CalibratePlotSpectra(cal,figure(1));

@@ -43,7 +43,8 @@
 % PsychSourceGL/Cohorts/libDC1394/ as libdc1394-2.2.0.tar at the moment of
 % this writing. However, you can download the most recent copies of the
 % libraries from libDC's sourceforge website anytime and install it instead
-% to get access to the latest features and bugfixes.
+% to get access to the latest features and bugfixes. Another way to get the
+% library installed is via Homebrew: "brew install libdc1394".
 %
 
 % History:

@@ -13,10 +13,11 @@ function cal = CalibrateFitLinMod(cal)
 % 5/25/10  dhb, ar Change yoked field names to match
 % 5/26/10  dhb, ar Still fussing with names.
 % 5/28/10  dhb, ar Pull out yoked fitting from here -- too confusing.
+% 5/27/12  dhb     Handle case where there are more measurements than wavelength samples.
 
 Pmon = zeros(cal.describe.S(3),cal.nDevices*cal.nPrimaryBases);
 mGammaRaw = zeros(cal.describe.nMeas,cal.nDevices*cal.nPrimaryBases);
-monSVs = zeros(cal.describe.nMeas,cal.nDevices);
+monSVs = zeros(min([cal.describe.nMeas cal.describe.S(3)]),cal.nDevices);
 for i = 1:cal.nDevices
     tempMon = reshape(cal.rawdata.mon(:,i),cal.describe.S(3),cal.describe.nMeas);
     monSVs(:,i) = svd(tempMon);

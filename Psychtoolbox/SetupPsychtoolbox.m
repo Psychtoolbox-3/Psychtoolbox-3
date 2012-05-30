@@ -64,8 +64,8 @@ if strcmp(computer,'MAC')
     fprintf('This version of Psychtoolbox is no longer supported under MacOSX on the Apple PowerPC hardware platform.\n');
     fprintf('You can get modern versions of Psychtoolbox-3 for Linux if you choose to install GNU/Linux on your PowerPC\n');
     fprintf('machine. These are available from the GNU/Debian project and a future Ubuntu 12.10 release\n.');
-    fprintf('Alternatively you can download old - totally unsupported - releases of Psychtoolbox version 3.0.9 from GoogleCode:\n');
-    fprintf('http://code.google.com/p/psychtoolbox-3/ \n\n');
+    fprintf('Alternatively you can download old - totally unsupported - releases of Psychtoolbox version 3.0.9\n');
+    fprintf('from GoogleCode by use of the alternate download function DownloadLegacyPsychtoolbox().\n\n');
     error('Apple MacOSX on Apple PowerPC computers is no longer supported by this Psychtoolbox version.');
 end
 
