@@ -7,3 +7,6 @@ xcuserdata/
 project.xcworkspace/
 .FBCLockFolder
 .FBCIndex
+*.asv
+*.ncb
+*.swp
