@@ -4,7 +4,8 @@ function [fold,nfold] = FolderFromFolder(folder,mode)
 % Returns struct with all directories in directory FOLDER.
 % MODE specifies whether an error is displayed when no directories are
 % found (default). If MODE is 'silent', only a message will will be
-% displayed in the command window.
+% displayed in the command window, if 'ssilent', no notification will be
+% produced at all.
 
 % 2007 IH        Wrote it.
 % 2007 IH&DN     Various additions
@@ -13,11 +14,14 @@ function [fold,nfold] = FolderFromFolder(folder,mode)
 %                optimized
 % 2010-07-02 DN  Fixed typo in warning when silent and no files found, got
 %                rid of for loop
+% 2012-06-04 DN  Now also have ssilent mode for no output at all
 
-if nargin == 2 && strcmp(mode,'silent')
-    silent = true;
+if nargin >= 2 && strcmp(mode,'silent')
+    silent = 1;
+elseif nargin >= 2 && strcmp(mode,'ssilent')
+    silent = 2;
 else
-    silent = false;
+    silent = 0;
 end
 
 fold        = dir(folder);
@@ -31,7 +35,7 @@ fold(qremove) = [];
 nfold = length(fold);
 
 if nfold==0
-    if silent
+    if silent==1
         fprintf('FolderFromFolder: No folders found in: %s\n',folder);
         fold = [];
     elseif ~silent

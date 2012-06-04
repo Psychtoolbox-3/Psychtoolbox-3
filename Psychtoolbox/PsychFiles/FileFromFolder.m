@@ -4,7 +4,8 @@ function [file,nfile] = FileFromFolder(folder,mode,f_ext)
 % Returns struct with all files in directory FOLDER.
 % MODE specifies whether an error is displayed when no directories are
 % found (default). If MODE is 'silent', only a message will will be
-% displayed in the command window. If left emtpy, default is implied.
+% displayed in the command window, if 'ssilent', no notification will be
+% produced at all. If left empty, default is implied.
 % Ext is an optional filter on file extension. If specified, only files
 % with the specified extension will be found. It can be a cell vector of
 % strings for filtering on multiple extensions
@@ -20,11 +21,14 @@ function [file,nfile] = FileFromFolder(folder,mode,f_ext)
 % 2010-07-02 DN  Now supports filtering on multiple extensions
 % 2010-07-12 DN  Fixed . at end of fname
 % 2011-06-07 DN  Can now also filter for files with no extension
+% 2012-06-04 DN  Now also have ssilent mode for no output at all
 
 if nargin >= 2 && strcmp(mode,'silent')
-    silent = true;
+    silent = 1;
+elseif nargin >= 2 && strcmp(mode,'ssilent')
+    silent = 2;
 else
-    silent = false;
+    silent = 0;
 end
 
 
@@ -47,7 +51,7 @@ end
 nfile       = length(file);
 
 if nfile==0
-    if silent
+    if silent==1
         fprintf('FileFromFolder: No files found in: %s\n',folder);
         file = [];
     elseif ~silent
