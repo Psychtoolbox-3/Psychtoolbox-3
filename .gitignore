@@ -1,4 +1,6 @@
 PsychSourceGL/Projects/MacOSX/build/*
+PsychSourceGL/Projects/Linux/build/*
+PsychSourceGL/Projects/Windows/build/*
 *.o
 *~
 .DS_Store
