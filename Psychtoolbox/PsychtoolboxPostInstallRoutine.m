@@ -409,7 +409,6 @@ if IsWin & ~IsOctave %#ok<AND2>
     
     try
         % Remove DLL folders from path:
-        rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR11\']);
         rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
         
         % Is this a Release2007a or later Matlab?
