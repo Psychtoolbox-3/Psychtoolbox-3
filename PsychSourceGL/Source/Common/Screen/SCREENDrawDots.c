@@ -71,8 +71,8 @@ static char synopsisString[] =
 "\"dot_type\" is a flag that determines what type of dot is drawn: "
 "0 (default) squares, 1 circles (with anti-aliasing), 2 circles (with high-quality "
 "anti-aliasing, if supported by your hardware). "
-"If you use dot_type = 1 you'll also need to set a proper blending mode with the "
-"Screen('BlendFunction') command!";  
+"If you use dot_type = 1 or 2 you'll also need to set a proper blending mode with "
+"the Screen('BlendFunction') command!";  
 static char seeAlsoString[] = "BlendFunction";	 
 
 PsychError SCREENDrawDots(void)  
