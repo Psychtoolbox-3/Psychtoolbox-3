@@ -121,13 +121,13 @@ if err
     fprintf('Alternatively you can choose to continue with installation, but then you will have\n');
     fprintf('to resolve this permission isssue later and add the path to the Psychtoolbox manually.\n\n');
     answer=input('Do you want to continue the installation despite the failure of SAVEPATH (yes or no)? ','s');
-    if ~strcmp(answer,'yes')
+    if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('\n\n');
         error('SAVEPATH failed. Please get an administrator to allow everyone to write pathdef.m.');
     end
 end
 
-% Handle Windows ambiguity of \ symbol being the filesep'arator and a
+% Handle Windows ambiguity of \ symbol being the fileseparator and a
 % parameter marker:
 if isWin
     searchpattern = [filesep filesep 'Psychtoolbox[' filesep pathsep ']'];
@@ -144,7 +144,7 @@ while any(regexp(path, searchpattern))
     fprintf('Your old Psychtoolbox appears %d times in the MATLAB/OCTAVE path.\n',length(paths));
     % Old and wrong, counts too many instances: fprintf('Your old Psychtoolbox appears %d times in the MATLAB/OCTAVE path.\n',length(paths));
     answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');
-    if ~strcmp(answer,'yes')
+    if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('You didn''t say "yes", so I''m taking it as no.\n');
     else
         for p=paths
@@ -155,7 +155,7 @@ while any(regexp(path, searchpattern))
         end
     end
     answer=input('Shall I delete all those instances from the MATLAB/OCTAVE path (yes or no)? ','s');
-    if ~strcmp(answer,'yes')
+    if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('You didn''t say yes, so I cannot proceed.\n');
         fprintf('Please use the MATLAB "File:Set Path" command or its Octave equivalent to remove all instances of "Psychtoolbox" from the path.\n');
         error('Please remove Psychtoolbox from MATLAB/OCTAVE path.');

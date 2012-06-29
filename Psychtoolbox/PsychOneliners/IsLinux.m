@@ -12,9 +12,16 @@ function resultFlag = IsLinux(is64)
 % ??/??/?? ??? Wrote it.
 % 6/30/06  awi Fixed help section.  
 % 6/18/11   mk Handle query if 64 bit runtime as well.
+% 6/13/12   dn Simplified
 
 persistent rc;
 persistent rc64;
+
+% check input
+if nargin < 1 || isempty(is64)
+     is64 = 0;
+end
+
 
 if isempty(rc)
      rc= streq(computer,'GLNX86') | streq(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
@@ -22,16 +29,6 @@ end
 
 if isempty(rc64)
      rc64 = rc & ~isempty(strfind(computer, '64'));
-end
-
-if nargin < 1
-     resultFlag = rc;
-     return;
-end
-
-if isempty(is64)
-     resultFlag = rc;
-     return;
 end
 
 if is64 == 0

@@ -43,15 +43,9 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %            GoogleCode, if needed. (MK)
 % 01/06/2012 Add support for calling PsychLinuxConfiguration on Linux. (MK)
 % 04/30/2012 Add support for 64-Bit OSX. (MK)
+% 06/13/2012 Removed call to SwitchToNewPsychtoolboxHoster, no longer needed (DN)
 
 fprintf('\n\nRunning post-install routine...\n\n');
-
-if exist('SwitchToNewPsychtoolboxHoster.m', 'file')
-   clear SwitchToNewPsychtoolboxHoster;
-
-   % Check if we are still hosted on Berlios, switch to GoogleCode, if so:
-   SwitchToNewPsychtoolboxHoster;
-end;
 
 if nargin < 1
    error('PsychtoolboxPostInstallRoutine: Required argument isUpdate missing!');
@@ -307,20 +301,18 @@ if IsOctave
         % Add proper OS dependent postfix:
         if IsLinux
             rdir = [rdir 'LinuxFiles'];
-        end
-        
-        if IsLinux(1)
-            % 64 bit Octave on 64 bit Linux. Select 64 bit mex file folder:
-            rdir = [rdir '64'];
+            if IsLinux(1)
+                % 64 bit Octave on 64 bit Linux. Select 64 bit mex file folder:
+                rdir = [rdir '64'];
+            end
         end
         
         if IsOSX
             rdir = [rdir 'OSXFiles'];
-        end
-        
-        if IsOSX(1)
-            % 64 bit Octave on 64 bit OSX. Select 64 bit mex file folder:
-            rdir = [rdir '64'];
+            if IsOSX(1)
+                % 64 bit Octave on 64 bit OSX. Select 64 bit mex file folder:
+                rdir = [rdir '64'];
+            end
         end
         
         if IsWin
