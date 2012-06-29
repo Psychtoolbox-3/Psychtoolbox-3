@@ -50,7 +50,7 @@ function varargout = Explode(vect,splitvect,mode)
 % If MODE is not specified, 'fixed' will be used
 % NB: splitting floats works, but precision will be lost
 %
-%   'fixed'    : a fixed number or sequence of number, which will be used
+%   'fixed'    : a fixed number or sequence of numbers, which will be used
 %                literally to split the vector.
 %                example:
 %                   n1 = [inf 33 12 45 13 nan 46 74 12 45 15 64];
@@ -95,8 +95,14 @@ function varargout = Explode(vect,splitvect,mode)
 %               variable number of outputs and clarified meaning of
 %               wildcard for number splitting.
 
-mver = ver('matlab');
-psychassert(str2double(mver.Version(1))>=7 && str2double(mver.Version(3:end))>2,'Need at least MATLAB R2006b');
+if ~IsOctave
+    mver = ver('matlab');
+    psychassert(str2double(mver.Version(1))>=7 && str2double(mver.Version(3:end))>2,'Need at least MATLAB R2006b');
+else
+    % we don't have the 'split' option in regexp, at least in version 3.2.4
+    % strsplit only splits on single delimiters, so not an option
+    error('Explode is not supported on Octave');
+end
 
 if nargin==3
     switch mode
@@ -134,7 +140,7 @@ elseif isnumeric(vect)
     func        = @(x)cast(str2num(x),dtype); %#ok<ST2NM>
     strc        = cellfun(func,split,'UniformOutput',false);
 else
-    error('input van type %s niet ondersteund',class(vect));
+    error('input type %s not supported',class(vect));
 end
 
 if nargout <= 1

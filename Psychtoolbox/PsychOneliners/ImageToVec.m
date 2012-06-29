@@ -7,7 +7,8 @@ function [vec,nRows,nCols] = ImageToVec(image)
 % Also see VecToImage.
 %
 % 8/13/94		dhb		Added image size return
+% 6/13/12		 dn		No need for reshape call
 
 
 [nRows,nCols] = size(image);
-vec = reshape(image,1,nRows*nCols)';
+vec = image(:);

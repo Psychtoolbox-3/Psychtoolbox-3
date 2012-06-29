@@ -8,7 +8,6 @@ function output = PackColorImage(red,green,blue)
 % that used SCREEN('PutColorImage',....)
 %
 % 11/24/02  jmh, dhb  Wrote it.
+% 06/12/12        dn  Use cat() for this
 
-output(:,:,1) = red;
-output(:,:,2) = green;
-output(:,:,3) = blue;
+output = cat(3,red,green,blue);

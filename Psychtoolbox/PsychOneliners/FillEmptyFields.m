@@ -11,9 +11,11 @@ function in = FillEmptyFields(in,filling)
 % DN    2008
 % DN    2008-05-29 Shortened it
 % DN    2008-05-31 added cell support
+% DN    2012-06-12 fixed bug where only first element in struct array was
+%                  operated on
 
 if isstruct(in)
-    for p=1:numel(struct)
+    for p=1:numel(in)
         qleeg   = structfun(@isempty,in(p));
         fnm     = fieldnames(in(p));
         fnms    = fnm(qleeg).';

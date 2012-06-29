@@ -2,13 +2,16 @@ function [output] = Trunc(input)
 % [output] = Trunc(input)
 % Truncate to range [0-1].
 
+% 6/13/12    dn     Use boolean indices, scalars expand to all needed outputs
+
 output = input;
-index = find( input < 0 );
-if (length(index) > 0);
-  output(index) = zeros(length(index),1);
-end
-index = find( input > 1 );
-if (length(index) > 0)
-  output(index) = ones(length(index),1);
+
+qIndex = input < 0;
+if any(qIndex(:))
+    output(qIndex) = 0;
 end
 
+qIndex = input > 1;
+if any(qIndex(:))
+    output(qIndex) = 1;
+end

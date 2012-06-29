@@ -18,7 +18,7 @@ function [Y,index] = Shuffle(X)
 [null,index] = sort(rand(size(X)));
 [n,m] = size(X);
 Y = zeros(size(X));
-if (n == 1 | m == 1)
+if n == 1 || m == 1
 	Y = X(index);
 else
 	for j = 1:m

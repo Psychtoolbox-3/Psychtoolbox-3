@@ -8,6 +8,7 @@ function AssertGLSL
 %
 % HISTORY
 % 3/29/06   mk     wrote it.
+% 6/12/12   dn     findstr is deprecated, changed to strfind
 
 persistent alreadycalled;
 global GL
@@ -31,12 +32,12 @@ if isempty(extensions)
     error('AssertGLSL called before opening an Onscreen window! This will not work...');
 end;
 
-if isempty(findstr(extensions, 'GL_ARB_shading_language')) | isempty(findstr(extensions, 'GL_ARB_shader_objects'))
+if isempty(strfind(extensions, 'GL_ARB_shading_language')) | isempty(strfind(extensions, 'GL_ARB_shader_objects'))
     Screen('CloseAll');
-    error('Sorry, this M-File can not execute on your combination of graphics hardware and driver due to complete lack of GLSL support.'); 
+    error('Sorry, this M-File cannot execute on your combination of graphics hardware and driver due to complete lack of GLSL support.'); 
 end;
 
-if isempty(findstr(extensions, 'GL_ARB_fragment_shader'))
+if isempty(strfind(extensions, 'GL_ARB_fragment_shader'))
    fprintf('AssertGLSL: Warning! Your graphics hardware does not support fragment shaders. This will severely limit the use of GLSL.\n');
    fprintf('AssertGLSL: Many image processing functions will fail with MOGL errors about unsupported functions.\n');
 end;

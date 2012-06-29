@@ -10,8 +10,9 @@ clear all; close all;
 % delete contents file as its not executable
 qContents = strcmp('Contents',{utests.fname});
 utests(qContents) = [];
+ntests = ntests-sum(qContents);
 
-if ntests==0
+if ntests<1
     error('No Unit Tests found');
 end
 

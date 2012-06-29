@@ -4,6 +4,9 @@ function theGroupedArray = GroupStructArrayByFields(theStructArray,theFields)
 % Group together the members of a struct array that share the same values
 % in the passed fields.
 %
+% This is useful for sorting/grouping elements in a struct array on
+% parameters that signify membership of trials to a particular condition.
+%
 % 7/21/03  dhb  Wrote it.
 
 theGroupedArray = {};
@@ -17,7 +20,7 @@ theGroupedArray{1} = theStructArray(1);
 for i = 2:nStructs
 	didIt = 0;
 	for j = 1:nGroups
-		if (AreStructsEqualOnFields(theStructArray(i),theGroupedArray{j}(1),theFields))
+		if AreStructsEqualOnFields(theStructArray(i),theGroupedArray{j}(1),theFields)
 			theGroupedArray{j} = [theGroupedArray{j} theStructArray(i)];
 			didIt = 1;
 			break;
@@ -28,5 +31,3 @@ for i = 2:nStructs
 		theGroupedArray{nGroups} = theStructArray(i);
 	end
 end
-
-
