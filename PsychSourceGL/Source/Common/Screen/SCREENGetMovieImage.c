@@ -37,7 +37,10 @@ static char synopsisString[] =
 "This means that 'timeindex' will be always returned as zero and that the built-in detector for skipped frames is disabled as well. This "
 "may (or may not) save a little bit of computation time during playback of very demanding movies on lower end systems, your mileage will "
 "vary, depending on many factors.\n"
+"A setting of 2 will skip creation and return of an actual video texture, instead a texture handle of 1 will be returned and no texture "
+"gets created. This is useful for fast fine-grained forward seeking in the movie by skipping single frames, and for benchmarking.\n"
 ;
+
 static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
 
 PsychError SCREENGetMovieImage(void) 
@@ -130,6 +133,26 @@ PsychError SCREENGetMovieImage(void)
 
     // New image available: Go ahead...
     
+    // Skipping of actual texture creation requested via specialFlags2 setting 2?
+    if (specialFlags2 & 2) {
+        // Yes. We skip OpenGL texture creation and just return some dummy value:
+
+        // Stil need to do a dummy-fetch from the movie object to retrieve a potential
+        // presentation timestamp and to make sure the videobuffers get properly dequeued, so
+        // the playback engine stays happy. We pass a textureRecord pointer of NULL to tell the
+        // engine to skip most work:
+        PsychGetTextureFromMovie(windowRecord, moviehandle, FALSE, requestedTimeIndex, NULL, ((specialFlags2 & 1) ? NULL : &presentation_timestamp));
+        
+        // Return positive pseudo-texture handle:
+        PsychCopyOutDoubleArg(1, TRUE, 1);
+        
+        // Return presentation timestamp for this image:
+        PsychCopyOutDoubleArg(2, FALSE, presentation_timestamp);
+        
+        // Ready!
+        return(PsychError_none);        
+    }
+    
     // Create a texture record.  Really just a window record adapted for textures.  
     PsychCreateWindowRecord(&textureRecord);	// This also fills the window index field.
     // Set mode to 'Texture':
@@ -163,6 +186,7 @@ PsychError SCREENGetMovieImage(void)
     // Texture ready for consumption. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(textureRecord);
     PsychCopyOutDoubleArg(1, TRUE, textureRecord->windowIndex);
+
     // Return presentation timestamp for this image:
     PsychCopyOutDoubleArg(2, FALSE, presentation_timestamp);
     

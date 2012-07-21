@@ -1,13 +1,14 @@
 /*
 	SCREENPreference.c		
-  
-	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+    AUTHORS:
+
+    Allen.Ingling@nyu.edu           awi
+    mario.kleiner@tuebingen.mpg.de  mk
   
-	PLATFORMS:
+	PLATFORMS:	
 	
-		Mac OS X MATLAB only.
+		All.
     
 	HISTORY:
   
@@ -17,7 +18,7 @@
 		5/30/05		mk		New preference setting screenSkipSyncTests -- allow skipping/shortening of some internal tests.
 		5/30/05		mk		New preference setting screenVisualDebugLevel.
 		3/07/05		awi		New preference SuppressAllWarnings.
-                11/15/06        mk              New preference vbl & flip timestamping mode.
+        11/15/06    mk      New preference vbl & flip timestamping mode.
  
 	DESCRIPTION:
   

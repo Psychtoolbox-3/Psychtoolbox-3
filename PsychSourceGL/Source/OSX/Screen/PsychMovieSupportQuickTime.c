@@ -553,7 +553,7 @@ int PsychQTGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     }
     
     if (NULL == out_texture && !checkForImage) {
-        PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of out_texture ptr passed!!!");
+        PsychErrorExitMsg(PsychError_user, "Sorry, use of a 'specialFlags2' setting of 2 for skipping texture creation is not supported by the Quicktime engine.");
     }
     
     // Fetch references to objects we need:

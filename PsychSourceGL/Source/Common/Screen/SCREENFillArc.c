@@ -118,9 +118,9 @@ void PsychRenderArc(unsigned int mode)
 	PsychRectType           rect;
 	double					*startAngle, *arcAngle, *penWidth, *penHeight;
 	PsychWindowRecordType	*windowRecord;
-	int						whiteValue;
+	double					whiteValue;
 	double                  dotSize;
-	psych_bool					isArgThere;
+	psych_bool				isArgThere;
 	GLUquadric              *diskQuadric = NULL;
 	double cx, cy, w, h;
 	
@@ -190,13 +190,13 @@ void PsychRenderArc(unsigned int mode)
 	
 	switch (mode) {
 		case 1: // One pixel thin arc: InnerRadius = OuterRadius - 1
-			gluPartialDisk(diskQuadric, (w/2) - 1.0, w/2, w, 2, *startAngle, *arcAngle);
+			gluPartialDisk(diskQuadric, (w/2) - 1.0, w/2, (int) w, 2, *startAngle, *arcAngle);
 			break;
 		case 2: // dotSize thick arc:  InnerRadius = OuterRadius - dotsize
-			gluPartialDisk(diskQuadric, (dotSize < (w/2)) ? (w/2) - dotSize : 0, w/2, w, 2, *startAngle, *arcAngle);
+			gluPartialDisk(diskQuadric, (dotSize < (w/2)) ? (w/2) - dotSize : 0, w/2, (int) w, 2, *startAngle, *arcAngle);
 			break;
 		case 3: // Filled arc:
-			gluPartialDisk(diskQuadric, 0, w/2, w, 1, *startAngle, *arcAngle);
+			gluPartialDisk(diskQuadric, 0, w/2, (int) w, 1, *startAngle, *arcAngle);
 			break;
 	}
 	

@@ -26,9 +26,6 @@
 #ifndef PSYCH_IS_INCLUDED_WindowHelpers
 #define PSYCH_IS_INCLUDED_WindowHelpers
 
-int				PsychGetColorSizeFromWindowRecord(PsychWindowRecordType *windowRecord);
-
-
 int					PsychGetWindowDepthValueFromWindowRecord(PsychWindowRecordType *windowRecord);
 void				PsychSetTextColorInWindowRecord(PsychColorType *textColor,  PsychWindowRecordType *winRec);
 void				PsychSetTextBackgroundColorInWindowRecord(PsychColorType *textColor,  PsychWindowRecordType *winRec);
@@ -38,16 +35,10 @@ int					PsychGetNumBuffersFromWindowRecord(PsychWindowRecordType *windowRecord);
 int					PsychGetNumPlanesFromWindowRecord(PsychWindowRecordType *windowRecord);
 void				PsychSetWindowRecordValid(PsychWindowRecordType *winRec);
 void				PsychCheckIfWindowRecordIsValid(PsychWindowRecordType *winRec);
-psych_bool				PsychIsOnscreenWindow(PsychWindowRecordType *windowRecord);
-psych_bool				PsychIsOffscreenWindow(PsychWindowRecordType *windowRecord);
-psych_bool				PsychIsTexture(PsychWindowRecordType *windowRecord);
-psych_bool				PsychIsMatlabOnscreenWindow(PsychWindowRecordType *windowRecord);
-
-
+psych_bool			PsychIsOnscreenWindow(PsychWindowRecordType *windowRecord);
+psych_bool			PsychIsOffscreenWindow(PsychWindowRecordType *windowRecord);
+psych_bool			PsychIsTexture(PsychWindowRecordType *windowRecord);
+psych_bool			PsychIsMatlabOnscreenWindow(PsychWindowRecordType *windowRecord);
 
 //end include once
 #endif
-
-
-
-

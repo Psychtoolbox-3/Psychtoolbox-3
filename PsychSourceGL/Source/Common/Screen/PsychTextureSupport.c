@@ -143,87 +143,12 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 		win->textureByteAligned=0;
 }
 
-
-/*
-	PsychCreateTextureForWindow()
-	
-	For each onscreen window we create only one OpenGL texture.  Psychtoolbox textures are not really OpenGL textures but are instead blocks of memory 
-	holding images in texture format.  To display a Psychtoolbox texture we blit the image memory into the onscree window's texture then
-	draw  the texture to the screen.  This results in two copies, first from the image memory to another block of system memory which is the texture,
-	then from the texture across the video bus to the video memory.  
-	
-	It would be better if Psychtoolbox textures were actual textures and we could avoid the first copy, but the combination of TextureRect+ClientTexture+TextureRange
-	extensions seems to place an unacceptable limit of 96 MB on the total texture size. Going without the TextureRange extension seems to cause too much variability in 
-	the blit times.  Nonetheless it would be worthwhile to create preferences for selectively enableing these extensions and searching more thourougly for a combination
-	which gives us higher blit rates than the current dual-copy method, particularly in light of the fact that different video cards may give different behavior.
-	
-*/
-void PsychCreateTextureForWindow(PsychWindowRecordType *win)
-{
-	GLenum				textureHint;
-	double				frameWidth, frameHeight;
-
-	PsychSetGLContext(win);
-        // MK: Width and height swapped due to texture rotation trick in PsychBlitTextureToDisplay:
-	frameHeight=PsychGetWidthFromRect(win->rect);
-	frameWidth=PsychGetHeightFromRect(win->rect);
-	
-	//create a texture number for this texture
-	glGenTextures(1, &win->textureNumber);
-
-	//choose the texture accleration extension
-	// FIXME	textureHint= GL_STORAGE_SHARED_APPLE;  //GL_STORAGE_PRIVATE_APPLE, GL_STORAGE_CACHED_APPLE
-
-	win->textureMemorySizeBytes= (unsigned long)(frameWidth * frameHeight * sizeof(GLuint));
-	win->textureMemory=malloc(win->textureMemorySizeBytes);
-	
-	//setup texturing
-	glDisable(GL_TEXTURE_2D);
-	glEnable(GL_TEXTURE_RECTANGLE_EXT);
-	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, win->textureNumber);
-
-
-	// glTextureRangeAPPLE(GL_TEXTURE_RECTANGLE_EXT, 0, NULL);
-	// MK: Leave this untouched, altough i couldn't find a situation where it helps performance at with my code...
-	// FIXME         glTextureRangeAPPLE(GL_TEXTURE_RECTANGLE_EXT,win->textureMemorySizeBytes, win->textureMemory);
-
-        // MK: Slows things down in current configuration, therefore disabled: glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_STORAGE_HINT_APPLE , textureHint);
-        // Not using GL_STORAGE_SHARED_APPLE provided increased reliability of timing and significantly shorter rendering times
-        // when testing with a G5-Mac with 1.6Ghz CPU and 256 MB RAM, MacOS-X 10.3.7, using 12 textures of 800x800 pixels each.
-        // Rendering times with this code are around 6 msecs, while original PTB 1.0.40 code took 17 ms on average...
-        // Can't test this on other machines like G4 or machines with more RAM...
-        // -> Sometimes, GL_STORAGE_SHARED_APPLE is faster, but only if texture width and height are divisable by 16 and
-        // all used memory is page-aligned and a couple other conditions are met. So... Sometimes you are 20% faster, but most of
-        // the time you are 2 to 3 times slower than without this extensions...
-        // The "Principle of least surprise" would suggest to disable the extension, because the end-user doesn't
-        // expect sudden and random changes in performance of his PTB scripts.
-        // Alternatively one could code up different path's depending on if the preconditions are met or not...
-        //
-        // We could reenable the extension, if wanted, but then the MakeTexture code needs to be modified in a way
-        // that will slow down MakeTexture a bit. It's a tradeoff between speed of DrawTexture and speed of MakeTexture.
-        //
-        // BTW -> Does disabling the extension solve "severe tearing bug" reported in Forum message 3007?
-        // Explanation: GL_STORAGE_SHARED_APPLE enables texture fetches over AGP bus via DMA operations and
-        // should increase performance. But DMA only triggers when texture width is divisible by 8, in all other
-        // cases it's disabled. Bug in message 3007 only happens when texture width is divisible by 8. Could this
-        // be a bug in the G4 Laptops graphics hardware (DMA-Engine) or in its OpenGL driver???
-        // Would be interesting to find out... --> Solved! Was a OpenGL driver bug - resolved in MacOS-X 10.3.7
-	// FIXME	glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE);
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-	// MK: Setting GL_UNPACK_ALIGNMENT == 1 fixes a bug, where textures are drawn incorrectly, if their
-	// width or height is not divisible by 4.
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-	glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, GL_RGBA, (GLsizei)frameWidth, (GLsizei)frameHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, win->textureMemory);
-	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);  //glColor does not work while a texture is bound.  
-}
-
-
-
 void PsychCreateTexture(PsychWindowRecordType *win)
 {
-	GLenum                          texturetarget, oldtexturetarget;
+    #if PSYCH_SYSTEM == PSYCH_OSX
 	GLenum							textureHint;
+    #endif
+	GLenum                          texturetarget, oldtexturetarget;
 	double							sourceWidth, sourceHeight;
 	GLint                           glinternalFormat = 0, gl_realinternalformat = 0;
 	static GLint                    gl_lastrequestedinternalFormat = 0;
@@ -348,7 +273,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		sourceWidth=PsychGetWidthFromRect(win->rect);
 	}
 	
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, sourceWidth);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, (int) sourceWidth);
 	
 	// We used to have different cases for Luminance, Luminance+Alpha, RGB, RGBA.
 	// This way we saved texture memory for the source->textureMemory -- Arrays, as well as copy-time
@@ -371,8 +296,8 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	}
 	else {
 		// Hardware supports rectangular textures: Use texture as-is:
-		twidth=sourceWidth;
-		theight=sourceHeight;
+		twidth  = (int) sourceWidth;
+		theight = (int) sourceHeight;
 		texmemptr=win->textureMemory;
 	}
 	
@@ -608,7 +533,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		// If there is a mismatch between wish and reality, report it:
 		if (false || gl_realinternalformat != glinternalFormat) {
 			// Mismatch between requested format and format that the OpenGL has chosen:
-			printf("PTB-WARNING: In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=%x\n", win->depth, gl_realinternalformat);
+			printf("PTB-WARNING: In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=x%x\n", win->depth, gl_realinternalformat);
 			printf("PTB-WARNING: Requested size = %i bits, real size = %i bits.\n", win->depth, gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits); 
 			printf("PTB-WARNING: This could mean that something went wrong when creating the texture!\n");
 			fflush(NULL);
@@ -655,7 +580,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		// in its proper (upright 0 deg.) orientation. Let's make a screenshot and
 		// store it as a "new" texture into our current texture object - effectively
 		// transposing the texture into normal format:                        
-		glCopyTexImage2D(texturetarget, 0, glinternalFormat, 0, screenHeight - sourceHeight, sourceWidth, sourceHeight, 0);
+		glCopyTexImage2D(texturetarget, 0, glinternalFormat, 0, (GLint) (screenHeight - sourceHeight), (GLsizei) sourceWidth, (GLsizei) sourceHeight, 0);
 		
 		// Reenable alpha-blending:
 		glEnable(GL_BLEND);
@@ -936,7 +861,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 
 	// A globalAlpha of DBL_MAX means: Don't set vertex color here, higher-level code
 	// has done it already. Used in SCREENDrawTexture for a global override color...
-	if (globalAlpha != DBL_MAX) glColor4f(1, 1, 1, globalAlpha);
+	if (globalAlpha != DBL_MAX) glColor4f(1, 1, 1, (GLfloat) globalAlpha);
 	
 	// Apply a rotation transform for rotated drawing, either to modelview-,
 	// or texture matrix.
@@ -980,14 +905,14 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		// info gets potentially transformed by the texture matrix, also each vertex
 		// only sees one corner of the srcRect: Therefore we encode srcrect = [left top right bottom]
 		// on demand:
-		if ((attrib = glGetAttribLocationARB(shader, "srcRect")) >= 0) glVertexAttrib4fARB(attrib, sourceRect[kPsychLeft], sourceRect[kPsychTop], sourceRect[kPsychRight], sourceRect[kPsychBottom]);
+		if ((attrib = glGetAttribLocationARB(shader, "srcRect")) >= 0) glVertexAttrib4fARB(attrib, (GLfloat) sourceRect[kPsychLeft], (GLfloat) sourceRect[kPsychTop], (GLfloat) sourceRect[kPsychRight], (GLfloat) sourceRect[kPsychBottom]);
 
 		// 'dstRect' parameter: The glVertex() calls below encode target pixel coordinates
 		// - and thereby the corners of 'dstRect' - into each vertex, however this
 		// info gets potentially transformed by the modelview/proj. matrix, also each vertex
 		// only sees one corner of the dstRect: Therefore we encode dstrect = [left top right bottom]
 		// on demand:
-		if ((attrib = glGetAttribLocationARB(shader, "dstRect")) >= 0) glVertexAttrib4fARB(attrib, targetRect[kPsychLeft], targetRect[kPsychTop], targetRect[kPsychRight], targetRect[kPsychBottom]);
+		if ((attrib = glGetAttribLocationARB(shader, "dstRect")) >= 0) glVertexAttrib4fARB(attrib, (GLfloat) targetRect[kPsychLeft], (GLfloat) targetRect[kPsychTop], (GLfloat) targetRect[kPsychRight], (GLfloat) targetRect[kPsychBottom]);
 
 		// 'sizeAngleFilterMode' - if requested - encodes texture width in .x component, height in .y
 		// requested rotationAngle in .z and the 'filterMode' flags in .w:
@@ -1158,7 +1083,7 @@ GLenum PsychGetTextureTarget(PsychWindowRecordType *win)
 void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
 {
     GLdouble       sourceWidth, sourceHeight, tWidth, tHeight;
-    GLdouble       sourceX, sourceY, sourceXEnd, sourceYEnd;
+    GLdouble       sourceX, sourceY;
     GLenum         texturetarget;
     
     if (!PsychIsTexture(tex)) {

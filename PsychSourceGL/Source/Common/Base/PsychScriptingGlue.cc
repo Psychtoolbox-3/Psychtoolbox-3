@@ -2142,7 +2142,7 @@ psych_bool PsychAllocOutFloatMatArg(int position, PsychArgRequirementType isRequ
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
 	if(putOut){
 		mxpp = PsychGetOutArgMxPtr(position);
-		*mxpp = mxCreateFloatMatrix3D(m,n,p);
+		*mxpp = mxCreateFloatMatrix3D((size_t) m, (size_t) n, (size_t) p);
 		*array = (float*) mxGetData(*mxpp);
 	}else
 		*array = (float*) mxMalloc(sizeof(float) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
@@ -2221,7 +2221,7 @@ psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRe
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
 	if(putOut){
 		mxpp = PsychGetOutArgMxPtr(position);
-		*mxpp = mxCreateNativeBooleanMatrix3D(m,n,p);
+		*mxpp = mxCreateNativeBooleanMatrix3D((size_t) m, (size_t) n, (size_t) p);
 		*array = (PsychNativeBooleanType *)mxGetLogicals(*mxpp);
 	}else{
 		*array= (PsychNativeBooleanType *) mxMalloc(sizeof(PsychNativeBooleanType) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
@@ -2237,7 +2237,7 @@ psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRe
     
     Like PsychAllocOutDoubleMatArg() execept for unsigned bytes instead of doubles.  
 */
-psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, ubyte **array)
+psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint8 **array)
 {
 	mxArray			**mxpp;
 	PsychError		matchError;
@@ -2249,10 +2249,10 @@ psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
 	if(putOut){
 		mxpp = PsychGetOutArgMxPtr(position);
-		*mxpp = mxCreateByteMatrix3D(m,n,p);
-		*array = (ubyte *)mxGetData(*mxpp);
+		*mxpp = mxCreateByteMatrix3D((size_t) m, (size_t) n, (size_t) p);
+		*array = (psych_uint8 *)mxGetData(*mxpp);
 	}else{
-		*array= (ubyte *) mxMalloc(sizeof(ubyte) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
+		*array= (psych_uint8 *) mxMalloc(sizeof(psych_uint8) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
 	}
 	return(putOut);
 }
@@ -3068,12 +3068,7 @@ psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequir
 int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGenericScriptType* pcontent)
 {
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		#ifndef MATLAB_R11
-			// Post R11 Matlab or Octave 3.2.x: New method for putting variables...
-			return(mexPutVariable(workspace, variable, pcontent));
-		#else
-			return(1);
-		#endif
+		return(mexPutVariable(workspace, variable, pcontent));
 	#else
 		PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimePutVariable() not yet supported for this runtime system!");
 	#endif
@@ -3105,10 +3100,7 @@ psych_bool PsychRuntimeGetVariable(const char* workspace, const char* variable, 
 	*pcontent = NULL;
 
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		#ifndef MATLAB_R11
-			// Post R11 Matlab or Octave 3.2.x: New method for putting variables...
-			*pcontent = mexGetVariable(workspace, variable);
-		#endif
+		*pcontent = mexGetVariable(workspace, variable);
 
 		// Return true on success, false on failure:
 		return((*pcontent) ? TRUE : FALSE);
@@ -3144,10 +3136,7 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
 	*pcontent = NULL;
 
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		#ifndef MATLAB_R11
-			// Post R11 Matlab or Octave 3.2.x: New method for putting variables...
-			*pcontent = (PsychGenericScriptType*) mexGetVariablePtr(workspace, variable);
-		#endif
+		*pcontent = (PsychGenericScriptType*) mexGetVariablePtr(workspace, variable);
 
 		// Return true on success, false on failure:
 		return((*pcontent) ? TRUE : FALSE);

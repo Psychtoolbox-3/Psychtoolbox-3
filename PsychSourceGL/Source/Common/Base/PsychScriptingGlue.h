@@ -105,7 +105,7 @@ void PsychClearFlagListElement(int index, PsychFlagListType flagList);
 
 //for bytes
 psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, unsigned char **array);
-psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, ubyte **array);
+psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint8 **array);
 
 //for strings
 psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, char **str);

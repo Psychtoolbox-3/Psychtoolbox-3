@@ -103,6 +103,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     // Start of dispatcher:
     int i;
     GLenum err;
+    
+    // FreeGlut must be initialized, otherwise it will emergency abort the whole application.
+    // These variables are needed for it:
+    int noargs = 1;
+    char dummyarg[] = "ptbmoglcore";
+    char *dummyargp = &dummyarg[0];
 
     // see whether there's a string command
     if(nrhs<1 || !mxIsChar(prhs[0])) mogl_usageerr();
@@ -191,8 +197,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         }
         // Success. Ready to go...
 		if (debuglevel > 1) {
-			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2011 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
-			printf("Some additional restrictions apply to redistribution of binary MEX files for Matlab due to the terms of the Mathworks Matlab license.\n");
+			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2012 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
+            #ifdef WINDOWS
+			printf("On MS-Windows, we make use of the freeglut library, which is Copyright (c) 1999-2000 Pawel W. Olszta, licensed under compatible MIT/X11 license.\n");
+            printf("The precompiled Windows binary DLL's have been kindly provided by http://www.transmissionzero.co.uk/software/freeglut-devel/ -- Thanks!\n");
+            #endif
 			printf("See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n");
 		}
         fflush(NULL);
@@ -201,10 +210,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         mogl_rebindARBExtensionsToCore();
         
 		#ifdef FREEGLUT
-		// FreeGlut must be initialized, otherwise it will emergency abort the whole application!
-		int noargs = 1;
-		char dummyarg[] = "ptbmoglcore";
-		char *dummyargp = &dummyarg[0];
+		// FreeGlut must be initialized, otherwise it will emergency abort the whole application.
 		glutInit( &noargs, &dummyargp);
 		#endif
 		

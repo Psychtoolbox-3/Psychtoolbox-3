@@ -1,9 +1,11 @@
 /*
-  Psychtoolbox2/Source/Common/PsychIncludes.h		
+  Psychtoolbox3/Source/Common/PsychIncludes.h		
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
+ 
+  Allen.Ingling@nyu.edu                 awi
+  mario.kleiner@tuebingen.mpg.de        mk
+ 
   PLATFORMS: All 
   
   PROJECTS:
@@ -20,9 +22,6 @@
   would require.
   
   This file should ONLY be included by PsychConstants.h 
-
-  T0 DO: 
-	  
 
 */
 
@@ -46,59 +45,55 @@
 
 //platform dependent includes stage 1
 #if PSYCH_SYSTEM == PSYCH_LINUX
-	// We need __USE_UNIX98, so pthread.h defines/supports the mutex policy
-	// attribute for mutex priority inheritance for our realtime threads.
-	// For some reason this gets undefined in mex.h at least when building
-	// on Octave 3.2.4. Scary scary...
-	#ifndef __USE_UNIX98
-	#define __USE_UNIX98
-	// For testing only: #warning __USE_UNIX98 undefined. Redefining it.
-	#endif
+    // We need __USE_UNIX98, so pthread.h defines/supports the mutex policy
+    // attribute for mutex priority inheritance for our realtime threads.
+    // For some reason this gets undefined in mex.h at least when building
+    // on Octave 3.2.4. Scary scary...
+    #ifndef __USE_UNIX98
+    #define __USE_UNIX98
+    // For testing only: #warning __USE_UNIX98 undefined. Redefining it.
+    #endif
 
-	#include <stdint.h>
-	// This is the new glew include for GLX extension support:
-	#include "../Screen/glxew.h"
-	
-        #include <X11/Xlib.h>
-        #include <X11/keysym.h>
-        #include <sys/time.h>
-        #include <unistd.h>
-        #include <stdarg.h>
-	#include <pthread.h>
+    // This is the new glew include for GLX extension support:
+    #include "../Screen/glxew.h"
 
-	#ifndef _POSIX_THREAD_PRIO_INHERIT
-	#error This build system does not support pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT); Fix your build system!
-	#endif
+    #include <X11/Xlib.h>
+    #include <X11/keysym.h>
+    #include <sys/time.h>
+    #include <unistd.h>
+    #include <stdarg.h>
+    #include <pthread.h>
+
+    #ifndef _POSIX_THREAD_PRIO_INHERIT
+    #error This build system does not support pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT); Fix your build system!
+    #endif
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-	// Need to define #define _WIN32_WINNT as 0x0400 so we can use TryEnterCriticalSection() call for PsychTryLockMutex() implementation.
+	// Need to define #define _WIN32_WINNT as >= 0x0400 so we can use TryEnterCriticalSection() call for PsychTryLockMutex() implementation.
     // We set WINVER and _WIN32_WINNT to 0x0500, which requires Windows 2000 or later as target system:
-	#define _WIN32_WINNT 0x0500
-    #define WINVER       0x0500
-	#include <windows.h>
-	#include "../Screen/wglew.h"
+    // Ok, actually we don't. When building on a modern build system like the new Win-7 build
+    // system -- or pretty much against any SDK since WindowsXP -- the MSVC compiler / platform SDK
+    // already defines WINVER et al. to 0x0500 or later, e.g., to Win-7 on the Win-7 system.
+    // That means we'd only need these defines on pre-WinXP build systems, which we no longer
+    // support. We now just have to be careful to not use post-WinXP functionality.
+    // We comment these defines out and trust the platform SDK / compiler,
+    // but leave them here for quick WinXP backwards compatibility testing.
+    #if 0   
+        #define _WIN32_WINNT 0x0500
+        #define WINVER       0x0500
+    #endif // Conditional enable.
 
-    #ifndef INT64_MAX
-    #define INT64_MAX _I64_MAX
-    #endif
-    
-    #ifndef INT32_MAX
-    #define INT32_MAX _I32_MAX
+    // Master include for windows header file:
+    #include <windows.h>
+
+    // For building Screen, include wglew.h - Windows specific GLEW header files:
+    #if defined(PTBMODULE_Screen)
+    #include "../Screen/wglew.h"
     #endif
 
-#elif PSYCH_SYSTEM == PSYCH_OS9
-	#include <Types.h>
-	#include <MacTypes.h>
-	#include <Events.h>
-	#include <stdarg.h>
-	#include <string.h>
-	#include <ctype.h>
-	#include "gl.h"
-	#include "glu.h"
 #elif PSYCH_SYSTEM == PSYCH_OSX
 	//includes for Apple OpenGL
-    #include <stdint.h>
     #include <sys/time.h>
 	#include <pthread.h>
 
@@ -130,29 +125,12 @@
 #endif 
 
 //C standard library headers
+#include <stdint.h>
 #include <math.h>
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
 #include <float.h>
-
-#if PSYCH_LANGUAGE == PSYCH_OCTAVE
-// File with pseudo MATLAB interface API definitions:
-// Emulates missing Matlab functions and structures...
-// Stored in the Source/Octave subfolder...
-    #include <octavemex.h>
-#endif
-
-//SDL_getenv.h includes a macro which redefines getenv() to be
-//SDL getenv().   This then conflicts with the statement "using 
-//std::getenv" within stdlib.h.  To avoid the conflict, include 
-//SDL.h only after the standard includes above. 
-//platform dependent includes stage 2
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
-
-#elif PSYCH_SYSTEM == PSYCH_OS9
-	#include "SDL.h"
-#endif
 
 //end include once
 #endif

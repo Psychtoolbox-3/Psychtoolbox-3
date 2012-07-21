@@ -43,10 +43,7 @@ static char seeAlsoString[] = "";
 PsychError SCREENTransformTexture(void) 
 {
 	PsychWindowRecordType	*sourceRecord, *targetRecord, *proxyRecord, *sourceRecord2;
-	int testarg, tmpimagingmode, specialFlags, usefloatformat, d;
-	PsychFBO *fboptr;
-	GLint fboInternalFormat;
-	psych_bool needzbuffer;
+	int testarg, specialFlags, usefloatformat, d;
 	
     // All subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -161,8 +158,7 @@ PsychError SCREENTransformTexture(void)
 		PsychAllocInWindowRecordArg(4, TRUE, &targetRecord);
 		if (!PsychIsTexture(targetRecord)) PsychErrorExitMsg(PsychError_user, "'targetTexture' argument must be a handle to a texture or offscreen window.");
 	}
-	
-	
+
 	// Make sure our source textures have at least a pseudo FBO for read-access:
 	PsychCreateShadowFBOForTexture(sourceRecord, FALSE, -1);
 	if (sourceRecord2) PsychCreateShadowFBOForTexture(sourceRecord2, FALSE, -1);

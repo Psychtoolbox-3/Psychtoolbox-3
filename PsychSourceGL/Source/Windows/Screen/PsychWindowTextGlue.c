@@ -7,13 +7,13 @@
 				
 	AUTHORS:
 
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
-		Mario Kleiner     mk       mario.kleiner@tuebingen.mpg.de
+		Allen Ingling       awi     Allen.Ingling@nyu.edu
+		Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 		
-		11/18/03		awi		Wrote it 
-		12/30/05    mk       Ported to Windows. Derived from Allen's OS-X version.					
+		11/18/03    awi     Wrote it 
+		12/30/05    mk      Ported to Windows. Derived from Allen's OS-X version.					
 
 	DESCRIPTION:
         
@@ -41,7 +41,6 @@ const PsychTextDrawingModeType PsychTextDrawingModes[]= {kPsychTextFill, kPsychT
 void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 {
 	char*		tryFontName;
-	psych_bool	foundFont;
 	PsychPrefStateGet_DefaultFontName(&tryFontName);
 	settings->textMode=kPsychTextFill;
 	settings->textPositionX=0;
@@ -50,14 +49,6 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 	// We also compensate for more MS-Braindamage by selecting bold text by default.
 	settings->textSize= PsychPrefStateGet_DefaultTextSize();
 	settings->textStyle= PsychPrefStateGet_DefaultTextStyle();	// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend	
-
-#ifdef COMMENTEDOUT
-	// FIXME!
-	/* to initialize the font record to coherent settings, we choose a default font and lookup the matching number */
-	foundFont=PsychGetFontRecordFromFontFamilyNameAndFontStyle(tryFontName, settings->textStyle, &initFontRecord);
-	if(!foundFont)
-	  PsychErrorExitMsg(PsychError_internal,"Failed to initialze the window record because the default font for DrawText, Geneva, was not found.");
-#endif
 
 	strcpy(settings->textFontName, tryFontName);
 	settings->textFontNumber=0; // FIXME: Don't know yet how to assign a reasonable value. 
@@ -106,4 +97,3 @@ psych_bool PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawi
     } //for
     return(TRUE);
 }
-

@@ -35,7 +35,7 @@
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "framesSinceLastWait = Screen('WaitBlanking', windowPtr [, waitFrames]);";
 static char synopsisString[] = 
-	"Wait for specified number of monitor refresh intervals, stopping PTB's "
+        "Wait for specified number of monitor refresh intervals, stopping PTB's "
         "execution until then. Select waitFrames=1 (or omit it, since that's the default) "
         "to wait for the beginning of the next frame. "
         "\"windowPtr\" is the pointer to the onscreen window for which we should wait for. "
@@ -52,7 +52,6 @@ static char synopsisString[] =
         "features of the OpenGL Psychtoolbox. Please do not write new experiment code in the old style! "
         "Emulation mode is pretty new and may contain significant bugs, so use with great caution!";  
 
-
 static char seeAlsoString[] = "OpenWindow Flip Screen('Preference', 'EmulateOldPTB', 1)";
 
 PsychError SCREENWaitBlanking(void) 
@@ -61,8 +60,7 @@ PsychError SCREENWaitBlanking(void)
     int waitFrames, framesWaited;
     double tvbl, ifi;
     long screenwidth, screenheight;
-    int vbl_startline, beampos;
-	int scanline, lastline;
+    int vbl_startline, beampos, lastline;
     psych_uint64 vblCount, vblRefCount;
     CGDirectDisplayID	cgDisplayID;
     GLint read_buffer, draw_buffer;

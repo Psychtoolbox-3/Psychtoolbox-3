@@ -47,7 +47,7 @@
 #define PSYCHTOOLBOX_OS_NAME                                    "GNU/Linux X11"
 #endif
 
-#ifdef __LP64__
+#if defined(__LP64__) || defined(_WIN64)
 #define PTB_ARCHITECTURE " 64-Bit"
 #else
 #define PTB_ARCHITECTURE

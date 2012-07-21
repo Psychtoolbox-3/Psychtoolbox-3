@@ -40,7 +40,6 @@ PsychError PSYCHHIDGetDevices(void)
     int numDeviceStructElements, numDeviceStructFieldNames=24, deviceIndex, deviceClass;
     PsychGenericScriptType	*deviceStruct;		
     char usageName[PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH];
-    char tmpString[1024];
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -67,6 +66,7 @@ PsychError PSYCHHIDGetDevices(void)
     // useful info for mainstream products, only for a few niche products. Given its limited
     // value, i think we can refrain from shipping the framework as part of Psychtoolbox and
     // just provide the option to use it (== its XML file) if users decide to install it themselves.
+    char tmpString[1024];
     
     sprintf(tmpString, "%sPsychHardware/", PsychRuntimeGetPsychtoolboxRoot(FALSE));
     CFStringRef urlString = CFStringCreateWithCString(kCFAllocatorDefault, tmpString, kCFStringEncodingASCII);

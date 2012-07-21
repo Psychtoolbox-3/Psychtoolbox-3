@@ -673,12 +673,16 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
 		case 0x80:
 		case 0x90:
 		case 0xa0:
-			// NV50: GeForce8/9/Gxxx
+			// NV50: GeForce8/9/G100-G300.
 			card_type = 0x50;
 			break;
 		case 0xc0:
-			// Curie: GTX-400 and later:
+			// Fermi: GeForce G400/500 series:
 			card_type = 0xc0;
+			break;
+		case 0xe0:
+			// Kepler: GeForce G600+ series:
+			card_type = 0xe0;
 			break;
 		default:
 			printf("PTB-DEBUG: Unknown NVidia chipset 0x%08x \n", reg0);
@@ -797,8 +801,8 @@ void PsychInitScreenToHeadMappings(int numDisplays)
     ptbpipelines = getenv("PSYCHTOOLBOX_PIPEMAPPINGS");
     if (ptbpipelines) {
         // The default is "012...", ie screen 0 = pipe 0, 1 = pipe 1, 2 =pipe 2, n = pipe n
-	for (i = 0; (i < strlen(ptbpipelines)) && (i < kPsychMaxPossibleDisplays); i++) {
-	    PsychSetScreenToCrtcId(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
+        for (i = 0; (i < (int) strlen(ptbpipelines)) && (i < kPsychMaxPossibleDisplays); i++) {
+            PsychSetScreenToCrtcId(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
         }
     }
 

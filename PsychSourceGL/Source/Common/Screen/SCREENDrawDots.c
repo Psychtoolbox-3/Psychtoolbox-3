@@ -78,13 +78,12 @@ static char seeAlsoString[] = "BlendFunction";
 PsychError SCREENDrawDots(void)  
 {
 	PsychWindowRecordType                   *windowRecord;
-	int                                     whiteValue, m,n,p,mc,nc,pc,idot_type;
+	int                                     m,n,p,mc,nc,idot_type;
 	int                                     i, nrpoints, nrsize;
-	psych_bool                                 isArgThere, usecolorvector, isdoublecolors, isuint8colors;
+	psych_bool                              isArgThere, usecolorvector, isdoublecolors, isuint8colors;
 	double									*xy, *size, *center, *dot_type, *colors;
 	unsigned char                           *bytecolors;
 	GLfloat									pointsizerange[2];
-	double									convfactor;
     
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -161,7 +160,7 @@ PsychError SCREENDrawDots(void)
 	}
 	
 	// Setup initial common point size for all points:
-	glPointSize(size[0]);
+	glPointSize((float) size[0]);
 	
 	// Setup modelview matrix to perform translation by 'center':
 	glMatrixMode(GL_MODELVIEW);
@@ -207,7 +206,7 @@ PsychError SCREENDrawDots(void)
 			}
 			
 			// Setup point size for this point:
-			glPointSize(size[i]);
+			glPointSize((float) size[i]);
 			
 			// Render point:
 			glDrawArrays(GL_POINTS, i, 1);
@@ -235,4 +234,3 @@ PsychError SCREENDrawDots(void)
  	//All psychfunctions require this.
 	return(PsychError_none);
 }
-

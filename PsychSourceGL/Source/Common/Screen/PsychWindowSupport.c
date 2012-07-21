@@ -56,7 +56,6 @@
 #endif
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
-//#ifndef MATLAB_R11
 #include "ptbstartlogo.h"
 #else
 /* This is a placeholder for ptbstartlogo.h until the fu%&$ing M$-Compiler can handle it.
@@ -363,18 +362,22 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
 			printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
 			printf("PTB-WARNING: set to 'Full' (rightmost position).\n\n");
-			printf("PTB-WARNING: Actually..., it is pointless to continue with the software renderer, that will cause more trouble than good.\n");
-			printf("PTB-WARNING: I will abort now. Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
-			printf("PTB-WARNING: command: Screen('Preference', 'Verbosity', 1); to get a functional, but close to useless window up and running.\n\n\n");
-			
-			// We abort! Close the onscreen window:
-			PsychOSCloseWindow(*windowRecord);
-
-			// Free the windowRecord:
-			FreeWindowRecordFromPntr(*windowRecord);
-
-			// Done. Return failure:
-			return(FALSE);			
+            
+            // Only allow to continue if kPsychUseSoftwareRenderer flag is set. Otherwise abort here:
+            if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseSoftwareRenderer) == 0) {
+                printf("PTB-WARNING: Actually..., it is pointless to continue with the software renderer, that will cause more trouble than good.\n");
+                printf("PTB-WARNING: I will abort now. Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
+                printf("PTB-WARNING: command: Screen('Preference', 'ConserveVRAM', 64); to get a functional, but close to useless window up and running.\n\n\n");
+                
+                // We abort! Close the onscreen window:
+                PsychOSCloseWindow(*windowRecord);
+                
+                // Free the windowRecord:
+                FreeWindowRecordFromPntr(*windowRecord);
+                
+                // Done. Return failure:
+                return(FALSE);
+            }
 		}
 	}
 	#endif
@@ -850,7 +853,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// Yes: Adapt clear color to color of top-left splash pixel,
 			// so colors match:
 			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: glClear splash image top-left reference pixel: %i %i %i\n", splash_image.pixel_data[0],splash_image.pixel_data[1],splash_image.pixel_data[2]);
-			glClearColor(((float) splash_image.pixel_data[0]) / 255.0, ((float) splash_image.pixel_data[1]) / 255.0, ((float) splash_image.pixel_data[2]) / 255.0, 1.0);
+			glClearColor((GLclampf) (((float) splash_image.pixel_data[0]) / 255.0), (GLclampf) (((float) splash_image.pixel_data[1]) / 255.0), (GLclampf) (((float) splash_image.pixel_data[2]) / 255.0), 1.0);
 		}
 		else {
 			// No: Clear to white to prepare drawing of our default hard-coded logo:
@@ -2740,7 +2743,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Part 1 of workaround- /checkcode for syncing to vertical retrace:
     if (vblsyncworkaround) {
         glDrawBuffer(GL_BACK);
-        glRasterPos2f(0, screenheight);
+        glRasterPos2f(0, (GLfloat) screenheight);
         glDrawPixels(1,1,GL_RED,GL_UNSIGNED_BYTE, &id);
     }
  
@@ -3217,6 +3220,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 						PsychYieldIntervalSeconds(0);
 					}
 				}
+                else {
+                    // Set to "invalid" default:
+                    dwmPostOnsetVBLCount = 0;
+                    dwmOnsetVBLTime = 0;
+                    postFlipFrameId = 0;
+                }
 			#endif
 			
 			// No DWM timestamps?
@@ -3336,7 +3345,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				}
 
 				// Create fake beampos value for this invocation of Flip so we return an ok timestamp:
-				*beamPosAtFlip = vbl_startline;
+				*beamPosAtFlip = (int) vbl_startline;
 			}
 			
             if (*beamPosAtFlip >= vbl_startline) {
@@ -4045,7 +4054,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             printf("PTB-WARNING: or the mechanism for detection of swap completion is broken. In any case, this is an operating system or gfx-driver bug!\n");
         }
         
-        *numSamples = n;
+        *numSamples = (int) n;
         *stddev = tstddev;
 		
 		// Verbose output requested? We dump our whole buffer of samples to the console:
@@ -4091,10 +4100,11 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 */
 void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int belltype)
 {
-    double tdeadline, tcurrent, v=0;
-    GLdouble color[4];
-    int f=0;
-    int scanline;
+    double tdeadline, tcurrent;
+    GLclampf v=0;
+    GLclampf color[4];
+    float f = 0;
+    float scanline;
     CGDirectDisplayID cgDisplayID;
     float w,h;
     int visual_debuglevel;
@@ -4108,7 +4118,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     if (belltype == 2 && visual_debuglevel < 1) return;
     if (belltype == 3 && visual_debuglevel < 5) return;
     
-    glGetDoublev(GL_COLOR_CLEAR_VALUE, (GLdouble*) &color);
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, (GLfloat*) &color);
 
     PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
     tdeadline+=duration;
@@ -4116,8 +4126,8 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(windowRecord);
 
-    w=PsychGetWidthFromRect(windowRecord->rect);
-    h=PsychGetHeightFromRect(windowRecord->rect);
+    w = (float) PsychGetWidthFromRect(windowRecord->rect);
+    h = (float) PsychGetHeightFromRect(windowRecord->rect);
     
     // Clear out both buffers so it doesn't lool like junk:
     glClearColor(0,0,0,1);
@@ -4137,7 +4147,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         PsychGetAdjustedPrecisionTimerSeconds(&tcurrent);
 
         // Calc our visual ;-)
-        v=0.5 + 0.5 * sin(tcurrent*6.283);
+        v = (float) (0.5 + 0.5 * sin(tcurrent*6.283));
         
         switch (belltype) {
             case 0: // Info - Make it blue
@@ -4154,15 +4164,15 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
                 f=1-f;
                 glBegin(GL_QUADS);
                 glColor3f(f,f,f);
-                glVertex2f(0.00*w, 0.00*h);
-                glVertex2f(2.00*w, 0.00*h);
-                glVertex2f(2.00*w, 3.00*h);
-                glVertex2f(0.00*w, 3.00*h);
+                glVertex2f(0.00f*w, 0.00f*h);
+                glVertex2f(2.00f*w, 0.00f*h);
+                glVertex2f(2.00f*w, 3.00f*h);
+                glVertex2f(0.00f*w, 3.00f*h);
                 glColor3f(0,0,v);
-                glVertex2f(0.00*w, 0.00*h);
-                glVertex2f(1.00*w, 0.00*h);
-                glVertex2f(1.00*w, 1.00*h);
-                glVertex2f(0.00*w, 1.00*h);
+                glVertex2f(0.00f*w, 0.00f*h);
+                glVertex2f(1.00f*w, 0.00f*h);
+                glVertex2f(1.00f*w, 1.00f*h);
+                glVertex2f(0.00f*w, 1.00f*h);
                 glEnd();
             break;
         }
@@ -4172,29 +4182,29 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         // Draw a yellow triangle with black border:
         glColor3f(0,0,0);
         glBegin(GL_TRIANGLES);
-        glVertex2f(0.1*w, 0.1*h);
-        glVertex2f(0.9*w, 0.1*h);
-        glVertex2f(0.5*w, 0.9*h);
+        glVertex2f(0.1f*w, 0.1f*h);
+        glVertex2f(0.9f*w, 0.1f*h);
+        glVertex2f(0.5f*w, 0.9f*h);
         glColor3f(1,1,0);
-        glVertex2f(0.2*w, 0.2*h);
-        glVertex2f(0.8*w, 0.2*h);
-        glVertex2f(0.5*w, 0.8*h);
+        glVertex2f(0.2f*w, 0.2f*h);
+        glVertex2f(0.8f*w, 0.2f*h);
+        glVertex2f(0.5f*w, 0.8f*h);
         glEnd();
         // Draw a black exclamation mark into triangle:
         glBegin(GL_QUADS);
         glColor3f(0,0,0);
-        glVertex2f(0.47*w, 0.23*h);
-        glVertex2f(0.53*w, 0.23*h);
-        glVertex2f(0.53*w, 0.55*h);
-        glVertex2f(0.47*w, 0.55*h);
-        glVertex2f(0.47*w, 0.60*h);
-        glVertex2f(0.53*w, 0.60*h);
-        glVertex2f(0.53*w, 0.70*h);
-        glVertex2f(0.47*w, 0.70*h);
+        glVertex2f(0.47f*w, 0.23f*h);
+        glVertex2f(0.53f*w, 0.23f*h);
+        glVertex2f(0.53f*w, 0.55f*h);
+        glVertex2f(0.47f*w, 0.55f*h);
+        glVertex2f(0.47f*w, 0.60f*h);
+        glVertex2f(0.53f*w, 0.60f*h);
+        glVertex2f(0.53f*w, 0.70f*h);
+        glVertex2f(0.47f*w, 0.70f*h);
         glEnd();
         
         // Initiate back-front buffer flip:
-	PsychOSFlipWindowBuffers(windowRecord);
+        PsychOSFlipWindowBuffers(windowRecord);
         
         // Our old VBL-Sync trick again... We need sync to VBL to visually check if
         // beamposition is locked to VBL:
@@ -4209,7 +4219,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         glFinish();
 
         // Query and visualize scanline immediately after VBL onset, aka return of glFinish();
-        scanline=(int) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);    
+        scanline = (float) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);    
         if (belltype==3) {
             glColor3f(1,1,0);
             glBegin(GL_LINES);
@@ -4906,7 +4916,6 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 {
     static unsigned int	recursionLevel = 0;
     PsychWindowRecordType *parentRecord;
-    int	twidth, theight;
     psych_bool EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
     psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
 

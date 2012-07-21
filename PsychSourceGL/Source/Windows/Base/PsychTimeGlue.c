@@ -33,20 +33,17 @@
 
 */
 
-
-
 #include "Psych.h"
 
 /*
-
  *		file local state variables
-
-*/
+ */
 
 // Pseudo-Threadstruct for masterPsychtoolboxThread: Used in PsychSetThreadPriority()
 // and hopefully nowhere else:
 static psych_threadstruct masterPsychtoolboxThread;
 static psych_thread		  masterPsychtoolboxThreadhandle = NULL;
+static psych_threadid     masterThreadId;
 
 // Module handle for the MMCSS interface API library 'avrt.dll': Or 0 if unsupported.
 HMODULE Avrtlibrary = 0;
@@ -75,6 +72,14 @@ static psych_bool 		schedulingtrouble;
 static double			tickInSecsAtLastQuery;
 static double			timeInSecsAtLastQuery;
 static double           lowToHiBiasSecs;
+
+static double           backwardTimeJumpTolerance;
+static double           forwardTimeJumpTolerance;
+static unsigned int     failureHandlingModes;
+
+static DWORD_PTR        cpuMask;
+
+static int              verbosity = 0;
 
 // Our critical section variable to guarantee exclusive access to PsychGetPrecisionTimerSeconds()
 // in order to prevent race-conditions for the timer correctness checks in multi-threaded code:
@@ -244,6 +249,11 @@ void PsychInitTimeGlue(void)
 	//	printf("PTBCRITICAL -ERROR: In PsychInitTimeGlue() - failed to init time_lock!!! May malfunction or crash soon....\n");
 	//}
 
+    // Set override internal verbosity level for debugging, if specified by
+    // environment variable:
+    if (getenv("PSYCH_TIMEGLUE_VERBOSITY")) verbosity = atoi(getenv("PSYCH_TIMEGLUE_VERBOSITY"));
+    if (verbosity > 0) printf("PTB-INFO: TimeGlue debug output enabled at verbosity %i.\n", verbosity);
+    
 	// Setup defaults for all state variables:
 	precisionTimerAdjustmentFactor=1;
 	kernelTimebaseFrequencyHz = 0;
@@ -259,7 +269,71 @@ void PsychInitTimeGlue(void)
 	schedulingtrouble = FALSE;
 	tickInSecsAtLastQuery = -1;
 	timeInSecsAtLastQuery = -1;
-	
+
+    // Initial allowable backwards jumps in time for the high precision clock
+    // is 100 Nanoseconds:
+    backwardTimeJumpTolerance = 1e-7;
+    
+    // Allow override with environment variable, specifying tolerance in nanoseconds:
+    if (getenv("PSYCH_BACKWARD_TIMEJUMP_TOLERANCE_NSECS")) {
+        backwardTimeJumpTolerance = ((double) atoi(getenv("PSYCH_BACKWARD_TIMEJUMP_TOLERANCE_NSECS"))) / 1e9; 
+    } else {
+        _putenv_s("PSYCH_BACKWARD_TIMEJUMP_TOLERANCE_NSECS", "100");
+    }
+    
+    // Initial allowable forward jumps wrt. low-precision timer are tolerated up to 250 msecs:
+    forwardTimeJumpTolerance = 0.25;
+
+    // Allow override with environment variable, specifying tolerance in milliseconds:
+    if (getenv("PSYCH_FORWARD_TIMEJUMP_TOLERANCE_MSECS")) {
+        forwardTimeJumpTolerance = ((double) atoi(getenv("PSYCH_FORWARD_TIMEJUMP_TOLERANCE_MSECS"))) / 1e3; 
+    } else {
+        _putenv_s("PSYCH_FORWARD_TIMEJUMP_TOLERANCE_MSECS", "250");
+    }
+    
+    // failureHandlingModes is the logical or of following flags:
+    // 1  = Output critical-error warning message when detecting timer problems.
+    // 2  = Lock processing thread to cpu core zero on first detection of problem, then give high-res timer a 2nd chance.
+    // 4  = Switch to low-precision fallback timer on detection of problem while already locked to cpu core zero.
+    // 8  = Abort usercode script immediately with critical error on detection of problem that can't get resolved by flag 0x2.
+    // 16 = Run on low-precision timer from the beginning. Disable all checks.
+    
+    // By default, we output a warning message each time we detect problems and switch scheduling
+    // of the thread to core zero on first detection of problems:
+    failureHandlingModes = 1 + 2;
+
+    // Allow override with environment variable:
+    if (getenv("PSYCH_CLOCKERROR_MODE")) {
+        failureHandlingModes = atoi(getenv("PSYCH_CLOCKERROR_MODE"));
+    } else {
+        _putenv_s("PSYCH_CLOCKERROR_MODE", "3");
+    }
+
+    // Warn user about use of low-precision timer by default:
+    if (failureHandlingModes & 16) printf("PTB-INFO: Selecting low-precision system clock for this session. Watch out for timing trouble!\n");
+    
+    // Setup thread scheduling cpu mask so that thread(s) get locked to cpu
+    // core zero by default on WinXP and earlier, but not locked to any specific
+    // cores on Win-Vista and later:
+    cpuMask = (DWORD_PTR) (PsychIsMSVista() ? INT64_MAX : 0x1);
+
+    // Allow override with environment variable:
+    if (getenv("PSYCH_CPU_MASK")) {
+        cpuMask = (DWORD_PTR) atoi(getenv("PSYCH_CPU_MASK"));
+    }
+    
+    // Set thread to new cpuMask:
+    PsychAutoLockThreadToCores(NULL);
+    
+    // Redundant call just to retrieve effective cpuMask:
+    // This is needed because Windows translates our INT64_MAX cpu mask - 
+    // allowing execution on the first 63 cores - into the effective mask,
+    // e.g., allowing execution on the 4 cores of a quad-processor system.
+    cpuMask = (DWORD_PTR) PsychAutoLockThreadToCores(NULL);
+    
+    // Retrieve id of current thread, which is by definition the master thread:
+    masterThreadId = PsychGetThreadId();
+    
 	// That is why we use the less capable critical section init call:
 	// Has less capable error handling etc., but what can one do...
 	InitializeCriticalSection(&time_lock);
@@ -364,6 +438,63 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
   *delta=1;
 }
 
+/* Set thread affinity mask of calling thread to the modules global cpuMask:
+ * 
+ * 'curCpuMask' is an in/out pointer. If NULL, it is completely ignored. If non-NULL,
+ * the target variable of the pointer will contain the new cpu mask after a change
+ * of mask. If the target variable already contains a valid (non-zero) current cpu mask
+ * and it matches the new target cpu mask, then the actual mask change is omitted, assuming it
+ * is redundant, thereby saving some system call overhead.
+ *
+ * Threads can avoid redundant switches if they keep track of their current cpu mask
+ * by caching it in the *curCpuMask pointer target. They can pass in a zero value if
+ * unsure, or a NULL pointer if they are neither interested in caching, nor in the old
+ * or new value.
+ *
+ * Returns the old pre-switch affinity mask as a 64-Bit bitfield.
+ * Comparing the return value (previous mask) with the *curCpuMask value (new mask)
+ * allows the caller to check if the affinity mask was actually changed, resulting
+ * in a possible thread migration.
+ *
+ * If this function is called without the time lock held, ie., from outside
+ * of other timeglue functions, a small race condition exists which may cause
+ * deferred updated to the real new affinity mask due to 
+ *
+ */
+psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
+{
+    DWORD_PTR oldCpuMask;
+    
+    // If curCpuMask is valid and identical to current cpuMask, then our thread
+    // is already assigned the proper affinity mask and we no-op:
+    if (curCpuMask && (*curCpuMask != 0) && (*curCpuMask == (psych_uint64) cpuMask)) return((psych_uint64) cpuMask);
+
+    // Different curCpuMask and new cpuMask or curCpuMask unknown.
+    // Need to do a real transition:
+    if ((oldCpuMask = SetThreadAffinityMask(GetCurrentThread(), cpuMask)) == 0) {
+        // Binding failed! Output warning on first failed invocation...
+        if (!schedulingtrouble) {
+            schedulingtrouble = TRUE;
+            printf("PTBCRITICAL -ERROR: PsychTimeGlue - Win32 syscall SetThreadAffinityMask() failed!!! Timing could be inaccurate.\n");
+            printf("PTBCRITICAL -ERROR: Time measurement may be highly unreliable - or even false!!!\n");
+            printf("PTBCRITICAL -ERROR: FIX YOUR SYSTEM! In its current state its not useable for conduction of studies!!!\n");
+            printf("PTBCRITICAL -ERROR: Check the FAQ section of the Psychtoolbox Wiki for more information.\n");
+        }
+        
+        // Changing the cpu mask to cpuMask failed. The cpu mask is unchanged.
+        // Therefore curCpuMask is the same as before calling us, so we leave
+        // it unchanged. Return the old cpu mask as zero to signal failure:
+        return(0);
+    }
+    
+    // If we reach this point, then the new cpu mask is cpuMask, because the call
+    // succeeded. Return it by updating curCpuMask if caller wants to know this:
+    if (curCpuMask) *curCpuMask = (psych_uint64) cpuMask;
+    
+    // Return the old cpu mask oldCpuMask prior to the change:
+    return((psych_uint64) oldCpuMask);
+}
+
 void PsychGetPrecisionTimerSeconds(double *secs)
 {
   double					ss, ticks, diff;
@@ -375,11 +506,13 @@ void PsychGetPrecisionTimerSeconds(double *secs)
   static double				lastSlowcheckTimeTicks;
   psych_uint32				tick1, tick2, hangcount;
   psych_uint64				curRawticks;
+  const char*               envval;
+  psych_uint64              oldCpuMask;
+  psych_bool				skipCheck = FALSE;
   
-	// First time init of timeglue: Set up system for high precision timing,
-	// and enable workarounds for broken systems:
+  // First time init of timeglue: Set up system for high precision timing,
+  // and enable workarounds for broken systems:
   if (firstTime) {
-
 		// Init state to defaults:
 		oss=0.0;
 		oldticks=0.0;
@@ -414,22 +547,13 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 		// behaviour, once the Matlab application is quit/terminated.
 
 		// Next step for broken systems: Bind our Matlab interpreter/PTB main thread to the
-		// first cpu core in the system. The only known way to make sure we don't get time
+		// specified cpu cores in the system, as stored in cpuMask. The only known way to make sure we don't get time
 		// readings from different TSCs due to our thread jumping between cpu's. TSC's on
 		// a multi-core system are not guaranteed to be synchronized, so if TSC is our timebase,
 		// this could lead to time inconsistencies - even time going backwards between queries!!!
 		// Drawback: We may not make optimal use of a multi-core system. On Vista and later, we assume
 		// everything will be fine, but still perform consistency checks at each call to PsychGetPrecisionTimerSeconds():
-		if (!PsychIsMSVista()) {
-			if (SetThreadAffinityMask(GetCurrentThread(), 1)==0) {
-				// Binding failed! Output warning on first failed invocation...
-				schedulingtrouble = TRUE;
-				printf("PTBCRITICAL -ERROR: PsychTimeGlue - Win32 syscall SetThreadAffinityMask() failed!!! Timing could be inaccurate.\n");
-				printf("PTBCRITICAL -ERROR: Time measurement may be highly unreliable - or even false!!!\n");
-				printf("PTBCRITICAL -ERROR: FIX YOUR SYSTEM! In its current state its not useable for conduction of studies!!!\n");
-				printf("PTBCRITICAL -ERROR: Check the FAQ section of the Psychtoolbox Wiki for more information.\n");
-			}
-		}
+        PsychAutoLockThreadToCores(NULL);
 		
 		// Sleep us at least 10 msecs, so the system will reschedule us, with the
 		// thread affinity mask above applied. Don't know if this is needed, but
@@ -459,8 +583,7 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 
 		// Ok, now timeGetTime() should have the requested 1 msec increment rate.
 
-		// Ok, this is a dumb solution, but at least sort of robust. The
-		// proper solution will have to wait for the next 'beta' release cycle.
+		// Ok, this is a dumb solution, but at least sort of robust.
 		// We don't allow to use any timing function on a Windoze system that
 		// has more than 48 days of uptime. Rationale: At 49.8 days, the 32 bit
 		// tick counter will wrap around and leave our fallback- and reference
@@ -475,11 +598,17 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 			printf("PTB-ERROR: will become unreliable or wrong at uptimes of more than 49 days.\n");
 			printf("PTB-ERROR: Therefore PTB will not continue executing any time related function unless\n");
 			printf("PTB-ERROR: you reboot your machine now.\n\n");
-			PsychErrorExitMsg(PsychError_user, "Maximum allowable uptime for Windows exceeded. Please reboot your system.");
-		} 
+
+            // We can only safely abort on the master thread:
+            if (PsychGetThreadId() == masterThreadId) PsychErrorExitMsg(PsychError_user, "Maximum allowable uptime for Windows exceeded. Please reboot your system.");
+		}
 
 		// Is the high-precision timer supported?
     	counterExists = QueryPerformanceFrequency(&counterFreq);
+
+        // And does usercode not request us to ignore it? A 16 means to disable the high-precision timer:
+        if (failureHandlingModes & 16) counterExists = FALSE;
+        
 		if (counterExists) {
 			// Initialize old counter values to now:
 			if (0 == QueryPerformanceCounter(&count)) {
@@ -511,7 +640,43 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	// Need to acquire our timelock before we continue, for atomic timestamping and as we will soon access shared data structures:
 	EnterCriticalSection(&time_lock);
 
-	// Query system time of low resolution counter:
+    // Check for updated cpu mask environment variable:
+    if ((failureHandlingModes & 0x2) && (envval = getenv("PSYCH_CPU_MASK"))) {
+        // Assign new cpuMask and relock thread to corresponding cores:
+        cpuMask = (DWORD_PTR) atoi(envval);
+        oldCpuMask = PsychAutoLockThreadToCores(NULL);
+        
+        // If the cpu affinity mask really changed for this thread during
+        // PsychAutoLockThreadToCores() then the thread may have migrated
+        // between cpu cores as a result of the mask change. This means that
+        // it has jumped TSCs and we should skip all correctness checks during
+        // this iteration, so a new baseline for checks can be established for
+        // the next invocation:
+        if (oldCpuMask && (oldCpuMask != (psych_uint64) cpuMask)) {
+            // We can get here because either the effective cpu mask has really
+            // changed above, or because the effective cpu mask is not identical
+            // in value to cpuMask, e.g., because we passed in 0xffffffff as mask,
+            // but the system truncated it to 0x3 for a dual-core system with only
+            // cpus 0 and 1 installed. Only if the effective mask has really changed
+            // then we should skip tests. Disambiguate: Executing the lock operation again
+            // will be effectively a no-op, but it returns the "old" cpuMask which is due
+            // to the no-op already the effective new cpuMask. In other words, cpuMask
+            // now really contains a value we can effectively compare against oldCpuMask.
+            //
+            // If the comparison still shows a preswitch to postswitch difference, then
+            // the affinity mask for this thread has really changed and we need to skip
+            // the timing checks aka skipCheck = TRUE.
+            // (Yes it is mind-bending -- thanks to Microsoft for such a shoddy and
+            // convoluted api.)
+            cpuMask = (DWORD_PTR) PsychAutoLockThreadToCores(NULL);
+            if (cpuMask && (oldCpuMask != (psych_uint64) cpuMask)) {
+                if (verbosity > 2) printf("PTB-DEBUG: Skipping clock checks due to affinity mask change detected [old %i vs. new %i].\n", (int) oldCpuMask, (int) cpuMask);
+                skipCheck = TRUE;
+            }
+        }
+    }
+    
+    // Query system time of low resolution counter:
 	curRawticks = timeGetTime();
 
 	// Query Performance counter if it is supported:
@@ -519,7 +684,6 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 			Timertrouble = TRUE;
 			printf("PTB-CRITICAL WARNING! Timing code detected problems with the high precision TIMER in your system hardware!\n");
 			printf("PTB-CRITICAL WARNING! A call to QueryPerformanceCounter() failed!\n");
-			printf("PTB-CRITICAL WARNING! Will switch back to lower precision/resolution timer (only +/-1 millisecond accuracy at best).\n");
 			printf("PTB-CRITICAL WARNING! It is NOT RECOMMENDED to continue using this machine for studies that require high\n");
 			printf("PTB-CRITICAL WARNING! timing precision in stimulus onset or response collection. No guarantees can be made\n");
 			printf("PTB-CRITICAL WARNING! wrt. to timing or correctness of any timestamps or stimulus onsets!\n");
@@ -528,18 +692,67 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 			printf("PTB-CRITICAL WARNING! Also check the FAQ section of the Psychtoolbox Wiki for more information.\n\n");
 	}
 
+    // Skip inter-timer agreement checks below if query of both clocks took more than
+    // 1 msec, because that may mean the measured difference is unreliable due to
+    // scheduling delays or thread preemption:
+    if ((timeGetTime() - curRawticks) > 1) {
+        skipCheck = TRUE;
+        if (verbosity > 2) printf("PTB-DEBUG: Skipping clock checks due to time query duration > 1 msec.\n");
+    }
+    
 	// Convert to ticks in seconds for further processing:
 	ticks = ((double) (psych_int64) curRawticks) * 0.001;
+    
+    // Sanity check the low-precision timer for backwards jumps or wraparound:
+    if (ticks < tickInSecsAtLastQuery) {
+        // Wraparound or backwards jump detected!
+        
+        // Skip inter-timer check, as it would likely detect a false positive:
+        skipCheck = TRUE;
+        
+        if (verbosity > 2) printf("PTB-DEBUG: Skipping clock checks due to possible timeGetTime() wraparound or backwards jump.\n");
+
+        // If we are not currently running on the low-res timer, we leave it at this:
+        if ((!Timertrouble || !(failureHandlingModes & 0x4)) && counterExists) {
+            // Low-Res timer glitched / wrapped around, but we don't depend on it at
+            // the moment, so this temporary glitch should not matter. Tell user anyway:
+            if (failureHandlingModes & 0x1) {
+                printf("PTB-WARNING: Low precision timer glitch / wraparound detected. This won't matter if it\n");
+                printf("PTB-WARNING: is an isolated event. Otherwise you should reboot your system to maybe resolve the problem.\n");
+                printf("PTB-WARNING: Current time %f seconds < old time %f seconds.\n", ticks, tickInSecsAtLastQuery);
+            }
+        }
+        else {
+            // We depend on the glitching low-res timer at the moment. This is serious!
+            // We can't recover from this in any meaningful way. Abort session.
+            printf("PTB-CRITICAL ERROR: Low precision timer glitch / wraparound detected. Can't continue safely!\n");
+            printf("PTB-CRITICAL ERROR: Reboot your system to hopefully resolve the problem.\n");
+            printf("PTB-CRITICAL ERROR: Current reported time %f seconds < old time %f seconds.\n", ticks, tickInSecsAtLastQuery);
+
+            // Release timelock, so we do not deadlock during abort sequence:
+            LeaveCriticalSection(&time_lock);
+            
+            // We can only safely abort on the master thread:
+            if (PsychGetThreadId() == masterThreadId) PsychErrorExitMsg(PsychError_user, "Abortion of Psychtoolbox session due to unfixable problems with system clock!");
+            
+            // Secondary thread. Fudge it by returning infinite time:
+            *secs = DBL_MAX;
+            return;
+        }
+
+        // Recover from it as good as possible:
+        oldticks = ticks;
+        tickInSecsAtLastQuery = ticks;    
+    }
+    
+    // Keep track of last time measurement:
 	tickInSecsAtLastQuery = ticks;
 	
   // Start actual processing of result of QueryPerformanceCounter(). We do this here,
-  // deferred under protection of the time_lock lock. The Query has been done above,
-  // outside of the critical section, so multiple threads can't collide on a contended
-  // time_lock and get delayed needlessly:
+  // deferred under protection of the time_lock lock.
   if (counterExists) {
-
-   ss = ((double)count.QuadPart)/((double)counterFreq.QuadPart);
-   timeInSecsAtLastQuery = ss;
+    ss = ((double)count.QuadPart)/((double)counterFreq.QuadPart);
+    timeInSecsAtLastQuery = ss;
 
 	// Initialize base time for slow consistency checks at first invocation:
 	if (firstTime) {
@@ -553,23 +766,74 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 
 	// We don't perform the inter-timer agreement check at first invokation - Thread scheduling etc. needs to settle,
 	// as well as the timeBeginPeriod(1) call above...
-	if (!Timertrouble && !firstTime) {
+	if (!Timertrouble && !firstTime && !skipCheck) {
 		// No timer problems yet. Perform checks:
 
+        // Is our high precision timer supposed to be healthy and we are asked to
+        // switch to the lowres timer in case of trouble?
+        if (!Timertrouble && (failureHandlingModes & 0x4)) {
+            // Yes. We so far think our highres timer works fine, but one of our sibling
+            // Psychtoolbox mex files may have already spotted problems and may have
+            // switched to the low-res backup timer. If this were the case, then all mex
+            // files, including us, must immediately switch to the low-res timer as well,
+            // to avoid inconsistent use of timebases across Psychtoolbox modules. Such
+            // a switch request is signalled by the existence of a special "signalling
+            // environment variable "PSYCH_LOWRESCLOCK_FALLBACK". Check if the variable is defined:
+            if (getenv("PSYCH_LOWRESCLOCK_FALLBACK")) {
+                // Signalling variable set! We have to switch to lowres timer immediately:
+                Timertrouble = TRUE;
+                
+                // We also need to compute a proper bias value for seamless remapping of
+                // high-res time to low-res time, so transition is as glitchfree as possible.
+                // We unfortunately cannot pass one common lowToHiBiasSecs value from the
+                // mex module which triggered the lowres timer transition to all slave modules,
+                // because communication the value without a way to synchronize access via a
+                // common mutex lock is inherently racy and could cause transmission of a corrupted
+                // value - or even a crash due to segfault. So each module calculates the bias on
+                // its own and we just hope all modules calculate a consistent value.
+                // This is inherently shaky as we are basically using a known-to-be-faulty timer
+                // to calculate a bias value to workaround the faulty timer. If timer faults are
+                // transient, we may get away with this ok. If they are frequent or permanent, we
+                // may just have found a more elaborate way to fail as badly as if we would not
+                // switch to a backup at all. Such is life...
+                lowToHiBiasSecs = ss - ticks;
+                
+                // Assign time value ss a last time:
+                *secs = ss;
+
+                // Clear the firstTime flag - this was the first time, maybe.
+                firstTime = FALSE;
+
+                // Tell user about switch:
+                if (failureHandlingModes & 0x1) {
+                    printf("PTB-INFO: Timing system of one mex module switching to low-resolution timer now (RemapBias = %f seconds).\n", lowToHiBiasSecs);
+                }
+                                
+                // Need to release our timelock - Done with access to shared data:
+                LeaveCriticalSection(&time_lock);
+
+                // Exit here. The next call will go through the "Timertrouble == TRUE"
+                // low-resolution timer fallback path.
+                return;                
+            }
+        }
+        
 		// Time running backwards?
-        // We allow for a slack of 10 nanoseconds. Not sure if this is a good idea, as it weakens the test
+        // We allow for a slack of backwardTimeJumpTolerance seconds. Not sure if this is a good idea, as it weakens the test
         // to avoid aggressive fallback on flaky but sort of still useable hardware. Some modern cpu's showed
         // this effect, but the fallback would have been worse...
-		if (ss < (oss - 1e-8)) {
+		if (ss < (oss - backwardTimeJumpTolerance)) {
 			Timertrouble = TRUE;
-			printf("PTB-CRITICAL WARNING! Timing code detected problems with the high precision TIMER in your system hardware!\n");
-			printf("PTB-CRITICAL WARNING! Apparently time is reported as RUNNING BACKWARDS. (Timewarp Delta: %0.30f secs.)\n", ss - oss);
-			printf("PTB-CRITICAL WARNING! One reason could be a multi-core system with unsynchronized TSC's and buggy platform drivers.\n");
-			printf("PTB-CRITICAL WARNING! Will switch back to lower precision/resolution timer (only +/-1 millisecond accuracy at best).\n");
+            if (failureHandlingModes & 0x1) {
+                printf("PTB-CRITICAL WARNING! Timing code detected problems with the high precision TIMER in your system hardware!\n");
+                printf("PTB-CRITICAL WARNING! Apparently time is reported as RUNNING BACKWARDS. (Timewarp Delta: %0.30f secs.)\n", ss - oss);
+                printf("PTB-CRITICAL WARNING! The current threshold for detecting this problem is %0.30f seconds.\n", backwardTimeJumpTolerance);
+                printf("PTB-CRITICAL WARNING! One reason could be a multi-core system with unsynchronized TSC's and buggy platform drivers.\n");
+            }
 		}
 		
 		// The old and new high res. timer should not
-		// disagree in their increment since last call by more than 250 msecs. If they do,
+		// disagree in their increment since last call by more than forwardTimeJumpTolerance secs. If they do,
 		// this means that the high precision timer leaped forward, which indicates a faulty
 		// Southbridge controller in the machines host chipset - Not a good basis for high precision timing.
 		// See Microsoft Knowledge base article Nr. 274323 for further explanation and a list of known bad
@@ -577,16 +841,19 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 		// We actually allow for an additional slack of 0.000200 seconds or 200 ppm for each
 		// elapsed second of the test interval. This to account for clock drift of up to 200 ppm
 		// between both clocks. According to some docs, 200 ppm drift are possible under MS-Windows!
-		if ( diff > ( 0.25 + ((ticks - oldticks) * 0.000200 ) ) ) {
+		if ( diff > ( forwardTimeJumpTolerance + ((ticks - oldticks) * 0.000200 ) ) ) {
 			// Mismatch between performance counter and tick counter detected!
 			// Performance counter is faulty! Report this to user, then continue
 			// by use of the older tick counter as a band-aid.
 			Timertrouble = TRUE;
-			printf("PTB-CRITICAL WARNING! Timing code detected a FAULTY high precision TIMER in your system hardware!(Delta %0.30f secs).\n", diff);
-			printf("PTB-CRITICAL WARNING! Seems the timer sometimes randomly jumps forward in time by over 250 msecs!");
-			printf("PTB-CRITICAL WARNING! Will switch back to lower precision/resolution timer (only +/-1 millisecond accuracy at best).\n");
-			printf("PTB-CRITICAL WARNING! For more information see Microsoft knowledge base article Nr. 274323.\n");
-			printf("PTB-CRITICAL WARNING! http://support.microsoft.com/default.aspx?scid=KB;EN-US;Q274323&\n\n");
+
+            if (failureHandlingModes & 0x1) {
+                printf("PTB-CRITICAL WARNING! Timing code detected a FAULTY high precision TIMER in your system hardware!(Delta %0.30f secs).\n", diff);
+                printf("PTB-CRITICAL WARNING! Seems the timer sometimes randomly jumps forward in time by over %f msecs!\n", forwardTimeJumpTolerance * 1000);
+                printf("PTB-CRITICAL WARNING! This indicates a hardware defect, hardware design flaw, or serious misconfiguration.\n");
+                printf("PTB-CRITICAL WARNING! For more information see Microsoft knowledge base article Nr. 274323.\n");
+                printf("PTB-CRITICAL WARNING! http://support.microsoft.com/default.aspx?scid=KB;EN-US;Q274323&\n\n");
+            }
 		}
 
 		// We check for lags of QPC() wrt. to tick count at intervals of greater than 1 second, ie. only if
@@ -607,46 +874,117 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 				// Performance counter is lagging behind realtime! Report this to user, then continue
 				// by use of the older tick counter as a band-aid.
 				Timertrouble = TRUE;
-				printf("PTB-CRITICAL WARNING! Timing code detected a LAGGING high precision TIMER in your system hardware! (Delta %0.30f secs).\n", diff);
-				printf("PTB-CRITICAL WARNING! Seems that the timer sometimes stops or slows down! This can happen on systems with\n");
-				printf("PTB-CRITICAL WARNING! processor power management (cpu throttling) and defective platform drivers.\n");				
-				printf("PTB-CRITICAL WARNING! Will switch back to lower precision/resolution timer (only +/-1 millisecond accuracy at best).\n");
-				printf("PTB-CRITICAL WARNING! Please try if disabling all power management features of your system helps...\n");
-			}
-			
+
+                if (failureHandlingModes & 0x1) {                
+                    printf("PTB-CRITICAL WARNING! Timing code detected a LAGGING high precision TIMER in your system hardware! (Delta %0.30f secs).\n", diff);
+                    printf("PTB-CRITICAL WARNING! Seems that the timer sometimes stops or slows down! This can happen on systems with\n");
+                    printf("PTB-CRITICAL WARNING! processor power management (cpu throttling) and defective platform drivers.\n");				
+                    printf("PTB-CRITICAL WARNING! Please try if disabling all power management features of your system helps...\n");
+                }
+            }
+            
 			// Update timestamps of last check:
 			lastSlowcheckTimeSecs = ss;
 			lastSlowcheckTimeTicks = ticks;
 		}
 		
 		if (Timertrouble) {
-            // Faulty high precision clock detected. We switch to the low-res clock for the rest of the session, in the hope that
-            // the low-res clock is less broken than the high-res clock.
-            //
-            // We need to make the switch as seamless as possible. As the low-res and high-res clocks have different "zero seconds"
-            // reference points, we need to compute the absolute offset between both and then apply that offset to the reported low
-            // res clock time to compensate for it. This should reduce any jumps or jerks in the monotonic system time as perceived
-            // by clients of this function, especially the PsychWaitUntilSeconds() and PsychWaitIntervalSeconds() functions, which
-            // could hang for a very long time if the switch between high-res and low-res clock happens at the wrong moment.
-            lowToHiBiasSecs = ss - ticks;
+            // Faulty high precision clock detected.
+            
+            // Has this fault occured while thread was not locked to cpu core zero and
+            // are we asked to try the lock-to-core-zero workaround first?
+            if ((failureHandlingModes & 0x2) && (cpuMask != 0x1)) {
+                if (failureHandlingModes & 0x1) {            
+                    // More info for user at first detection of trouble:
+                    printf("PTB-CRITICAL WARNING! Trying to resolve the issue by locking processing threads to processor core zero.\n");
+                    printf("PTB-CRITICAL WARNING! This may help working around the system bug, but it will degrade overall timing performance.\n");
+                }
+                
+                // Set cpuMask to lock to first processor core (core zero):
+                cpuMask = (DWORD_PTR) 0x1;
+                
+                // Make sure other PTB modules notice this as well:
+                _putenv_s("PSYCH_CPU_MASK", "1");
 
-			// More info for user at first detection of trouble:
-			printf("PTB-CRITICAL WARNING! It is NOT RECOMMENDED to continue using this machine for studies that require high\n");
-			printf("PTB-CRITICAL WARNING! timing precision in stimulus onset or response collection. No guarantees can be made\n");
-			printf("PTB-CRITICAL WARNING! wrt. to timing or correctness of any timestamps or stimulus onsets!\n");
-			printf("PTB-CRITICAL WARNING! Read 'help GetSecsTest' and run GetSecsTest for further diagnosis and troubleshooting.\n");
-			printf("PTB-CRITICAL WARNING! It may also help to restart the machine to see if the problem is transient.\n");
-			printf("PTB-CRITICAL WARNING! Also check the FAQ section of the Psychtoolbox Wiki for more information.\n\n");			
-		}
+                // Relock thread to new cpuMask:
+                PsychAutoLockThreadToCores(NULL);
+                
+                // Redundant relock to query effective cpuMask -- which is returned
+                // as the "old" cpuMask:
+                cpuMask = (DWORD_PTR) PsychAutoLockThreadToCores(NULL);
+                
+                // Reset timertrouble flag. On next failure, we won't get away with
+                // this workaround.
+                Timertrouble = FALSE;
+            }
+            else {
+                // Switch to low-res timer as a workaround requested?
+                if (failureHandlingModes & 0x4) {
+                    // We switch to the low-res clock for the rest of the session, in the hope that
+                    // the low-res clock is less broken than the high-res clock.
+                    
+                    // We need to make the switch as seamless as possible. As the low-res and high-res clocks have different "zero seconds"
+                    // reference points, we need to compute the absolute offset between both and then apply that offset to the reported low
+                    // res clock time to compensate for it. This should reduce any jumps or jerks in the monotonic system time as perceived
+                    // by clients of this function, especially the PsychWaitUntilSeconds() and PsychWaitIntervalSeconds() functions, which
+                    // could hang for a very long time if the switch between high-res and low-res clock happens at the wrong moment.
+                    lowToHiBiasSecs = ss - ticks;
+                    
+                    // Announce to ourselves and all other modules that we all should
+                    // switch to the low-res timer:
+                    _putenv_s("PSYCH_LOWRESCLOCK_FALLBACK", "1");
+
+                    if (failureHandlingModes & 0x1) {
+                        printf("PTB-CRITICAL WARNING! Will switch to a lower precision backup timer with only +/- 1 msec precision to try\n");
+                        printf("PTB-CRITICAL WARNING! to keep going, but this may fail or cause various timing problems in itself.\n");
+                    }
+                }
+
+                if (failureHandlingModes & 0x1) {
+                    // More info for user at first detection of trouble:
+                    printf("PTB-CRITICAL WARNING! It is NOT RECOMMENDED to continue using this machine for studies that require high\n");
+                    printf("PTB-CRITICAL WARNING! timing precision in stimulus onset or response collection. No guarantees can be made\n");
+                    printf("PTB-CRITICAL WARNING! wrt. to timing or correctness of any timestamps or stimulus onsets!\n");
+                    printf("PTB-CRITICAL WARNING! Read 'help GetSecsTest' and run GetSecsTest for further diagnosis and troubleshooting.\n");
+                    printf("PTB-CRITICAL WARNING! It may also help to restart the machine to see if the problem is transient.\n");
+                    printf("PTB-CRITICAL WARNING! Also check the FAQ section of the Psychtoolbox Wiki for more information.\n\n");
+                }
+                
+                // Critical abort requested on real unrecoverable timertrouble?
+                if (failureHandlingModes & 0x8) {
+                    printf("PTB-CRITICAL ERROR: Usercode requested abortion of session if high-precision timer is detected as faulty\n");
+                    printf("PTB-CRITICAL ERROR: and can't get fixed by simple workarounds. This is the case. Aborting...\n");
+
+                    // Release timelock, so we do not deadlock during abort sequence:
+                    LeaveCriticalSection(&time_lock);
+
+                    // We can only safely abort on the master thread:
+                    if (PsychGetThreadId() == masterThreadId) PsychErrorExitMsg(PsychError_user, "Abortion of Psychtoolbox session due to unfixable problems with system clock!");
+                    
+                    // Secondary thread. Fudge it by returning infinite time:
+                    *secs = DBL_MAX;
+                    return;
+                }
+            }
+        }
 	}
 
+    // Make sure that reported high precision time never runs backward. If it did
+    // run backward due to malfunction, set it to old time. Reporting back a "frozen time"
+    // is still better than negative elapsed time, because usercode and other ptb routines
+    // are expected to handle a zero time increment -- it can happen in regular use if the
+    // elapsed time between two time queries is smaller than the clock resolution. Negative
+    // time however is unexpected.
+    ss = (ss >= oss) ? ss : oss;
+    
 	// All checks done: Prepare old values for new iteration:
 	oss = ss;
 	oldticks = ticks;
 	
 	// Ok, is the timer finally considered safe to use?
-	if (!Timertrouble) {
-		// All checks passed: ss is the valid return value:
+    // Or alternatively does usercode want us to use it even if problems were detected?
+	if (!Timertrouble || !(failureHandlingModes & 0x4)) {
+		// All checks passed, or override active: ss is the valid return value:
 		ss = ss;
 	}
 	else {
@@ -657,18 +995,21 @@ void PsychGetPrecisionTimerSeconds(double *secs)
         // that looks to clients as if it comes from the high-res clock, albeit with a lower
         // resolution of only 1 msec at best:
 		ss = ticks + lowToHiBiasSecs;
-	}	
+	}
 
 	//  ========= End of high precision timestamping. =========
   }
   else {
 	//  ========= Low precision fallback path for ancient machines: 1 khz tick counter: =========
-	ss = ticks;
+        
+    // Apply lowToHiBiasSecs, so our time is consistent with the original time of the
+    // high precision timer and of other modules:
+	ss = ticks + lowToHiBiasSecs;
 	timeInSecsAtLastQuery = -1;
   }
 
-  // Finally assign time value:  
-  *secs= ss;  
+  // Finally assign time value:
+  *secs= ss;
 
   // Clear the firstTime flag - this was the first time, maybe.
   firstTime = FALSE;
@@ -803,22 +1144,13 @@ int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*st
 
 	// Successfully created?
 	if ((*threadhandle)->handle != NULL) {
-		// Yes. On pre-MS-Vista systems, we lock the thread to cpu core 0 to prevent possible TSC multi-core sync
-		// problems. On Vista and later, we faithfully hope that Microsoft and the vendors of "MS-Vista-Ready"
+		// Yes. We lock the thread to set of cpu cores as specified by cpuMask to prevent possible TSC multi-core sync
+		// problems. On Vista and later, by default we faithfully hope that Microsoft and the vendors of "MS-Vista-Ready"
 		// PC hardware have actually solved that mess, i.e., non-broken hardware (or hardware with a HPET as primary
 		// time source) and proper HPET support and error handling in Vista et al's timing core. On such systems we
-		// don't lock to a core, so we can benefit from multi-core processing. Our consistency checks in PsychGetPrecisionTimerSeconds()
+		// don't lock to a core by default, so we can benefit from multi-core processing. Our consistency checks in PsychGetPrecisionTimerSeconds()
 		// should be able to eventually detect multi-core sync problems if they happen:
-		if (!PsychIsMSVista()) {
-			// Pre-Vista - Lock to single core:
-			if (SetThreadAffinityMask(GetCurrentThread(), 1) == 0) {
-				// Binding failed! Output warning:
-				printf("PTBCRITICAL-ERROR: PsychTimeGlue - Win32 syscall SetThreadAffinityMask() for new child thread failed!!! Timing could be inaccurate.\n");
-				printf("PTBCRITICAL-ERROR: Time measurement may be highly unreliable - or even false!!!\n");
-				printf("PTBCRITICAL-ERROR: FIX YOUR SYSTEM! In its current state its not useable for conduction of studies!!!\n");
-				printf("PTBCRITICAL-ERROR: Check the FAQ section of the Psychtoolbox Wiki for more information.\n");
-			}
-		}
+        PsychAutoLockThreadToCores(NULL);
 
 		// Return success:
 		return(0);
@@ -968,7 +1300,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	
 	switch(basePriority) {
 		case 0:	// Normal priority.
-			rc = SetThreadPriority(thread, THREAD_PRIORITY_NORMAL);
+			rc = SetThreadPriority(thread, THREAD_PRIORITY_NORMAL + tweakPriority);
 			if (rc == 0) {
 				rc = GetLastError();	// Failed!
 			}
@@ -979,7 +1311,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 		break;
 		
 		case 1: // High priority / Round robin realtime.
-			rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+			rc = SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL + tweakPriority);
 			if (rc == 0) {
 				rc = GetLastError();	// Failed!
 			}
@@ -1005,17 +1337,17 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 					}
 					else {
 						// Failed! Retry with HIGHEST priority:
-						rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+						rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST + tweakPriority);
 						// printf("PTB-WARNING: Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling failed for threadhandle %p. Setting thread priority to HIGHEST as a work-around...\n", threadhandle);
 					}
 				}
 				else {
 					// MMCSS not supported on pre-Vista system, or thread not eligible for MMCSS.
 					// Retry with HIGHEST priority, the best we can do on pre-Vista:
-					rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
-				}
-				 
+					rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST + tweakPriority);
+				} 
 			}
+            
 			if (rc == 0) {
 				rc = GetLastError();	// Failed!
 			}
@@ -1036,14 +1368,31 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 				}
 				else {
 					// Failed! Retry with HIGHEST priority:
-					rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+                    if (HIGH_PRIORITY_CLASS != GetPriorityClass(GetCurrentProcess())) {
+                        // This really is realtime priority, so we're pushing:
+                        rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+                    } else {
+                        // Go a bit lower than THREAD_PRIORITY_HIGHEST, so other important
+                        // threads, e.g., the userspace callback thread of an audio device
+                        // driver has a chance of getting enough cpu time. We do this because
+                        // Windows doesn't distinguish between THREAD_PRIORITY_HIGHEST and
+                        // THREAD_PRIORITY_TIME_CRITICAL while the process is in priority
+                        // class HIGH_PRIORITY_CLASS:
+                        rc = SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL);
+                    }
 					printf("PTB-WARNING: Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling failed for threadhandle %p. Setting thread priority to HIGHEST as a work-around...\n", threadhandle);
 				}
 			}
 			else {
 				// MMCSS not supported on pre-Vista system, or thread not eligible for MMCSS.
 				// Retry with HIGHEST priority, the best we can do on pre-Vista:
-				rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+                if (HIGH_PRIORITY_CLASS != GetPriorityClass(GetCurrentProcess())) {
+                    // This really is realtime priority, so we're pushing:
+                    rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+                } else {
+                    // See rationale above:
+                    rc = SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL);
+                }
 			}
 		break;
 

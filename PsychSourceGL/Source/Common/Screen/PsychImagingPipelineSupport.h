@@ -101,6 +101,8 @@ GLuint  PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, c
 // Assign special filter/lookup shaders to textures, e.g., in HDR mode, for float textures, etc...
 psych_bool PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord, int usefloatformat, int userRequest);
 psych_bool PsychAssignPlanarTextureShaders(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord, int channels);
+psych_bool PsychAssignPlanarI420TextureShader(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord);
+psych_bool PsychAssignPlanarI800TextureShader(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord);
 
 // Builtin functions:
 

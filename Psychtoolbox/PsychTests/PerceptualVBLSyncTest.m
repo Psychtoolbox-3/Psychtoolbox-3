@@ -1,5 +1,5 @@
-function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync)
-% PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync)
+function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync, testdualheadsync)
+% PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync, testdualheadsync)
 %
 % Perceptual synchronization test for synchronization of Screen('Flip') and
 % Screen('WaitBlanking') to the vertical retrace.
@@ -30,6 +30,21 @@ function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, max
 %
 % 'maxduration' Maximum runtime of test: Runs until keypress or maxduration
 % seconds have elapsed (Default is 10 seconds).
+%
+% 'vblSync' If 1, synchronize bufferswaps to vertical retrace of monitor,
+% otherwise (setting 0) swap immediately without sync, ie., usually with tearing.
+%
+% 'testdualheadsync' If 1, and 'vblSync' is zero, manually wait until the video
+% scanout position reaches half the height of the display, then swap. If this
+% is done on a multi-display setup and the video scanout cycles of all the
+% participating displays are properly synchronized, you should see a "static"
+% crack line roughly at half the height of the display, maybe a bit lower. If
+% you see a wandering crack line, at least on some displays, or you see vertical
+% offsets of the position of the crack line between displays, then the displays
+% are not properly synchronized, ie., not suitable for artifact free binocular
+% stimulation. Caveat: This logic has been developed and tested specifically
+% for testing on Linux with a single X-Screen spanning multiple displays. It may
+% or may not be suitable to assess other operating systems or display configurations.
 %
 % After starting this test, you should see a flickering greyish background
 % that flickers in a homogenous way - without cracks or weird moving patterns
@@ -119,6 +134,14 @@ if isempty(vblSync)
     vblSync = 1;
 end
 
+if nargin < 7
+    testdualheadsync = [];
+end
+
+if isempty(testdualheadsync)
+    testdualheadsync = 0;
+end
+
 thickness = (1-vblSync) * 5 + 1;
 
 try
@@ -191,6 +214,14 @@ try
               % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
               [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
           else
+              if testdualheadsync == 1
+                  Screen('DrawingFinished', win, 0, 1);
+                  beampos = -1000;
+                  while abs(beampos - winRect(4)/2) > 5
+                      beampos = Screen('GetWindowInfo', win, 1);
+                  end
+              end
+
               % Flip immediately without sync to vertical retrace, do clear
               % backbuffer after flip for visualization purpose:
               VBLTimestamp = Screen('Flip', win, VBLTimestamp + ifi/2, 0, 2, multiflip);

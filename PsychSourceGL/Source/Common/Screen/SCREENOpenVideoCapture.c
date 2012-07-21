@@ -19,7 +19,8 @@
   Open a video capture source (framegrabber, webcam, ...), create and initialize a corresponding capture object
   and return a handle to it to MATLAB space.
  
-  On OS-X and Windows, video capture is implemented via Apples Sequence-Grabber API which is part of Quicktime.
+  On 32-Bit OS-X, video capture is implemented via Apples Sequence-Grabber API which is part of Quicktime.
+  On all systems, the preferred video capture engine is GStreamer, except for 32-Bit OSX.
   On Linux and OS/X we support Firewire machine vision cameras that comply to the IIDC-1.x specification,
   via use of the open-source free software library libdc1394 V2. The library itself is most powerful and well
   tested/tuned for GNU/Linux systems, but also well working on OS/X. It has experimental limited support for
@@ -45,11 +46,14 @@ static char synopsisString[] =
 "settings below on how to adjust this behaviour to your needs.\n"
 "The real ROI (region of interest) may differ from the requested one, depending on the capabilities of "
 "your capture device. 'pixeldepth' if provided, asks for the number of layers that captured textures "
-"should have: 1=Luminance image, 2=Luminance+Alpha image, 3=RGB image, 4=RGB+Alpha, 5=YCBCR image. Default is "
+"should have: 1=Luminance image, 2=Luminance+Alpha image, 3=RGB image, 4=RGB+Alpha, 5=YCBCR, 6=I420 image. Default is "
 "to take whatever the capture device provides by default. Different devices support different formats "
 "so some of these settings may be ignored. Some combinations of video capture devices and graphics "
 "cards may support a setting of 5=YCBCR encoding. If they do, then this is an especially efficient way "
-"to handle color images, which may result in lower cpu load and higher framerates.\n"
+"to handle color images, which may result in lower cpu load and higher framerates. A format of 6=YUV-I420 "
+"should be supported by all modern graphics cards and may provide some performance benefits, but your mileage "
+"may vary. If you need very fast color image capture, try formats 4, 5 and 6 and see which one gives the "
+"best performance for your setup.\n"
 "'numbuffers' if provided, specifies the number of internal "
 "video buffers to use. It defaults to a value that is optimal for your specific hardware for common use. "
 "'allowfallback' if set to 1, will allow Psychtoolbox to use a less efficient mode of operation for video "
@@ -93,21 +97,24 @@ static char synopsisString[] =
 "A setting of 512 requests that ROI's as defined by the 'roirectangle' parameter get also applied to recorded video. "
 "Without this setting, ROI's only apply to live video as returned by Screen('GetCapturedImage',...);\n"
 "A setting of 1024 disables application of ROI's to live video as returned by Screen('GetCapturedImage',...);\n"
+"A setting of 2048 requests immediate conversion of video textures into a format suitable as offscreen window, "
+"for use with Screen('TransformTexture') or for drawing with custom user provided GLSL shaders. Normally this "
+"happens automatically on first use, asking for it explicitely may have performance or convenience benefits.\n"
 "\n"
 "'captureEngineType' This optional parameter allows selection of the video capture engine to use for this "
 "video source. Allowable values are currently 0, 1 and 3. Zero selects Apples Quicktime Sequence-Grabber API "
-"as capture engine, which is supported on MacOS/X and MS-Windows (for Windows you'll need to install a "
-"Quicktime Video digitizer component VDIG). The Quicktime engine allows movie recording and sound recording "
-"as well (see above). A value of 1 selects Firewire video capture via the free software library libdc1394-V2. "
+"as capture engine, which is only supported on MacOS/X with 32-Bit Matlab or 32-Bit Octave. The Quicktime "
+"engine allows movie recording and sound recording as well (see above). "
+"A value of 1 selects Firewire video capture via the free software library libdc1394-V2. "
 "That engine only supports high performance machine vision cameras that are compliant with the "
-"IIDC-1.x standard and that are connected via a Firewire (IEEE1394) bus system. Use of the engine with such "
+"IIDC-1.x standard and are connected via a Firewire (IEEE-1394) bus system. Use of the engine with such "
 "cams allows for much higher flexibility and performance than use of video capture via Quicktime, "
 "however, video recording to harddisk or sound recording isn't yet supported with firewire capture, ie., "
 "the 'targetmoviename' is simply ignored. The firewire capture engine is supported on Linux, MacOS/X and "
-"- maybe in the future, with quite a few limitations and bugs - on Windows.\n\n"
+"- maybe at some point in the future, with quite a few limitations and bugs - on Windows.\n\n"
 "A value of 3 selects the GStreamer video capture engine. This engine will be supported on all operating systems "
 "and will allow for video and sound recording of captured video and audio streams. Currently "
-"it is not yet implemented on Mac OS/X. Type 'help GStreamer' for installation and "
+"it is not yet implemented on 32-Bit Mac OS/X. Type 'help GStreamer' for installation and "
 "setup instructions for the required GStreamer runtime libraries.\n\n"
 "If you don't specify 'captureEngineType', the global "
 "setting from Screen('Preference', 'DefaultVideoCaptureEngine') will be used. If you don't specify that either "
@@ -125,20 +132,17 @@ static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapt
 
 PsychError SCREENOpenVideoCapture(void) 
 {
-	PsychWindowRecordType			*windowRecord;
+	PsychWindowRecordType                   *windowRecord;
 	int                                     deviceIndex;
 	int                                     capturehandle = -1;
-	double                                  framerate;
-	int                                     width;
-	int                                     height;
 	PsychRectType                           roirectangle;
 	psych_bool                              roiassigned;
 	int                                     reqdepth = 0;
 	int                                     num_dmabuffers = 0;
 	int                                     allow_lowperf_fallback = 1;
-	char*					moviename;
-	int					recordingflags;
-	int					engineId;
+	char*                                   moviename;
+	int                                     recordingflags;
+	int                                     engineId;
 	
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -186,6 +190,11 @@ PsychError SCREENOpenVideoCapture(void)
 	// 16= Use multi-threading for automatic background processing and cpu offloading.
 	// 32= Return high quality textures via 'GetCapturedImage' if recording in parallel --> Quality tradeoff live feed vs. recording.
 	// 64= Return timestamps in engine time instead of GetSecs() time.
+    // 128 = Use videorate converter even in pure live-capture mode.
+    // 256 = Restrict use of videorate converter to recorded video, do not apply to live feed.
+    // 512 = Apply ROI to recorded video as well, not only to live video.
+    // 1024 = Do not apply ROI to live video feed.
+    // 2048 = Do normalize texture format and orientation of video texture at creation time.
 	recordingflags = 0;
 	PsychCopyInIntegerArg(8, FALSE, &recordingflags);
 	

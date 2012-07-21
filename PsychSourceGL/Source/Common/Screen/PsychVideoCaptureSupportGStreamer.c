@@ -11,10 +11,10 @@
  
 	HISTORY:
 	
-	9.01.2011				Created initial version.
-	8.04.2011                               Make video/audio recording work ok.
-	5.06.2011                               Make video/audio recording godo enough
-						for initial release on Linux.
+	9.01.2011               Created initial version.
+	8.04.2011               Make video/audio recording work ok.
+	5.06.2011               Make video/audio recording good enough
+                            for initial release on Linux.
 
 	DESCRIPTION:
 	
@@ -49,11 +49,11 @@
         * Provides interface to change camera settings like exposure time, gain, contrast, etc.
 
 	=> Most functionality for typical everyday tasks works perfect or reasonably well.
-        => Some issues for special case apps persist, as written below.
+    => Some issues for special case apps persist, as written below.
 
 	TODO:
 
-	The following problems/limitations exist, which need to be fixed asap:
+	The following problems/limitations exist, which need to be fixed at some point:
 
         * Some codecs (e.g., huffyuv and h263) don't work yet. Some others show low quality or
           performance. Need to optimize parameters.
@@ -174,12 +174,15 @@ void PsychGSCheckInit(const char* engineName)
             // would fail, we would end up with a crash! For that reason, on MS-Windows, we
             // try to load the DLL, just to probe if the real load/link/bind op later on will
             // likely succeed. If the following LoadLibrary() call fails and returns NULL,
-            // then we know we would end up crashing.
+            // then we know we would end up crashing. We check for two versions of the dll's, as
+            // different GStreamer runtime distributions use different filenames for the dll's.
+            //
             // On OSX we check if the gst_init_check() function is defined, aka non-NULL. The
             // OSX linker sets the symbol to NULL if dynamic weak linking during runtime failed.
             // On failure we'll output some helpful error-message instead:
             #if PSYCH_SYSTEM == PSYCH_WINDOWS
-                if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
+                if (((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) &&
+                    ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll")))) {
             #endif
             #if PSYCH_SYSTEM == PSYCH_OSX
                 if (NULL == gst_init_check) {
@@ -190,6 +193,9 @@ void PsychGSCheckInit(const char* engineName)
                 printf("PTB-ERROR: of the required GStreamer runtime libraries failed to load, probably because it\n");
                 printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
                 printf("PTB-ERROR: or most likely because GStreamer isn't installed on this machine at all.\n\n");
+                #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                    printf("PTB-ERROR: The system returned error code %d.\n", GetLastError());
+                #endif
                 printf("PTB-ERROR: Please read the help by typing 'help GStreamer' for installation and troubleshooting\n");
                 printf("PTB-ERROR: instructions.\n\n");
                 printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is disabled for this session.\n\n", engineName);
@@ -243,6 +249,8 @@ void PsychGSCheckInit(const char* engineName)
 		// We use monotonic clock on Windows and OS/X, as these correspond to the
 		// clocks we use for GetSecs(), but realtime clock on Linux:
 		g_object_set(G_OBJECT(gst_system_clock_obtain()), "clock-type", ((PSYCH_SYSTEM == PSYCH_LINUX) ? GST_CLOCK_TYPE_REALTIME : GST_CLOCK_TYPE_MONOTONIC), NULL);
+
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GStreamer version '%s'.\n", (char*) gst_version_string());
 
 		// Reset firsttime flag:
 		gs_firsttime = FALSE;
@@ -834,10 +842,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	PsychGenericScriptType 	*devs;
 	const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
 
-	int					i, n;
-	char				port_str[64];
-	char				class_str[64];
-	int					inputIndex;
+	int					i;
 	GstElement			*videosource = NULL;
 	GstPropertyProbe	*probe = NULL;
 	GValueArray			*viddevs = NULL;
@@ -982,7 +987,7 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 			printf("PTB-DEBUG: Videosource caps are: %" GST_PTR_FORMAT "\n\n", caps);
 
 		// Iterate through all supported video capture modes:
-		for (i = 0; i < gst_caps_get_size(caps); i++) {
+		for (i = 0; i < (int) gst_caps_get_size(caps); i++) {
 			str = gst_caps_get_structure(caps, i);
 
 			gst_structure_get_int(str, "width", &qwidth);
@@ -1841,7 +1846,7 @@ psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString
 	return(PsychSetupRecordingPipeFromString(&dummydev, codecSpec, launchString, TRUE));
 }
 
-/* CHECKED TODO
+/*  
 *      PsychGSOpenVideoCaptureDevice() -- Create a video capture object.
 *
 *      This function tries to open and initialize a connection to a camera
@@ -1876,7 +1881,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	gint			width, height;
 	gint			rate1, rate2;
 	gint			twidth, theight;
-	int			i;
 	char                    *codecSpec;
 	char                    codecName[10000];
 
@@ -1944,30 +1948,41 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    reqdepth = 4;
     }
     else {
-	    // Only other supported format is RGB24 bit:
-	    switch (reqdepth) {
-	    case 2:
-		    // A no-go: Instead we use 1 channel luminance8:
-		    if (PsychPrefStateGet_Verbosity()>1)
-			printf("PTB-WARNING: Video capture engine doesn't support requested Luminance+Alpha format. Will revert to pure luminance instead...\n");
-		    reqdepth = 1;
-	    break;
-		    
-	    case 1: // Accept as is: L8   aka Luminance 8 bit.
-	    case 3: // Accept as is: RGB8 aka RGB 24 bit.
-	    break;
-	    case 5: // Accept as YVYU.
-		    if (!(win->gfxcaps & kPsychGfxCapUYVYTexture)) {
-		        // Usercode requested type 5 - UYVY textures, but GPU does not support them.
-			// Fallback to type 4 - RGBA8 textures:
-			reqdepth = 4;
-			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Requested YUV texture format for video capture unsupported by GPU. Falling back to RGBA8 format.\n");
-		    }
-	    break;
-	    default:
-		    // Unknown format:
-		    PsychErrorExitMsg(PsychError_user, "You requested an invalid image depths (not one of 0, 1, 2, 3, 4 or 5). Aborted.");
-	    }
+        // Only other supported format is RGB24 bit:
+        switch (reqdepth) {
+            case 2:
+                // A no-go: Instead we use 1 channel luminance8:
+                if (PsychPrefStateGet_Verbosity()>1)
+                    printf("PTB-WARNING: Video capture engine doesn't support requested Luminance+Alpha format. Will revert to pure luminance instead...\n");
+                reqdepth = 1;
+            break;
+
+            case 1: // Accept as is: L8   aka Luminance 8 bit.
+            case 3: // Accept as is: RGB8 aka RGB 24 bit.
+            break;
+
+            case 5: // Accept as YVYU.
+                if (!(win->gfxcaps & kPsychGfxCapUYVYTexture)) {
+                    // Usercode requested type 5 - UYVY textures, but GPU does not support them.
+                    // Fallback to type 4 - RGBA8 textures:
+                    reqdepth = 4;
+                    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Requested YUYV-422 texture format for video capture unsupported by GPU. Falling back to RGBA8 format.\n");
+                }
+            break;
+
+            case 6: // Accept as YUV-I420
+                if (!(win->gfxcaps & kPsychGfxCapFBO) || !PsychAssignPlanarI420TextureShader(NULL, win)) {
+                    // Usercode requested type 6 - I420 textures, but GPU does not support them.
+                    // Fallback to type 4 - RGBA8 textures:
+                    reqdepth = 4;
+                    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Requested YUV-I420 texture format for video capture unsupported by GPU. Falling back to RGBA8 format.\n");
+                }
+            break;
+
+            default:
+            // Unknown format:
+            PsychErrorExitMsg(PsychError_user, "You requested an invalid image depths (not one of 0, 1, 2, 3, 4, 5 or 6). Aborted.");
+        }
     }
 
     // Requested output texture pixel depth in layers:
@@ -2294,42 +2309,54 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // format. If this ain't possible, they will enforce creation of a colorspace converter
     // inbetween the video source and our videosink:
     switch (reqdepth) {
-    case 4:
-	    colorcaps = gst_caps_new_simple (   "video/x-raw-rgb",
-						"bpp", G_TYPE_INT, capdev->pixeldepth,
-						"depth", G_TYPE_INT, capdev->pixeldepth,
-						"alpha_mask", G_TYPE_INT, 0x000000FF,
-						"red_mask", G_TYPE_INT,   0x0000FF00,
-						"green_mask", G_TYPE_INT, 0x00FF0000,
-						"blue_mask", G_TYPE_INT,  0xFF000000,
-						NULL);
-	    break;
-    case 3:
-	    colorcaps = gst_caps_new_simple (   "video/x-raw-rgb",
-						"bpp", G_TYPE_INT, capdev->pixeldepth,
-						"depth", G_TYPE_INT, capdev->pixeldepth,
-						"red_mask", G_TYPE_INT,   0x00FF0000,
-						"green_mask", G_TYPE_INT, 0x0000FF00,
-						"blue_mask", G_TYPE_INT,  0x000000FF,
-						NULL);
-	    break;
-    case 2:
-    case 1:
-	    colorcaps = gst_caps_new_simple (   "video/x-raw-gray",
-						"bpp", G_TYPE_INT, capdev->pixeldepth,
-						NULL);
-	    break;
-    case 5:
-	    colorcaps = gst_caps_new_simple (   "video/x-raw-yuv",
-						"format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('U', 'Y', 'V', 'Y'),
-						NULL);
-	    reqdepth = 2;
-	    capdev->reqpixeldepth = 2;
-	    capdev->pixeldepth = 16;
+        case 4:
+            colorcaps = gst_caps_new_simple("video/x-raw-rgb",
+                                            "bpp", G_TYPE_INT, capdev->pixeldepth,
+                                            "depth", G_TYPE_INT, capdev->pixeldepth,
+                                            "alpha_mask", G_TYPE_INT, 0x000000FF,
+                                            "red_mask", G_TYPE_INT,   0x0000FF00,
+                                            "green_mask", G_TYPE_INT, 0x00FF0000,
+                                            "blue_mask", G_TYPE_INT,  0xFF000000,
+                                            NULL);
+        break;
 
-	    break;
-    default:
-	PsychErrorExitMsg(PsychError_internal, "Unknown reqdepth parameter received!");            
+        case 3:
+            colorcaps = gst_caps_new_simple("video/x-raw-rgb",
+                                            "bpp", G_TYPE_INT, capdev->pixeldepth,
+                                            "depth", G_TYPE_INT, capdev->pixeldepth,
+                                            "red_mask", G_TYPE_INT,   0x00FF0000,
+                                            "green_mask", G_TYPE_INT, 0x0000FF00,
+                                            "blue_mask", G_TYPE_INT,  0x000000FF,
+                                            NULL);
+        break;
+
+        case 2:
+        case 1:
+            colorcaps = gst_caps_new_simple("video/x-raw-gray",
+                                            "bpp", G_TYPE_INT, capdev->pixeldepth,
+                                            NULL);
+        break;
+
+        case 5: // YUYV-422 packed pixel encoding:
+            colorcaps = gst_caps_new_simple("video/x-raw-yuv",
+                                            "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('U', 'Y', 'V', 'Y'),
+                                            NULL);
+            reqdepth = 2;
+            capdev->reqpixeldepth = 2;
+            capdev->pixeldepth = 16;
+        break;
+
+        case 6: // YUV-I420 planar pixel encoding:
+            colorcaps = gst_caps_new_simple("video/x-raw-yuv",
+                                            "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('I', '4', '2', '0'),
+                                            NULL);
+            reqdepth = 2;
+            capdev->reqpixeldepth = 2;
+            capdev->pixeldepth = 12;
+        break;
+
+        default:
+        PsychErrorExitMsg(PsychError_internal, "Unknown reqdepth parameter received!");            
     }
 
     // Assign 'colorcaps' as caps to our videosink. This marks the videosink so
@@ -2927,16 +2954,15 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    g_object_set(G_OBJECT(camera), "viewfinder-sink", videosink, NULL);
     }
 
-    /* Obsolete on Linux, hopefully also on Windows:
+    // Obsolete on Linux, hopefully also on Windows, but needed on MacOS/X:
     // Make sure our capture timestamps are in system time (GetSecs() reference time)
     // unless recordingflags 64 are set, in which case timestamps are in pipeline
     // running time, or whatever GStreamer finds convenient.
-    if (!(recordingflags & 64)) {
+    if ((PSYCH_SYSTEM == PSYCH_OSX) && !(recordingflags & 64)) {
 	    // Set defined start time for pipeline - Used for cts timestamps:
 	    gst_element_set_base_time(camera, GST_CLOCK_TIME_NONE);
 	    gst_element_set_start_time(camera, GST_CLOCK_TIME_NONE);
     }
-    */
 
     // Assign final recordingflags:
     vidcapRecordBANK[slotid].recordingflags = recordingflags;
@@ -2984,7 +3010,7 @@ int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain,
 	return(drainedCount);
 }
 
-/* CHECKED
+/* 
 *  PsychGSVideoCaptureRate() - Start- and stop video capture.
 *
 *  capturehandle = Grabber to start-/stop.
@@ -3249,7 +3275,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 }
 
 
-/* CHECKED TODO
+/*  
 *  PsychGSGetTextureFromCapture() -- Create an OpenGL texturemap from a specific videoframe from given capture object.
 *
 *  win = Window pointer of onscreen window for which a OpenGL texture should be created.
@@ -3268,24 +3294,18 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 								 PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {
     PsychVidcapRecordType *capdev;
-    GstElement *camera;
     GstBuffer *videoBuffer = NULL;
     gint64 bufferIndex;
     double deltaT = 0;
-    GstEvent *event;
     GstClockTime baseTime;
 
     int waitforframe;
-    GLuint texid;
     int w, h;
-    double targetdelta, realdelta, frames;
     unsigned int intensity = 0;
     unsigned int count, i, bpp;
     unsigned char* pixptr;
     psych_bool newframe = FALSE;
     double tstart, tend;
-    unsigned int pixval, alphacount;
-    int error;
     int nrdropped = 0;
     unsigned char* input_image = NULL;
 
@@ -3521,13 +3541,15 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    // Activate OpenGL context of target window:
 	    PsychSetGLContext(win);
 	    
-#if PSYCH_SYSTEM == PSYCH_OSX
-	    // Explicitely disable Apple's Client storage extensions. For now they are not really useful to us.
-	    glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
-#endif
+        #if PSYCH_SYSTEM == PSYCH_OSX
+            // Explicitely disable Apple's Client storage extensions. For now they are not really useful to us.
+            glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+        #endif
 
+        // Set default rect of texture:
 	    PsychMakeRect(out_texture->rect, 0, 0, w, h);    
-	    
+        PsychCopyRect(out_texture->clientrect, out_texture->rect);
+
 	    // Set NULL - special texture object as part of the PTB texture record:
 	    out_texture->targetSpecific.QuickTimeGLTexture = NULL;
 	    
@@ -3538,36 +3560,108 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    // prevents unwanted free() operation in PsychDeleteTexture...
 	    out_texture->textureMemorySizeBytes = 0;
 	    
-	    // Set texture depth: Could be 8, 16, 24 or 32 bpp.
+	    // Set default texture depth: Could be 8, 16, 24 or 32 bpp.
 	    out_texture->depth = capdev->reqpixeldepth * 8;
 	    
-	    // 4-channel textures are aligned on 4 Byte boundaries because texels are RGBA8:
-	    out_texture->textureByteAligned = (capdev->reqpixeldepth == 4) ? 4 : 1;
+	    // 4-channel textures are aligned on 4 Byte boundaries because texels are RGBA8. If they
+        // have an even number of pixels (width) per row, they are even 8 Byte aligned. Otherwise
+        // we play safe and assume no alignment, ie., 1 Byte alignment:
+	    out_texture->textureByteAligned = (capdev->reqpixeldepth == 4) ? ((w % 2) ? 4 : 8) : 1;
 
 	    // This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
 	    out_texture->textureMemory = (GLuint*) input_image;
 	    
 	    // Special case depths == 2, aka YCBCR texture?
-	    if ((capdev->reqpixeldepth == 2) && (win->gfxcaps & kPsychGfxCapUYVYTexture)) {
-		// GPU supports UYVY textures and we get data in that YCbCr format. Tell
-		// texture creation routine to use this optimized format:
-		if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
-		    // No support for more powerful Apple extension. Use Linux MESA extension:
-		    out_texture->textureinternalformat = GL_YCBCR_MESA;
-		    out_texture->textureexternalformat = GL_YCBCR_MESA;
-		} else {
-		    // Apple extension supported:
-		    out_texture->textureinternalformat = GL_RGB;
-		    out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
-		}
-		// Same enumerant for Apple and Mesa:
-		out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;
-	    }
+	    if ((capdev->reqpixeldepth == 2) && (capdev->pixeldepth == 16) && (win->gfxcaps & kPsychGfxCapUYVYTexture)) {
+            // GPU supports UYVY textures and we get data in that YCbCr format. Tell
+            // texture creation routine to use this optimized format:
+            if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
+                // No support for more powerful Apple extension. Use Linux MESA extension:
+                out_texture->textureinternalformat = GL_YCBCR_MESA;
+                out_texture->textureexternalformat = GL_YCBCR_MESA;
+            } else {
+                // Apple extension supported:
+                out_texture->textureinternalformat = GL_RGB8;
+                out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
+            }
+            // Same enumerant for Apple and Mesa:
+            out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;
 
-	    // Let PsychCreateTexture() do the rest of the job of creating, setting up and
-	    // filling an OpenGL texture with content:
-	    PsychCreateTexture(out_texture);
-	    
+            // Number of effective channels is 3 for RGB8:
+            out_texture->nrchannels = 3;
+            
+            // And 24 bpp depth:
+            out_texture->depth = 24;
+
+            // Byte alignment: For even number of pixels, assume at least 4 Byte alignment due to packing of 2 effective
+            // pixels into one 32-Bit packet, maybe even 8 Byte alignment if divideable by 4. For other width's, assume
+            // no alignment ie., 1 Byte:
+            out_texture->textureByteAligned = (w % 2) ? 1 : ((w % 4) ? 4 : 8);	    
+        }
+
+        // YUV I420 planar pixel upload requested?
+	    if ((capdev->reqpixeldepth == 2) && (capdev->pixeldepth == 12)) {
+            // We encode I420 planar data inside a 8 bit per pixel luminance texture of
+            // 1.5x times the height of the video frame. First the "Y" luminance plane
+            // is stored at full 1 sample per pixel resolution with 8 bits. Then a 0.25x
+            // height slice with "U" Cr chrominance data at half the horizontal and vertical
+            // resolution aka 1 sample per 2x2 pixel quad. Then a 0.25x height slice with "V"
+            // Cb chrominance data at 1 sample per 2x2 pixel quad resolution. As such the texture
+            // appears to OpenGL as a normal LUMINANCE8 texture. Conversion of the planar format
+            // into useable RGBA8 pixel fragments will happen during rendering via a suitable fragment
+            // shader. The net gain of this is that we effectively only need 1.5 Bytes per pixel instead
+            // of 3 Bytes for RGB8 or 4 Bytes for RGBA8:
+			out_texture->textureexternaltype   = GL_UNSIGNED_BYTE;
+			out_texture->textureexternalformat = GL_LUMINANCE;
+			out_texture->textureinternalformat = GL_LUMINANCE8;
+            
+			// Define a rect of 1.5 times the video frame height, so PsychCreateTexture() will source
+            // the whole input data buffer:
+			PsychMakeRect(out_texture->rect, 0, 0, w, h * 1.5);
+            
+            // Check if 1.5x height texture fits within hardware limits of this GPU:
+            if (h * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixeldepth of 4 in 'OpenVideoCapture'.");
+            
+            // Create planar "I420 inside L8" texture:
+            PsychCreateTexture(out_texture);
+            
+            // Restore rect and clientrect of texture to effective size of video frame:
+            PsychMakeRect(out_texture->rect, 0, 0, w, h);
+            PsychCopyRect(out_texture->clientrect, out_texture->rect);
+            
+            // Mark texture as planar encoded, so proper conversion shader gets applied during
+            // call to PsychNormalizeTextureOrientation(), prior to any render-to-texture operation, e.g.,
+            // if used as an offscreen window, or as a participant of a Screen('TransformTexture') call:
+            out_texture->specialflags |= kPsychPlanarTexture;
+            
+            // Assign special filter shader for sampling and color-space conversion of the
+            // planar texture during drawing or PsychNormalizeTextureOrientation():
+            if (!PsychAssignPlanarI420TextureShader(out_texture, win)) PsychErrorExitMsg(PsychError_user, "Assignment of I420 video decoding shader failed during video texture creation!");
+            
+            // Number of effective channels is 3 for RGB8:
+            out_texture->nrchannels = 3;
+            
+            // And 24 bpp depth:
+            out_texture->depth = 24;
+            
+            // Byte alignment: Assume no alignment for now:
+            out_texture->textureByteAligned = 1;
+        }
+        else {
+            // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+            // filling an OpenGL texture with content:
+            PsychCreateTexture(out_texture);
+        }
+
+        // Immediate conversion of texture into normalized orientation and format requested
+        // by usercode?
+        if (capdev->recordingflags & 2048) {
+            // Transform out_texture video texture into a normalized, upright texture if it isn't already in
+            // that format. We require this standard orientation for simplified shader design.
+            PsychSetShader(win, 0);
+            PsychNormalizeTextureOrientation(out_texture);            
+        }
+
 	    // Ready to use the texture...
     }
     
@@ -3611,7 +3705,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     return(nrdropped);
 }
 
-// CHECKED
 /* Set capture device specific parameters:
 * Currently, the named parameters are a subset of the parameters supported by the
 * IIDC specification, mapped to more convenient names.
@@ -3624,9 +3717,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 */
 double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
 {
-	unsigned int minval, maxval, intval, oldintval;
-	int triggercount;
-
+	unsigned int intval, oldintval;
 	float oldfvalue = FLT_MAX;
 	double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
 	psych_bool assigned = false;
@@ -3893,8 +3984,8 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 				oldvalue = (double) gst_color_balance_get_value(cb, cc);
 
 				// Optionally assign new setting:
-				if (intval < (int) cc->min_value) intval = (int) cc->min_value;
-				if (intval > (int) cc->max_value) intval = (int) cc->max_value;
+				if (intval < (unsigned int) cc->min_value) intval = (unsigned int) cc->min_value;
+				if (intval > (unsigned int) cc->max_value) intval = (unsigned int) cc->max_value;
 				if (value != DBL_MAX) gst_color_balance_set_value(cb, cc, intval);
 			}
 		}

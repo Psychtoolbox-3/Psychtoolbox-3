@@ -44,11 +44,12 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENTextStyle(void) 
 {
-    psych_bool						doSetStyle, foundFont;
+    psych_bool					doSetStyle;
     PsychWindowRecordType		*windowRecord;
     int							oldTextStyle, newTextStyle;
 
 #if PSYCH_SYSTEM == PSYCH_OSX
+    psych_bool                  foundFont;
     PsychFontStructType			*fontRecord;
 #endif
 

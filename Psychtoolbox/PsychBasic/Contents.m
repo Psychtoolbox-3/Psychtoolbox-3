@@ -18,7 +18,7 @@
 %     GetChar              - Wait for keyboard character and return it.
 %     GetPID               - Get the process ID of the MATLAB process.
 %     GetMouse             - Get mouse position. 
-%     GetMouseWheel        - Get mouse wheel position delta on a wheel mouse. OS X only for now.
+%     GetMouseWheel        - Get mouse wheel position delta on a wheel mouse.
 %     GetSecs              - Time since startup with high precision. 
 %     GetSecsTick          - Duration of one tick of the GetSecs clock.
 %     GetTicks             - Number of 60.15 Hz ticks since startup. 
@@ -32,17 +32,18 @@
 %     KbKeysAction         - Return an incremented or decremented value, depending on keys pressed.
 %     KbName               - Convert keycode to key name and vice versa.
 %     KbPressWait          - Wait for key press, make sure no keys pressed before.
-%     KbQueueCreate        - Create keyboard queue (OS/X only).
-%     KbQueueRelease       - Destroy keyboard queue (OS/X only).
-%     KbQueueFlush         - Empty keyboard queue (OS/X only).
+%     KbQueueCreate        - Create keyboard queue.
+%     KbQueueRelease       - Destroy keyboard queue.
+%     KbQueueFlush         - Empty keyboard queue.
 %     KbQueueStart         - Start recording of key presses into queue.
 %     KbQueueStop          - Stop recording of key presses into queue.
 %     KbQueueCheck         - Check keyboard queue for key presses/releases.
 %     KbReleaseWait        - Wait until all keys on keyboard are released.
 %     KbStrokeWait         - Wait for single, isolated key stroke.
-%     KbTriggerWait        - Wait for trigger keys on keyboard (OS/X only).
+%     KbTriggerWait        - Wait for trigger keys on keyboard.
 %     KbWait               - Wait until at least one key is pressed and return its time.
 %     ListenChar           - Start GetChar queue.
+%     LoadPsychHID         - Helper function for loading PsychHID on MS-Windows.
 %     MachAbsoluteTimeClockFrequency - Mach Kernel time measurement.  
 %     PredictVisualOnsetForTime - Predict stimulus onset for given Screen('Flip') 'when' timespec.
 %     psychassert          - Drop in replacement for Matlabs assert().
@@ -54,6 +55,7 @@
 %     PsychtoolboxDate     - Current version date, e.g. '1 August 1998'
 %     PsychtoolboxVersion  - Current version number, e.g. 2.32
 %     PsychWatchDog        - Watchdog mechanism and error handler for Psychtoolbox.
+%     PsychTweak           - Tweak Psychtoolbox low-level operating parameters.
 %     RemapMouse           - Map mouse position to stimulus position.
 %     RestrictKeysForKbCheck - Restrict operation of KbCheck et al. to a subset of keys on the keyboard.
 %     Screen               - Control the video display. ** Type "Screen" for a list. ** 

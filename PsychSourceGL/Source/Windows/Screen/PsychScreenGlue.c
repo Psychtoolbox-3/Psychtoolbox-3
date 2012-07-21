@@ -55,6 +55,13 @@
 // Include DirectDraw header for access to the GetScanLine() function:
 #include <ddraw.h>
 
+// Module handle for the DirectDraw library 'ddraw.dll': Or 0 if unsupported.
+HMODULE ddrawlibrary = 0;
+
+typedef HRESULT (WINAPI * LPDIRECTDRAWCREATE)(GUID FAR *lpGUID, LPDIRECTDRAW FAR *lplpDD, IUnknown FAR *pUnkOuter);
+LPDIRECTDRAWCREATE      PsychDirectDrawCreate = NULL;
+LPDIRECTDRAWENUMERATEEX PsychDirectDrawEnumerateEx = NULL;
+
 // file local variables
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
@@ -114,16 +121,16 @@ void InitializePsychDisplayGlue(void)
 // hMonitor struct which contains the Windows internal name for the detected display. We
 // need to pass this name string to a variety of Windows-Functions to refer to the monitor
 // of interest.
-psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
 BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR lpDriverName, LPVOID displayIdx, HMONITOR hMonitor);
 
-psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
 	MONITORINFOEX moninfo;
 
 	// hMonitor is the handle to the monitor info. Resolve it to a moninfo information struct:
 	moninfo.cbSize = sizeof(MONITORINFOEX);
-	GetMonitorInfo(hMonitor, &moninfo);
+	GetMonitorInfo(hMonitor, (LPMONITORINFO) &moninfo);
 
 	// Query and copy the display device name into our own screenNumber->Name mapping array:
 	displayDeviceName[numDisplays] = (char*) malloc(256);
@@ -147,7 +154,7 @@ psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lp
 }
 
 // Callback for DirectDraw display enumeration which complements monitor enumeration above:
-// Called by DirectDrawEnumerateEx() below...
+// Called by PsychDirectDrawEnumerateEx() below...
 BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR lpDriverName, LPVOID displayIdx, HMONITOR hMonitor)
 {
 	// Retrieve index into our display array for the display to enumerate / map in this callback:
@@ -198,16 +205,43 @@ void InitCGDisplayIDList(void)
   displayDeviceStartX[0] = 0;
   displayDeviceStartY[0] = 0;
 
+  // Since Windows Vista/7 we need to manually load the DirectDraw runtime DLL and bind
+  // the functions we need manually. Thanks Microsoft for creating pointless extra work!
+  ddrawlibrary = LoadLibrary("ddraw.dll");
+  if (ddrawlibrary) {
+    // Load success. Dynamically bind the relevant functions:
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: DirectDraw DLL available. Binding controls ...");
+
+    PsychDirectDrawCreate      = (LPDIRECTDRAWCREATE) GetProcAddress(ddrawlibrary, "DirectDrawCreate");
+    PsychDirectDrawEnumerateEx = (LPDIRECTDRAWENUMERATEEX) GetProcAddress(ddrawlibrary, "DirectDrawEnumerateExA");
+
+    if (PsychDirectDrawCreate && PsychDirectDrawEnumerateEx) {
+      // Mark DirectDraw as supported:
+      if (PsychPrefStateGet_Verbosity() > 5) printf(" ...done\n");
+    }
+    else {
+      FreeLibrary(ddrawlibrary);
+      ddrawlibrary = 0;
+        if (PsychPrefStateGet_Verbosity() > 0) {
+            printf("PTB-WARNING: Could not attach to DirectDraw library ddraw.dll - Trouble ahead!\n");
+            printf("PTB-WARNING: DirectDrawCreate() = %p : DirectDrawEnumerateEx() = %p\n", PsychDirectDrawCreate, PsychDirectDrawEnumerateEx);
+        }
+    }
+  }
+  else {
+    if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: DirectDraw runtime DLL unsupported! Trouble ahead!\n"); 
+  }
+
   // Create a DirectDraw object for the primary display device, i.e. the single display on a
   // single display setup or the display device corresponding to the desktop on a multi-display setup:
-  if (DirectDrawCreate(DDCREATE_HARDWAREONLY, &(displayDeviceDDrawObject[0]), NULL)!=DD_OK) {
+  if ((ddrawlibrary == 0) || (PsychDirectDrawCreate((GUID FAR *) DDCREATE_HARDWAREONLY, &(displayDeviceDDrawObject[0]), NULL) != DD_OK)) {
     // Failed to create Direct Draw object:
     displayDeviceDDrawObject[0]=NULL;
     printf("PTB-WARNING: Failed to create DirectDraw interface for primary display. Won't be able to generate high-precision 'Flip' timestamps.\n");
   }
   else {
     rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
-	 if (rc!=DD_OK && rc!=DDERR_VERTICALBLANKINPROGRESS) {
+    if (rc!=DD_OK && rc!=DDERR_VERTICALBLANKINPROGRESS) {
 		// Beamposition query failed :(
 		switch(rc) {
 			case DDERR_UNSUPPORTED:
@@ -268,14 +302,10 @@ void InitCGDisplayIDList(void)
 	for (i = 1; i < numDisplays; i++) {
 		// Enumerate for display screen 'i':
 		rc = 0;
-		// We only support per-display beampos queries on R2007a and later builds, due to limitations
-		// of the R11 build-system: The DirectDraw libraries we'd need to use to utilize the DirectDrawEnumerateEx()
-		// functions are incompatible with the old operating system, compilers and Matlab versions used for R11 builds.
-		#ifndef MATLAB_R11
-		// R2007a or later, or Octave: Enumerate and assign individual DDRAW objects per display:
-		if (((rc = DirectDrawEnumerateEx(PsychDirectDrawEnumProc, (LPVOID) i, DDENUM_ATTACHEDSECONDARYDEVICES)) == DD_OK) && (displayDeviceGUIDValid[i] > 1)) {
+
+		if (PsychDirectDrawEnumerateEx && ((rc = PsychDirectDrawEnumerateEx(PsychDirectDrawEnumProc, (LPVOID) i, DDENUM_ATTACHEDSECONDARYDEVICES)) == DD_OK) && (displayDeviceGUIDValid[i] > 1)) {
 			// Success: Create corresponding DDRAW device interface for this screen:
-			if ((rc = DirectDrawCreate(&displayDeviceGUID[i], &(displayDeviceDDrawObject[i]), NULL)) != DD_OK) {
+			if ((rc = PsychDirectDrawCreate(&displayDeviceGUID[i], &(displayDeviceDDrawObject[i]), NULL)) != DD_OK) {
 				// Failed to create Direct Draw object for this screen:
 				// We use the primary display DDRAW object [0] as a fallback:
 				displayDeviceDDrawObject[i] = displayDeviceDDrawObject[0];
@@ -294,16 +324,6 @@ void InitCGDisplayIDList(void)
 			printf("PTB-WARNING: Failed to detect specific DirectDraw interface GUID for display screen %i [rc = %x]. Will use primary display DirectDraw object as backup and hope for the best.\n", i, rc);
 			printf("PTB-WARNING: This means that beamposition queries for high-precision timestamping may not work correctly on your multi-display setup. We'll see...\n");
 		}
-		#else
-		// R11 aka pre R2007a and not Octave: Don't have support for this. Just assign one common shared
-		// DDRAW object for all displays and screens, just like we did in all PTB's before October 2009:
-		displayDeviceDDrawObject[i] = displayDeviceDDrawObject[0];
-		if (i == 1) {
-			printf("PTB-INFO: You are using a Matlab version older than V7.4 (R2007a). This will limit the flexibility of multi-display functionality.\n");
-			printf("PTB-INFO: If you want more flexible support for multi-display configurations and high-precision timestamping on such setups, consider\n");
-			printf("PTB-INFO: upgrading to a more recent version of Matlab ( > R2007a ) or to the free, open-source GNU/Octave (Version 3.2.2 or later).\n");
-		}
-		#endif
 		// Done with this one. Init next display...
 	}
 
@@ -726,12 +746,9 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
 
 psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings)
 {
-    CFDictionaryRef 		cgMode;
-    psych_bool 			isValid, isCaptured;
-    CGDisplayErr 		error;
+    CFDictionaryRef     cgMode;
+    psych_bool          isValid, isCaptured;
 
-    //get the display IDs.  Maybe we should consolidate this out of these functions and cache the IDs in a file static
-    //variable, since basicially every core graphics function goes through this deal.    
     if(settings->screenNumber>=numDisplays)
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
 
@@ -769,7 +786,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     // Change the display mode.   
 	// We do this in PsychOSOpenWindow() if necessary for fullscreen-mode, but without changing any settings except
 	// switch to fullscreen mode. Here we call PsychOSOpenWindow's helper routine to really change video settings:
-	return(ChangeScreenResolution(settings->screenNumber, PsychGetWidthFromRect(settings->rect), PsychGetHeightFromRect(settings->rect), PsychGetValueFromDepthStruct(0,&(settings->depth)), settings->nominalFrameRate));
+	return(ChangeScreenResolution(settings->screenNumber, (int) PsychGetWidthFromRect(settings->rect), (int) PsychGetHeightFromRect(settings->rect), PsychGetValueFromDepthStruct(0,&(settings->depth)), settings->nominalFrameRate));
 }
 
 /*

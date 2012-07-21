@@ -130,5 +130,3 @@ static void ConvertStippleArrayToShort(psych_bool *patternArray, GLushort *short
 			*shortPattern=*shortPattern | 1;
 	}
 }
-
-

@@ -98,8 +98,6 @@ PsychError SCREENOpenOffscreenWindow(void)
     int						screenNumber, depth, targetScreenNumber;
     PsychRectType			rect;
     PsychColorType			color;
-    PsychColorModeType  	mode; 
-    psych_bool				didWindowOpen;
     PsychWindowRecordType	*exampleWindowRecord, *windowRecord, *targetWindow;
     psych_bool				wasColorSupplied;
     char*					texturePointer;
@@ -340,7 +338,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 		}
 
 		// Allocate framebuffer object for this Offscreen window:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[0]), fboInternalFormat, needzbuffer, PsychGetWidthFromRect(rect), PsychGetHeightFromRect(rect), multiSample)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[0]), fboInternalFormat, needzbuffer, (int) PsychGetWidthFromRect(rect), (int) PsychGetHeightFromRect(rect), multiSample)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_user, "Creation of Offscreen window in imagingmode failed for some reason :(");
 		}
@@ -354,7 +352,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 		windowRecord->textureMemorySizeBytes = 0;
 		windowRecord->textureMemory = NULL;
 		windowRecord->texturetarget = GL_TEXTURE_RECTANGLE_EXT;
-		windowRecord->surfaceSizeBytes = PsychGetWidthFromRect(rect) * PsychGetHeightFromRect(rect) * (windowRecord->depth / 8);
+		windowRecord->surfaceSizeBytes = (size_t) (PsychGetWidthFromRect(rect) * PsychGetHeightFromRect(rect) * (windowRecord->depth / 8));
 
 		// Set bpc for FBO backed offscreen window:
 		windowRecord->bpc = (int) (windowRecord->depth / 4);
@@ -381,22 +379,22 @@ PsychError SCREENOpenOffscreenWindow(void)
 		nbytes=0;
 		switch (depth) {
 			case 8: // Pure LUMINANCE texture:
-				memset((void*) texturePointer, color.value.rgba.r, windowRecord->textureMemorySizeBytes);
+				memset((void*) texturePointer, (int) color.value.rgba.r, windowRecord->textureMemorySizeBytes);
 				break;
 				
 			case 16: // LUMINANCE + ALPHA
 				while (nbytes < windowRecord->textureMemorySizeBytes) {
-					*(texturePointer++) = color.value.rgba.r;
-					*(texturePointer++) = color.value.rgba.a;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.r;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.a;
 					nbytes+=2;
 				}
 				break;
 				
 			case 24: // RGB:
 				while (nbytes < windowRecord->textureMemorySizeBytes) {
-					*(texturePointer++) = color.value.rgba.r;
-					*(texturePointer++) = color.value.rgba.g;
-					*(texturePointer++) = color.value.rgba.b;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.r;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.g;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.b;
 					nbytes+=3;
 				}
 				break;        
@@ -405,20 +403,20 @@ PsychError SCREENOpenOffscreenWindow(void)
 				if (bigendian) {
 					// Code for big-endian machines, e.g., PowerPC:
 					while (nbytes < windowRecord->textureMemorySizeBytes) {
-						*(texturePointer++) = color.value.rgba.a;
-						*(texturePointer++) = color.value.rgba.r;
-						*(texturePointer++) = color.value.rgba.g;
-						*(texturePointer++) = color.value.rgba.b;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.a;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.r;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.g;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.b;
 						nbytes+=4;
 					}
 				}
 				else {
 					// Code for little-endian machines, e.g., IntelPC, IntelMAC, aka Pentium.
 					while (nbytes < windowRecord->textureMemorySizeBytes) {
-						*(texturePointer++) = color.value.rgba.b;
-						*(texturePointer++) = color.value.rgba.g;
-						*(texturePointer++) = color.value.rgba.r;
-						*(texturePointer++) = color.value.rgba.a;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.b;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.g;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.r;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.a;
 						nbytes+=4;
 					}
 				}

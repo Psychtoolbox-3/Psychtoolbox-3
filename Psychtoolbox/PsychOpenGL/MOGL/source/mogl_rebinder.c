@@ -42,14 +42,9 @@ void mogl_rebindARBExtensionsToCore(void)
     if (NULL == glLinkProgram) glLinkProgram = glLinkProgramARB;
     if (NULL == glUseProgram) glUseProgram = glUseProgramObjectARB;
     if (NULL == glGetAttribLocation) glGetAttribLocation = glGetAttribLocationARB;
-#ifndef TARGET_OS_WIN32
-#ifndef MATLABR11
+#ifndef WINR2007a
     // Windows + Octave or any other OS:
     if (NULL == glGetUniformLocation) glGetUniformLocation = (GLint (*)(GLint, const GLchar*)) glGetUniformLocationARB;
-#else
-    // Windows + Matlab R11 et al:
-    if (NULL == glGetUniformLocation) glGetUniformLocation = glGetUniformLocationARB;
-#endif
 #else
     // Windows + Matlab R2007a or later:
     if (NULL == glGetUniformLocation) glGetUniformLocation = glGetUniformLocationARB;

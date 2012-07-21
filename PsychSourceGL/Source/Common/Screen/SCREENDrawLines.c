@@ -80,12 +80,11 @@ PsychError SCREENDrawLines(void)
 {
 	PsychWindowRecordType		*windowRecord;
 	int							m,n,p, smooth;
-	int							nrsize, nrcolors, nrvertices, mc, nc, pc, i;
-	psych_bool                     isArgThere, usecolorvector, isdoublecolors, isuint8colors;
+	int							nrsize, nrvertices, mc, nc, i;
+	psych_bool                  isArgThere, usecolorvector, isdoublecolors, isuint8colors;
 	double						*xy, *size, *center, *dot_type, *colors;
 	unsigned char               *bytecolors;
 	float						linesizerange[2];
-	double						convfactor;
 
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -137,10 +136,22 @@ PsychError SCREENDrawLines(void)
 	}
 
 	// turn on antialiasing to draw anti-aliased lines:
-	if(smooth) glEnable(GL_LINE_SMOOTH);
+	if(smooth) {
+        glGetFloatv(GL_SMOOTH_LINE_WIDTH_RANGE, (GLfloat*) &linesizerange);
+        glEnable(GL_LINE_SMOOTH);
+    }
+    else {
+        glGetFloatv(GL_LINE_WIDTH_RANGE, (GLfloat*) &linesizerange);
+    }
+
+    if (size[0] < linesizerange[0] || size[0] > linesizerange[1]) {
+		printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
+			   size[0], linesizerange[0], linesizerange[1]);
+		PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
+	}
 
 	// Set global width of lines:
-	glLineWidth(size[0]);
+	glLineWidth((float) size[0]);
 
 	// Setup modelview matrix to perform translation by 'center':
 	glMatrixMode(GL_MODELVIEW);	
@@ -174,7 +185,13 @@ PsychError SCREENDrawLines(void)
 	else {
 		// Different line-width per line: Need to manually loop through this mess:
 		for (i=0; i < nrvertices/2; i++) {
-	      glLineWidth(size[i]);
+            if (size[i] < linesizerange[0] || size[i] > linesizerange[1]) {
+                printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
+                       size[i], linesizerange[0], linesizerange[1]);
+                PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
+            }
+            
+            glLineWidth((float) size[i]);
 
 	      // Render line:
 	      glDrawArrays(GL_LINES, i * 2, 2);

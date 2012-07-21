@@ -40,10 +40,11 @@ PsychError SCREENDrawLine(void)
 	
 	PsychColorType					color;
 	PsychWindowRecordType			*windowRecord;
-	int								whiteValue;
-	psych_bool							isArgThere;
+	double							whiteValue;
+	psych_bool						isArgThere;
 	double							sX, sY, dX, dY, penSize;
-    
+	float                           linesizerange[2];
+
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -79,6 +80,13 @@ PsychError SCREENDrawLine(void)
 
 	// Set default draw shader:
 	PsychSetShader(windowRecord, -1);
+
+    glGetFloatv(GL_LINE_WIDTH_RANGE, (GLfloat*) &linesizerange);
+    if (penSize < linesizerange[0] || penSize > linesizerange[1]) {
+		printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
+			   penSize, linesizerange[0], linesizerange[1]);
+		PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
+	}
 
 	glLineWidth((GLfloat)penSize);
 

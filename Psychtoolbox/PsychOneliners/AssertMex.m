@@ -168,12 +168,19 @@ if isempty(inputNames) | ismember(computer, inputNames) %#ok<OR2>
         
         if IsWin
             fprintf('On Microsoft Windows with supported Matlab versions (>= V7.4) it could also be that\n');
-            fprintf('the required Visual C++ 2005 runtime libraries are missing on your system.\n');
-            fprintf('Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
-            fprintf('fix this problem. Make sure you follow the download link to Visual Studio SERVICE PACK 1,\n');
-            fprintf('(the latter links), *not* Visual Studio without the SP1.\n\nAfter fixing the problem, retry.\n\n');
+            fprintf('the required Visual C++ 2010 runtime libraries are missing on your system.\n');
+            fprintf('The Psychtoolbox/PsychContributed/ subfolder contains installer files for them, which\n');
+            fprintf('you can execute after quitting Matlab. The name of the file is ');
+            if IsWin(1)
+                fprintf('vcredist_x64.exe\n');
+            else
+                fprintf('vcredist_x86.exe\n');
+            end
+            %fprintf('Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
+            %fprintf('fix this problem. Make sure you follow the download link to Visual Studio SERVICE PACK 1,\n');
+            %fprintf('(the latter links), *not* Visual Studio without the SP1.\n\nAfter fixing the problem, retry.\n\n');
             
-            if strcmp(computer,'PCWIN64')
+            if IsWin(1)
                 % 64 bit Matlab running on 64 bit Windows?!? That won't work.
                 fprintf('And another possible reason for failure:\n\n');
                 fprintf('It seems that you are running a 64-bit version of Matlab on your system.\n');

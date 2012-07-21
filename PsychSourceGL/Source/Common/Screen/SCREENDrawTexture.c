@@ -90,7 +90,7 @@ static char synopsisString[] =
 	PsychColorType	color;
 	int textureShader, backupShader;
 	double*							auxParameters;
-	int								numAuxParams, numAuxComponents, m, n, p;
+	int								numAuxParams, m, n, p;
 	int specialFlags = 0;
 
     //all subfunctions should have these two lines.  
@@ -222,11 +222,10 @@ PsychError SCREENDrawTextures(void)
 
 	PsychWindowRecordType			*source, *target;
 	PsychRectType					sourceRect, targetRect, tempRect;
-	PsychColorType	color;
-	GLdouble						dVals[4]; 
+	PsychColorType					color;
     double							*dstRects, *srcRects, *colors, *penSizes, *globalAlphas, *filterModes, *rotationAngles;
 	unsigned char					*bytecolors;
-	int								numTexs, numdstRects, numsrcRects, i, j, nc, mc, nrsize, m, n, p, numAngles, numFilterModes, numAlphas, numRef;
+	int								numTexs, numdstRects, numsrcRects, i, nc, mc, nrsize, m, n, p, numAngles, numFilterModes, numAlphas, numRef;
 	double*							texids;
 	double							rotationAngle, globalAlpha, filterMode;
 	double*							auxParameters;
@@ -539,11 +538,11 @@ PsychError SCREENDrawTextures(void)
 		if (textureShader > -1) {
 			backupShader = source->textureFilterShader;
 			source->textureFilterShader = -1 * textureShader;
-			PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
+			PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, (int) filterMode, globalAlpha);	
 			source->textureFilterShader = backupShader;
 		}
 		else {
-			PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
+			PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, (int) filterMode, globalAlpha);	
 		}
 
 		// Reset rotation mode flag:

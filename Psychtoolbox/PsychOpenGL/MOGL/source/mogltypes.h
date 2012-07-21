@@ -7,6 +7,7 @@
  * 09-Dec-2005 -- created (RFM)
  * 24-Mar-2011 -- Make 64-bit clean (MK).
  * 27-Mar-2011 -- Remove obsolete and totally bitrotten Octave-2 support (MK).
+ * 01-Jul-2012 -- Kill Matlab R11 support (MK).
  *
  */
 
@@ -84,14 +85,8 @@ double gluBuild3DMipmapLevels(double a1, double a2, double a3, double a4, double
 double gluBuild3DMipmaps(double a1, double a2, double a3, double a4, double a5, double a6, double a7, void* a8);
 
 #ifndef PTBOCTAVE3MEX
-
-// These two already defined on Octave-3, no need to "fake" them:
+// This one already defined on Octave-3, no need to "fake" it:
 double gluUnProject4(double a1, double a2, double a3, double a4, double* a5, double* a6, int* a7, double a8, double a9, double* a10, double* a11, double* a12, double* a13);
-#ifndef TARGET_OS_WIN32
-mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
-typedef int mwSize;
-#endif
-
 #endif
 
 #endif

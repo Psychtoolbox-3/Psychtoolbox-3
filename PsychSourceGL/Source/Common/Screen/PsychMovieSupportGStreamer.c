@@ -56,37 +56,38 @@ typedef enum {
 } GstPlayFlags;
 
 static const psych_bool oldstyle = FALSE;
-static psych_bool useYUVDecode = FALSE;
 
 #define PSYCH_MAX_MOVIES 100
     
 typedef struct {
-    psych_mutex		mutex;
+    psych_mutex         mutex;
     psych_condition     condition;
-    double		pts;
-    GstElement		*theMovie;
-    GMainLoop		*MovieContext;
+    double              pts;
+    GstElement          *theMovie;
+    GMainLoop           *MovieContext;
     GstElement          *videosink;
-    unsigned char	*imageBuffer;
-    int			frameAvail;
+    unsigned char       *imageBuffer;
+    int                 frameAvail;
     int                 preRollAvail;
-    double		rate;
+    double              rate;
     int                 startPending;
     int                 endOfFetch;
-    int			loopflag;
-    double		movieduration;
-    int			nrframes;
-    double		fps;
-    int			width;
-    int			height;
+    int                 specialFlags1;
+    int                 pixelFormat;
+    int                 loopflag;
+    double              movieduration;
+    int                 nrframes;
+    double              fps;
+    int                 width;
+    int                 height;
     double              aspectRatio;
-    double		last_pts;
-    int			nr_droppedframes;
+    double              last_pts;
+    int                 nr_droppedframes;
     int                 nrAudioTracks;
     int                 nrVideoTracks;
     char                movieLocation[FILENAME_MAX];
     char                movieName[FILENAME_MAX];
-    GLuint		cached_texture;
+    GLuint              cached_texture;
 } PsychMovieRecordType;
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
@@ -94,7 +95,8 @@ static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-extern void g_thread_init(GThreadFunctions *vtable) __attribute__((weak_import));
+// This is the function prototype for compile against GLib 2.32.0 "deprecated":
+extern void g_thread_init(gpointer vtable) __attribute__((weak_import));
 #endif
 
 /*
@@ -120,7 +122,8 @@ void PsychGSMovieInit(void)
     // likely succeed. If the following LoadLibrary() call fails and returns NULL,
     // then we know we would end up crashing. Therefore we'll output some helpful
     // error-message instead:
-    if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
+    if (((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) &&
+        ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll")))) {
         // Failed: GLib and its threading support isn't installed. This means that
         // GStreamer won't work as the relevant .dll's are missing on the system.
         // We silently return, skpipping the GLib init, as it is completely valid
@@ -152,6 +155,10 @@ void PsychGSMovieInit(void)
     #endif
     
     // Initialize GLib's threading system early:
+    // Note: This is deprecated and not needed anymore on GLib 2.32.0 and later, as
+    // GLib's threading system auto-initializes on first use since that version. We
+    // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
+    // for the time being...
     g_thread_init(NULL);
 
     return;
@@ -479,8 +486,9 @@ static GstAppSinkCallbacks videosinkCallbacks = {
  *      moviehandle = handle to the new movie.
  *      asyncFlag = As passed to 'OpenMovie'
  *      specialFlags1 = As passed to 'OpenMovie'
+ *      pixelFormat = As passed to 'OpenMovie'
  */
-void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1)
+void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat)
 {
     GstCaps                     *colorcaps;
     GstElement			*theMovie = NULL;
@@ -500,12 +508,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     GError			*error = NULL;
     char			movieLocation[FILENAME_MAX];
     psych_bool			trueValue = TRUE;
-    char			msgerr[10000];
-    char			errdesc[1000];
     psych_bool			printErrors;
     GstIterator			*it;
     psych_bool			done;
     GstPlayFlags		playflags = 0;
+    psych_bool      needCodecSetup = FALSE;
 
     // Suppress output of error-messages if moviehandle == 1000. That means we
     // run in our own Posix-Thread, not in the Matlab-Thread. Printing via Matlabs
@@ -515,42 +522,42 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Gapless playback requested? Normally *moviehandle is == -1, so a positive
     // handle requests this mode and defines the actual handle of the movie to use:
     if (*moviehandle >= 0) {
-	// Queueing a new moviename of a movie to play next: This only works
-	// for already opened/created movies whose pipeline is at least in
-	// READY state, better PAUSED or PLAYING. Validate preconditions:
+        // Queueing a new moviename of a movie to play next: This only works
+        // for already opened/created movies whose pipeline is at least in
+        // READY state, better PAUSED or PLAYING. Validate preconditions:
 
-	// Valid handle for existing movie?
-	if (*moviehandle < 0 || *moviehandle >= PSYCH_MAX_MOVIES) {
-	    PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
-	}
-        
-	// Fetch references to objects we need:
-	theMovie = movieRecordBANK[*moviehandle].theMovie;    
-	if (theMovie == NULL) {
-	    PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
-	}
+        // Valid handle for existing movie?
+        if (*moviehandle < 0 || *moviehandle >= PSYCH_MAX_MOVIES) {
+            PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
+        }
+            
+        // Fetch references to objects we need:
+        theMovie = movieRecordBANK[*moviehandle].theMovie;    
+        if (theMovie == NULL) {
+            PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
+        }
 
-	// Ok, this means we have a handle to an existing, fully operational
-	// playback pipeline. Convert moviename to a valid URL and queue it:
+        // Ok, this means we have a handle to an existing, fully operational
+        // playback pipeline. Convert moviename to a valid URL and queue it:
 
-	// Create name-string for moviename: If an URI qualifier is at the beginning,
-	// we're fine and just pass the URI as-is. Otherwise we add the file:// URI prefix.
-	if (strstr(moviename, "://") || ((strstr(moviename, "v4l") == moviename) && strstr(moviename, "//"))) {
-	    snprintf(movieLocation, sizeof(movieLocation)-1, "%s", moviename);
-	} else {
-	    snprintf(movieLocation, sizeof(movieLocation)-1, "file:///%s", moviename);
-	}
+        // Create name-string for moviename: If an URI qualifier is at the beginning,
+        // we're fine and just pass the URI as-is. Otherwise we add the file:// URI prefix.
+        if (strstr(moviename, "://") || ((strstr(moviename, "v4l") == moviename) && strstr(moviename, "//"))) {
+            snprintf(movieLocation, sizeof(movieLocation)-1, "%s", moviename);
+        } else {
+            snprintf(movieLocation, sizeof(movieLocation)-1, "file:///%s", moviename);
+        }
 
-	strncpy(movieRecordBANK[*moviehandle].movieLocation, movieLocation, FILENAME_MAX);
-	strncpy(movieRecordBANK[*moviehandle].movieName, moviename, FILENAME_MAX);
+        strncpy(movieRecordBANK[*moviehandle].movieLocation, movieLocation, FILENAME_MAX);
+        strncpy(movieRecordBANK[*moviehandle].movieName, moviename, FILENAME_MAX);
 
-	// Assign name of movie to play to pipeline. If the pipeline is not in playing
-	// state, this will switch to the specified movieLocation immediately. If it
-	// is playing, it will switch to it at the end of the current playback iteration:
-	g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
+        // Assign name of movie to play to pipeline. If the pipeline is not in playing
+        // state, this will switch to the specified movieLocation immediately. If it
+        // is playing, it will switch to it at the end of the current playback iteration:
+        g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
 
-	// Ready.
-	return;
+        // Ready.
+        return;
     }
     
     // Set movie handle to "failed" initially:
@@ -560,12 +567,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (firsttime) {        
         // Initialize GStreamer: The routine is defined in PsychVideoCaptureSupportGStreamer.c
         PsychGSCheckInit("movie playback");
-
-        // Enable use of YUV textures for movie playback on supported GPUs if environment variable
-        // is defined. YUV mode defaults to "off", because as of 1st December 2011, at least H264
-        // to YUV decoding was much slower than bog standard decoding to RGBA8 -- much to my surprise.
-        if (getenv("PSYCHTOOLBOX_USE_YUV_MOVIEDECODING") || (specialFlags1 & 1)) useYUVDecode = TRUE;
-
         firsttime = FALSE;
     }
 
@@ -595,6 +596,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Zero-out new record in moviebank:
     memset(&movieRecordBANK[slotid], 0, sizeof(PsychMovieRecordType));
     
+    // Store specialFlags1 from open call:
+    movieRecordBANK[slotid].specialFlags1 = specialFlags1;
+
     // Create name-string for moviename: If an URI qualifier is at the beginning,
     // we're fine and just pass the URI as-is. Otherwise we add the file:// URI prefix.
     if (strstr(moviename, "://") || ((strstr(moviename, "v4l") == moviename) && strstr(moviename, "//"))) {
@@ -738,6 +742,13 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     movieRecordBANK[slotid].videosink = videosink;
 
+    // Setting flag 1 in specialFlags1 is equivalent to setting pixelFormat == 5, to retain
+    // backwards compatibility to previous ptb releases:
+    if (specialFlags1 & 0x1) pixelFormat = 5;
+
+    // Assign initial pixelFormat to use, as requested by usercode:
+    movieRecordBANK[slotid].pixelFormat = pixelFormat;
+
     // Our OpenGL texture creation routine usually needs GL_BGRA8 data in G_UNSIGNED_8_8_8_8_REV
     // format, but the pipeline usually delivers YUV data in planar format. Therefore
     // need to perform colorspace/colorformat conversion. We build a little videobin
@@ -748,30 +759,86 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // thereby receiving decoded video data. We place a videocaps filter inbetween the
     // converter and the appsink to enforce a color format conversion to the "colorcaps"
     // we need. colorcaps define the needed data format for efficient conversion into
-    // a RGBA8 texture. Some GPU + driver combos do support direct handling of UYVU YCrCb
-    // data as textures. If we are on such a GPU we request yuv UYVU data and upload it
-    // directly in this format to the GPU. This more efficient both for GStreamers decode
+    // a RGBA8 texture. Some GPU + driver combos do support direct handling of UYVU YCrCb 4:2:2
+    // packed pixel data as textures. If we are on such a GPU we request UYVY data and upload it
+    // directly in this format to the GPU. This more efficient both for the GStreamers decode
     // pipeline, and the later Videobuffer -> OpenGL texture conversion:
-    if (win && (win->gfxcaps & kPsychGfxCapUYVYTexture) && useYUVDecode) {
-	// GPU supports handling and decoding of UYVY type yuv textures: We use these,
-	// as they are more efficient to decode and handle by typical video codecs:
-	colorcaps = gst_caps_new_simple ( "video/x-raw-yuv",
-					  "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('U', 'Y', 'V', 'Y'),
-					  NULL);
-	if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use UYVY YCrCb textures for optimized decode and rendering.\n", slotid);
-    } else {
-	// GPU does not support yuv textures. Need to go brute-force and convert
-	// video into RGBA8 format:
-	colorcaps = gst_caps_new_simple ( "video/x-raw-rgb",
-					  "bpp", G_TYPE_INT, 32,
-					  "depth", G_TYPE_INT, 32,
-					  "alpha_mask", G_TYPE_INT, 0x000000FF,
-					  "red_mask", G_TYPE_INT,   0x0000FF00,
-					  "green_mask", G_TYPE_INT, 0x00FF0000,
-					  "blue_mask", G_TYPE_INT,  0xFF000000,
-					  NULL);
-	if ((PsychPrefStateGet_Verbosity() > 3) && useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV texture support on GPU.\n", slotid);
-	if ((PsychPrefStateGet_Verbosity() > 3) && !useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
+    if (win && (win->gfxcaps & kPsychGfxCapUYVYTexture) && (movieRecordBANK[slotid].pixelFormat == 5)) {
+        // GPU supports handling and decoding of UYVY type yuv textures: We use these,
+        // as they are more efficient to decode and handle by typical video codecs:
+        colorcaps = gst_caps_new_simple ("video/x-raw-yuv",
+                                         "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('U', 'Y', 'V', 'Y'),
+                                         NULL);
+
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use UYVY YCrCb 4:2:2 textures for optimized decode and rendering.\n", slotid);
+    }
+    else if ((movieRecordBANK[slotid].pixelFormat == 6) && win && (win->gfxcaps & kPsychGfxCapFBO) && PsychAssignPlanarI420TextureShader(NULL, win)) {
+        // Usercode wants YUV I420 planar encoded format and GPU suppports needed fragment shaders and FBO's.
+        // Ask for I420 decoded video. This is the native output format of HuffYUV and H264 codecs, so using it
+        // allows to skip colorspace conversion in GStreamer. The format is also highly efficient for texture
+        // creation and upload to the GPU, but requires a fragment shader for colorspace conversion during drawing:
+        colorcaps = gst_caps_new_simple ("video/x-raw-yuv",
+                                         "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('I', '4', '2', '0'),
+                                         NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use YUV-I420 planar textures for optimized decode and rendering.\n", slotid);
+    }
+    else if (((movieRecordBANK[slotid].pixelFormat == 7) || (movieRecordBANK[slotid].pixelFormat == 8)) && win && (win->gfxcaps & kPsychGfxCapFBO) && PsychAssignPlanarI800TextureShader(NULL, win)) {
+        // Usercode wants Y8/Y800 planar encoded format and GPU suppports needed fragment shaders and FBO's.
+        // Ask for I420 or Y800 decoded video. I420 is the native output format of HuffYUV and H264 codecs, so using it
+        // allows to skip colorspace conversion in GStreamer. The format is also highly efficient for texture
+        // creation and upload to the GPU, but requires a fragment shader for colorspace conversion during drawing:
+        // Note: The FOURCC 'Y800' is equivalent to 'Y8  ' and 'GREY' as far as we know. As of June 2012, using the
+        // Y800 decoding doesn't have any performance benefits compared to I420 decoding, actually performance is a
+        // little bit lower. Apparently the video codecs don't take the Y800 format into account, ie., they don't skip
+        // decoding of the chroma components, instead they probably decode as usual and the colorspace conversion then
+        // throws away the unwanted chroma planes, causing possible extra overhead for discarding this data. We leave
+        // the option in anyway, because there may be codecs (possibly in future GStreamer versions) that can take
+        // advantage of Y800 format for higher performance.
+        colorcaps = gst_caps_new_simple ("video/x-raw-yuv",
+                                         "format", GST_TYPE_FOURCC, (movieRecordBANK[slotid].pixelFormat == 8) ? GST_MAKE_FOURCC('Y', '8', '0', '0') : GST_MAKE_FOURCC('I', '4', '2', '0'),
+                                         NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use Y8-I800 planar textures for optimized decode and rendering.\n", slotid);
+    }
+    else {
+        // GPU does not support yuv textures or shader based decoding. Need to go brute-force and convert
+        // video into RGBA8 format:
+        
+        // Force unsupportable formats to RGBA8 aka format 4, except for formats 7/8, which map
+        // to 1 == L8:
+        if ((movieRecordBANK[slotid].pixelFormat == 7) || (movieRecordBANK[slotid].pixelFormat == 8)) movieRecordBANK[slotid].pixelFormat = 1;
+        if (movieRecordBANK[slotid].pixelFormat  > 4) movieRecordBANK[slotid].pixelFormat = 4;
+
+        // Map 2 == LA8 to 1 == L8:
+        if (movieRecordBANK[slotid].pixelFormat == 2) movieRecordBANK[slotid].pixelFormat = 1;
+
+        // Map 3 == RGB8 to 4 == RGBA8:
+        if (movieRecordBANK[slotid].pixelFormat == 3) movieRecordBANK[slotid].pixelFormat = 4;
+
+        if (movieRecordBANK[slotid].pixelFormat == 4) {
+            // Use RGBA8 format:
+            colorcaps = gst_caps_new_simple("video/x-raw-rgb",
+                                            "bpp", G_TYPE_INT, 32,
+                                            "depth", G_TYPE_INT, 32,
+                                            "alpha_mask", G_TYPE_INT, 0x000000FF,
+                                            "red_mask", G_TYPE_INT,   0x0000FF00,
+                                            "green_mask", G_TYPE_INT, 0x00FF0000,
+                                            "blue_mask", G_TYPE_INT,  0xFF000000,
+                                            NULL);
+            if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-422 texture support on GPU.\n", slotid);
+            if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 6)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-I420 support on GPU.\n", slotid);
+            if ((PsychPrefStateGet_Verbosity() > 3) && ((pixelFormat == 7) || (pixelFormat == 8))) printf("PTB-INFO: Movie playback for movie %i will use L8 textures due to lack of Y8-I800 support on GPU.\n", slotid);
+            
+            if ((PsychPrefStateGet_Verbosity() > 3) && !(pixelFormat < 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
+        }
+        
+        if (movieRecordBANK[slotid].pixelFormat == 1) {
+            // Use LUMINANCE8 format:
+            colorcaps = gst_caps_new_simple("video/x-raw-gray",
+                                            "bpp", G_TYPE_INT, 8,
+                                            "depth", G_TYPE_INT, 8,
+                                            NULL);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use L8 luminance textures.\n", slotid);
+        }
     }
 
     /*
@@ -818,83 +885,161 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // the trouble...
     // The preloadSecs parameter is used instead above to control buffering behaviour.
     if (TRUE || (preloadSecs > 0) || (preloadSecs == -1)) {
-	// Preload / Preroll the pipeline:
-	if (!PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 30.0)) {
-		PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
-		PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed I. Reason given above.");
-	}
+        // Preload / Preroll the pipeline:
+        if (!PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 30.0)) {
+            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed I. Reason given above.");
+        }
     } else {
-	// Ready the pipeline:
-	if (!PsychMoviePipelineSetState(theMovie, GST_STATE_READY, 30.0)) {
-		PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
-		PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed II. Reason given above.");
-	}
+        // Ready the pipeline:
+        if (!PsychMoviePipelineSetState(theMovie, GST_STATE_READY, 30.0)) {
+            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed II. Reason given above.");
+        }
     }
 
-    // Check if a multi-threaded decoder from is used: If so, set number of processing
-    // threads to use: By default many codecs would only use one single thread on any system,
-    // even if they are multi-threading capable.
+    // Set video decoder parameters:
+    
+    // First we try to find the video decoder plugin in the media graph. We iterate over all
+    // elements and try to find one whose properties match known properties of video codecs:
+    // Note: The typeid/name or classid/name proved useless for finding the video codec, as
+    // the video codecs are not derived from some "video codec class", but each codec defines
+    // its own type and class.
     it = gst_bin_iterate_recurse(GST_BIN(theMovie));
     done = FALSE;
     videocodec = NULL;
 
     while (!done) {
-	switch (gst_iterator_next(it, (void**) &videocodec)) {
-	    case GST_ITERATOR_OK:
-		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In pipeline: Child element name: %s\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
-		//if (strstr((const char*) gst_object_get_name(GST_OBJECT(videocodec)), "h264")) {
-		if (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads")) {
-		    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
-		    done = TRUE;
-		} else {
-		    gst_object_unref(videocodec);
-		    videocodec = NULL;
-		}
-	    break;
+        switch (gst_iterator_next(it, (void**) &videocodec)) {
+            case GST_ITERATOR_OK:
+                if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In pipeline: Child element name: %s\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
+                // Our current match critera for video codecs: Having at least one of the properties "max-threads" or "lowres":
+                if ((g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads")) ||
+                    (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) ||
+                    (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv")) ||
+                    (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame"))) {
+                    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
+                    done = TRUE;
+                } else {
+                    gst_object_unref(videocodec);
+                    videocodec = NULL;
+                }
+            break;
 
-	    case GST_ITERATOR_RESYNC:
-	        gst_iterator_resync(it);
-	    break;
+            case GST_ITERATOR_RESYNC:
+                gst_iterator_resync(it);
+            break;
 
-	    case GST_ITERATOR_DONE:
-		done = TRUE;
-	    break;
-       }
+            case GST_ITERATOR_DONE:
+                done = TRUE;
+            break;
+                
+            default:
+                if (videocodec) gst_object_unref(videocodec);
+                videocodec = NULL;
+        }
     }
 
     gst_iterator_free(it);
     it = NULL;
 
-    if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads"))) {
+    // Check if some codec properties need to be changed.
+    // This happens if usercode provides some supported non-default override parameter for the codec,
+    // or if the codec is multi-threaded, in which case we configure its multi-threading behaviour
+    // to our needs:
+    needCodecSetup = FALSE;
+    if (videocodec &&  (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads") ||
+                       (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres") && (specialFlags1 & (0))) || /* MK: 'lowres' disabled for now. */
+                       (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv") && (specialFlags1 & 4)) ||
+                       (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame") && (specialFlags1 & 8))
+                       )) {
+        needCodecSetup = TRUE;
+    }
+
+    // Set videocodec state to "ready" if parameter change is needed, as the codec only
+    // accepts the new settings in that state:
+    if (needCodecSetup) {
+        // Ready the video codec, so a new max thread count can be set:
+        if (!PsychMoviePipelineSetState(videocodec, GST_STATE_READY, 30.0)) {
+            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed III. Reason given above.");
+        }    
+    }
+
+    // Drawing of motion vectors requested by usercode specialflags1 flag 4? If so, enable it:
+    if (needCodecSetup && (specialFlags1 & 4) && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv"))) {
+        g_object_set(G_OBJECT(videocodec), "debug-mv", 1, NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Playback for movie %i will display motion vectors for visualizaton of optic flow.\n", slotid);
+    }
+    
+    // Skipping of B-Frames video decoding requested by usercode specialflags1 flag 8? If so, enable skipping:
+    if (needCodecSetup && (specialFlags1 & 8) && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame"))) {
+        g_object_set(G_OBJECT(videocodec), "skip-frame", 1, NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Playback for movie %i will skip B-Frames during video decoding for higher speed.\n", slotid);
+    }
+    
+    // Setup of override decode resolution requested by usercode via specialFlags1 flags?
+    /*
+    // MK: DISABLED: This is broken! A pipeline that uses these flags and lowres settings just
+    // hangs, probably due to some negotiation failure between codec and appsink.
+    // Anyway, the web says that the benefit of the 'lowres' flag is minimal at best, and that it
+    // may get removed or is implemented inefficiently on most codecs, so probably this is not a big loss.
+    // Leave code snippet here for documentation of the approach in case we need it for other codec settings:
+    if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) && (specialFlags1 & (0))) {
+        // Yes. Set it:
+        if (specialFlags1 & 0) g_object_set(G_OBJECT(videocodec), "lowres", 1, NULL);
+        if (specialFlags1 & 0) g_object_set(G_OBJECT(videocodec), "lowres", 2, NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at %s resolution to reduce load.\n", slotid, (specialFlags1 & 0) ? "quarter" : "half");
+        
+        g_object_get(G_OBJECT(videocodec), "lowres", &tmpint, NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at lowres setting %i.\n", slotid, tmpint);
+    }
+    */
+    
+    
+    // Multi-threaded codec? If so, set its multi-threading behaviour: By default many codecs would only
+    // use one single thread on any system, even if they are multi-threading capable.
+    if (needCodecSetup && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads"))) {
         max_video_threads = 1;
-	g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Movie playback for movie %i uses video decoder with a default maximum number of %i processing threads.\n", slotid, max_video_threads);
+        g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Movie playback for movie %i uses video decoder with a default maximum number of %i processing threads.\n", slotid, max_video_threads);
 
-	// Set max_threads to 0: This means to auto-detect the optimal number of threads.
-	if (getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS")) {
-	    max_video_threads = atoi(getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS"));
-	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use a maximum of %i processing threads.\n", max_video_threads);
-	} else {
-	    max_video_threads = 0;
-	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use auto-selected optimal number of processing threads.\n");
-	}
+        // Set max_threads to 0: This means to auto-detect the optimal number of threads,
+        // unless usercode provides an override for exact number of threads to use via some
+        // environment variable:
+        if (getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS")) {
+            // Override provided: Use it.
+            max_video_threads = atoi(getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS"));
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use a maximum of %i processing threads.\n", max_video_threads);
+        } else {
+            // Default behaviour: A settig of zero asks GStreamer to auto-detect the optimal
+            // setting for the given host computer -- typically number of threads == number of processor cores:
+            max_video_threads = 0;
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use auto-selected optimal number of processing threads.\n");
+        }
 
-	// Ready the video codec, so a new max thread count can be set:
-	if (!PsychMoviePipelineSetState(videocodec, GST_STATE_READY, 30.0)) {
-		PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
-		PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed III. Reason given above.");
-	}    
+        // Assign new setting:
+        g_object_set(G_OBJECT(videocodec), "max-threads", max_video_threads, NULL);
 
-	g_object_set(G_OBJECT(videocodec), "max-threads", max_video_threads, NULL);
-
-	// Pause the video codec, so the new max thread count is accepted:
-	if (!PsychMoviePipelineSetState(videocodec, GST_STATE_PAUSED, 30.0)) {
-		PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
-		PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed IV. Reason given above.");
-	}
-
-	g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Movie playback for movie %i uses video decoder with a current maximum number of %i processing threads.\n", slotid, max_video_threads);
+        // Requery:
+        g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
+        if (PsychPrefStateGet_Verbosity() > 4) {
+            if (max_video_threads != 0) {
+                printf("PTB-INFO: Movie playback for movie %i uses video decoder with a current maximum number of %i processing threads.\n", slotid, max_video_threads);
+            } else {
+                printf("PTB-INFO: Movie playback for movie %i uses video decoder with a current auto-detected optimal number of processing threads.\n", slotid);
+            }
+        }
+    }
+    
+    // Bring codec back to paused state, so it is ready to do its job with the
+    // new codec parameters set:
+    if (needCodecSetup) {
+        // Pause the video codec, so the new max thread count is accepted:
+        if (!PsychMoviePipelineSetState(videocodec, GST_STATE_PAUSED, 30.0)) {
+            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed IV. Reason given above.");
+        }
     }
 
     // Release reference to videocodec:
@@ -918,11 +1063,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     PsychInitCondition(&movieRecordBANK[slotid].condition, NULL);
 
     if (oldstyle) {
-	// Install the probe callback for reception of video frames from engine at the sink-pad itself:
-	gst_pad_add_buffer_probe(pad, G_CALLBACK(PsychHaveVideoDataCallback), &(movieRecordBANK[slotid]));
+        // Install the probe callback for reception of video frames from engine at the sink-pad itself:
+        gst_pad_add_buffer_probe(pad, G_CALLBACK(PsychHaveVideoDataCallback), &(movieRecordBANK[slotid]));
     } else {
-	// Install callbacks used by the videosink (appsink) to announce various events:
-	gst_app_sink_set_callbacks(GST_APP_SINK(videosink), &videosinkCallbacks, &(movieRecordBANK[slotid]), PsychDestroyNotifyCallback);
+        // Install callbacks used by the videosink (appsink) to announce various events:
+        gst_app_sink_set_callbacks(GST_APP_SINK(videosink), &videosinkCallbacks, &(movieRecordBANK[slotid]), PsychDestroyNotifyCallback);
     }
 
     // Assign harmless initial settings for fps and frame size:
@@ -932,34 +1077,34 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Videotrack available?
     if (movieRecordBANK[slotid].nrVideoTracks > 0) {
-	// Yes: Query size and framerate of movie:
-	peerpad = gst_pad_get_peer(pad);
-	caps=gst_pad_get_negotiated_caps(peerpad);
-	if (caps) {
-		str=gst_caps_get_structure(caps,0);
+        // Yes: Query size and framerate of movie:
+        peerpad = gst_pad_get_peer(pad);
+        caps=gst_pad_get_negotiated_caps(peerpad);
+        if (caps) {
+            str=gst_caps_get_structure(caps,0);
 
-		/* Get some data about the frame */
-		rate1 = 1; rate2 = 1;
-		gst_structure_get_fraction(str, "pixel-aspect-ratio", &rate1, &rate2);
-		movieRecordBANK[slotid].aspectRatio = (double) rate1 / (double) rate2;
-		gst_structure_get_int(str,"width",&width);
-		gst_structure_get_int(str,"height",&height);
-		rate1 = 0; rate2 = 1;
-		gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
+            /* Get some data about the frame */
+            rate1 = 1; rate2 = 1;
+            gst_structure_get_fraction(str, "pixel-aspect-ratio", &rate1, &rate2);
+            movieRecordBANK[slotid].aspectRatio = (double) rate1 / (double) rate2;
+            gst_structure_get_int(str,"width",&width);
+            gst_structure_get_int(str,"height",&height);
+            rate1 = 0; rate2 = 1;
+            gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
 
-	 } else {
-		printf("PTB-DEBUG: No frame info available after preroll.\n");	
-	 }
+         } else {
+            printf("PTB-DEBUG: No frame info available after preroll.\n");	
+         }
     }
 
     if (strstr(moviename, "v4l2:")) {
-	// Special case: The "movie" is actually a video4linux2 live source.
-	// Need to make parameters up for now, so it to work as "movie":
-	rate1 = 30; width = 640; height = 480;
-	movieRecordBANK[slotid].nrVideoTracks = 1;
+        // Special case: The "movie" is actually a video4linux2 live source.
+        // Need to make parameters up for now, so it to work as "movie":
+        rate1 = 30; width = 640; height = 480;
+        movieRecordBANK[slotid].nrVideoTracks = 1;
 
-	// Uglyness at its best ;-)
-	if (strstr(moviename, "320")) { width = 320; height = 240; };
+        // Uglyness at its best ;-)
+        if (strstr(moviename, "320")) { width = 320; height = 240; };
     }
 
     // Release the pad:
@@ -983,12 +1128,12 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Retrieve duration in seconds:
     fmt = GST_FORMAT_TIME;
     if (gst_element_query_duration(theMovie, &fmt, &length_format)) {
-	// This returns nsecs, so convert to seconds:
+        // This returns nsecs, so convert to seconds:
     	movieRecordBANK[slotid].movieduration = (double) length_format / (double) 1e9;
-	//printf("PTB-DEBUG: Duration of movie %i [%s] is %lf seconds.\n", slotid, moviename, movieRecordBANK[slotid].movieduration);
+        //printf("PTB-DEBUG: Duration of movie %i [%s] is %lf seconds.\n", slotid, moviename, movieRecordBANK[slotid].movieduration);
     } else {
-	movieRecordBANK[slotid].movieduration = DBL_MAX;
-	printf("PTB-WARNING: Could not query duration of movie %i [%s] in seconds. Returning infinity.\n", slotid, moviename);
+        movieRecordBANK[slotid].movieduration = DBL_MAX;
+        printf("PTB-WARNING: Could not query duration of movie %i [%s] in seconds. Returning infinity.\n", slotid, moviename);
     }
 
     // Assign expected framerate, assuming a linear spacing between frames:
@@ -1153,10 +1298,6 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         PsychErrorExitMsg(PsychError_user, "Invalid timeindex provided.");
     }
     
-    if (NULL == out_texture && !checkForImage) {
-        PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of out_texture ptr passed!!!");
-    }
-    
     // Fetch references to objects we need:
     theMovie = movieRecordBANK[moviehandle].theMovie;
     if (theMovie == NULL) {
@@ -1304,7 +1445,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 		movieRecordBANK[moviehandle].frameAvail = 0;
 		
 		// This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
-		out_texture->textureMemory = (GLuint*) movieRecordBANK[moviehandle].imageBuffer;
+		if (out_texture) out_texture->textureMemory = (GLuint*) movieRecordBANK[moviehandle].imageBuffer;
     } else {
 	// Active playback mode?
 	if (0 != rate) {
@@ -1339,7 +1480,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
 	if (videoBuffer) {
 		// Assign pointer to videoBuffer's data directly: Avoids one full data copy compared to oldstyle method.
-		out_texture->textureMemory = (GLuint*) GST_BUFFER_DATA(videoBuffer);
+		if (out_texture) out_texture->textureMemory = (GLuint*) GST_BUFFER_DATA(videoBuffer);
 
 		// Assign pts presentation timestamp in pipeline stream time and convert to seconds:
 		movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
@@ -1361,61 +1502,185 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     // Assign presentation_timestamp:
     if (presentation_timestamp) *presentation_timestamp = movieRecordBANK[moviehandle].pts;
 
-    // Activate OpenGL context of target window:
-    PsychSetGLContext(win);
+    // Only create actual OpenGL texture if out_texture is non-NULL. Otherwise we're
+    // just skipping this. Useful for benchmarks, fast forward seeking, etc.
+    if (out_texture) {
+        // Activate OpenGL context of target window:
+        PsychSetGLContext(win);
 
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    // Explicitely disable Apple's Client storage extensions. For now they are not really useful to us.
-    glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
-    #endif
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        // Explicitely disable Apple's Client storage extensions. For now they are not really useful to us.
+        glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+        #endif
 
-    // Build a standard PTB texture record:
-    PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);    
+        // Build a standard PTB texture record:
+        PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);    
 
-    // Set NULL - special texture object as part of the PTB texture record:
-    out_texture->targetSpecific.QuickTimeGLTexture = NULL;
+        // Set NULL - special texture object as part of the PTB texture record:
+        out_texture->targetSpecific.QuickTimeGLTexture = NULL;
 
-    // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
-    out_texture->textureOrientation = 3;
+        // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
+        out_texture->textureOrientation = 3;
 
-    // We use zero client storage memory bytes:
-    out_texture->textureMemorySizeBytes = 0;
+        // We use zero client storage memory bytes:
+        out_texture->textureMemorySizeBytes = 0;
 
-    // Textures are aligned on 4 Byte boundaries because texels are RGBA8:
-    out_texture->textureByteAligned = 4;
+        // Assign default number of effective color channels:
+        out_texture->nrchannels = movieRecordBANK[moviehandle].pixelFormat;
+        
+        // Assign default depth according to number of channels, assuming 8 bpc:
+        out_texture->depth = out_texture->nrchannels * 8;
+        
+        if (out_texture->nrchannels < 4) {
+            // For 1-3 channel textures, play safe, don't assume alignment:
+            out_texture->textureByteAligned = 1;
+        }
+        else {
+            // 4 channel format:
+            // Textures are aligned on at least 4 Byte boundaries because texels are RGBA8. For
+            // frames of even-numbered pixel width, we can even get 8 Byte alignment:
+            out_texture->textureByteAligned = (movieRecordBANK[moviehandle].width % 2) ? 4 : 8;
+        }
+        
+        // Assign texturehandle of our cached texture, if any, so it gets recycled now:
+        out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
 
-    // Assign texturehandle of our cached texture, if any, so it gets recycled now:
-    out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
+        // YUV 422 packed pixel upload requested?
+        if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && (movieRecordBANK[moviehandle].pixelFormat == 5)) {
+            // GPU supports UYVY textures and we get data in that YCbCr format. Tell
+            // texture creation routine to use this optimized format:
+            if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
+                // No support for more powerful Apple extension. Use Linux MESA extension:
+                out_texture->textureinternalformat = GL_YCBCR_MESA;
+                out_texture->textureexternalformat = GL_YCBCR_MESA;
+            } else {
+                // Apple extension supported:
+                out_texture->textureinternalformat = GL_RGB8;
+                out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
+            }
 
-    if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && useYUVDecode) {
-	// GPU supports UYVY textures and we get data in that YCbCr format. Tell
-	// texture creation routine to use this optimized format:
-	if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
-	    // No support for more powerful Apple extension. Use Linux MESA extension:
-	    out_texture->textureinternalformat = GL_YCBCR_MESA;
-	    out_texture->textureexternalformat = GL_YCBCR_MESA;
-	} else {
-	    // Apple extension supported:
-	    out_texture->textureinternalformat = GL_RGB;
-	    out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
-	}
-	// Same enumerant for Apple and Mesa:
-	out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;
+            // Same enumerant for Apple and Mesa:
+            out_texture->textureexternaltype = GL_UNSIGNED_SHORT_8_8_MESA;
+            
+            // Number of effective channels is 3 for RGB8:
+            out_texture->nrchannels = 3;
+
+            // And 24 bpp depth:
+            out_texture->depth = 24;
+
+            // Byte alignment: For even number of pixels, assume at least 4 Byte alignment due to packing of 2 effective
+            // pixels into one 32-Bit packet, maybe even 8 Byte alignment if divideable by 4. For other width's, assume
+            // no alignment ie., 1 Byte:
+            out_texture->textureByteAligned = (movieRecordBANK[moviehandle].width % 2) ? 1 : ((movieRecordBANK[moviehandle].width % 4) ? 4 : 8);
+        }
+
+        // Upload of a "pseudo YUV" planar texture with only 8 bits Y component requested?
+        if ((movieRecordBANK[moviehandle].pixelFormat == 7) || (movieRecordBANK[moviehandle].pixelFormat == 8)) {
+            // We encode Y luminance data inside a 8 bit per pixel luminance texture. The
+            // "Y" luminance plane is stored at full 1 sample per pixel resolution with 8 bits.
+            // As such the texture appears to OpenGL as a normal LUMINANCE8 texture. Conversion of the Y
+            // luminance data into useable RGBA8 pixel fragments will happen during rendering via a suitable fragment
+            // shader. The net gain of this is that we can skip any kind of cpu based colorspace conversion
+            // for video formats/codecs which provide YUV data, by offloading the conversion to the GPU:
+			out_texture->textureinternalformat = 0;
+
+            // Mark texture as planar encoded, so proper conversion shader gets applied during
+            // call to PsychNormalizeTextureOrientation(), prior to any render-to-texture operation, e.g.,
+            // if used as an offscreen window, or as a participant of a Screen('TransformTexture') call:
+            out_texture->specialflags |= kPsychPlanarTexture;
+            
+            // Assign special filter shader for Y8 -> RGBA8 color-space conversion of the
+            // planar texture during drawing or PsychNormalizeTextureOrientation():
+            if (!PsychAssignPlanarI800TextureShader(out_texture, win)) PsychErrorExitMsg(PsychError_user, "Assignment of Y8-Y800 video decoding shader failed during movie texture creation!");
+            
+            // Number of effective channels is 1 for L8:
+            out_texture->nrchannels = 1;
+            
+            // And 8 bpp depth: This will trigger bog-standard LUMINANCE8 texture creation in PsychCreateTexture():
+            out_texture->depth = 8;
+            
+            // Byte alignment - Only depends on width of an image row, given the 1 Byte per pixel data:
+            out_texture->textureByteAligned = 1;
+            if (movieRecordBANK[moviehandle].width % 2 == 0) out_texture->textureByteAligned = 2;
+            if (movieRecordBANK[moviehandle].width % 4 == 0) out_texture->textureByteAligned = 4;
+            if (movieRecordBANK[moviehandle].width % 8 == 0) out_texture->textureByteAligned = 8;
+        }
+        
+        // YUV I420 planar pixel upload requested?
+        if (movieRecordBANK[moviehandle].pixelFormat == 6) {
+            // We encode I420 planar data inside a 8 bit per pixel luminance texture of
+            // 1.5x times the height of the video frame. First the "Y" luminance plane
+            // is stored at full 1 sample per pixel resolution with 8 bits. Then a 0.25x
+            // height slice with "U" Cr chrominance data at half the horizontal and vertical
+            // resolution aka 1 sample per 2x2 pixel quad. Then a 0.25x height slice with "V"
+            // Cb chrominance data at 1 sample per 2x2 pixel quad resolution. As such the texture
+            // appears to OpenGL as a normal LUMINANCE8 texture. Conversion of the planar format
+            // into useable RGBA8 pixel fragments will happen during rendering via a suitable fragment
+            // shader. The net gain of this is that we effectively only need 1.5 Bytes per pixel instead
+            // of 3 Bytes for RGB8 or 4 Bytes for RGBA8:
+			out_texture->textureexternaltype   = GL_UNSIGNED_BYTE;
+			out_texture->textureexternalformat = GL_LUMINANCE;
+			out_texture->textureinternalformat = GL_LUMINANCE8;
+
+			// Define a rect of 1.5 times the video frame height, so PsychCreateTexture() will source
+            // the whole input data buffer:
+			PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * 1.5);
+
+            // Check if 1.5x height texture fits within hardware limits of this GPU:
+            if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
+            
+            // Create planar "I420 inside L8" texture:
+            PsychCreateTexture(out_texture);
+            
+            // Restore rect and clientrect of texture to effective size of video frame:
+            PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);
+            PsychCopyRect(out_texture->clientrect, out_texture->rect);
+            
+            // Mark texture as planar encoded, so proper conversion shader gets applied during
+            // call to PsychNormalizeTextureOrientation(), prior to any render-to-texture operation, e.g.,
+            // if used as an offscreen window, or as a participant of a Screen('TransformTexture') call:
+            out_texture->specialflags |= kPsychPlanarTexture;
+
+            // Assign special filter shader for sampling and color-space conversion of the
+            // planar texture during drawing or PsychNormalizeTextureOrientation():
+            if (!PsychAssignPlanarI420TextureShader(out_texture, win)) PsychErrorExitMsg(PsychError_user, "Assignment of I420 video decoding shader failed during movie texture creation!");
+            
+            // Number of effective channels is 3 for RGB8:
+            out_texture->nrchannels = 3;
+            
+            // And 24 bpp depth:
+            out_texture->depth = 24;
+            
+            // Byte alignment: Assume no alignment for now:
+            out_texture->textureByteAligned = 1;
+        }
+        else {
+            // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+            // filling an OpenGL texture with content:
+            PsychCreateTexture(out_texture);
+        }
+
+        // After PsychCreateTexture() the cached texture object from our cache is used
+        // and no longer available for recycling. We mark the cache as empty:
+        // It will be filled with a new textureid for recycling if a texture gets
+        // deleted in PsychMovieDeleteTexture()....
+        movieRecordBANK[moviehandle].cached_texture = 0;
+
+        // Does usercode want immediate conversion of texture into standard RGBA8 packed pixel
+        // upright format for use as a render-target? If so, do it:
+        if (movieRecordBANK[moviehandle].specialFlags1 & 16) {
+            // Transform out_texture video texture into a normalized, upright texture if it isn't already in
+            // that format. We require this standard orientation for simplified shader design.
+            PsychSetShader(win, 0);
+            PsychNormalizeTextureOrientation(out_texture);
+        }
+
+        PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Decode completion to texture created: %f msecs.\n", (tNow - tStart) * 1000.0);
+        tStart = tNow;
+        
+        // End of texture creation code.
     }
-
-    // Let PsychCreateTexture() do the rest of the job of creating, setting up and
-    // filling an OpenGL texture with content:
-    PsychCreateTexture(out_texture);
-
-    // After PsychCreateTexture() the cached texture object from our cache is used
-    // and no longer available for recycling. We mark the cache as empty:
-    // It will be filled with a new textureid for recycling if a texture gets
-    // deleted in PsychMovieDeleteTexture()....
-    movieRecordBANK[moviehandle].cached_texture = 0;
-
-    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Decode completion to texture created: %f msecs.\n", (tNow - tStart) * 1000.0);
-    tStart = tNow;
 
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
     // TODO: GstBuffer videoBuffer provides special flags that should allow to do a more
@@ -1424,8 +1689,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // Try to check for dropped frames in playback mode:
 
         // Expected delta between successive presentation timestamps:
-	// This is not dependent on playback rate, as it measures time in the
-	// GStreamer movies timeline == Assuming 1x playback rate.
+        // This is not dependent on playback rate, as it measures time in the
+        // GStreamer movies timeline == Assuming 1x playback rate.
         targetdelta = 1.0f / movieRecordBANK[moviehandle].fps;
 
         // Compute real delta, given rate and playback direction:
@@ -1449,29 +1714,29 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
     // Unlock.
     if (oldstyle) {
-	PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
+        PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
     } else {
-	gst_buffer_unref(videoBuffer);
-	videoBuffer = NULL;
+        gst_buffer_unref(videoBuffer);
+        videoBuffer = NULL;
     }
     
     // Manually advance movie time, if in fetch mode:
     if (0 == rate) {
-	// We are in manual fetch mode: Need to manually advance movie to next
-	// media sample:
-	movieRecordBANK[moviehandle].endOfFetch = 0;
-	preT = PsychGSGetMovieTimeIndex(moviehandle);
-	event = gst_event_new_step(GST_FORMAT_BUFFERS, 1, 1.0, TRUE, FALSE);
-	if (!gst_element_send_event(theMovie, event)) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
+        // We are in manual fetch mode: Need to manually advance movie to next
+        // media sample:
+        movieRecordBANK[moviehandle].endOfFetch = 0;
+        preT = PsychGSGetMovieTimeIndex(moviehandle);
+        event = gst_event_new_step(GST_FORMAT_BUFFERS, 1, 1.0, TRUE, FALSE);
+        if (!gst_element_send_event(theMovie, event)) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
 
-	// Block until seek completed, failed, or timeout of 30 seconds reached:
-	if (GST_STATE_CHANGE_FAILURE == gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9))) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
-	postT = PsychGSGetMovieTimeIndex(moviehandle);
+        // Block until seek completed, failed, or timeout of 30 seconds reached:
+        if (GST_STATE_CHANGE_FAILURE == gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9))) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
+        postT = PsychGSGetMovieTimeIndex(moviehandle);
 
-	if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Movie fetch advance: preT %f   postT %f  DELTA %lf %s\n", preT, postT, postT - preT, (postT - preT < 0.001) ? "SAME" : "DIFF");
+        if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Movie fetch advance: preT %f   postT %f  DELTA %lf %s\n", preT, postT, postT - preT, (postT - preT < 0.001) ? "SAME" : "DIFF");
 
-	// Signal end-of-fetch if time no longer progresses signficiantly:
-	if (postT - preT < 0.001) movieRecordBANK[moviehandle].endOfFetch = 1;
+        // Signal end-of-fetch if time no longer progresses signficiantly:
+        if (postT - preT < 0.001) movieRecordBANK[moviehandle].endOfFetch = 1;
     }
 
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
@@ -1665,11 +1930,10 @@ double PsychGSGetMovieTimeIndex(int moviehandle)
  */
 double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames)
 {
-    GstElement		*theMovie;
-    double		oldtime;
-    gint64		targetIndex;
-    GstEvent            *event;
-    GstSeekFlags        flags;
+    GstElement      *theMovie;
+    double          oldtime;
+    gint64          targetIndex;
+    GstSeekFlags    flags;
 
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");

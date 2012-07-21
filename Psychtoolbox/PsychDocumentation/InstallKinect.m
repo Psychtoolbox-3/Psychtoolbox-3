@@ -121,11 +121,11 @@
 % GPLv2 or Apache license.
 %
 % The source code of the Windows version of the Kinect driver and libusb
-% can be found after checking out Psychtoolbox's C source code from the SVN
+% can be found after checking out Psychtoolbox's C source code from our GIT
 % repository (see "help UseTheSource" for instructions) as a zip file
 % under:
 %
-% trunk/PsychSourceGL/Cohorts/Kinect-v16-withsource.zip
+% Psychtoolbox-3/PsychSourceGL/Cohorts/Kinect-v16-withsource.zip
 %
 % The source code for libfreenect (Unix aka Linux / MacOS/X) can be found
 % under:

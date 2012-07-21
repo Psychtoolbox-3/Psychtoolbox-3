@@ -140,7 +140,7 @@ PsychError SCREENHookFunction(void)
 	PsychWindowRecordType	*windowRecord;
 	char					numString[10];
 	char					*cmdString, *hookString, *idString, *blitterString, *insertString;
-	int						i, cmd, slotid, whereloc = 0;
+	int						cmd, slotid, whereloc = 0;
 	double					doubleptr;
 	double					shaderid, luttexid1 = 0;
 

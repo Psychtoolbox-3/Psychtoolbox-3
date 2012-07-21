@@ -14,9 +14,9 @@
 % recording and movie creation may be limited in functionality or
 % performance if you don't use a recent version of GStreamer.
 %
-% By default, the 32-bit versions of Psychtoolbox for Windows and MacOS/X
-% use Apple's Quicktime for those operations, so GStreamer is not strictly
-% needed there. You can however use GStreamer (once installed) instead of
+% Currently the 32-bit version of Psychtoolbox for MacOS/X uses Apple's
+% Quicktime for those operations, so GStreamer is not strictly needed
+% there. You can however use GStreamer (once installed) instead of
 % Quicktime if you add the following command to the top of your experiment
 % script, before any other Screen() command:
 %
@@ -83,7 +83,8 @@
 %
 % MS-Windows:
 %
-% We currently provide GStreamer support on Windows with 32-bit Matlab and Octave.
+% We currently provide GStreamer support on Windows for 32-bit Matlab and Octave.
+%
 % In fact, a fully working GStreamer installation is mandatory for
 % Psychtoolbox to work on Octave for Windows, otherwise the Screen()
 % function will fail to work at all, regardless if you use multi-media
@@ -104,7 +105,8 @@
 % recommend this one: "GStreamer WinBuilds v0.10.6, LGPL (x86)"
 %
 % However, some features may be disabled or limited with such an older
-% version.
+% version, e.g., playback performance may be reduced, certain video formats
+% may not play at all, etc.
 %
 % IMPORTANT: Users of Octave under Windows must not only install GStreamer
 % on their system. They must also delete (or rename) the file iconv.dll
@@ -124,18 +126,33 @@
 % For 64-Bit versions of Mac OS/X 10.6 "Snow Leopard" and later, you can
 % download and install GStreamer via an easy to use installer from here:
 %
-% <http://itee.uq.edu.au/~davel/gstreamer/>
+% <http://gstreamer.com>
+%
+% This is the most convenient installation method and provides
+% high-performance support for movie playback and movie writing (although
+% with some limitations on available codecs). If you also need to capture
+% or record live video from cameras or other video, you will need to
+% install GStreamer via Homebrew instead.
 %
 % Another way to install GStreamer, which provides you with the latest
-% versions of the framework and all plugins is to install it via Homebrew:
-% Get Homebrew at: http://mxcl.github.com/homebrew
+% versions of the framework and all plugins, including video capture and
+% video recording support, is to install it via Homebrew: Get Homebrew at ...
 %
-% Then install all components via:
+% http://mxcl.github.com/homebrew
+%
+% ... then install all components via:
+%
 % brew install gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-ffmpeg
 %
 % After a couple minutes of download and compile time, you'll have a fully
 % functional GStreamer compiled from source - assuming everything goes
 % well, that is.
+%
+% Yet another alternative download location for older versions of GStreamer
+% can be found here:
+%
+% <http://itee.uq.edu.au/~davel/gstreamer/>
+%
 %
 % For 32-Bit versions of OS/X we don't support GStreamer yet. Stay tuned...
 %

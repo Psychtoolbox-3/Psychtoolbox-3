@@ -9,10 +9,11 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % program, checking for all required resources and privileges before it
 % starts.
 %
-% CAUTION: Psychtoolbox *will not work* yet with 64 bit versions of Matlab
-% or Octave on Microsoft Windows. It will work with 64 bit Matlab and
-% Octave on Linux and 64-Bit Matlab on OSX, with 64-Bit Octave support on
-% OSX planned.
+% CAUTION: Psychtoolbox *will not work* yet with 64 bit versions of Octave
+% on Microsoft Windows. It will work with 64 bit Matlab and Octave on Linux
+% and 64-Bit Matlab on OSX and Windows, with 64-Bit Octave support on OSX
+% planned. 64-Bit support for Octave on Windows will only be considered if
+% many more people show interest in Octave on Windows, than now.
 %
 % If you want to download older versions of Psychtoolbox than 3.0.10, use
 % the DownloadLegacyPsychtoolbox() function instead of this function.
@@ -276,14 +277,13 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % work if Screen et al. are still loaded.
 clear mex
 
-% Check if this is a 64-bit Matlab or Octave, which we don't support at all:
-if strcmp(computer,'PCWIN64') | ...
-  (~isempty(strfind(computer, '_64')) & isempty(strfind(computer, 'linux')) & isempty(strfind(computer, 'apple'))) 
-    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave on MS-Windows.\n');
-    fprintf('You need to install a 32 bit Matlab or Octave to install and use Psychtoolbox.\n');
-    fprintf('Use with 64 bit Matlab or (soon) Octave is fully supported on GNU/Linux and MacOSX.\n');
+% Check if this is a 64-bit Octave on Windows, which we don't support at all:
+if ~isempty(strfind(computer, '_64')) & isempty(strfind(computer, 'linux')) & isempty(strfind(computer, 'apple'))
+    fprintf('Psychtoolbox does not work on a 64 bit version of GNU/Octave on MS-Windows.\n');
+    fprintf('You need to install a 32 Bit version to use Psychtoolbox with Octave on Windows.\n');
+    fprintf('Use with 64 Bit Matlab is fully supported on all operating systems.\n');
     fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
-    error('Tried to setup on a 64 bit version of Matlab or Octave, which is not supported on this operating system.');
+    error('Tried to setup on a 64 bit version of Octave, which is not supported on this operating system.');
 end
 
 if strcmp(computer,'MAC')
@@ -296,7 +296,7 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-isWin = strcmp(computer,'PCWIN') | strcmp(computer, 'i686-pc-mingw32');
+isWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
 isOSX = ~isempty(strfind(computer, 'MAC')) | ~isempty(strfind(computer, 'apple-darwin'));
 isLinux = strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
 

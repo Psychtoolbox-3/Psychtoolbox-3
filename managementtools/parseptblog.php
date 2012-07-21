@@ -32,6 +32,8 @@
 // Debug flag: If set to 1, outputs diagnostic output as well.
 $debugmode = 0;
 
+date_default_timezone_set('UTC');
+
 // Default filename for registration log file:
 $filename = "/Users/colorweb/ptbregistrationlog";
 //$filename = "./ptbregistrationlog";
@@ -53,6 +55,7 @@ $unknowncount = 0;
 $oldptb307count = 0;
 $ptb308pretigercount = 0;
 $ptb308count = 0;
+$ptb309count = 0;
 $osxcount = 0;
 $wincount = 0;
 $linuxcount = 0;
@@ -66,12 +69,14 @@ $tigercount = 0;
 $leopardcount = 0;
 $snowleopardcount = 0;
 $lioncount = 0;
+$mountainlioncount = 0;
 
 $winunknowncount = 0;
 $win2kcount = 0;
 $winxpcount = 0;
 $winvistacount = 0;
 $win7count = 0;
+$win8count = 0;
 
 $winmatr200xcount = 0;
 $winmatr2006count = 0;
@@ -95,12 +100,15 @@ $matv711count = 0;
 $matv712count = 0;
 $matv713count = 0;
 $matv714count = 0;
+$matv715count = 0;
 
 $octavelinuxcount = 0;
 $octaveosxcount   = 0;
 $octavewincount   = 0;
 
 $linux64count = 0;
+$osx64count = 0;
+$win64count = 0;
 
 $intransaction = 0;
 $linescount = 0;
@@ -205,6 +213,8 @@ foreach($uniqueptbs as $ofl) {
   if (strpos($ofl, '<FLAVOR>unknown</FLAVOR>')) { $assigned++ ; $unknowncount++; }
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.8-PreTiger</FLAVOR>')) { $assigned++ ; $ptb308pretigercount++; }
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.8</FLAVOR>')) { $assigned++ ; $ptb308count++; }
+  if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.9</FLAVOR>')) { $assigned++ ; $ptb309count++; }
+
   if (strpos($ofl, '<ENVIRONMENT>Matlab')) {
     $ismatlab = 1;
 
@@ -227,6 +237,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '<ENVVERSION>7.12')) { $matv712count++; }
     if (strpos($ofl, '<ENVVERSION>7.13')) { $matv713count++; }
     if (strpos($ofl, '<ENVVERSION>7.14')) { $matv714count++; }
+    if (strpos($ofl, '<ENVVERSION>7.15')) { $matv715count++; }
   }
 
   if (strpos($ofl, '<ENVIRONMENT>Octave')) {
@@ -254,6 +265,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, 'Windows XP') || strpos($ofl, 'Windows-XP') || strpos($ofl, 'NT-5.1') || strpos($ofl, 'NT-5.2')) { $winxpcount++; $iswin = 2; }
     if (strpos($ofl, 'Windows Vista Version 6.0') || strpos($ofl, 'Windows 2000 Version 6.0') || strpos($ofl, 'NT-6.0')) { $winvistacount++; $iswin = 2; }
     if (strpos($ofl, 'Windows Vista Version 6.1') || strpos($ofl, 'Windows 7 Version') || strpos($ofl, 'NT-6.1')) { $win7count++; $iswin = 2; }
+    if (strpos($ofl, 'Windows Vista Version 6.2') || strpos($ofl, 'Windows 8 Version') || strpos($ofl, 'NT-6.2')) { $win8count++; $iswin = 2; }
 
     if (($iswin < 2) && ($debugmode > 0)) print "LOGPARSER-WARNING: UNASSIGNED WINDOWS - MACID: $ofl <br />";
 
@@ -271,6 +283,10 @@ foreach($uniqueptbs as $ofl) {
           $winmatrothercount++;
         }
     }
+
+    if (strpos($ofl, '<ENVARCH>PCWIN64') || strpos($ofl, '<ENVARCH>i686-pc-mingw64')) {
+      $win64count++;
+    }
   }
 
   // On MacOS-X by system architecture and type:
@@ -285,6 +301,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '10.5.')) { $leopardcount++; }
     if (strpos($ofl, '10.6.')) { $snowleopardcount++; }
     if (strpos($ofl, '10.7.')) { $lioncount++; }
+    if (strpos($ofl, '10.8.')) { $mountainlioncount++; }
 
     if (strpos($ofl, '<CPUARCH>ppc')) {
       // It is a PowerPC Macintosh:
@@ -309,6 +326,10 @@ foreach($uniqueptbs as $ofl) {
     else {
       // Unclassified:
       $somemaccount++;
+    }
+
+    if (strpos($ofl, '<ENVARCH>MACI64') || strpos($ofl, '<ENVARCH>x86_64-apple-darwin')) {
+      $osx64count++;
     }
   }
 
@@ -337,7 +358,7 @@ print "<h3>";
 print "<br /><br />Registered Psychtoolbox-3 installations as of " . date ("F d Y H:i:s.", filemtime($filename)) . "<br />";
 print "<pre><br />";
 print "Total number of downloads + updates     : $transactioncount<br />";
-print "Earliest registration was at            : $firstdate<br />";
+//print "Earliest registration was at            : $firstdate<br />";
 
 print "<br />";
 print "Total number of unique installations    : $totalcount<br />";
@@ -349,13 +370,16 @@ print "'trunk'                       : $trunkcount<br />";
 print "Psychtoolbox-3.0.7            : $oldptb307count<br />";
 print "Psychtoolbox-3.0.8-PreTiger   : $ptb308pretigercount<br />";
 print "Psychtoolbox-3.0.8            : $ptb308count<br />";
+print "Psychtoolbox-3.0.9            : $ptb309count<br />";
 print "Unclassified                  : $unknowncount<br />";
 
 print "<br />Breakdown by host operating system:<br /><br />";
-printf('MacOS-X                      : %8d (%7.3f%%) <br />', $osxcount, 100 * $osxcount / $totalcount);
-printf('Windows                      : %8d (%7.3f%%) <br />', $wincount, 100 * $wincount / $totalcount);
+printf('MacOS-X all                  : %8d (%7.3f%%) <br />', $osxcount, 100 * $osxcount / $totalcount);
+printf('Windows all                  : %8d (%7.3f%%) <br />', $wincount, 100 * $wincount / $totalcount);
 printf('Linux all                    : %8d (%7.3f%%) <br />', $linuxcount, 100 * $linuxcount / $totalcount);
-printf('Linux 64 Bit Matlab/Octave   : %8d (%7.3f%% of all Linux systems) <br />', $linux64count, 100 * $linux64count / $linuxcount);
+printf('Linux   64 Bit Matlab/Octave : %8d (%7.3f%% of all Linux systems) <br />', $linux64count, 100 * $linux64count / $linuxcount);
+printf('Windows 64 Bit Matlab/Octave : %8d (%7.3f%% of all Windows systems) <br />', $win64count, 100 * $win64count / $wincount);
+printf('MacOS-X 64 Bit Matlab/Octave : %8d (%7.3f%% of all MacOS-X systems) <br />', $osx64count, 100 * $osx64count / $osxcount);
 
 print "<br />For Macintosh - Breakdown by system architecture:<br /><br />";
 
@@ -371,6 +395,7 @@ print "10.4 - Tiger                 : $tigercount<br />";
 print "10.5 - Leopard               : $leopardcount<br />";
 print "10.6 - Snow Leopard          : $snowleopardcount<br />";
 print "10.7 - Lion                  : $lioncount<br />";
+print "10.8 - Mountain Lion         : $mountainlioncount<br />";
 
 print "<br />For MS-Windows - Breakdown by Windows version:<br /><br />";
 print "Windows additional preVistas : $winunknowncount<br />";
@@ -378,6 +403,7 @@ print "Windows 2000                 : $win2kcount<br />";
 print "Windows XP                   : $winxpcount<br />";
 print "Windows Vista                : $winvistacount<br />";
 print "Windows 7                    : $win7count<br />";
+print "Windows 8                    : $win8count<br />";
 
 print "<br />For MS-Windows - Breakdown by Matlab release:<br /><br />";
 
@@ -406,11 +432,12 @@ print "Matlab 7.11  (R2010b)        : $matv711count<br />";
 print "Matlab 7.12  (R2011a)        : $matv712count<br />";
 print "Matlab 7.13  (R2011b)        : $matv713count<br />";
 print "Matlab 7.14  (R2012a)        : $matv714count<br />";
+print "Matlab 7.15  (R2012b)        : $matv715count<br />";
 
 print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
-print "Octave on OS/X               : $octaveosxcount<br />";
-print "Octave on Linux              : $octavelinuxcount<br />";
-print "Octave on Windows            : $octavewincount<br />";
+printf('Octave on OS/X               : %8d (%7.3f%% of all OS/X installs) <br />', $octaveosxcount, 100 * $octaveosxcount / $osxcount);
+printf('Octave on Linux              : %8d (%7.3f%% of all Linux installs) <br />', $octavelinuxcount, 100 * $octavelinuxcount / $linuxcount);
+printf('Octave on Windows            : %8d (%7.3f%% of all Windows installs) <br />', $octavewincount, 100 * $octavewincount / $wincount);
 
 print "</pre></h3><pre>";
 print "Parsed lines in registration log        : $linescount<br />";

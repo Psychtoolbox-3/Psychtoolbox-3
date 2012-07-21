@@ -55,13 +55,17 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 
 PsychError SCREENGetFlipInfo(void) 
 {
+#if PSYCH_SYSTEM == PSYCH_LINUX
 	PsychWindowRecordType *windowRecord;
 	int infoType = 0, retIntArg;
 	double auxArg1, auxArg2, auxArg3;
+#endif
 
 	// All subfunctions should have these two lines.  
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
 
 	PsychErrorExit(PsychCapNumInputArgs(2));     //The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1)); //The required number of inputs	
@@ -74,7 +78,6 @@ PsychError SCREENGetFlipInfo(void)
 	PsychCopyInIntegerArg(2, FALSE, &infoType);
 	if (infoType < 0 || infoType > 3) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3.");
 
-#if PSYCH_SYSTEM == PSYCH_LINUX
 	// Type 0: Return SBC handle of last scheduled flip:
 	if (infoType == 0) {
 		PsychCopyOutDoubleArg(1, FALSE, (double) windowRecord->target_sbc);

@@ -55,13 +55,10 @@ static char seeAlsoString[] = "FrameOval";
 PsychError SCREENFillOval(void)  
 {
 	
-	PsychColorType			color;
 	PsychRectType			rect;
 	double					numSlices, radius, xScale, yScale, xTranslate, yTranslate, rectY, rectX;
 	PsychWindowRecordType	*windowRecord;
-	int						whiteValue;
-	psych_bool					isArgThere;
-	GLdouble				dVals[4]; 
+	psych_bool				isArgThere;
     double					*xy, *colors;
 	unsigned char			*bytecolors;
 	int						numRects, i, nc, mc, nrsize;
@@ -105,7 +102,7 @@ PsychError SCREENFillOval(void)
 		diskQuadric=gluNewQuadric();
 		windowRecord->fillOvalDisplayList = glGenLists(1);
 		glNewList(windowRecord->fillOvalDisplayList, GL_COMPILE);
-		gluDisk(diskQuadric, 0, 1, numSlices, 1);
+		gluDisk(diskQuadric, 0, 1, (int) numSlices, 1);
 		glEndList();	
 		gluDeleteQuadric(diskQuadric);
 		// Display list ready for use in this and all future drawing calls for this windowRecord.

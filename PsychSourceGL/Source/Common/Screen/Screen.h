@@ -52,12 +52,6 @@
 #include <pthread.h>
 #endif
 
-#if PSYCH_SYSTEM != PSYCH_LINUX
-#if !defined(__LP64__) && !defined(_M_IA64)
-#define PSYCHQTAVAIL 1
-#endif
-#endif
-
 #if PSYCH_SYSTEM == PSYCH_OSX && defined(PSYCHQTAVAIL)
 	#include <Quicktime/Movies.h>
 #endif

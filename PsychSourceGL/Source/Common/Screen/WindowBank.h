@@ -293,11 +293,13 @@ typedef struct _PsychWindowRecordType_{
 		GLint				textureLookupShader;	// Optional GLSL handle for nearest neighbour texture drawing shader.
 		GLint				textureByteAligned;		// 0 = No knowledge about byte alignment of texture data. > 1, texture rows are x byte aligned.
 		GLint				texturePlanarShader[4]; // Optional GLSL program handles for shaders to apply to planar storage textures - 4 handles for 4 possible channel counts.
+        GLint               textureI420PlanarShader; // Optional GLSL program handle for shader to convert a YUV-I420 planar texture into a standard RGBA8 texture.
+        GLint               textureI800PlanarShader; // Optional GLSL program handle for shader to convert a Y8-I800 planar texture into a standard RGBA8 texture.
 
-	//line stipple attributes, for windows not textures.
-	GLushort				stipplePattern;
-	GLint					stippleFactor;
-	psych_bool					stippleEnabled;
+        //line stipple attributes, for windows not textures.
+        GLushort				stipplePattern;
+        GLint					stippleFactor;
+        psych_bool					stippleEnabled;
         
 		GLboolean								colorMask[4];			// psych_bool 4 element array which encodes the glColorMask() for this window.
 		unsigned int							gfxcaps;				// Bitfield of gfx-cards capabilities and limitations: See constants kPsychGfxCapXXXX above.

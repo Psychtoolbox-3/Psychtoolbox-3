@@ -349,13 +349,10 @@ if IsWin
         fprintf('YOUR SYSTEMS TIMING IS BROKEN AND UNRELIABLE!!!\n');
         fprintf('Read in the online help of this test script and on the PTB Wiki about measures\n');
         fprintf('that may allow to fix your systems timing. Apply them, then retest.\n\n');
-    else
-        fprintf('So far your system behaved well, even without PTB''s fixes applied. This could mean it is well behaved.\n');
-        fprintf('Unfortunately it could also mean that the test is unable to detect real problems (false negative) :(\n\n');
     end
 
     % Give a final conclusion:
-    fprintf('PRELIMINARY CONCLUSION (Disclaimer: No test is perfect, this one isn''t an exception)\n\n');
+    fprintf('\n\nPRELIMINARY CONCLUSION (Disclaimer: No test is perfect, this one isn''t an exception)\n\n');
     if hardfail > 0
         fprintf('Your system shows severe timing problems and PTB was unable to fix them\n');
         fprintf('with its built-in workarounds. Likely, PTB will detect this problems at runtime\n');
@@ -368,17 +365,19 @@ if IsWin
         fprintf('with the current PTB. However, there is some likelihood of the test reporting false\n');
         fprintf('negatives.\n\n');
     end
-
-    if softfail > 0
-        fprintf('When running the timing tests without PTB''s automatic workarounds,\n');
-        fprintf('your system showed severe timing problems!\n');
-        fprintf('Studies run with older versions of PTB or other toolkits may have been\n');
-        fprintf('affected by false time measurements. You may want to run some of your old\n');
-        fprintf('scripts with the new PTB to see if you get different results.\n\n');
-        fprintf('Read the help text of this script and on our Wiki for more background information.\n\n');
-    else
-        fprintf('So far your system behaved well, even without PTB''s fixes applied. This could mean it is well behaved.\n');
-        fprintf('Unfortunately it could also mean that the test is unable to detect real problems (false negative) :(\n\n');
+    
+    if hardfail == 0
+        if softfail > 0
+            fprintf('When running the timing tests without PTB''s automatic workarounds,\n');
+            fprintf('your system showed severe timing problems!\n');
+            fprintf('Studies run with older versions of PTB or other toolkits may have been\n');
+            fprintf('affected by false time measurements. You may want to run some of your old\n');
+            fprintf('scripts with the new PTB to see if you get different results.\n\n');
+            fprintf('Read the help text of this script and on our Wiki for more background information.\n\n');
+        else
+            fprintf('So far your system behaved well, even without PTB''s fixes applied. This could mean it is well behaved.\n');
+            fprintf('Unfortunately it could also mean that the test is unable to detect real problems (false negative) :(\n\n');
+        end
     end
 
     Priority(0);

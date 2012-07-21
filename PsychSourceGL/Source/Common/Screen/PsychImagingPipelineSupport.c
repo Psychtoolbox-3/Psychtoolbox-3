@@ -120,6 +120,82 @@ static char texturePlanar4FragmentShaderSrc[] =
 "    gl_FragColor = texcolor * unclampedFragColor; \n"
 "} \n";
 
+/* Sampling and conversion shader from YUV-I420 planar format to standard RGBA8
+ * format. Samples our YUV I420 planar luminance texture, builds yuv sample, then
+ * performs color space conversion from yuv to rgb.
+ *
+ * This shader is based on BSD licensed example code from Peter Bengtsson, from
+ * http://www.fourcc.org/source/YUV420P-OpenGL-GLSLang.c
+ */
+static char texturePlanarI420FragmentShaderSrc[] =
+"/* YUV-I420 planar texture sampling fragment shader.               */ \n"
+"/* Retrieves YUV sample from proper locations in planes.           */ \n"
+"/* Converts YUV sample to RGB color triplet and applies            */ \n"
+"/* GL_MODULATE texture function emulation before fragment output.  */ \n"
+"\n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
+"varying vec2 texNominalSize; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    float r, g, b, y, u, v;\n"
+"    float nx, ny;\n"
+"\n"
+"    nx = gl_TexCoord[0].x;\n"
+"    ny = gl_TexCoord[0].y;\n"
+"\n"
+"    y = texture2DRect(Image, vec2(nx, ny)).r;\n"
+"    ny = floor(ny * 0.5);\n"
+"    nx = floor(nx * 0.5);\n"
+"    if (mod(ny, 2.0) >= 0.5) {\n"
+"        nx += texNominalSize.x * 0.5;\n"
+"    }\n"
+"\n"
+"    ny = (ny - mod(ny, 2.0)) * 0.5;\n"
+"    u = texture2DRect(Image, vec2(nx, ny + texNominalSize.y)).r; \n"
+"    v = texture2DRect(Image, vec2(nx, ny + (1.25 * texNominalSize.y))).r; \n"
+"\n"
+"    y = 1.1643 * (y - 0.0625);\n"
+"    u = u - 0.5;\n"
+"    v = v - 0.5;\n"
+"\n"
+"    r = y + 1.5958 * v;\n"
+"    g = y - 0.39173 * u - 0.81290 * v;\n"
+"    b = y + 2.017 * u;\n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = vec4(r, g, b, 1.0) * unclampedFragColor; \n"
+"} \n";
+
+/* Sampling and conversion shader from Y8-I800 planar format to standard RGBA8
+ * format. Samples our Y8 I800 planar luminance texture, then performs color
+ * space conversion from y to rgb.
+ */
+static char texturePlanarI800FragmentShaderSrc[] =
+"/* Y8-I800 planar texture sampling fragment shader.                */ \n"
+"/* Retrieves Y8 sample from proper location.                       */ \n"
+"/* Converts Y8 sample to RGB color triplet and applies             */ \n"
+"/* GL_MODULATE texture function emulation before fragment output.  */ \n"
+"\n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    float y = texture2DRect(Image, gl_TexCoord[0].xy).r;\n"
+"    y = 1.1643 * (y - 0.0625);\n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = vec4(y, y, y, 1.0) * unclampedFragColor; \n"
+"} \n";
+
 char texturePlanarVertexShaderSrc[] =
 "/* Simple pass-through vertex shader: Emulates fixed function pipeline, but passes  */ \n"
 "/* modulateColor as varying unclampedFragColor to circumvent vertex color       */ \n"
@@ -1023,19 +1099,19 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					// cross-talk / ghosting:
 					
 					// Left-eye channel (channel 1):
-					rg = (windowRecord->stereomode==kPsychAnaglyphRGStereo || windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0;
-					gg = (windowRecord->stereomode==kPsychAnaglyphGRStereo) ? 1.0 : 0.0;
-					bg = (windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0;
+					rg = (float) ((windowRecord->stereomode==kPsychAnaglyphRGStereo || windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0);
+					gg = (float) ((windowRecord->stereomode==kPsychAnaglyphGRStereo) ? 1.0 : 0.0);
+					bg = (float) ((windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0);
 					glUniform3f(glGetUniformLocation(glsl, "Gains1"), rg, gg, bg);
 
 					// Right-eye channel (channel 2):
-					rg = (windowRecord->stereomode==kPsychAnaglyphGRStereo || windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0;
-					gg = (windowRecord->stereomode==kPsychAnaglyphRGStereo) ? 1.0 : 0.0;
-					bg = (windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0;
+					rg = (float) ((windowRecord->stereomode==kPsychAnaglyphGRStereo || windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0);
+					gg = (float) ((windowRecord->stereomode==kPsychAnaglyphRGStereo) ? 1.0 : 0.0);
+					bg = (float) ((windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0);
 					glUniform3f(glGetUniformLocation(glsl, "Gains2"), rg, gg, bg);
 					
 					// Define default weights for RGB -> Luminance conversion: We default to the standardized NTSC color weights.
-					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.299, 0.587, 0.114);
+					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.299f, 0.587f, 0.114f);
 					// Define background bias color to add: Normally zero for standard anaglyph:
 					glUniform3f(glGetUniformLocation(glsl, "ChannelBias"), 0.0, 0.0, 0.0);
 
@@ -1878,6 +1954,9 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 	psych_bool needzbuffer, isplanar;
 	int width, height;
 
+    // Is this a planar encoding texture?
+    isplanar = (PsychIsTexture(sourceRecord) && (sourceRecord->specialflags & kPsychPlanarTexture)) ? TRUE : FALSE;
+    
 	// The source texture sourceRecord could be in any of PTB's supported
 	// internal texture orientations. It may be upright as an Offscreen window,
 	// or flipped upside down as some textures from the video grabber or Quicktime,
@@ -1888,12 +1967,10 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 	// step to transform the texture into normalized orientation. We also perform a
 	// preprocessing step on any CoreVideo texture from Quicktime. Although such a
 	// texture may be properly oriented, it is of a non-renderable YUV color format, so
-	// we need to recreate it in a RGB renderable format.
-	if (sourceRecord->textureOrientation != 2 || sourceRecord->targetSpecific.QuickTimeGLTexture != NULL) {
-		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap for source gl-texture %i --> ", sourceRecord->textureNumber);
-		
-		// Is this a planar encoding texture?
-		isplanar = (PsychIsTexture(sourceRecord) && (sourceRecord->specialflags & kPsychPlanarTexture)) ? TRUE : FALSE;
+	// we need to recreate it in a RGB renderable format. Non-planar textures would also
+    // wreak havoc if not converted into standard pixel-interleaved format:
+	if (sourceRecord->textureOrientation != 2 || sourceRecord->targetSpecific.QuickTimeGLTexture != NULL || isplanar) {
+		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap or format conversion for source gl-texture %i --> ", sourceRecord->textureNumber);
 		
 		// Soft-reset drawing engine in a safe way:
 		PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
@@ -1944,8 +2021,8 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		// Override detected width and height for planar textures:
 		if (isplanar) {
 			// They are actually the net size as specified by their rect's:
-			width  = PsychGetWidthFromRect(sourceRecord->rect);
-			height = PsychGetHeightFromRect(sourceRecord->rect);
+			width  = (int) PsychGetWidthFromRect(sourceRecord->rect);
+			height = (int) PsychGetHeightFromRect(sourceRecord->rect);
 		}
 		
 		// Renderable format? Pure luminance or luminance+alpha formats are not renderable on most hardware.
@@ -2073,7 +2150,6 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_bool openglpart)
 {
 	int i;
-	PtrPsychHookFunction hookfunc, hookiter;
 	PsychFBO* fboptr;
 	
 	// Do OpenGL specific cleanup:
@@ -2370,7 +2446,7 @@ void PsychPipelineDeleteHookSlot(PsychWindowRecordType *windowRecord, const char
 {
 	PtrPsychHookFunction hookfunc;
 	PtrPsychHookFunction *prehookfunc;
-	int targetidx, idx;
+	int idx;
 	int hookidx=PsychGetHookByName(hookString);
 	if (hookidx==-1) PsychErrorExitMsg(PsychError_user, "RemoveHook: Unknown (non-existent) hook name provided.");
 
@@ -2795,7 +2871,7 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
 	char  varName[256];
 	char* pCurrent		= cmdString;
 	char* pToken		= NULL;
-	int   i, j, k, count;
+	int   i;
 	
 	double* dbltarget	= NULL;
 	PsychGenericScriptType*	newvar = NULL;
@@ -3352,7 +3428,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		glPushMatrix();
 		
 		// Apply global (x,y) offset:
-		glTranslatef(x, y, 0);
+		glTranslatef((float) x, (float) y, 0);
 		
 		// Apply scaling:
 		glScalef(sx, sy, 1);
@@ -3370,25 +3446,25 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	// but PTB has to use a different system (changed by special gluOrtho2D) transform),
 	// because our 2D coordinate system needs to conform to the standards of the old
 	// Psychtoolboxes and of typical windowing systems. -- A tribute to the past.
-	
+
 	// Upper left vertex in window
-	glTexCoord2f(0, h);
-	glVertex2f(0, 0);		
-	
+	glTexCoord2f(0, (float) h);
+	glVertex2f(0, 0);
+
 	// Lower left vertex in window
 	glTexCoord2f(0, 0);
-	glVertex2f(0, h);		
-	
+	glVertex2f(0, (float) h);
+
 	// Lower right  vertex in window
-	glTexCoord2f(w, 0);
-	glVertex2f(w, h);		
-	
+	glTexCoord2f((float) w, 0);
+	glVertex2f((float) w, (float) h);
+
 	// Upper right in window
-	glTexCoord2f(w, h);
-	glVertex2f(w, 0);		
-	
+	glTexCoord2f((float) w, (float) h);
+	glVertex2f((float) w, 0);
+
 	glEnd();
-	
+
 	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
 		glPopMatrix();
 	}
@@ -3472,7 +3548,7 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 		glPushMatrix();
 		
 		// Apply global (x,y) offset:
-		glTranslatef(x, y, 0);
+		glTranslatef((float) x, (float) y, 0);
 		
 		// Apply scaling:
 		glScalef(sx, sy, 1);
@@ -3743,8 +3819,8 @@ psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windo
 	glBegin(GL_QUADS);
 	glVertex2f(0, h-2);
 	glVertex2f(w, h-2);
-	glVertex2f(w, PsychGetHeightFromRect(windowRecord->rect)+1);
-	glVertex2f(0, PsychGetHeightFromRect(windowRecord->rect)+1);
+	glVertex2f(w, (float) PsychGetHeightFromRect(windowRecord->rect)+1);
+	glVertex2f(0, (float) PsychGetHeightFromRect(windowRecord->rect)+1);
 	glEnd();
 
 	// Draw the sync-lines:
@@ -3900,4 +3976,52 @@ psych_bool PsychAssignPlanarTextureShaders(PsychWindowRecordType* textureRecord,
 
 	// Done.
 	return(TRUE);
+}
+
+psych_bool PsychAssignPlanarI420TextureShader(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord)
+{
+    // Remap windowRecord to its parent if any. We want the associated "toplevel" onscreen window,
+    // because only that contains the required shader and gfcaps in a reliable way:
+    windowRecord = PsychGetParentWindow(windowRecord);
+
+    // Do we already have a I420 planar sampling texture shader?
+    if (windowRecord->textureI420PlanarShader == 0) {
+        // Nope. Need to create one:
+        windowRecord->textureI420PlanarShader = PsychCreateGLSLProgram(texturePlanarI420FragmentShaderSrc, texturePlanarVertexShaderSrc, NULL);
+
+        if (windowRecord->textureI420PlanarShader == 0) {
+            printf("PTB-ERROR: Failed to create planar YUV-I420 filter shader for video texture.\n");
+            return(FALSE);
+        }
+    }
+
+    // Assign our onscreen windows planar I420 shader to this texture:
+    if (textureRecord) textureRecord->textureFilterShader = -1 * windowRecord->textureI420PlanarShader;
+
+    // Done.
+    return(TRUE);
+}
+
+psych_bool PsychAssignPlanarI800TextureShader(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord)
+{
+    // Remap windowRecord to its parent if any. We want the associated "toplevel" onscreen window,
+    // because only that contains the required shader and gfcaps in a reliable way:
+    windowRecord = PsychGetParentWindow(windowRecord);
+    
+    // Do we already have a I800 planar sampling texture shader?
+    if (windowRecord->textureI800PlanarShader == 0) {
+        // Nope. Need to create one:
+        windowRecord->textureI800PlanarShader = PsychCreateGLSLProgram(texturePlanarI800FragmentShaderSrc, texturePlanarVertexShaderSrc, NULL);
+        
+        if (windowRecord->textureI800PlanarShader == 0) {
+            printf("PTB-ERROR: Failed to create planar Y8-I800 filter shader for video texture.\n");
+            return(FALSE);
+        }
+    }
+    
+    // Assign our onscreen windows planar I800 shader to this texture:
+    if (textureRecord) textureRecord->textureFilterShader = -1 * windowRecord->textureI800PlanarShader;
+    
+    // Done.
+    return(TRUE);
 }

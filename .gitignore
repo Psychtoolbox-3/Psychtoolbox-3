@@ -12,3 +12,5 @@ project.xcworkspace/
 *.asv
 *.ncb
 *.swp
+PsychSourceGL/Cohorts/Kinect-v16-withsource/
+PsychSourceGL/Cohorts/freeglut/

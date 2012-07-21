@@ -60,11 +60,14 @@ PsychError SCREENConfigureDisplay(void)
 
 	const char *OutputFieldNames[]={"width", "height", "pixelSize", "hz", "xStart", "yStart"};
 	char *settingName = NULL;
-	PsychGenericScriptType *oldResStructArray;
 	int screenNumber, outputId;
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+	PsychGenericScriptType *oldResStructArray;
 	int newWidth, newHeight, newHz, newBpp, newX, newY;
 	psych_bool rc;
-	
+    #endif
+
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
