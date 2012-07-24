@@ -41,7 +41,7 @@
 static psych_bool usePerWindowXConnections = FALSE;
 
 // Use GLX version 1.3 setup code? Enabled INTEL_SWAP_EVENTS and other goodies...
-static psych_bool useGLX13;
+static psych_bool useGLX13 = FALSE;
 
 // Event base for GLX extension:
 static int glx_error_base, glx_event_base;
@@ -174,15 +174,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   GLXFBConfig *fbconfig = NULL;
   GLXWindow glxwindow;
   XVisualInfo *visinfo = NULL;
-  int i, x, y, width, height, nrdummy;
+  int i, x, y, width, height, nrconfigs, buffdepth;
   GLenum glerr;
-  psych_bool fullscreen = FALSE;
   int attrib[41];
   int attribcount=0;
   int stereoenableattrib=0;
   int depth, bpc;
   int windowLevel;
   int major, minor;
+  int xfixes_event_base1, xfixes_event_base2;
+  psych_bool xfixes_available = FALSE;
 
   // Retrieve windowLevel, an indicator of where non-fullscreen windows should
   // be located wrt. to other windows. 0 = Behind everything else, occluded by
@@ -250,12 +251,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
   }
 
+  // XFixes extension version 2.0 or later available and initialized?
+  if (XFixesQueryExtension(dpy, &xfixes_event_base1, &xfixes_event_base2) &&
+      XFixesQueryVersion(dpy, &major, &minor) && (major >= 2)) xfixes_available = TRUE;
+  major = minor = 0;
+
   // Init GLX extension, get its version, determine if at least V1.3 supported:
   useGLX13 = (glXQueryExtension(dpy, &glx_error_base, &glx_event_base) &&
               glXQueryVersion(dpy, &major, &minor) && ((major > 1) || ((major == 1) && (minor >= 3))));
 
   // Initialze GLX-1.3 protocol support. Use if possible:
   glXChooseFBConfig = (PFNGLXCHOOSEFBCONFIGPROC) glXGetProcAddressARB("glXChooseFBConfig");
+  glXGetFBConfigAttrib = (PFNGLXGETFBCONFIGATTRIBPROC) glXGetProcAddressARB("glXGetFBConfigAttrib");
   glXGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC) glXGetProcAddressARB("glXGetVisualFromFBConfig");
   glXCreateWindow = (PFNGLXCREATEWINDOWPROC) glXGetProcAddressARB("glXCreateWindow");
   glXCreateNewContext = (PFNGLXCREATENEWCONTEXTPROC) glXGetProcAddressARB("glXCreateNewContext");
@@ -265,7 +272,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Check if everything we need from GLX-1.3 is supported:
   if (!useGLX13 || !glXChooseFBConfig || !glXGetVisualFromFBConfig || !glXCreateWindow || !glXCreateNewContext ||
-      !glXDestroyWindow || !glXSelectEvent || !glXGetSelectedEvent) {
+      !glXDestroyWindow || !glXSelectEvent || !glXGetSelectedEvent || !glXGetFBConfigAttrib) {
     useGLX13 = FALSE;
     printf("PTB-INFO: Not using GLX-1.3 extension. Unsupported? Some features may be disabled.\n");
   } else {
@@ -283,16 +290,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     width=PsychGetWidthFromRect(screenrect);
     height=PsychGetHeightFromRect(screenrect);      
     
-    // Switch system to fullscreen-mode without changing any settings:
-    fullscreen = TRUE;
+    // Mark this window as fullscreen window:
+    windowRecord->specialflags |= kPsychIsFullscreenWindow;
 
-	// Mark this window as fullscreen window:
-	windowRecord->specialflags |= kPsychIsFullscreenWindow;
-	
-	// Copy absolute screen location and area of window to 'globalrect',
-	// so functions like Screen('GlobalRect') can still query the real
-	// bounding gox of a window onscreen:
-	PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
+    // Copy absolute screen location and area of window to 'globalrect',
+    // so functions like Screen('GlobalRect') can still query the real
+    // bounding gox of a window onscreen:
+    PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
   }
   else {
     // Window size different from current screen size:
@@ -302,11 +306,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     y=windowRecord->rect[kPsychTop];
     width=PsychGetWidthFromRect(windowRecord->rect);
     height=PsychGetHeightFromRect(windowRecord->rect);
-    fullscreen = FALSE;
 	
-	// Copy absolute screen location and area of window to 'globalrect',
-	// so functions like Screen('GlobalRect') can still query the real
-	// bounding gox of a window onscreen:
+    // Copy absolute screen location and area of window to 'globalrect',
+    // so functions like Screen('GlobalRect') can still query the real
+    // bounding gox of a window onscreen:
     PsychCopyRect(windowRecord->globalrect, windowRecord->rect);
   }
 
@@ -410,7 +413,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Select matching visual for our pixelformat:
   if (useGLX13) {
-    fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+    fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
   } else {
     visinfo = glXChooseVisual(dpy, scrnum, attrib );
   }
@@ -423,7 +426,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
 	// Retry:
 	if (useGLX13) {
-		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 	} else {
 		visinfo = glXChooseVisual(dpy, scrnum, attrib );
 	}
@@ -444,7 +447,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		  
 		  // Retry:
 		  if (useGLX13) {
-			  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+			  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 		  } else {
 			  visinfo = glXChooseVisual(dpy, scrnum, attrib );
 		  }
@@ -462,7 +465,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			  windowRecord->multiSample--;
 
 			  if (useGLX13) {
-				  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+				  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 			  } else {
 				  visinfo = glXChooseVisual(dpy, scrnum, attrib );
 			  }
@@ -477,7 +480,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			  attrib[i+1]=0;
 
 			  if (useGLX13) {
-				  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+				  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 			  } else {
 				  visinfo = glXChooseVisual(dpy, scrnum, attrib );
 			  }
@@ -498,7 +501,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
       
       // Retry...
       if (useGLX13) {
-	      fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+	      fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
       } else {
 	      visinfo = glXChooseVisual(dpy, scrnum, attrib );
       }
@@ -511,7 +514,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	fflush(NULL);
 	
 	if (useGLX13) {
-		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 	} else {
 		visinfo = glXChooseVisual(dpy, scrnum, attrib );
 	}
@@ -522,7 +525,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  for (i=0; i<attribcount && attrib[i]!=GLX_STENCIL_SIZE; i++);
 	  if (attrib[i]==GLX_STENCIL_SIZE && i<attribcount) attrib[i+1]=0;
 	  if (useGLX13) {
-		  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+		  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 	  } else {
 		  visinfo = glXChooseVisual(dpy, scrnum, attrib );
 	  }
@@ -536,29 +539,40 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     return(FALSE);
   }
 
+  if (fbconfig && (windowLevel >=1000 && windowLevel < 2000)) {
+    // Transparent window requested and fbconfig's found. Iterate over them
+    // and try to find one with 32 bit color depths:
+    for (i = 0; i < nrconfigs; i++) {
+      buffdepth = 0;
+      if ((Success == glXGetFBConfigAttrib(dpy, fbconfig[i], GLX_BUFFER_SIZE, &buffdepth)) && (buffdepth >= 32) &&
+	  (visinfo = glXGetVisualFromFBConfig(dpy, fbconfig[i])) && (visinfo->depth >= 32)) {
+	fbconfig[0] = fbconfig[i];
+	if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Choosing GLX framebuffer config %i for transparent window.\n", i);
+	break;
+      }
+      else if (PsychPrefStateGet_Verbosity() > 4) {
+	printf("PTB-INFO: Trying GLX framebuffer config %i for transparent window: Depths %i bpp.\n", i, buffdepth);
+      }
+    }
+  }
+
   // If this setup is fbconfig based, get associated visual:
   if (fbconfig) visinfo = glXGetVisualFromFBConfig(dpy, fbconfig[0]);
-
-  // Set window to non-fullscreen mode if it is a transparent or otherwise special window.
-  // This will prevent setting the override_redirect attribute, which would lock out the
-  // desktop window compositor:
-  if (windowLevel < 2000) fullscreen = FALSE;
-
-  // Also disable fullscreen mode for GUI-like windows:
-  if (windowRecord->specialflags & kPsychGUIWindow) fullscreen = FALSE;  
 
   // Setup window attributes:
   attr.background_pixel = 0;  // Background color defaults to black.
   attr.border_pixel = 0;      // Border color as well.
   attr.colormap = XCreateColormap( dpy, root, visinfo->visual, AllocNone);  // Dummy colormap assignment.
   attr.event_mask = KeyPressMask | StructureNotifyMask; // | ExposureMask;  // We're only interested in keypress events for GetChar() and StructureNotify to wait for Windows to be mapped.
-  attr.override_redirect = (fullscreen) ? 1 : 0;                            // Lock out window manager if fullscreen window requested.
+  attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1; // Lock out window manager, unless it is a GUI window.
   mask = CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
 
   // Create our onscreen window:
   win = XCreateWindow( dpy, root, x, y, width, height,
 		       0, visinfo->depth, InputOutput,
 		       visinfo->visual, mask, &attr );
+
+  if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GLX Visual info depths is %i bits\n", visinfo->depth);
 
   // Set hints and properties:
   {
@@ -573,8 +587,31 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			   None, (char **)NULL, 0, &sizehints);
   }
 
+  // Setup window transparency for user input (keyboard and mouse events):
+  if (xfixes_available && (windowLevel < 1500)) {
+    // Define region as an empty input region:
+    XserverRegion region = XFixesCreateRegion(dpy, NULL, 0);
+ 
+    // Assign as region in which window receives input events, thereby
+    // setting the input region to empty, so the window is transparent
+    // to any input events like key presses or mouse clicks:
+    XFixesSetWindowShapeRegion(dpy, win, ShapeInput, 0, 0, region);
+
+    // Destroy region after assignment:
+    XFixesDestroyRegion(dpy, region);
+  }
+
+  // Create corresponding glx window:
   if (fbconfig) {
 	glxwindow = glXCreateWindow(dpy, fbconfig[0], win, NULL);
+  }
+
+  // Make sure a potential slaveWindow of us resides on the same X-Screen == has same screenNumber as us,
+  // otherwise trying to perform OpenGL context resource sharing would end badly:
+  if ((windowRecord->slaveWindow) && (windowRecord->slaveWindow->screenNumber != screenSettings->screenNumber)) {
+      // Ohoh! Let's abort with some more helpful error message than a simple hard application crash:
+      printf("\nPTB-ERROR:[glXCreateContext() resource sharing] Our peer window resides on a different X-Screen, which is forbidden. Aborting.\n\n");
+      return(FALSE);
   }
 
   // Create associated GLX OpenGL rendering context: We use ressource
@@ -657,8 +694,60 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  XChangeProperty(dpy, win, atom_window_opacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &opacity, 1);
   }
 
-  // Show our new window:
-  XMapWindow(dpy, win);
+  // If this window is a GUI window then enable all window decorations and
+  // manipulations, except for the window close button, which would wreak havoc:
+  if (windowRecord->specialflags & kPsychGUIWindow) {
+    // For some reason we need to use unsigned long and long here instead of
+    // int32_t etc., despite the fact that on a 64-Bit build, a long is 64-Bit
+    // and on a 32-Bit build, a long is 32-Bit, whereas the XChangeProperty()
+    // request says a single unit is 32-Bits? Anyway, it works correctly on a
+    // 64-Bit build, so this seems to be magically ok.
+    struct MwmHints {
+        unsigned long flags;
+        unsigned long functions;
+        unsigned long decorations;
+        long          input_mode;
+        unsigned long status;
+    };
+
+    enum {
+        MWM_HINTS_FUNCTIONS = (1L << 0),
+        MWM_HINTS_DECORATIONS =  (1L << 1),
+        
+        MWM_FUNC_ALL = (1L << 0),
+        MWM_FUNC_RESIZE = (1L << 1),
+        MWM_FUNC_MOVE = (1L << 2),
+        MWM_FUNC_MINIMIZE = (1L << 3),
+        MWM_FUNC_MAXIMIZE = (1L << 4),
+        MWM_FUNC_CLOSE = (1L << 5)
+    };
+
+    Atom mwmHintsProperty = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+
+    struct MwmHints hints;
+    memset(&hints, 0, sizeof(hints));
+
+    hints.flags       = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
+    hints.decorations = MWM_FUNC_ALL;
+    hints.functions   = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
+
+    XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *) &hints, sizeof(hints) / sizeof(long));
+
+    // For windowLevels of at least 500, tell window manager to try to keep
+    // our window above most other windows, by setting the state to WM_STATE_ABOVE:
+    if (windowLevel >= 500) {
+      Atom stateAbove = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+      XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) &stateAbove, 1);
+    }
+  }
+
+  // Show our new window: Also raise it to the top for
+  // non-zero window levels:
+  if (windowLevel > 0) {
+    XMapRaised(dpy, win);
+  } else {
+    XMapWindow(dpy, win);
+  }
 
   // Spin-Wait for it to be really mapped:
   while (1) {
@@ -670,6 +759,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
       PsychYieldIntervalSeconds(0.001);
   }
   
+  // If windowLevel is zero, lower it to the bottom of the stack of windows:
+  if (windowLevel <= 0) XLowerWindow(dpy, win);
+
   // Setup window transparency for user input (keyboard and mouse events):
   if (windowLevel < 1500) {
 	// Need to try to be transparent for keyboard events and mouse clicks:
@@ -704,9 +796,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     XForceScreenSaver(dpy, ScreenSaverReset);
   }
 
-  // Some info for the user regarding non-fullscreen and ATI hw:
-  if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (strstr(glGetString(GL_VENDOR), "ATI"))) {
-    printf("PTB-INFO: Some ATI graphics cards may not support proper syncing to vertical retrace when\n");
+  // Some info for the user regarding non-fullscreen mode and sync problems:
+  if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
+    printf("PTB-INFO: Many graphics cards do not support proper syncing to vertical retrace when\n");
     printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
     printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 1); .\n");
     printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");

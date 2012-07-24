@@ -231,6 +231,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     double maxStddev, maxDeviation, maxDuration;	// Sync thresholds and settings...
     int minSamples;
     int vblbias, vbltotal;
+    int gpuMaintype, gpuMinortype;
 
     // Splash screen support:
     char splashPath[FILENAME_MAX];
@@ -306,17 +307,34 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	// some 'ConserveVRAM' flag, we will try to share ressources of all OpenGL contexts
 	// to simplify multi-window operations.
 	if ((sharedContextWindow == NULL) && ((conserveVRAM & kPsychDontShareContextRessources) == 0) && (PsychCountOpenWindows(kPsychDoubleBufferOnscreen) + PsychCountOpenWindows(kPsychSingleBufferOnscreen) > 0)) {
-		// Try context ressource sharing: Assign first onscreen window as sharing window:
-		i = PSYCH_FIRST_WINDOW - 1;
-		do {
-			i++;
-			FindWindowRecord(i, &((*windowRecord)->slaveWindow));
-		} while (((*windowRecord)->slaveWindow->windowType != kPsychDoubleBufferOnscreen) && ((*windowRecord)->slaveWindow->windowType != kPsychSingleBufferOnscreen));
-		// Ok, now we should have the first onscreen window assigned as slave window.
-		if(PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This oncreen window tries to share OpenGL context ressources with window %i.\n", i);
+	  // Try context ressource sharing: Assign first onscreen window as sharing window:
+	  i = PSYCH_FIRST_WINDOW - 1;
+	  do {
+	    // Try next window index:
+	    i++;
+
+	    // Skip this one if it is ourselves:
+	    if (i == (*windowRecord)->windowIndex) i++;
+
+	    // Abort search if no further windowRecords available (invalid_Windex return code):
+	    if (PsychError_invalidWindex == FindWindowRecord(i, &((*windowRecord)->slaveWindow))) break;
+
+	    // Repeat search if this ain't an onscreen window, or on Linux, if it is located on a
+	    // different X-Screen aka screenNumber, because windows can't share resources across X-Screens:
+	  } while (!PsychIsOnscreenWindow((*windowRecord)->slaveWindow) ||
+		   ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->slaveWindow->screenNumber != screenSettings->screenNumber)));
+
+	  // Sanity check - Do conditions hold for valid sharing window?
+	  if (!((*windowRecord)->slaveWindow) || !PsychIsOnscreenWindow((*windowRecord)->slaveWindow) ||
+	      ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->slaveWindow->screenNumber != screenSettings->screenNumber))) {
+	    // Failed: Invalidate slaveWindow, so no context sharing takes place - It would fail anyway in lower-level layer:
+	    (*windowRecord)->slaveWindow = NULL;
+	    if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This onscreen window could not find a peer window for sharing of OpenGL context ressources.\n");
+	  } else {
+	    // Ok, now we should have the first onscreen window assigned as slave window.
+	    if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This onscreen window tries to share OpenGL context ressources with window %i.\n", i);
+	  }
 	}
-	
-    //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOSOpenOnscreenWindow\n");
     
     // Call the OS specific low-level Window & Context setup routine:
     if (!PsychOSOpenOnscreenWindow(screenSettings, (*windowRecord), numBuffers, stereomode, conserveVRAM)) {
@@ -396,16 +414,18 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		}
 		else {
 			// Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
-			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) || strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_VENDOR), "Intel")) {
+			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) ||
+			    !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+			    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
 				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
 				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
 				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for setup information.\n");
-				printf("PTB-ERROR: On Linux you must either configure your system by executing the script PsychLinuxConfiguration once,\n");
+				printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
 				printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
 				PsychOSCloseWindow(*windowRecord);
 				FreeWindowRecordFromPntr(*windowRecord);
-				return(FALSE);			
+				return(FALSE);
 			}
 			
 			// Basic support seems to be there, set the request flag.
@@ -3088,17 +3108,25 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		PsychOSFlipWindowBuffers(windowRecord);
 		
 		// Also swap the slave window, if any:
-		if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
-		
+		if (windowRecord->slaveWindow) {
+		  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+		  PsychSetGLContext(windowRecord->slaveWindow);
+		  PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
+		  PsychSetGLContext(windowRecord);
+		}
+
 		// Multiflip with vbl-sync requested?
 		if (multiflip==1) {
 			//  Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace"
 			//  for all onscreen windows except our primary one:
 			for(i=0;i<numWindows;i++) {
 				if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+				  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+				  PsychSetGLContext(windowRecordArray[i]);
+				  PsychOSFlipWindowBuffers(windowRecordArray[i]);
 				}
 			}
+			PsychSetGLContext(windowRecord);
 		}
     }
 
@@ -3173,9 +3201,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// Immediately flip all onscreen windows except our primary one:
 			for(i=0;i<numWindows;i++) {
 				if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+				  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+				  PsychSetGLContext(windowRecordArray[i]);
+				  PsychOSFlipWindowBuffers(windowRecordArray[i]);
 				}
 			}
+			// Restore to our context:
+			PsychSetGLContext(windowRecord);
 		}
 		
         // Query and return rasterbeam position immediately after Flip and before timestamp:

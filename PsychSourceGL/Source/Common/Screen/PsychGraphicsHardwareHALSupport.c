@@ -311,12 +311,19 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 	int i, si, ei, headid, headiter, screenId;
 	unsigned int lutreg, ctlreg, value, status;
+	int gpuMaintype, gpuMinortype;
 
 	// Child protection:
 	if (windowRecord && !PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_internal, "Invalid non-onscreen windowRecord provided!!!");
 	
 	// Either screenid from windowRecord or our special -1 "all Screens" Id:
 	screenId = (windowRecord) ? windowRecord->screenNumber : -1;
+
+	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
+	  return(FALSE);
+	}
 	
 	// Define range of screens: Either a single specific one, or all:
 	si = (screenId!=-1) ? screenId   : 0;
@@ -482,9 +489,20 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 
 	int headiter, headid, screenId;
 	unsigned int ctlreg;
+	int gpuMaintype, gpuMinortype;
 
 	// Fixup needed? Only if 10bpc mode is supposed to be active! Early exit if not:
 	if (!(windowRecord->specialflags & kPsychNative10bpcFBActive)) return;
+
+	// Map windows screen to gfx-headid aka register subset. TODO : We'll need something better,
+	// more generic, abstracted out for the future, but as a starter this will do:
+	screenId = windowRecord->screenNumber;
+
+	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
+	  return;
+	}
 
 	// This command must be called with the OpenGL context of the given windowRecord active, so
 	// we can rely on glGetError() waiting for the correct pipeline to settle! Wait via glGetError()
@@ -496,27 +514,22 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 	// Ok, now rewrite the double-buffered (latched) register with our "good" value for keeping
 	// the 10 bpc framebuffer online:
 	
-	// Map windows screen to gfx-headid aka register subset. TODO : We'll need something better,
-	// more generic, abstracted out for the future, but as a starter this will do:
-	screenId = windowRecord->screenNumber;
-
-    // Iterate over range of all assigned heads for this screenId 'i' and reconfigure them:
-    for (headiter = 0; headiter < kPsychMaxPossibleCrtcs; headiter++) {
-        // Map screenid to headid for headiter'th head:
-        headid = PsychScreenToCrtcId(screenId, headiter);
+	// Iterate over range of all assigned heads for this screenId 'i' and reconfigure them:
+	for (headiter = 0; headiter < kPsychMaxPossibleCrtcs; headiter++) {
+	  // Map screenid to headid for headiter'th head:
+	  headid = PsychScreenToCrtcId(screenId, headiter);
         
-        // We're done as soon as we encounter invalid negative headid.
-        if (headid < 0) break;
+	  // We're done as soon as we encounter invalid negative headid.
+	  if (headid < 0) break;
         
-        ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
+	  ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
         
-        // One-liner read-modify-write op, which simply sets bit 8 of the register - the "Enable 2101010 mode" bit:
-        PsychOSKDWriteRegister(screenId, ctlreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, ctlreg, NULL), NULL);
+	  // One-liner read-modify-write op, which simply sets bit 8 of the register - the "Enable 2101010 mode" bit:
+	  PsychOSKDWriteRegister(screenId, ctlreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, ctlreg, NULL), NULL);
         
-        // Debug output, if wanted:
-        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): ARGB2101010 bit set on screen %i, head %i.\n", screenId, headid);
-    }
-
+	  // Debug output, if wanted:
+	  if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): ARGB2101010 bit set on screen %i, head %i.\n", screenId, headid);
+	}
 #endif
 
 	// Done.
@@ -534,12 +547,19 @@ void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
 {
 
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+	int gpuMaintype, gpuMinortype;
 
 	// If we are called, we know that 'windowRecord' is an onscreen window.
 	int screenId = windowRecord->screenNumber;
 
 	// Just need to check if GPU low-level access is supported:
 	if (!PsychOSIsKernelDriverAvailable(screenId)) return;
+
+	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
+	  return;
+	}
 	
 	// Driver is online: Read the registers, but only for primary crtc in a multi-crtc config:
 	windowRecord->gpu_preflip_Surfaces[0] = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
@@ -566,16 +586,18 @@ void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
 psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-    CGDirectDisplayID displayID;
-	unsigned int primarySurface, secondarySurface;
-	unsigned int updateStatus;
-	double deadline = *timestamp;
+  int gpuMaintype, gpuMinortype;
+  
+  CGDirectDisplayID displayID;
+  unsigned int primarySurface, secondarySurface;
+  unsigned int updateStatus;
+  double deadline = *timestamp;
 
-	// If we are called, we know that 'windowRecord' is an onscreen window.
-	int screenId = windowRecord->screenNumber;
+  // If we are called, we know that 'windowRecord' is an onscreen window.
+  int screenId = windowRecord->screenNumber;
 
-    // Retrieve display id and screen size spec that is needed later...
-    PsychGetCGDisplayIDFromScreenNumber(&displayID, screenId);
+  // Retrieve display id and screen size spec that is needed later...
+  PsychGetCGDisplayIDFromScreenNumber(&displayID, screenId);
 
 #define RADEON_D1GRPH_UPDATE	0x6144
 #define RADEON_D2GRPH_UPDATE	0x6944
@@ -584,6 +606,12 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 
 	// Just need to check if GPU low-level access is supported:
 	if (!PsychOSIsKernelDriverAvailable(screenId)) return(FALSE);
+
+	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
+	  return(FALSE);
+	}
 	
 	// Driver is online. Enter polling loop:
 	while (TRUE) {

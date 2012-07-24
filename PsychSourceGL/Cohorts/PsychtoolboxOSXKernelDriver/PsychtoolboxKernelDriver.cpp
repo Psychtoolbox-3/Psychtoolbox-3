@@ -96,7 +96,7 @@ static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET,
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for April 2012 (last update commit 21-Mar-2012). Will need updates for anything after April 2012 */
+/* Mappings up to date for June 2012 (last update commit 5-Jun-2012). Will need updates for anything after June 2012 */
 
 /* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE61(void)
@@ -251,20 +251,26 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// Read PCI device id register with 16 bit device id:
 	fPCIDeviceId = fPCIDevice->configRead16(2);
-	IOLog("%s: PCI device id is %04x\n", getName(), fPCIDeviceId);
 
+	// Read PCI configuration register 0, a 16 bit register with the
+	// Vendor ID:
+	fPCIVendorId = fPCIDevice->configRead16(0);
+
+	IOLog("%s: PCI device id is %04x, vendor id is %04x\n", getName(), fPCIDeviceId, fPCIVendorId);
+    
     // Assume two display heads by default:
     fNumDisplayHeads = 2;
 
-	// Read PCI configuration register 0, a 16 bit register with the
-	// Vendor ID. Match it against NVidia's id:
-	if (PCI_VENDOR_ID_NVIDIA == fPCIDevice->configRead16(0)) {
+    // NVidia card?
+	if (PCI_VENDOR_ID_NVIDIA == fPCIVendorId) {
 		// Assume it is a NVIDIA GeForce GPU: BAR 0 is the MMIO registers:
 		pciBARReg = kIOPCIConfigBaseAddress0;
 		fDeviceType = kPsychGeForce;
 		IOLog("%s: This is a NVidia GPU, hopefully a compatible GeForce...\n", getName());
 	}
-	else {
+    
+    // AMD/ATI card?
+	if ((PCI_VENDOR_ID_AMD == fPCIVendorId) || (PCI_VENDOR_ID_ATI == fPCIVendorId)) {
 		// Assume it is a ATI Radeon GPU: BAR 2 is the MMIO registers:
 		pciBARReg = kIOPCIConfigBaseAddress2;
 		fDeviceType = kPsychRadeon;
@@ -287,6 +293,27 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
         }
 	}
 
+    // Intel card?
+	if (PCI_VENDOR_ID_INTEL == fPCIVendorId) {
+		// Assume it is an Intel IGP: BAR 0 is the MMIO registers:
+		pciBARReg = kIOPCIConfigBaseAddress0;
+		fDeviceType = kPsychIntelIGP;
+		IOLog("%s: This is a Intel GPU, hopefully a compatible one...\n", getName());
+	}
+
+    // GPU type and vendor detected?
+	if (kPsychUnknown == fDeviceType) {
+		// Failed! Cleanup and exit:
+		IOLog("%s: This is not a supported GPU from AMD, NVidia or Intel! Will abort here - this is not a safe ground for proceeding.\n", getName());
+        
+		// Detach our device handle, so our cleanup routine won't do anything later on:
+		fPCIDevice = NULL;
+		
+		// We will exit with "success", but the fPCIDevice == NULL signals failure whenever any
+		// of our methods gets called, so we are basically idle from now on...
+		return(success);
+	}
+    
     /*
      * Enable memory response from the card
      */
@@ -523,7 +550,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.6 (Revision %d) for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName(), PTBKDRevision);
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.7 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
 	IOLog("%s: This driver is copyright 2008 - 2012 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under the MIT free and open-source software license.\n", getName());
 	IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
@@ -907,7 +934,8 @@ UInt32	PsychtoolboxKernelDriver::ReadRegister(UInt32 offset)
 	// Read the register in native byte order: At least NVidia GPU's adapt their
 	// endianity to match the host systems endianity, so no need for conversion:
 	if (fDeviceType == kPsychGeForce) return(_OSReadInt32((void*) fRadeonRegs, offset));
-
+	if (fDeviceType == kPsychIntelIGP) return(_OSReadInt32((void*) fRadeonRegs, offset));
+    
 	return(0);
 }
 
@@ -923,6 +951,7 @@ void PsychtoolboxKernelDriver::WriteRegister(UInt32 offset, UInt32 value)
 	// Write the register in native byte order: At least NVidia GPU's adapt their
 	// endianity to match the host systems endianity, so no need for conversion:
 	if (fDeviceType == kPsychGeForce) _OSWriteInt32((void*) fRadeonRegs, offset, value);
+	if (fDeviceType == kPsychIntelIGP) _OSWriteInt32((void*) fRadeonRegs, offset, value);
 
 	// Radeon: Don't know endianity behaviour: Play save, stick to LE assumption for now:
 	if (fDeviceType == kPsychRadeon) OSWriteLittleInt32((void*) fRadeonRegs, offset, value);
@@ -1080,7 +1109,12 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 			beampos = (SInt32) (ReadRegister((headId == 0) ? 0x616340 : 0x616340 + 0x800) & 0xFFFF);
 		}
 	}
-	
+
+    // Query code for Intel IGP's:
+    if (fDeviceType == kPsychIntelIGP) {
+        beampos = (SInt32) (ReadRegister((headId == 0) ? 0x70000 : 0x70000 + 0x1000) & 0x1FFF);
+    }
+
 	// Safety measure: Cap to zero if something went wrong -> This will trigger proper high level error handling in PTB:
 	if (beampos < 0) beampos = 0;
 	

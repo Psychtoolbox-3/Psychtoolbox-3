@@ -87,5 +87,8 @@ void                        PsychOSKDSetDitherMode(int screenId, unsigned int di
 unsigned int                PsychOSKDLoadIdentityLUT(int screenId, unsigned int head);
 unsigned int                PsychOSKDGetLUTState(int screenId, unsigned int head, unsigned int debug);
 
+// Return identifying information about GPU for a given screen screenNumber:
+psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);
+
 //end include once
 #endif

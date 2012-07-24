@@ -35,7 +35,7 @@
 				<key>IOPCIClassMatch</key>
 				<string>0x03000000&amp;0xFFFFFF00</string>
 				<key>IOPCIPrimaryMatch</key>
-				<string>0x00001002&amp;0x0000FFFF</string>
+				<string>0x00001002&amp;0x0000FF0F</string>
 				<key>IOMatchCategory</key>
 				<string>PsychtoolboxKernelDriver</string>
 				<key>IOProviderClass</key>
@@ -59,6 +59,29 @@
 				<string>0x03000000&amp;0xFFFFFF00</string>
 				<key>IOPCIPrimaryMatch</key>
 				<string>0x000010de&amp;0x0000FFFF</string>
+				<key>IOMatchCategory</key>
+				<string>PsychtoolboxKernelDriver</string>
+				<key>IOProviderClass</key>
+				<string>IOPCIDevice</string>
+				<key>IOResourceMatch</key>
+				<string>IOKit</string>
+				<key>IOUserClientClass</key>
+				<string>PsychtoolboxKernelDriverUserClient</string>
+			</dict>
+			<key>PsychtoolboxKernelDriverIntel</key>
+			<dict>
+				<key>CFBundleIdentifier</key>
+				<string>PsychtoolboxKernelDriver</string>
+				<key>IOClass</key>
+				<string>PsychtoolboxKernelDriver</string>
+	#if DEBUG
+				<key>IOKitDebug</key>
+				<integer>65535</integer>
+	#endif
+				<key>IOPCIClassMatch</key>
+				<string>0x03000000&amp;0xFFFFFF00</string>
+				<key>IOPCIPrimaryMatch</key>
+				<string>0x00008086&amp;0x0000FFFF</string>
 				<key>IOMatchCategory</key>
 				<string>PsychtoolboxKernelDriver</string>
 				<key>IOProviderClass</key>

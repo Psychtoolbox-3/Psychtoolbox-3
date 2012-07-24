@@ -108,7 +108,7 @@ static int    numKernelDrivers = 0;
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
 unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
 
-/* Mappings up to date for April 2012 (last update commit 21-Mar-2012). Will need updates for anything after April 2012 */
+/* Mappings up to date for June 2012 (last update commit 5-Jun-2012). Will need updates for anything after June 2012 */
 
 /* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE61(int screenId)
@@ -505,6 +505,34 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	return((gfx_cntl_mem) ? TRUE : FALSE);
 }
 
+
+/*
+ * Return identifying information about GPU for a given screen screenNumber:
+ *
+ * Returns TRUE on success, and the actual info in int variables, FALSE if info
+ * not available:
+ * Input: screenNumber of the screen for which to query GPU.
+ *
+ * Output: All optional - NULL == Don't return info.
+ *
+ * gpuMaintype = Basically what vendor.
+ * gpuMinortype = Vendor specific id meaningful to us to define a certain class or generation of hardware.
+ * pciDeviceId = The PCI device id.
+ * numDisplayHeads = Maximum number of crtc's.
+ *
+ */
+psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads)
+{
+  if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
+
+  if (gpuMaintype) *gpuMaintype = fDeviceType;
+  if (gpuMinortype) *gpuMinortype = fCardType;
+  if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
+  if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads;
+
+  return(TRUE);
+}
+
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
 static psych_bool		displayLockSettingsFlags[kPsychMaxPossibleDisplays];
 static PsychScreenSettingsType	displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.  
@@ -593,11 +621,11 @@ void InitializePsychDisplayGlue(void)
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
-	displayCursorHidden[i]=FALSE;
-	displayBeampositionHealthy[i]=TRUE;
-	displayX11ScreenResources[i] = NULL;
-	xinput_ndevices[i]=0;
-	xinput_info[i]=NULL;
+        displayCursorHidden[i]=FALSE;
+        displayBeampositionHealthy[i]=TRUE;
+        displayX11ScreenResources[i] = NULL;
+        xinput_ndevices[i]=0;
+        xinput_info[i]=NULL;
     }
 
     has_xrandr_1_2 = FALSE;
@@ -742,21 +770,46 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     // Store crtc for this output:
     crtcs[o] = crtcid;
 
-    printf("PTB-INFO: Display '%s' : X-Screen %i : Output %i [%s]: %s : ",
-	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output priority");
-    printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
-
+    if (PsychPrefStateGet_Verbosity() > 3) {
+        printf("PTB-INFO: Display '%s' : X-Screen %i : Output %i [%s]: %s : ", DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output priority");
+        printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
+    }
+      
     if ((isPrimary > 0) && (crtcid >= 0)) {
-	primaryOutput = o;
-	primaryCRTC = crtcid;
+        primaryOutput = o;
+        primaryCRTC = crtcid;
     }
     
     // Is this output - and its crtc - really enabled for this screen?
     if (crtcid >=0) {
-      // Yes: Add its crtcid to the list of crtc's for this screen:
-      PsychSetScreenToHead(idx, crtcid, crtccount);
-      PsychSetScreenToCrtcId(idx, crtcid + minimum_crtcid, crtccount);
-      crtccount++;
+        // Yes: Add its crtcid to the list of crtc's for this screen:
+        PsychSetScreenToHead(idx, crtcid, crtccount);
+        PsychSetScreenToCrtcId(idx, minimum_crtcid, crtccount);
+
+        // Increment id of next allocated crtc scanout engine on GPU:
+        // We assume they are allocated in the order of activated outputs,
+        // e.g., first output of first X-Screen -> crtc 0, 2nd output of first
+        // X-Screen -> crtc 1, first output of 2nd X-Screen -> crtc 2 etc.
+        //
+        // This is as heuristic as previous approach, but it should continue
+        // work as well or as bad as previous one, except it should fix the
+        // problem reported in forum message #14200 for AMD Catalyst driver.
+        // It should work for bog-standard ZaphodHead setups. It will work in
+        // any case on single-display setups or multi-display setups where a single
+        // X-Screen spans multiple display outputs aka multiple crtcs.
+        //
+        // The working assumption is that the user of a ZaphodHead config assigned the different
+        // GPU outputs, and thereby their associated physical crtc's, in an ascending order to
+        // X-Screens. This is a reasonable assumption, but in no way guaranteed by the system.
+        // Therefore this heuristic can go wrong on non-standard ZaphodHead Multi-X-Screen setups.
+        // In such cases the user can always use the Screen('Preference', 'ScreenToHead', ...);
+        // command or the PSYCHTOOLBOX_PIPEMAPPINGS environment variable to override the wrong
+        // mapping, although it would be a pita for complex setups.
+        minimum_crtcid++;
+
+        // Increment running count of active outputs (displays) attached to
+        // the currently processed X-Screend idx:
+        crtccount++;
     }
 
     // Release info for this output:
@@ -770,10 +823,10 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     for (o = 0; o < res->noutput; o++) {
       XRROutputInfo *output_info = XRRGetOutputInfo(dpy, res, res->outputs[o]);
       if (output_info && (output_info->connection == RR_Connected) && (crtcs[o] >= 0)) {
-	primaryOutput = o;
-	primaryCRTC = crtcs[o];
+        primaryOutput = o;
+        primaryCRTC = crtcs[o];
         XRRFreeOutputInfo(output_info);
-	break;
+        break;
       }
 
       if (output_info) XRRFreeOutputInfo(output_info);
@@ -781,8 +834,8 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 
     // Still undefined? Use first output as primary output:
     if (primaryOutput == -1) {
-	primaryOutput = 0;
-	primaryCRTC = (crtcs[0] >= 0) ? crtcs[0] : 0;
+        primaryOutput = 0;
+        primaryCRTC = (crtcs[0] >= 0) ? crtcs[0] : 0;
     }
   }
 
@@ -801,26 +854,10 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
   PsychSetScreenToHead(idx, primaryCRTC, 0);
   PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
 
-  printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
+  if (PsychPrefStateGet_Verbosity() > 2) {
+      printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
+  }
 
-  // This X-Screen has res->ncrtc physical CRTC's available for exclusive use.
-  // These are not available to potential additional X-Screens in a multi-x-screen "ZaphodHead"
-  // configuration. Therefore we raise the minimum_crtcid - the smallest physical crtc id available to
-  // additional outputs on additional X-Screens by res->ncrtc, so the first RandR crtc of such an
-  // additional X-Screen will map to the minimum_crtcid'th physical crtc. This avoids allocation
-  // of one physical crtc by multiple X-Screens. It should work for bog-standard ZaphodHead setups.
-  // It will work in any case on single-display setups or multi-display setups where a single
-  // X-Screen spans multiple display outputs aka multiple crtcs.
-  //
-  // The working assumption is that the user of a ZaphodHead config assigned the different
-  // GPU outputs, and thereby their associated physical crtc's, in an ascending order to
-  // X-Screens. This is a reasonable assumption, but in no way guaranteed by the system.
-  // Therefore this heuristic can go wrong on non-standard ZaphodHead Multi-X-Screen setups.
-  // In such cases the user can always use the Screen('Preference', 'ScreenToHead', ...);
-  // command or the PSYCHTOOLBOX_PIPEMAPPINGS environment variable to override the wrong
-  // mapping, although it would be a pita for complex setups.
-  minimum_crtcid += res->ncrtc;
-  
   return;
 }
 

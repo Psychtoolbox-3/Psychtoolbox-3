@@ -149,7 +149,14 @@ void PrepareScreenPreferences(void)
 	windowShieldingLevel=2000;
 	frameRectLadderCorrection=-1.0;
 	suppressAllWarnings=FALSE;
-	Verbosity=3;
+
+	// Default level of verbosity is 3:
+    Verbosity=3;
+
+    // Early override via environment variable, if defined:
+    if (getenv("PSYCH_SCREEN_VERBOSITY")) {
+        Verbosity = atoi(getenv("PSYCH_SCREEN_VERBOSITY"));
+    }
 
 	// Default synctest settings: 1 msec allowable max standard deviation from measured
 	// mean flip duration, at least 50 valid sync samples, at most 10% deviation between

@@ -16,35 +16,51 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % Available subfunctions:
 % =======================
 %
+%
 % PsychTweak('Reset');
+%
 % -- Reset some, but not all, tweaks to defaults.
 %
+%
 % PsychTweak('PrepareForVirtualMachine');
+%
 % -- Tweak some settings so Psychtoolbox can sort of run inside a Virtual
 % Machine - or at least limp along in a way that is unsuitable for
 % production use, but good enough for some basic testing & development of
 % the toolbox itself, or maybe for some simple demos.
 %
 %
-% Debugging of GStreamer based functions (Videocapture/recording, Movie
-% playback and creation):
+% PsychTweak('ScreenVerbosity', verbosity);
+%
+% -- Set initial level of verbosity for Screen(). This can be overriden via
+% Screen('Preference','Verbosity'). The default verbosity is 3 = Errors,
+% Warnings and some Info output.
+%
+%
+% Debugging of GStreamer based functions:
+% ---------------------------------------
+%
 %
 % PsychTweak('GStreamerDebug', debugconfig);
+%
 % -- Select level of verbosity for GStreamer low-level debug output.
 % See <http://docs.gstreamer.com/display/GstSDK/Basic+tutorial+11%3A+Debugging+tools>
 % for explanation of debug options.
 %
 %
 % PsychTweak('GStreamerDumpFilterGraph', targetDirectory);
+%
 % -- Ask GStreamer to dump a snapshot of its current media processing
 % pipeline into a .dot file at each pipeline state change. These .dot files
 % can be read by open-source tools like GraphViz and turned into
 % visualizations of the complete structure and state of the media
-% processing pipeline. 'targetDirectory' must be the full path to an
+% processing pipeline. `targetDirectory` must be the full path to an
 % existing directory where the .dot files should be written to.
 %
+%
 % PsychTweak('GStreamerDecodeThreads', numThreads);
-% -- Ask GStreamer to use up to 'numThreads' processing threads for video
+%
+% -- Ask GStreamer to use up to `numThreads` processing threads for video
 % decoding during movie playback. By default, GStreamer decides itself,
 % based on a given hardware configuration, e.g., the number of processor
 % cores in a system.
@@ -54,7 +70,8 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % -----------------------
 %
 % PsychTweak('BackwardTimejumpTolerance', secs);
-% -- Allow system clock to report a time that is up to 'secs' in the past,
+%
+% -- Allow system clock to report a time that is up to `secs` in the past,
 % ie., for time to jump backwards, without triggering any clock error
 % handling. Some broken or deficient computer hardware shows this
 % misbehaviour and MS-Windows can't cope with it. Normally PTB would
@@ -69,7 +86,8 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 %
 %
 % PsychTweak('ForwardTimejumpTolerance', secs);
-% -- Allow system clock to report a time that is up to 'secs' in the future,
+%
+% -- Allow system clock to report a time that is up to `secs` in the future,
 % ie., for time to jump forward, without triggering any clock error
 % handling. Some broken or deficient computer hardware shows this
 % misbehaviour and MS-Windows can't cope with it. Normally PTB would
@@ -84,13 +102,14 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 %
 %
 % PsychTweak('ExecuteOnCPUCores', corelist);
+%
 % -- Restrict execution of timing sensitive Psychtoolbox processing threads
 % to a subset of logical processor cores on a multi-core / multi-processor
 % computer. This allows to workaround some bugs in timing hardware, but can
 % seriously degrade performance and general timing behaviour of
 % Psychtoolbox under more demanding workloads, so this may either help or
 % hurt, depending on the system setup and application.
-% 'corelist' must be a vector with the numbers of cores that PTB threads
+% `corelist` must be a vector with the numbers of cores that PTB threads
 % are allowed to execute on, numbering starts with zero, ie., the 1st
 % processor core has the number zero.
 %
@@ -106,24 +125,25 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 %
 %
 % PsychTweak('ClockWorkarounds' [, warning = 1][, lockCores = 1][, lowres = 0][, abort = 0][, defaultlowres = 0]);
+%
 % -- Define how PTB should behave if it detects clock problems due to
 % broken or misconfigured hardware. All flags are boolean with 1 = enable,
 % 0 = disable, and all flags are optional with reasonable default settings.
 %
-% 'warning': 1 = Print critical warning messages to the command window to
+% `warning`: 1 = Print critical warning messages to the command window to
 % warn user about potentially broken timing in its scripts.
 % This setting is on by default.
 %
-% 'lockCores': 1 = On first signs of trouble, switch to single processor
+% `lockCores`: 1 = On first signs of trouble, switch to single processor
 % operation, locking all processing threads to cpu core zero, then
 % continue. Many multi-processor related clock bugs can be "fixed" this
 % way, but performance and execution timing may be seriously impaired if
 % all threads have to compete for computation time on one single processor
 % core, while all other cores on a multi-core machine are essentially
-% unused and idle. See help for 'ExecuteOnCPUCores' for more explanation.
+% unused and idle. See help for `ExecuteOnCPUCores` for more explanation.
 % This setting is on by default.
 %
-% 'lowres': 1 = Switch to a low-resolution backup timer if the 'lockCores'
+% `lowres`: 1 = Switch to a low-resolution backup timer if the `lockCores`
 % workaround is disabled or proven ineffective to solve the problem. The
 % lowres timer has only +/- 1 msec resolution and this workaround may only
 % allow you to continue with very simple experiment scripts. Experiment
@@ -133,15 +153,15 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % weird timing related problems.
 % This setting is off by default due to the trouble it can cause.
 %
-% 'abort': 1 = Abort userscript / session if clock problems can't be fixed
-% / worked around sufficiently well via the 'lockCores' workaround, ie., if
+% `abort`: 1 = Abort userscript / session if clock problems can't be fixed
+% / worked around sufficiently well via the `lockCores` workaround, ie., if
 % after enabling the workaround a successive clock error gets detected.
 % This setting is off by default.
 %
-% 'defaultlowres': 1 = Use low-res backup timer by default, ignore the
+% `defaultlowres`: 1 = Use low-res backup timer by default, ignore the
 % high-precision clock. This may help a script on a broken system to limp
 % along, but is not recommended for production use, because it has the same
-% problems as the 'lowres' workaround.
+% problems as the `lowres` workaround.
 % This setting is off by default.
 %
 %
@@ -169,6 +189,20 @@ if strcmpi(cmd, 'PrepareForVirtualMachine')
         Screen('Preference', 'ConserveVRAM', bitor(Screen('Preference', 'ConserveVRAM'), 64));
     end
     
+    return;
+end
+
+if strcmpi(cmd, 'ScreenVerbosity')
+    if length(varargin) < 1
+        error('Must provide an initial Screen() verbosity level.');
+    end
+    
+    val = varargin{1};
+    if ~isnumeric(val) || ~isscalar(val)
+        error('Must provide a single integer as argument!');
+    end
+    
+    setenv('PSYCH_SCREEN_VERBOSITY', sprintf('%i', round(val)));
     return;
 end
 

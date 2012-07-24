@@ -1115,6 +1115,34 @@ void InitPsychtoolboxKernelDriverInterface(void)
 	return;
 }
 
+/*
+ * Return identifying information about GPU for a given screen screenNumber:
+ *
+ * Returns TRUE on success, and the actual info in int variables, FALSE if info
+ * not available:
+ * Input: screenNumber of the screen for which to query GPU.
+ *
+ * Output: All optional - NULL == Don't return info.
+ *
+ * gpuMaintype = Basically what vendor.
+ * gpuMinortype = Vendor specific id meaningful to us to define a certain class or generation of hardware.
+ * pciDeviceId = The PCI device id.
+ * numDisplayHeads = Maximum number of crtc's.
+ *
+ */
+psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads)
+{
+  if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
+
+  if (gpuMaintype) *gpuMaintype = fDeviceType;
+  if (gpuMinortype) *gpuMinortype = fCardType;
+  if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
+
+  if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads;
+
+  return(TRUE);
+}
+
 // Try to detach to kernel level ptb support driver and tear down everything:
 void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 {
