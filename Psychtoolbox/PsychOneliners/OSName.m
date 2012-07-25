@@ -9,7 +9,7 @@ function osNameStr = OSName
 % 
 % Currently possible returned namestrings are 'Windows', 'Linux' or 'OSX'.
 %
-% see also: computer, IsOS9, IsOSX, IsWin, IsLinux, MacModelName, DescribeComputer
+% see also: computer, IsOSX, IsWin, IsLinux, MacModelName, DescribeComputer
 
 % HISTORY
 %

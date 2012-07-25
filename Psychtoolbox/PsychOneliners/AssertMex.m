@@ -15,7 +15,7 @@ function callStack = AssertMex(varargin)
 % missing or dysfunctional Screen mex files properly.
 %  _________________________________________________________________________
 %
-% See also: AssertOpenGL, COMPUTER, IsOSX, IsOS9, IsWin
+% See also: AssertOpenGL, COMPUTER, IsOSX, IsWin
 
 % HISTORY:
 %

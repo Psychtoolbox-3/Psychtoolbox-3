@@ -22,11 +22,7 @@ end
 switch meterType
 	case 1
 		% PR-650
-		if IsWin || IsOS9 || IsOSX || IsLinux
-			PR650close;
-		else
-			error(['Unsupported OS ' computer]);
-		end
+        PR650close;
 	case 2
 		if ~exist('CVIClose') %#ok<EXIST>
 			error('Need CVIToolbox to call CVIClose (meterType 2)');
@@ -36,11 +32,7 @@ switch meterType
 		CRSColorClose;
 	case 4
 		% PR-655
-		if IsWin || IsOS9 || IsOSX || IsLinux
-			PR655close;
-		else
-			error(['Unsupported OS ' computer]);
-		end
+        PR655close;
 	otherwise,
 		error('Unknown meter type');
 end

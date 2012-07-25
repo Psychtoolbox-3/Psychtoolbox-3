@@ -26,7 +26,7 @@ function WaitTicks(wait)
 % measure time, use GetSecs insted of GetTicks. To delay, use WaitSecs
 % instead of WaitTicks.  
 %
-% "Secs" functions are provided for OS 9, Windows, and OS X and ar more precise
+% "Secs" functions are provided for OS 9, Windows, and OS X and are more precise
 % and more accurate than "Ticks" functions.  
 %
 % WaitTicks behaves exactly as on OS 9, relying on the Psychtoolbox mex
@@ -51,7 +51,7 @@ function WaitTicks(wait)
 if IsWindows
     wait=ceil(wait);
     WaitSecs(wait/60.15);
-elseif IsOS9 || IsOSX
+elseif IsOSX
     ticks=GetTicks+wait;
 	while GetTicks<ticks
          

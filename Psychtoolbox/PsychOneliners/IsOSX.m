@@ -6,7 +6,7 @@ function resultFlag = IsOSX(is64)
 % If the optional 'is64' flag is set to one, returns
 % true if the runtime is 64 bit and on OSX.
 %
-% See also: IsWin, IsLinux, IsOS9, OSName, computer
+% See also: IsWin, IsLinux, OSName, computer
 
 % HISTORY
 % ??/??/?? awi Wrote it.

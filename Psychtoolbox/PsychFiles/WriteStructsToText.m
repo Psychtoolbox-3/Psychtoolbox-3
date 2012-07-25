@@ -46,6 +46,3 @@ end
 
 % Close the file.
 fclose(fid);
-if (IsOS9)
-    filetype(filename,'TEXT','XCEL');
-end

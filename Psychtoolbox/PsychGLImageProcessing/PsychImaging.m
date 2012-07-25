@@ -1999,21 +1999,13 @@ if ~isempty(floc)
             % It needs to execute only once per flip, as it updates state
             % global to all views (in a stereo setup):
 
-            % If we're on Windows with a R11 based Matlab configuration,
-            % need to use the slow ugly method due to limitations in
-            % MEX files built against pre R2007a Matlabs:
-            if IsWinMatlabR11Style
-                rclutcmd = sprintf('PsychHelperCreateRemapCLUT(1, %i, ', pglutid);
-                Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:RenderClutViaRuntime', rclutcmd);
-            else
-                % We need this weird evalin('base', ...); wrapper so the
-                % function gets called from the base-workspace, where the
-                % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
-                % define it there reliably due to incompatibilities between
-                % Matlab and Octave in variable assignment inside Screen() :-(
-                rclutcmd = sprintf('evalin(''base'', ''PsychHelperCreateRemapCLUT(1, %i, IMAGINGPIPE_GAMMATABLE);'');', pglutid);
-                Screen('HookFunction', win, 'AppendMFunction', 'StereoLeftCompositingBlit', 'Upload new clut into shader callback', rclutcmd);
-            end
+            % We need this weird evalin('base', ...); wrapper so the
+            % function gets called from the base-workspace, where the
+            % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
+            % define it there reliably due to incompatibilities between
+            % Matlab and Octave in variable assignment inside Screen() :-(
+            rclutcmd = sprintf('evalin(''base'', ''PsychHelperCreateRemapCLUT(1, %i, IMAGINGPIPE_GAMMATABLE);'');', pglutid);
+            Screen('HookFunction', win, 'AppendMFunction', 'StereoLeftCompositingBlit', 'Upload new clut into shader callback', rclutcmd);
 
             % Enable left chain unconditionally, so the above clut setup
             % code gets executed:

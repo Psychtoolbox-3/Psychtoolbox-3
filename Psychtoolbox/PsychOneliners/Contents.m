@@ -46,7 +46,6 @@
 %   IsLinux                 - Shorthand for testing whether running under Linux.
 %   IsMinimumOSXVersion     - Query if this is a specific OS/X version or higher.
 %   IsOctave                - Shortand for testing whether running under Octave.
-%   IsOS9                   - Shorthand for streq(computer,'MAC2').
 %   IsOSX                   - Shorthand for streq(computer,'MAC').
 %   IsWin                   - Shorthand for streq(computer,'PCWIN').
 %   KbMapKey                - Checks if any of specified keys is depressed in a vector returned by KbCheck, KbWait etc.

@@ -95,13 +95,6 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % deviceIndex of a mouse (GetMouseIndices will provide with them), it will
 % report mouse button state as keyboard state. Similar behaviour usually
 % works with Joysticks, Gamepads and other input controllers.
-%
-% Windows with legacy Matlab versions prior to R2007a: ____________________
-%
-% KbCheck uses built-in helper functions of the Screen() mex file to query
-% keyboard state. It cannot check individual keyboards, but treats all
-% connected keyboards a one single virtual keyboard which represents the
-% merged state of all keyboards.
 % _________________________________________________________________________
 % 
 % See also: FlushEvents, KbName, KbDemo, KbWait, GetChar, CharAvail.
@@ -181,7 +174,7 @@ if nargin < 1
     deviceNumber = [];
 end
 
-if ~IsWinMatlabR11Style & (~IsWin | (IsWin & ~isempty(deviceNumber))) %#ok<OR2,AND2>
+if ~IsWin | (IsWin & ~isempty(deviceNumber)) %#ok<OR2,AND2>
     if ~isempty(deviceNumber)
         % All attached keyboards already detected?
         if isempty(keyboardsdetected)
@@ -224,9 +217,7 @@ if ~IsWinMatlabR11Style & (~IsWin | (IsWin & ~isempty(deviceNumber))) %#ok<OR2,A
     end
 else
    % We use the built-in KbCheck facility of Screen on MS-Windows
-   % for KbChecks with legacy Matlab versions prior to R2007a.
-   %
-   % We also use this if the usercode didn't specify any 'deviceIndex', so
+   % for KbChecks if the usercode didn't specify any 'deviceIndex', so
    % the user gets a good "works out of the box" experience for the default
    % use case without the need to install the libusb-1.0.dll in the system,
    % which would be required for PsychHID on Windows to work.

@@ -19,8 +19,8 @@ function priorityLevel=MaxPriority(varargin);
 % On OS X all priority levels are safe for all functions. MaxPriority
 % always returns 9, the highest priority level.  
 %
-% To preserve compatability with other platforms we recommend using
-% MaxPriority in your script on OS X, insted of the constant 9.
+% To preserve compatibility with other platforms we recommend using
+% MaxPriority in your script on OS X, instead of the constant 9.
 %
 % WINDOWS: ________________________________________________________________
 %
@@ -35,7 +35,7 @@ function priorityLevel=MaxPriority(varargin);
 %
 % MaxPriority always returns 1, although levels of up to 99 are possible.
 % We recommend to sticking to the lowest level, unless some tweaking for a
-% specific setup or situation is neccessary.
+% specific setup or situation is necessary.
 %
 % _________________________________________________________________________
 %
@@ -108,196 +108,9 @@ function priorityLevel=MaxPriority(varargin);
 % 
 
 %_______________________________________________________________________________________________________________________________
-% The Mac Part 
-
-if IsOS9
-	if nargin<1
-		error(['Usage: priorityLevel=MaxPriority([windowPtrOrScreenNumber],[''WaitBlanking''],[''PeekBlanking''],...' ...
-		char(13) '                        [''BlankingInterrupt''],[''SetClut''],...'...
-		char(13) '                        [''SND''],[''sound''],[''speak''],...'...
-		char(13) '                        [''GetSecs''],[''WaitSecs''],[''cputime''],...'...
-		char(13) '                        [''KbCheck''],[''KbWait''],[''CharAvail''],[''GetChar''],...'...
-		char(13) '                        [''EventAvail''],[''GetClicks''],[''GetMouse''],[''GetTicks''])']);
-	end
-	w=nan;
-	priorityLevel=7;
-	for i=1:nargin
-		match=0;
-		if ~ischar(varargin{i}) & ~isnumeric(varargin{i})
-			error([ 'argument ' num2str(i) ' is of wrong type']);
-		end
-		if ischar(varargin{i})
-			name=lower(varargin{i});
-			if streq(name,lower('SND'))
-				comp=SCREEN('Computer');
-				if strncmp(comp.model,'PowerMac 6100',length('PowerMac 6100'))
-					p=3; % on PowerMac 6100 with Mac OS 8.1
-				else
-					p=1;
-				end
-				priorityLevel=min(priorityLevel,p);
-				match=1;
-			end
-			if streq(name,lower('sound'))
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('speak'))
-				priorityLevel=min(priorityLevel,0);
-				match=1;
-			end
-			if streq(name,lower('CopyWindow'))
-				priorityLevel=min(priorityLevel,7);
-				match=1;
-			end
-			if streq(name,lower('WaitBlanking')) | streq(name,lower('WaitVBL'))
-				if ~isfinite(w)
-					error('''WaitBlanking'' must be preceded by windowPtrOrScreenNumber');
-				end
-				if SCREEN(w,'Preference','SetClutDriverWaitsForBlanking')
-					% The priority limiting is done by the C code surrounding the SetClut call, so we don't have to worry about it.
-					% The rest of our MATLAB loop can usefully run at higher priority.
-% 					priorityLevel=min(priorityLevel,SCREEN(w,'Preference','MaximumSetClutPriority'));
-				else
-					priorityLevel=min(priorityLevel,SCREEN(w,'Preference','MaxPriorityForBlankingInterrupt'));
-				end
-				match=1;
-			end
-			if streq(name,lower('PeekBlanking')) | streq(name,lower('PeekVBL'))
-				if ~isfinite(w)
-					error('''PeekBlanking'' must be preceded by windowPtrOrScreenNumber');
-				end
-				if SCREEN(w,'Preference','SetClutDriverWaitsForBlanking') & SCREEN(w,'Preference','SetClutPunchesBlankingClock')
-					% The priority limiting is done by the C code surrounding the SetClut call, so we don't have to worry about it.
-					% The rest of our MATLAB loop can usefully run at higher priority.
-%					priorityLevel=min(priorityLevel,SCREEN(w,'Preference','MaximumSetClutPriority'));
-				else
-					priorityLevel=min(priorityLevel,SCREEN(w,'Preference','MaxPriorityForBlankingInterrupt'));
-				end
-				match=1;
-			end
-			if streq(name,lower('BlankingInterrupt'))
-				if ~isfinite(w)
-					error('''BlankingInterrupt'' must be preceded by windowPtrOrScreenNumber');
-				end
-				priorityLevel=min(priorityLevel,SCREEN(w,'Preference','MaxPriorityForBlankingInterrupt'));
-				match=1;
-			end
-			if streq(name,lower('SetClut'))
-				if ~isfinite(w)
-					error('''SetClut'' must be preceded by windowPtrOrScreenNumber');
-				end
-				if SCREEN(w,'Preference','SetClutDriverWaitsForBlanking')
-					% The priority limiting is done by the C code surrounding the SetClut call, so we don't have to worry about it.
-					% The rest of our MATLAB loop can usefully run at higher priority.
-%					priorityLevel=min(priorityLevel,SCREEN(w,'Preference','MaximumSetClutPriority'));
-				end
-				if SCREEN(w,'Preference','SetClutCallsWaitBlanking')
-					priorityLevel=min(priorityLevel,SCREEN(w,'Preference','MaxPriorityForBlankingInterrupt'));
-				end
-				match=1;
-			end
-			if streq(name,lower('GetSecs')) | streq(name,lower('WaitSecs'))
-				available=SCREEN('Preference','Available');
-				if available.UpTime
-					priorityLevel=min(priorityLevel,7);
-				else
-					priorityLevel=min(priorityLevel,0.5);
-				end
-				match=1;
-			end
-			if streq(name,'cputime')
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('GetChar'))
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('CharAvail'))
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('EventAvail'))
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('GetClicks'))
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('GetTicks'))
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('KbCheck'))
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('KbWait'))
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('GetMouse'))
-				priorityLevel=min(priorityLevel,0.5);
-				match=1;
-			end
-			if streq(name,lower('fopen'))
-				priorityLevel=min(priorityLevel,0);
-				match=1;
-			end
-			if streq(name,lower('fclose'))
-				priorityLevel=min(priorityLevel,0);
-				match=1;
-			end
-			if streq(name,lower('fprintf'))
-				priorityLevel=min(priorityLevel,7);	% assume use of console (stdout), not disk
-				match=1;
-			end
-		end
-		if isnumeric(varargin{i})
-			w=varargin{i};
-			match=1;
-		end
-		if ~match
-			error(['Unknown function ''' varargin{i} '''']);
-		end
-	end
-	% If Virtual Memory is in use then any memory access, eg to a Matlab array, may require a disk access.
-	% A disk access requires that interrupts be enabled (ie. priority==0). Any attempt to access the disk 
-	% will hang until priority comes down to zero. So, if necessary, we reduce priority to zero and warn the user.
-	% Note that a similar test in DescribeComputer considers VM to be on if any bit is on, not just bit 32.
-	bits=gestalt('vm  ');
-	vm=bits(32);
-	if vm
-		pageToDisk=any(gestalt('vmbs')); % Is there an invisible file for VM?
-	else
-		pageToDisk=0;
-	end
-	if pageToDisk & priorityLevel>0.0
-		global VMWarning
-		priorityLevel=min(priorityLevel,0.0);
-		s=warning;
-		if streq(s,'backtrace')
-			warning('on');
-		end
-		if isempty(VMWarning)
-			warning('MaxPriority is 0 because you''re using Virtual Memory, which might need to access the disk.');
-			VMWarning=1;
-		end
-		warning(s);
-	end
-	if vm & ~pageToDisk & priorityLevel>0.0
-		global RAMDoublerWarning
-		if isempty(RAMDoublerWarning)
-			warning('** RAM Doubler will hang forever if it tries to access the disk while you RUSH at raised priority. **');
-			RAMDoublerWarning=1;
-		end
-	end
-%_______________________________________________________________________________________________________________________________
 %The Windows Part
 
-elseif IsWin
+if IsWin
 	if nargin<1
 		error(['Usage: priorityLevel=MaxPriority([windowPtrOrScreenNumber],[''WaitBlanking''],[''PeekBlanking''],...' ...
 		char(13) '                        [''BlankingInterrupt''],[''SetClut''],...'...

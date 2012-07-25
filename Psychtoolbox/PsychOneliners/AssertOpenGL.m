@@ -47,7 +47,7 @@ function AssertOpenGL
 %  troubleshooting tips in the "Download" and "Frequently asked questions"
 %  sections of our Psychtoolbox Wiki at http://www.psychtoolbox.org
 %
-% See also: IsOSX, IsOS9 , IsWin, IsLinux.
+% See also: IsOSX, IsWin, IsLinux.
 
 % HISTORY
 % 7/10/04   awi     wrote it.

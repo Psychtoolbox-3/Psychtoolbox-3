@@ -2,8 +2,6 @@ function modelName=MacModelName
 % modelName=MacModelName
 % Return the model name of the Macintosh. 
 %
-% OS9: Get the model name from the struct returned by Screen('Computer');
-%
 % OSX: Get the computer identifier as reported by open firmware.  In the
 % OSX Psychtoolbox that is provided in the struct returned by
 % Screen('Computer'). Convert that identifier to Apple's marketing
@@ -38,11 +36,6 @@ function modelName=MacModelName
 % functions provided by MacOS would do the work of parsing the XML property
 % list file, that should be a simple program to write.  Otherwise, there
 % might even already exist XML parsers for MATLAB.  
-
-if IsOS9
-    s=Screen('Computer');
-    modelName=s.model
-end
 
 
 if IsOSX

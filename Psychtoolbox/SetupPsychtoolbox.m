@@ -69,11 +69,11 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-isWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
-isOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
-isLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
+IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
+IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
+IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~isWin && ~isOSX && ~isLinux
+if ~IsWin && ~IsOSX && ~IsLinux
     os = computer;
     if strcmp(os,'MAC2')
         os = 'Mac OS9';
@@ -128,7 +128,7 @@ end
 
 % Handle Windows ambiguity of \ symbol being the fileseparator and a
 % parameter marker:
-if isWin
+if IsWin
     searchpattern = [filesep filesep 'Psychtoolbox[' filesep pathsep ']'];
     searchpattern2 = [filesep filesep 'Psychtoolbox'];
 else
@@ -201,7 +201,7 @@ fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox
     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
 
 try
-    if isOSX || isLinux
+    if IsOSX || IsLinux
         [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
     else
         [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.

@@ -296,11 +296,11 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-isWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
-isOSX = ~isempty(strfind(computer, 'MAC')) | ~isempty(strfind(computer, 'apple-darwin'));
-isLinux = strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
+IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
+IsOSX = ~isempty(strfind(computer, 'MAC')) | ~isempty(strfind(computer, 'apple-darwin'));
+IsLinux = strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~isWin & ~isOSX & ~isLinux
+if ~IsWin & ~IsOSX & ~IsLinux
     os = computer;
     if strcmp(os,'MAC2')
         os = 'Mac OS9';
@@ -340,7 +340,7 @@ if nargin < 1
 end
 
 if isempty(targetdirectory)
-    if isOSX
+    if IsOSX
         % Set default path for OSX install:
         targetdirectory=fullfile(filesep,'Applications');
     else
@@ -442,7 +442,7 @@ fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetd
 fprintf('\n');
 
 % Check for alternative install location of Subversion:
-if isWin
+if IsWin
     % Search for Windows executable in path:
     svnpath = which('svn.exe');
 else
@@ -460,7 +460,7 @@ else
     % simply have to hope that it is in some system dependent search path.
 
     % Currently, we only know how to check this for Mac OSX.
-    if isOSX
+    if IsOSX
         % Try OS/X 10.5 Leopard install location for svn first:
         svnpath='/usr/bin/';
         if exist('/usr/bin/svn','file')~=2
@@ -533,7 +533,7 @@ if success
 else
 	fprintf('Write permission test in folder %s failed.\n', targetdirectory);
     if strcmp(m,'Permission denied')
-        if isOSX
+        if IsOSX
             fprintf([
             'Sorry. You would need administrator privileges to install the \n'...
             'Psychtoolbox into the ''%s'' folder. You can either quit now \n'...
@@ -616,7 +616,7 @@ end
 
 % Handle Windows ambiguity of \ symbol being the filesep'arator and a
 % parameter marker:
-if isWin
+if IsWin
     searchpattern = [filesep filesep 'Psychtoolbox[' filesep pathsep ']'];
     searchpattern2 = [filesep filesep 'Psychtoolbox'];
 else
@@ -663,10 +663,10 @@ while any(regexp(path,searchpattern))
 end
 
 % Download Psychtoolbox
-if isOSX
+if IsOSX
     fprintf('I will now download the latest Psychtoolbox for OSX.\n');
 else
-    if isLinux
+    if IsLinux
         fprintf('I will now download the latest Psychtoolbox for Linux.\n');
     else
         fprintf('I will now download the latest Psychtoolbox for Windows.\n');
@@ -699,7 +699,7 @@ fprintf('%s\n',checkoutcommand);
 fprintf('Downloading. It''s nearly 100 MB, which can take many minutes. \nAlas there may be no output to this window to indicate progress until the download is complete. \nPlease be patient ...\n');
 fprintf('If you see some message asking something like "accept certificate (p)ermanently, (t)emporarily? etc."\n');
 fprintf('then please press the p key on your keyboard, possibly followed by pressing the ENTER key.\n\n');
-if isOSX | isLinux
+if IsOSX | IsLinux
     [err]=system(checkoutcommand);
     result = 'For reason, see output above.';
 else
@@ -718,7 +718,7 @@ end
 %     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
 %     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
 %     fprintf('%s\n\n',checkoutcommand);
-%     if isOSX | isLinux
+%     if IsOSX | IsLinux
 %         [err]=system(checkoutcommand);
 %         result = 'For reason, see output above.';
 %     else
@@ -735,7 +735,7 @@ end
 %     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
 %     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
 %     fprintf('%s\n\n',checkoutcommand);
-%     if isOSX | isLinux
+%     if IsOSX | IsLinux
 %         [err]=system(checkoutcommand);
 %         result = 'For reason, see output above.';
 %     else
@@ -781,7 +781,7 @@ end
 fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
 try
-    if isOSX | isLinux
+    if IsOSX | IsLinux
         [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
     else
         [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.

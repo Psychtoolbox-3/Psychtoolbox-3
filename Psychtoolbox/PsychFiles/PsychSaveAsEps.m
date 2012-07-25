@@ -274,6 +274,3 @@ fprintf(file, ...
 	'showpage\n' ...
 	'%%%%EOF\n']);
 fclose(file);
-if IsOS9
-	FileType(filename,'EPSF','MSWD');
-end

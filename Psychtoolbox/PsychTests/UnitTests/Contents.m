@@ -100,15 +100,6 @@
 % PsychBasic/VideoRefreshFromMeasurement.m
 % PsychBasic/WaitSecs.m
 % PsychBasic/WaitTicks.m
-% PsychBasic/clearGetSecs.m
-% PsychBasic/clearIOPort.m
-% PsychBasic/clearPsychHID.m
-% PsychBasic/clearPsychPortAudio.m
-% PsychBasic/clearScreen.m
-% PsychBasic/clearWaitSecs.m
-% PsychBasic/clearall.m
-% PsychBasic/clearmex.m
-% PsychBasic/clearmoglcore.m
 % PsychBasic/psychassert.m
 % PsychBasic/psychlasterror.m
 % PsychBasic/psychrethrow.m
@@ -455,11 +446,9 @@
 % PsychOneliners/IsACell.m
 % PsychOneliners/IsLinux.m
 % PsychOneliners/IsMinimumOSXVersion.m
-% PsychOneliners/IsOS9.m
 % PsychOneliners/IsOSX.m
 % PsychOneliners/IsOctave.m
 % PsychOneliners/IsWin.m
-% PsychOneliners/IsWinMatlabR11Style.m
 % PsychOneliners/KbMapKey.m
 % PsychOneliners/LoadIdentityClut.m
 % PsychOneliners/MacModelName.m
