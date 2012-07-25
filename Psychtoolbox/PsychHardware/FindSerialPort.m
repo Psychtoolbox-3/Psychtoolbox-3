@@ -96,12 +96,6 @@ if nargin < 3 || isempty(dontFail)
     dontFail = 0;
 end
 
-if ~(IsOSX || IsWin || IsLinux)
-	fprintf('It appears that you are using an operating system other than Mac OS/X,\n');
-	fprintf('Linux or Windows. I hope that you are using some other Unix variant.\n');
-	fprintf('If so, FindSerialPort may work for you. We have not tested it. You are about to...\n');
-end
-
 % Init to all-empty return arguments:
 PortNumber = [];
 
