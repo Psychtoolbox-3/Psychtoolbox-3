@@ -72,7 +72,7 @@ username = "DocBot"
 password = ""
 _recursive = 0
 _mexmode = 0
-_mexext = '.mexglx'
+_mexext = '.mexa64'
 _debug = 0
 _fulldiff = 0
 
@@ -122,6 +122,7 @@ def beackern(mkstring):
             + r'\bExplode\b|' \
             + r'\bFlip\b|' \
             + r'\bGestalt\b|' \
+            + r'\bGStreamer\b|' \
             + r'\bIOPort\b|' \
             + r'\bInterleave\b|' \
             + r'\bM_PToP\b|' \
@@ -275,15 +276,15 @@ def postsinglefiles(files):
         pathlinks = """
                     ""
                     <div class="code_header" style="text-align:right;">
-                      <span style="float:left;">Path&nbsp;&nbsp;</span> <span class="counter">Retrieve current version of %s from berliOS: <a href=
-                      "http://svn.berlios.de/svnroot/repos/osxptb/beta/%s">beta</a> | view WebSVN <a href=
-                      "http://svn.berlios.de/wsvn/osxptb/trunk/%s?op=log">changelog</a> of trunk branch</span>
+                      <span style="float:left;">Path&nbsp;&nbsp;</span> <span class="counter">Retrieve <a href=
+                      "https://raw.github.com/Psychtoolbox-3/Psychtoolbox-3/beta/%s">current version from GitHub</a> | View <a href=
+                      "https://github.com/Psychtoolbox-3/Psychtoolbox-3/commits/beta/%s">changelog</a></span>
                     </div>
                     <div class="code">
                       <code>%s</code>
                     </div>
                     ""
-                    """ % tuple([basename]+3*[os.path.join(path,basename)])
+                    """ % tuple([os.path.join(path,basename)]*3)
 
         text = headline \
                 + breadcrumb \
