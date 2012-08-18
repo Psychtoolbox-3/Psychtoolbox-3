@@ -28,7 +28,7 @@
 
 #include "Screen.h"
 
-static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4]);";
+static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1]);";
 static char synopsisString[] = 
 		"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
         "return a handle 'moviePtr' on success.\nOn OS-X and Windows, media files are handled by use of "
@@ -98,6 +98,18 @@ static char synopsisString[] =
         "try to draw into a texture of this format, or try to post-process it via Screen('TransformTexture'). If you try "
         "to attach your own shaders to such a texture during Screen('DrawTexture'), you will need to implement color "
         "conversion yourself in your shaders, as your shaders would override Screen's builtin color conversion shader.\n"
+        "'maxNumberThreads' Optional parameter which allows to set the maximum number of parallel processing threads "
+        "that should be used by multi-threaded video codecs to decode the movie. The parameter has no effect on single "
+        "threaded codecs and default behaviour is to let the codec do whatever it wants. A setting of zero tells the "
+        "codec to use multi-threaded decoding with a number of threads that is auto-selected to be optimal for your given "
+        "computer. A number n greater zero asks the codec to use at most n threads for decoding. The most safe choice is "
+        "to not specify this parameter - this should work even with problematic movie formats. If you need higher playback "
+        "performance, e.g., for high resolution video or high framerate playback, you should set the parameter to zero to "
+        "leave the optimal choice to the video codec. This should work flawlessly with well encoded high quality movie files "
+        "and can provide a significant performance boost on multi-core computers. Specify a discrete non-zero number of threads "
+        "if you want to benefit from multi-core decoding but want to prevent movie playback from using up all available computation "
+        "power, e.g., because you want to run some other timing-sensitive tasks in parallel and want to make sure to leave some processor "
+        "cores dedicated to them.\n"
         "CAUTION: On 32-Bit OS/X, some movie files, e.g., MPEG-1 movies sometimes cause Matlab to hang. This seems to be "
         "a bad interaction between parts of Apples Quicktime toolkit and Matlabs Java Virtual Machine (JVM). "
         "If you experience stability problems, please start Matlab with JVM and desktop disabled, e.g., "
@@ -125,6 +137,7 @@ PsychError SCREENOpenMovie(void)
         double                                  preloadSecs = 1;
         int                                     rc;
         int                                     pixelFormat = 4;
+        int                                     maxNumberThreads = -1;
 
         if (firstTime) {
             // Setup asyncopeninfo on first invocation:
@@ -136,7 +149,7 @@ PsychError SCREENOpenMovie(void)
         PsychPushHelp(useString, synopsisString, seeAlsoString);
         if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-        PsychErrorExit(PsychCapNumInputArgs(6));            // Max. 6 input args.
+        PsychErrorExit(PsychCapNumInputArgs(7));            // Max. 7 input args.
         PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
         PsychErrorExit(PsychCapNumOutputArgs(7));           // Max. 7 output args.
         
@@ -166,6 +179,10 @@ PsychError SCREENOpenMovie(void)
         PsychCopyInIntegerArg(6, FALSE, &pixelFormat);
         if (pixelFormat < 1 || pixelFormat > 8) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 8 are allowed.");
 
+        // Get the (optional) maxNumberThreads:
+        PsychCopyInIntegerArg(7, FALSE, &maxNumberThreads);
+        if (maxNumberThreads < -1) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'maxNumberThreads' setting! Only values of -1 or greater are allowed.");
+    
         // Queueing of a new movie for seamless playback requested?
         if (asyncFlag & 2) {
             // Yes. Do a special call, just passing the moviename of the next
@@ -173,7 +190,7 @@ PsychError SCREENOpenMovie(void)
             // preloadSecs:
             moviehandle = (int) preloadSecs;
             preloadSecs = 0;
-            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat);
+            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads);
             if (moviehandle == -1) PsychErrorExitMsg(PsychError_user, "Could not queue new moviefile for gapless playback.");
             return(PsychError_none);
         }
@@ -184,7 +201,7 @@ PsychError SCREENOpenMovie(void)
 
             // Try to open the named 'moviefile' and create & initialize a corresponding movie object.
             // A MATLAB handle to the movie object is returned upon successfull operation.
-            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat);
+            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads);
         }
         else {
             // Asynchronous open operation requested or running:
@@ -197,7 +214,8 @@ PsychError SCREENOpenMovie(void)
                     asyncmovieinfo.asyncFlag = asyncFlag;
                     asyncmovieinfo.specialFlags1 = specialFlags1;
                     asyncmovieinfo.pixelFormat = pixelFormat;
-					
+					asyncmovieinfo.maxNumberThreads = maxNumberThreads;
+                    
                     if (windowRecord) {
                         memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
                     } else {

@@ -95,6 +95,8 @@
 #include <arpa/inet.h> 
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
+
 #define nonblockingsocket(s)  fcntl(s,F_SETFL,O_NONBLOCK)
 #define DEFAULT_USLEEP        500		/* MK: Changed from 10 msecs to 0.5 msec == 500 microsecs. for lower latency. Should not be a problem on good OS/X and Linux :-) */
 #endif
@@ -407,6 +409,7 @@ void __debug_view_con_status(char *str)
     mexPrintf("--------------------\n");
 }
 
+#ifdef WIN32
 /********************************************************************/
 /* Portable time function using matlabs NOW                         */
 double my_now(){
@@ -426,6 +429,16 @@ double my_now(){
     }
     return sec;
 }
+#else
+double my_now()
+{
+    struct timeval tv;
+    double sec;
+    gettimeofday(&tv, NULL);
+    sec = (double) tv.tv_sec + ((double) tv.tv_usec) / (double) 1e6;
+    return(sec);
+}
+#endif
 
 /*******************************************************************************/
 /* Checks that given index is valid index and set current index, "con_index"   */
@@ -903,7 +916,7 @@ int read2buff(const int len,int newline,int noblock)
 	    break;
 	if( con[con_index].read.pos>=len )
 	    break;
-	if(timeoutat<=my_now() || noblock)
+	if(noblock || timeoutat<=my_now())
 	    break;
 	if(newline){
 	    int n;
@@ -1006,7 +1019,7 @@ int tcpiplisten(int noblock)
     while(1){
 	    if ((new_fd = accept(sock_fd, (struct sockaddr *)&con[con_index].remote_addr,&sin_size)) > -1)
             break;
-        if(timeoutat<=my_now()|| noblock)
+        if(noblock || timeoutat<=my_now())
 	        return -1;
 	    usleep(DEFAULT_USLEEP);
     }

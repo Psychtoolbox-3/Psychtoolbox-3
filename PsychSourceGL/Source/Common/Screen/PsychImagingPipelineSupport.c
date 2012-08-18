@@ -3277,9 +3277,9 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 			rc = FALSE;
 		} else {
 			// Attach shader:
-			while(glGetError());
+			if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) while(glGetError());
 			glUseProgram(hookfunc->shaderid);
-			if ((glerr = glGetError())!=GL_NO_ERROR) {
+			if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync) && ((glerr = glGetError())!=GL_NO_ERROR)) {
 				if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Blitter invocation failed: glUseProgram(%i) failed with error: %s\n", hookfunc->shaderid, gluErrorString(glerr));
 				rc = FALSE;
 			}

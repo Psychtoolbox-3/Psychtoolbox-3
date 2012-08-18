@@ -66,6 +66,7 @@ typedef struct {
     GstElement          *theMovie;
     GMainLoop           *MovieContext;
     GstElement          *videosink;
+    PsychWindowRecordType* parentRecord;    
     unsigned char       *imageBuffer;
     int                 frameAvail;
     int                 preRollAvail;
@@ -488,7 +489,7 @@ static GstAppSinkCallbacks videosinkCallbacks = {
  *      specialFlags1 = As passed to 'OpenMovie'
  *      pixelFormat = As passed to 'OpenMovie'
  */
-void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat)
+void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads)
 {
     GstCaps                     *colorcaps;
     GstElement			*theMovie = NULL;
@@ -945,10 +946,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Check if some codec properties need to be changed.
     // This happens if usercode provides some supported non-default override parameter for the codec,
-    // or if the codec is multi-threaded, in which case we configure its multi-threading behaviour
-    // to our needs:
+    // or if the codec is multi-threaded and usercode wants us to configure its multi-threading behaviour:
     needCodecSetup = FALSE;
-    if (videocodec &&  (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads") ||
+    if (videocodec &&  ((g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads") && (maxNumberThreads > -1)) ||
                        (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres") && (specialFlags1 & (0))) || /* MK: 'lowres' disabled for now. */
                        (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv") && (specialFlags1 & 4)) ||
                        (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame") && (specialFlags1 & 8))
@@ -959,7 +959,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Set videocodec state to "ready" if parameter change is needed, as the codec only
     // accepts the new settings in that state:
     if (needCodecSetup) {
-        // Ready the video codec, so a new max thread count can be set:
+        // Ready the video codec, so a new max thread count or other parameters can be set:
         if (!PsychMoviePipelineSetState(videocodec, GST_STATE_READY, 30.0)) {
             PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
             PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed III. Reason given above.");
@@ -997,19 +997,17 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     */
     
     
-    // Multi-threaded codec? If so, set its multi-threading behaviour: By default many codecs would only
-    // use one single thread on any system, even if they are multi-threading capable.
-    if (needCodecSetup && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads"))) {
+    // Multi-threaded codec and usercode requests setup? If so, set its multi-threading behaviour:
+    // By default many codecs would only use one single thread on any system, even if they are multi-threading capable.
+    if (needCodecSetup && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads")) && (maxNumberThreads > -1)) {
         max_video_threads = 1;
         g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Movie playback for movie %i uses video decoder with a default maximum number of %i processing threads.\n", slotid, max_video_threads);
 
-        // Set max_threads to 0: This means to auto-detect the optimal number of threads,
-        // unless usercode provides an override for exact number of threads to use via some
-        // environment variable:
-        if (getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS")) {
-            // Override provided: Use it.
-            max_video_threads = atoi(getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS"));
+        // Specific number of threads requested, or zero for auto-select?
+        if (maxNumberThreads > 0) {
+            // Specific value provided: Use it.
+            max_video_threads = maxNumberThreads;
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use a maximum of %i processing threads.\n", max_video_threads);
         } else {
             // Default behaviour: A settig of zero asks GStreamer to auto-detect the optimal
@@ -1165,6 +1163,17 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].width = width;
     movieRecordBANK[slotid].height = height;
 
+    // Assign parent window record, for use in movie deletion code:
+    movieRecordBANK[slotid].parentRecord = win;
+
+    // Should we dump the whole decoding pipeline graph to a file for visualization
+    // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
+    if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
+        // Dump complete decoding filter graph to a .dot file for later visualization with GraphViz:
+        printf("PTB-DEBUG: Dumping movie decoder graph for movie %s to directory %s.\n", moviename, getenv("GST_DEBUG_DUMP_DOT_DIR"));
+        GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(movieRecordBANK[slotid].theMovie), GST_DEBUG_GRAPH_SHOW_ALL, "PsychMoviePlaybackGraph");
+    }
+    
     // Ready to rock!
     return;
 }
@@ -1206,6 +1215,9 @@ void PsychGSGetMovieInfos(int moviehandle, int* width, int* height, int* frameco
  */
 void PsychGSDeleteMovie(int moviehandle)
 {
+    PsychWindowRecordType **windowRecordArray;
+    int i, numWindows;
+
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
@@ -1232,12 +1244,23 @@ void PsychGSDeleteMovie(int moviehandle)
     movieRecordBANK[moviehandle].videosink = NULL;
 
 	// Recycled texture in texture cache?
-    if (movieRecordBANK[moviehandle].cached_texture > 0) {
+	if ((movieRecordBANK[moviehandle].parentRecord) && (movieRecordBANK[moviehandle].cached_texture > 0)) {
 		// Yes. Release it.
+		PsychSetGLContext(movieRecordBANK[moviehandle].parentRecord);
 		glDeleteTextures(1, &(movieRecordBANK[moviehandle].cached_texture));
 		movieRecordBANK[moviehandle].cached_texture = 0;
 	}
 
+    // Delete all references to us in textures originally originating from us:    
+    PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
+    for(i = 0; i < numWindows; i++) {
+        if ((windowRecordArray[i]->windowType == kPsychTexture) && (windowRecordArray[i]->texturecache_slot == moviehandle)) {
+            // This one is referencing us. Reset its reference to "undefined" to detach it from us:
+            windowRecordArray[i]->texturecache_slot = -1;
+        }
+    }
+    PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+    
     // Decrease counter:
     if (numMovieRecords>0) numMovieRecords--;
         
@@ -1479,15 +1502,52 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 	}
 
 	if (videoBuffer) {
-		// Assign pointer to videoBuffer's data directly: Avoids one full data copy compared to oldstyle method.
-		if (out_texture) out_texture->textureMemory = (GLuint*) GST_BUFFER_DATA(videoBuffer);
-
 		// Assign pts presentation timestamp in pipeline stream time and convert to seconds:
 		movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
+        
+        // Iff forward playback is active and a target timeindex was specified and this buffer is not at least of
+        // that timeindex and at least one more buffer is queued, then skip this buffer, pull the next one and check
+        // if that one meets the required pts:
+        while ((rate > 0) && (timeindex >= 0) && (movieRecordBANK[moviehandle].pts < timeindex) && (movieRecordBANK[moviehandle].frameAvail > 0)) {
+            // Tell user about reason for rejecting this buffer:
+            if (PsychPrefStateGet_Verbosity() > 5) {
+                printf("PTB-DEBUG: Fast-Skipped buffer id %i with pts %f secs < targetpts %f secs.\n", (int) GST_BUFFER_OFFSET(videoBuffer), movieRecordBANK[moviehandle].pts, timeindex);
+            }
+            
+            // Decrement available frame counter:
+            PsychLockMutex(&movieRecordBANK[moviehandle].mutex);
+            movieRecordBANK[moviehandle].frameAvail--;
+            PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
+            
+            // Return the unused buffer to queue:
+            gst_buffer_unref(videoBuffer);
+            
+            // Pull the next one. As frameAvail was > 0 at check-time, we know there is at least one pending,
+            // so there shouldn't be a danger of hanging here:
+            videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
+            if (NULL == videoBuffer) {
+                // This should never happen!
+                printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer skipper loop! Something's wrong. Aborting fetch.\n");
+                return(FALSE);                
+            }
+
+            // Assign updated pts presentation timestamp of new candidate in pipeline stream time and convert to seconds:
+            movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
+            
+            // Recheck if this is a better candidate...
+        }
+        
+        // Ok, now we really have a suitable videoBuffer -- or the best we could get:
+        
+        // Compute timedelta and bufferindex:
 		if (GST_CLOCK_TIME_IS_VALID(GST_BUFFER_DURATION(videoBuffer)))
 			deltaT = (double) GST_BUFFER_DURATION(videoBuffer) / (double) 1e9;
 		bufferIndex = GST_BUFFER_OFFSET(videoBuffer);
+
 		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: pts %f secs, dT %f secs, bufferId %i.\n", movieRecordBANK[moviehandle].pts, deltaT, (int) bufferIndex);
+
+		// Assign pointer to videoBuffer's data directly: Avoids one full data copy compared to oldstyle method.
+		if (out_texture) out_texture->textureMemory = (GLuint*) GST_BUFFER_DATA(videoBuffer);
 	} else {
 		printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer! Something's wrong. Aborting fetch.\n");
 		return(FALSE);
@@ -1545,6 +1605,10 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // Assign texturehandle of our cached texture, if any, so it gets recycled now:
         out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
 
+        // Mark this texture as originating from us, ie., our moviehandle, so texture recycling
+        // actually gets used:
+        out_texture->texturecache_slot = moviehandle;
+        
         // YUV 422 packed pixel upload requested?
         if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && (movieRecordBANK[moviehandle].pixelFormat == 5)) {
             // GPU supports UYVY textures and we get data in that YCbCr format. Tell
@@ -1870,27 +1934,13 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
  *  void PsychGSExitMovies() - Shutdown handler.
  *
  *  This routine is called by Screen('CloseAll') and on clear Screen time to
- *  do final cleanup. It deletes all textures and releases all movie objects.
+ *  do final cleanup. It releases all movie objects.
  *
  */
 void PsychGSExitMovies(void)
 {
-    PsychWindowRecordType	**windowRecordArray;
-    int				i, numWindows; 
-    
-    // Release all Quicktime related OpenGL textures:
-    PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
-    for(i=0; i<numWindows; i++) {
-        // Delete all Quicktime textures:
-        if ((windowRecordArray[i]->windowType == kPsychTexture) && (windowRecordArray[i]->targetSpecific.QuickTimeGLTexture !=NULL)) { 
-            PsychCloseWindow(windowRecordArray[i]);
-        }
-    }
-    PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
-    
     // Release all movies:
     PsychGSDeleteAllMovies();
-
     firsttime = TRUE;
     
     return;

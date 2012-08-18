@@ -119,6 +119,7 @@ typedef struct {
 	int nrgfxframes;                  // Count of fetched textures.
 	char* targetmoviefilename;        // Filename of a movie file to record.
 	char* cameraFriendlyName;         // Camera friendly device name.
+	char videosourcename[100];        // Plugin name of the videosource plugin.
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
@@ -596,6 +597,9 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 	}
 	capdev->videosink = NULL;
 
+	// This has been auto-destructed (hopefully) by camerabin:
+	capdev->videosource = NULL;
+    
 	if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
 	capdev->targetmoviefilename = NULL;
 
@@ -800,7 +804,7 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 				ntotal++;
 				
 				if (ntotal >= PSYCH_MAX_VIDSRC) {
-					printf("PTB-WARNING: Maximum number of allowable video sourced during enumeration %i exceeded! Aborting enumeration.\n", PSYCH_MAX_VIDSRC);
+					printf("PTB-WARNING: Maximum number of allowable video sources during enumeration %i exceeded! Aborting enumeration.\n", PSYCH_MAX_VIDSRC);
 					break;
 				}
 			}
@@ -896,6 +900,9 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	// Does not work, no property probe interface:
 	PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", 1);
 
+	// Try GeniCam-Cameras via aravis plugin:
+	PsychGSEnumerateVideoSourceType("aravissrc", 8, "GeniCam-Aravis", "camera-name", 0);
+    
 	if (ntotal <= 0) {
 		if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-INFO: Could not detect any supported video devices on this system.\n");
@@ -2078,7 +2085,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		}
 		
 		// MS-Windows specific setup path:
-		if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+		if ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (deviceIndex > -8)) {
 			if (deviceIndex < 0) {
 				// Non-Firewire video source selected:
 				
@@ -2176,7 +2183,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		} // End of MS-Windows Video source creation.
 		
 		// MacOS/X specific setup path:
-		if (PSYCH_SYSTEM == PSYCH_OSX) {
+		if ((PSYCH_SYSTEM == PSYCH_OSX) && (deviceIndex > -8)) {
 			if (deviceIndex < 0) {
 				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach osxvideosrc as video source...\n");
 				videosource = gst_element_factory_make("osxvideosrc", "ptb_videosource");
@@ -2220,8 +2227,37 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			}
 		} // End of OS/X Video source creation.
 
-		// The usual crap for MS-Windows:
-		if (strstr(plugin_name, "dshowvideosrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
+        // OS independent special sources with no support for enumeration:
+        
+        // aravissrc for GeniCam cams: Doesn't support enumeration, just opening of cams by name:
+        if (deviceIndex == -8) {
+
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach aravissrc as GeniCam video source...\n");
+
+            sprintf(plugin_name, "aravissrc");
+            videosource = gst_element_factory_make("aravissrc", "ptb_videosource");
+            
+            if (!videosource) {
+                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to create aravissrc GeniCam video source! We are out of options and will probably fail soon.\n");
+                PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
+            }
+            
+
+            // Fetch optional targetmoviename parameter as name spec string:
+            if (targetmoviefilename) {
+                // Assign:
+                strcat(config, targetmoviefilename);
+
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach GeniCam video device '%s' as video input.\n", config);
+                g_object_set(G_OBJECT(videosource), "camera-name", config, NULL);
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach default Aravis GeniCam video device as video input.\n");
+            }
+        }
+
+		// Some plugins need typefind'ing dhowvideosrc for sure, we also set it for aravissrc to be safe:
+		if (strstr(plugin_name, "dshowvideosrc") || strstr(plugin_name, "aravissrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
 		
 		// Enable timestamping by videosource:
 		g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
@@ -2479,7 +2515,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             // The usual Windows crap. Enumeration of supported resolutions doesn't work, so
             // we skip validation and trust blindly that the usercode is right if this is the
             // DirectShow video source. Ditto for autovideosrc and videotestsrc:
-            if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc")) {
+            if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
+                !strstr(plugin_name, "aravissrc")) {
                 // Query camera if it supports the requested resolution:
                 capdev->fps = -1;
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth)) {
@@ -2508,7 +2545,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             capdev->fps = -1;
 
             // Auto-Detection doesn't work with Windows DirectShow video plugin :-( Skip it. Ditto for autovideosrc and videotestsrc:
-            if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc")) {
+            if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
+                !strstr(plugin_name, "aravissrc")) {
                 // Ask camera to provide auto-detected parameters:
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth)) {
                     // Unsupported resolution. Game over!
@@ -2873,6 +2911,18 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		}
 	}
 
+	if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "camera-name")) {
+		g_object_get(G_OBJECT(videosource), "camera-name", &pstring, NULL);
+		if (pstring) {
+			if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Camera friendly device-name is '%s'.\n", pstring);
+			capdev->cameraFriendlyName = strdup(pstring);
+			g_free(pstring); pstring = NULL;
+		}
+		else {
+			capdev->cameraFriendlyName = strdup("Unknown");
+		}
+	}
+        
 	// Get the pad from the src pad of the source for probing width x height
 	// of video frames and nominal framerate of video source:	
 	pad = gst_element_get_pad(videosource, "src");
@@ -2967,6 +3017,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Assign final recordingflags:
     vidcapRecordBANK[slotid].recordingflags = recordingflags;
 
+    // Assign plugin name:
+    sprintf(&capdev->videosourcename[0], "%s", plugin_name);
+    
+    // Store a pointer to the videosource plugin:
+    capdev->videosource = videosource;
+    
     if (PsychPrefStateGet_Verbosity() > 2) {
 	    printf("PTB-INFO: Camera %i opened [Source resolution width x height = %i x %i, video image size %i x %i]\n",
 		   slotid, capdev->width, capdev->height, capdev->frame_width, capdev->frame_height);
@@ -3172,6 +3228,14 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			capdev->scratchbuffer = malloc(capdev->frame_width * capdev->frame_height * 3);
 		}
 		*/
+
+        // Should we dump the whole encoding pipeline graph to a file for visualization
+        // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
+        if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
+            // Dump complete capture/recording filter graph to a .dot file for later visualization with GraphViz:
+            printf("PTB-DEBUG: Dumping video capture/recording graph to directory %s.\n", getenv("GST_DEBUG_DUMP_DOT_DIR"));
+            GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(camera), GST_DEBUG_GRAPH_SHOW_ALL, "PsychVideoCaptureGraph");
+        }
 
 		if(PsychPrefStateGet_Verbosity() > 3) {
 			printf("PTB-INFO: Capture started on device %i - Input video resolution %i x %i - Framerate: %f fps.\n",
@@ -3736,7 +3800,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	if (usecamerabin && gst_element_implements_interface(capdev->camera, GST_TYPE_COLOR_BALANCE)) {
 		cb = GST_COLOR_BALANCE(capdev->camera);
 	} else {
-		if (usecamerabin && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Camerabin does not suppport GstColorBalance interface as expected.\n");
+		if (usecamerabin && (PsychPrefStateGet_Verbosity() > 3)) printf("PTB-WARNING: Camerabin does not suppport GstColorBalance interface as expected.\n");
 	}
 	
 	oldintval = 0xFFFFFFFF;
@@ -3845,7 +3909,65 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 		return(DBL_MAX);
 	}
 
+	if (strstr(pname, "Gain") && strstr(&capdev->videosourcename[0], "aravissrc")) {
+        // Special case aravissrc plugin?
+        
+		// Query old "gain" setting, which is integer and in units of dB Dezibel:
+		g_object_get(capdev->videosource, "gain", &oldintval, NULL);
+		oldvalue = (double) oldintval;
+        
+		// Reset to auto-mode, if requested:
+		if (strstr(pname, "Auto")) {
+            value = DBL_MAX;
+            g_object_set(capdev->videosource, "gain-auto", TRUE, NULL);
+        }
+        
+		// Optionally set new setting and switch to manual mode:
+		if (value != DBL_MAX) {
+            g_object_set(capdev->videosource, "gain-auto", FALSE, NULL);
+            g_object_set(capdev->videosource, "gain", (int) (value + 0.5), NULL);
+        }
+		return(oldvalue);
+	}
+
+	if (strstr(&capdev->videosourcename[0], "aravissrc")) {
+        // aravissrc plugin supports the following additional parameters:
+        if (strstr(pname, "offset-x") || strstr(pname, "offset-y") || strstr(pname, "h-binning") || strstr(pname, "v-binning")) {
+            // Query old setting, which is an integer:
+            g_object_get(capdev->videosource, pname, &oldintval, NULL);
+            oldvalue = (double) oldintval;
+
+            // Optionally set new setting:
+            if (value != DBL_MAX) {
+                g_object_set(capdev->videosource, pname, (int) (value + 0.5), NULL);
+            }
+            return(oldvalue);
+        }
+	}
+    
 	if (strstr(pname, "Shutter")!=0) {
+        // Special case aravissrc plugin?
+        if (strstr(&capdev->videosourcename[0], "aravissrc")) {
+            // exposure is a double value, expressing exposure time in microseconds (1e6):
+            g_object_get(capdev->videosource, "exposure", &oldvalue, NULL);
+            oldvalue = oldvalue / 1e6;
+            
+            // Reset to auto-mode, if requested:
+            if (strstr(pname, "Auto")) {
+                value = DBL_MAX;
+                g_object_set(capdev->videosource, "exposure-auto", TRUE, NULL);
+            }
+            
+            // Optionally set new setting:
+            if (value != DBL_MAX) {
+                g_object_set(capdev->videosource, "exposure-auto", FALSE, NULL);
+                g_object_set(capdev->videosource, "exposure", (double) (value * 1e6), NULL);
+            }
+            return(oldvalue);
+        }
+        
+        // Standard case: Exposure is an integer in nanoseconds (1e9):
+        
 		// Query old "exposure" setting, which is duration of shutter open:
 		g_object_get(capdev->camera, "exposure", &oldintval, NULL);
 		oldvalue = (double) oldintval / 1e9;
@@ -3875,7 +3997,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	}
 
 	if (strstr(pname, "EVCompensation")!=0) {
-		// Query old "ev-compensation" setting, which is duration of shutter open:
+		// Query old "ev-compensation" setting:
 		g_object_get(capdev->camera, "ev-compensation", &oldfvalue, NULL);
 		oldvalue = (double) oldfvalue;
 

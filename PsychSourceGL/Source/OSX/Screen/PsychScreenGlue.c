@@ -56,11 +56,12 @@
 // we need to stay compatible to 10.4 - 10.6
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-// file local variables
-unsigned int  fDeviceType = 0;
-unsigned int  fCardType = 0;
-unsigned int  fPCIDeviceId = 0;
-unsigned int  fNumDisplayHeads = 0;
+// file local variables:
+unsigned int  activeGPU = 0;
+unsigned int  fDeviceType[kPsychMaxPossibleDisplays];
+unsigned int  fCardType[kPsychMaxPossibleDisplays];
+unsigned int  fPCIDeviceId[kPsychMaxPossibleDisplays];
+unsigned int  fNumDisplayHeads[kPsychMaxPossibleDisplays];
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
 static psych_bool				displayLockSettingsFlags[kPsychMaxPossibleDisplays];
@@ -89,7 +90,7 @@ io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status);
 int PsychOSKDGetBeamposition(int screenId);
 void PsychLaunchConsoleApp(void);
 void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo);
-void PsychOSKDGetGPUInfo(io_connect_t connect);
+static void PsychOSKDGetGPUInfo(io_connect_t connect, int slot);
 unsigned int PsychOSKDGetRevision(io_connect_t connect);
 
 // Replacement routines for routines missing in 64-Bit OSX:
@@ -995,7 +996,10 @@ void InitPsychtoolboxKernelDriverInterface(void)
 	
 	// Reset to zero open drivers to start with:
 	numKernelDrivers = 0;
-	
+
+	// Select first instance (index 0) as active GPU/KernelDriver by default:
+	activeGPU = 0;
+    
     // This will launch the OS/X "Console.app" so users can see the IOLogs from the KEXT.
     if (false) PsychLaunchConsoleApp();
 
@@ -1017,37 +1021,25 @@ void InitPsychtoolboxKernelDriverInterface(void)
     // In a polished final version we would want to handle the case where more than one gfx-card is attached.
 	// The iterator would return multiple instances of our driver and we need to decide which one to connect to.
 	// For now, we do not handle this case but instead just get the first item from the iterator.
-    service = IOIteratorNext(iterator);
-    
-    // Release the io_iterator_t now that we're done with it.
-    IOObjectRelease(iterator);
-    
-    if (service == IO_OBJECT_NULL) {
-        // printf("PTB-INFO: Couldn't find an operative Psychtoolbox kernel support driver. Features based on kernel driver won't be available.\n");
-		return;
-    }
-    else {
+    while ((service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
 		// Instantiate a connection to the user client.
 
 		// This call will cause the user client to be instantiated. It returns an io_connect_t handle
 		// that is used for all subsequent calls to the user client.
-		connect = 0;
+		connect = IO_OBJECT_NULL;
 		kernResult = IOServiceOpen(service, mach_task_self(), 0, &connect);
-		if (kernResult != KERN_SUCCESS) {
-			printf("PTB-DEBUG: IOServiceOpen for our driver returned 0x%08x. Kernel driver support disabled.\n", kernResult);
+		if ((kernResult != KERN_SUCCESS) || (connect == IO_OBJECT_NULL)) {
+			printf("PTB-DEBUG: IOServiceOpen for driver instance %i returned 0x%08x. Not using this instance...\n", service, kernResult);
 		}
 		else {
 			// This is an example of calling our user client's openUserClient method.
 			kernResult = IOConnectMethodScalarIScalarO(connect, kMyUserClientOpen, 0, 0);
-			if (kernResult == KERN_SUCCESS) {
-				if (false) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO was successful.\n\n");
-			}
-			else {
+			if (kernResult != KERN_SUCCESS) {
 				// Release connection:
 				IOServiceClose(connect);
 				connect = IO_OBJECT_NULL;
-				printf("PTB-DEBUG: IOConnectMethodScalarIScalarO for our driver returned 0x%08x. Kernel driver support disabled.\n", kernResult);
-				if (kernResult == kIOReturnExclusiveAccess) printf("PTB-DEBUG: Please check if other applications (e.g., other open Matlabs?) use the driver already.\n");
+				printf("PTB-DEBUG: IOConnectMethodScalarIScalarO for driver instance %i returned 0x%08x. Kernel driver support disabled.\n", service, kernResult);
+				if (kernResult == kIOReturnExclusiveAccess) printf("PTB-DEBUG: Please check if other applications (e.g., other open Matlab or Octave instances) use the driver already.\n");
 			}
 		}
 
@@ -1085,31 +1077,66 @@ void InitPsychtoolboxKernelDriverInterface(void)
                     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose returned 0x%08x\n\n", kernResult);
                 }		
 
-                return;
+                goto error_abort;
             }
 
-			printf("PTB-INFO: Connection to Psychtoolbox kernel support driver (Revision %i) established. Will use the driver...\n\n", revision);
+			if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Connection to Psychtoolbox kernel support driver instance #%i (Revision %i) established.\n", numKernelDrivers, revision);
+            }
+            
+			// Store the connect handle for this instance:
+            displayConnectHandles[numKernelDrivers] = connect;
 
-			// For now, as we only support one gfx-card, just init all screens handles to the
-			// single connect handle we got:
-			for(i=0; i< kPsychMaxPossibleDisplays; i++){
-				displayConnectHandles[i]=connect;
-			}
-			
+            // Query and assign GPU info:
+            PsychOSKDGetGPUInfo(connect, numKernelDrivers);
+
+            // Perform auto-detection of screen to head mappings:
+            // Disabled - Does not work as expected, coded to a no-op if called: PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
+            
 			// Increment instance count by one:
 			numKernelDrivers++;
-            
-            // Query and assign GPU info:
-            PsychOSKDGetGPUInfo(connect);
-            
-            // Perform auto-detection of screen to head mappings:
-            PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
 		}
-		else {
-			// Final failure:
-			printf("PTB-DEBUG: IOConnectMethodScalarIScalarO for our driver returned IO_OBJECT_NULL connect handle. Kernel driver support disabled.\n");
-		}
+        // Iterate to next GPU / Driver:
 	}
+
+    // Is this a hybrid graphics system with two GPUs, ie. an integrated Intel IGP and
+    // a discrete NVidia or AMD GPU? If so, is our currently selected default activeGPU
+    // (instance 0) the Intel IGP? If so, then that's probably not what we want and the
+    // mapping of kernel driver instances to GPUs got mangled/switched at driver load.
+    // OSX default behaviour is to power up and switch to the high-performance discrete
+    // non-Intel GPU as soon as PTB creates its first OpenGL rendering context while opening
+    // its first onscreen window, then sticking to that GPU for the remainder of the Matlab/
+    // Octave session. For this reason we should also default to choosing the discrete GPU
+    // for all low-level operations. Check if we do so and make it so:
+    if ((numKernelDrivers == 2) && (fDeviceType[activeGPU] == kPsychIntelIGP)) {
+        activeGPU = 1 - activeGPU;
+        OSMemoryBarrier();
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Switching to kernel driver instance #%i in hybrid graphics system, assuming i am attached to discrete non-Intel GPU.", activeGPU);
+        }
+        
+        // PsychOSKDGetBeamposition() has a way of recovering from a wrong choice here.
+        // If the Intel IGP should be actually used as the GPU of choice, e.g., because
+        // the system is low on battery power, some other condition prevents use of the
+        // discrete GPU, or the user has forcefully enabled the IGP via some 3rd party
+        // tool, e.g., via "gfxCardStatus", then the discrete GPU will be powered down at
+        // time of beamposition query --> query results bogus results on a non-Intel GPU in
+        // a hybrid graphics system --> the function will switch to the alternative GPU and
+        // try to recover.
+        // This should hopefully catch the special case of Intel IGP, and as a side-effect
+        // also recover from wrong mapping if we are on a older generation hybrid gfx system
+        // with two NVidia or AMD GPUs, one high perf, one low perf.
+        //
+        // This whole logic does not cover multi-gpu systems without graphics switching in
+        // any way, ie., MacPro's with multi-gpus are not automatically treated correctly,
+        // but MacBookPro's with hybrid graphics have a decent chance of working.
+    }
+    
+    
+error_abort:
+    
+    // Release the io_iterator_t now that we're done with it.
+    IOObjectRelease(iterator);
 	
 	// Done.
 	return;
@@ -1134,11 +1161,11 @@ psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortyp
 {
   if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
 
-  if (gpuMaintype) *gpuMaintype = fDeviceType;
-  if (gpuMinortype) *gpuMinortype = fCardType;
-  if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
+  if (gpuMaintype) *gpuMaintype = fDeviceType[activeGPU];
+  if (gpuMinortype) *gpuMinortype = fCardType[activeGPU];
+  if (pciDeviceId) *pciDeviceId = fPCIDeviceId[activeGPU];
 
-  if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads;
+  if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads[activeGPU];
 
   return(TRUE);
 }
@@ -1146,52 +1173,53 @@ psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortyp
 // Try to detach to kernel level ptb support driver and tear down everything:
 void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 {
-	io_connect_t connect;
+    io_connect_t connect;
     kern_return_t kernResult;
-	
-	if (numKernelDrivers > 0) {
-		// Currently we only support one graphics card, so just take
-		// the connect handle of first screen:
-		connect = displayConnectHandles[0];
+    int i;
 
-		// Close IOService:
-		kernResult = IOServiceClose(connect);
-		if (kernResult == KERN_SUCCESS) {
-			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose() was successfull.\n");
-		}
-		else {
-			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose returned 0x%08x\n\n", kernResult);
-		}		
-	}
+    for (i = 0; i < numKernelDrivers; i++) {
+        connect = displayConnectHandles[i];
 
-	// Ok, whatever happened, we're detached (for good or bad):
-	numKernelDrivers = 0;
+        // Close IOService:
+        kernResult = IOServiceClose(connect);
+        if (kernResult == KERN_SUCCESS) {
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose() for driver instance %i was successfull.\n", i);
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose returned 0x%08x for driver instance %i.\n\n", kernResult, i);
+        }
+    }
 
-	// Unregister our display reconfiguration callback: This doesn't really belong here,
-	// but we know that PsychOSShutdownPsychtoolboxKernelDriverInterface() gets called
-	// from higher level code at shutdown time and we're lazy:
-	CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
+    // Ok, whatever happened, we're detached (for good or bad):
+    numKernelDrivers = 0;
 
-	return;
+    // Unregister our display reconfiguration callback: This doesn't really belong here,
+    // but we know that PsychOSShutdownPsychtoolboxKernelDriverInterface() gets called
+    // from higher level code at shutdown time and we're lazy:
+    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
+
+    return;
 }
 
 psych_bool PsychOSIsKernelDriverAvailable(int screenId)
 {
-	return((displayConnectHandles[screenId]) ? TRUE : FALSE);
+	return((numKernelDrivers > 0) ? TRUE : FALSE);
 }
 
 io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status)
 {
-	io_connect_t connect = displayConnectHandles[screenId];
+	io_connect_t connect = displayConnectHandles[activeGPU];
 
-	if (numKernelDrivers<=0) {
+	if (numKernelDrivers <= 0) {
 		if (status) *status = kIOReturnNotFound;
 		return(0);
 	}
 	
 	if (!connect) {
 		if (status) *status = kIOReturnNoDevice;
-		if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUGINFO: Could not access kernel driver connection for screenId %i - No such connection.\n", screenId);
+		if (PsychPrefStateGet_Verbosity() > 6) {
+			printf("PTB-DEBUGINFO: Could not access kernel driver connection %i for screenId %i - No such connection.\n", activeGPU, screenId);
+		}
 		return(0);
 	}
 
@@ -1385,6 +1413,28 @@ int PsychOSKDGetBeamposition(int screenId)
 
 	beampos = (int) syncCommand.inOutArgs[0];
 
+    // Reasonable result? If beampos is very large (ie., much larger than the display)
+    // and this is a hybrid-graphics machine with more than one GPU (numKernelDrivers > 1)
+    // then the most likely reason for the result is that we are querying the wrong kernel
+    // driver instance, and therefore the wrong GPU. E.g., NVidia discrete GPUs report a value
+    // of 0xffff aka 65535 here if they are powered down and disconnected from the bus due to
+    // the integrated Intel card being active. We try if this is the case, if the activeGPU is
+    // not the Intel integrated IGP, ie., it is a discrete GPU from NVidia or AMD.
+    if ((beampos > 16384) && (numKernelDrivers == 2) && (fDeviceType[activeGPU] != kPsychIntelIGP)) {
+        // Probably wrong, powered-down, discrete GPU. Switch the GPU/Driver instance to other GPU
+        // for all future operations in the hope that the other GPU is actually operational:
+        activeGPU = 1 - activeGPU;
+
+        // Make sure our SMP sibling cores get notified:
+        OSMemoryBarrier();
+        
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Switching kernel driver interface to alternative GPU %i in system until Screen() reset.\n", activeGPU);
+        
+        // Call ourselves recursively in the hope we get a better result this time.
+        // If this also fails, it is game over:
+        return(PsychOSKDGetBeamposition(screenId));
+    }
+
 	// Apply corrective offsets if any (i.e., if non-zero):
 	PsychGetBeamposCorrection(screenId, &vblbias, &vbltotal);
 	beampos = beampos - vblbias;
@@ -1447,30 +1497,30 @@ unsigned int PsychOSKDGetRevision(io_connect_t connect)
 	return((unsigned int) syncCommand.inOutArgs[0]);
 }
 
-void PsychOSKDGetGPUInfo(io_connect_t connect)
+static void PsychOSKDGetGPUInfo(io_connect_t connect, int slot)
 {
-	PsychKDCommandStruct syncCommand;
+    PsychKDCommandStruct syncCommand;
     IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
-	
-	// Set command code for gpu info query:
-	syncCommand.command = kPsychKDGetGPUInfo;
-	
-	// Issue request:
-	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
-	if (kernResult != KERN_SUCCESS) {
-		printf("PTB-ERROR: Kernel driver gpu info read failed (Kernel error code: %lx).\n", kernResult);
-		// A value of 0xffffffff signals failure:
-		return;
-	}
-	
-    // Assign:
-    fDeviceType = syncCommand.inOutArgs[0];
-    fPCIDeviceId = syncCommand.inOutArgs[1];
-    fCardType = syncCommand.inOutArgs[2];
-    fNumDisplayHeads = syncCommand.inOutArgs[3];
 
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GPU-Vendor %i, PCIId %x, GPU-Type %i [x%x], numDisplayHeads %i.\n", fDeviceType, fPCIDeviceId, fCardType, fCardType, fNumDisplayHeads);
-	return;
+    // Set command code for gpu info query:
+    syncCommand.command = kPsychKDGetGPUInfo;
+
+    // Issue request:
+    kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
+    if (kernResult != KERN_SUCCESS) {
+        printf("PTB-ERROR: Kernel driver gpu info read failed (Kernel error code: %lx).\n", kernResult);
+        // A value of 0xffffffff signals failure:
+        return;
+    }
+
+    // Assign:
+    fDeviceType[slot] = syncCommand.inOutArgs[0];
+    fPCIDeviceId[slot] = syncCommand.inOutArgs[1];
+    fCardType[slot] = syncCommand.inOutArgs[2];
+    fNumDisplayHeads[slot] = syncCommand.inOutArgs[3];
+
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GPU %i - GPU-Vendor %i, PCIId %x, GPU-Type %i [x%x], numDisplayHeads %i.\n", slot, fDeviceType[slot], fPCIDeviceId[slot], fCardType[slot], fCardType[slot], fNumDisplayHeads[slot]);
+    return;
 }
 
 unsigned int PsychOSKDGetLUTState(int screenId, unsigned int head, unsigned int debug)

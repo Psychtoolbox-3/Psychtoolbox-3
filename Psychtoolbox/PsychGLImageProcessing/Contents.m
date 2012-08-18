@@ -44,6 +44,7 @@
 % CreateSinglePassImageProcessingShader - Create a single pass image processing shader for simple but common operations.
 % DisplayUndistortionBezier     - Interactive geometric display calibration for simple needs.
 % DisplayUndistortionBVL        - Interactive geometric display calibration. Recommended!
+% DisplayUndistortionCSV        - Import ASCII data file with geometric display calibration for NVidia "Warp API".
 % DisplayUndistortionHalfCylinder - Interactive geometric display calibration for half-cylinder or spherical projections.
 % DisplayUndistortionSphere     - Interactive geometric display calibration for spherical projections.
 % HookProcessingChains          - Documentation about hook chains and their options.

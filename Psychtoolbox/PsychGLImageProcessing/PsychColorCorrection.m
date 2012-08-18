@@ -149,6 +149,29 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %
 %   See below for description of 'SetGainMatrix'.
 %
+% * 'AnaglyphStereo' : Apply anaglyph stereo algorithm.
+%
+%   This loads a similar anaglyph shader as the one used in stereoModes 6
+%   to 9 when the function SetAnaglyphStereoParameters('ColorAnaglyphMode')
+%   or its siblings was used. This is useful if you want to employ anaglyph
+%   stereo presentation, but not by rendering a full anaglyph image into
+%   one single framebuffer for output to a single display or projector, but
+%   if you want to direct the "left-eye" anaglyph image to a different
+%   display or projector than the "right-eye" anaglyph image. An example
+%   would be having two video projectors attached to two video outputs of a
+%   graphics card. One projector shall project the left-eye image, the
+%   other one the right-eye image. In this case you'd choose a stereoMode
+%   of 4 or 5 (typically on Linux or Windows) for desktop spanning stereo
+%   output, or 10 (on OSX) for dual-window stereo output. Then you'd use ...
+%   PsychImaging('AddTask', 'LeftView', 'DisplayColorCorrection', 'AnaglyphStereo')
+%   ... and ...
+%   PsychImaging('AddTask', 'RightView', 'DisplayColorCorrection', 'AnaglyphStereo')
+%   ... to add an anaglyph shader to the end of each view channel.
+%
+%   After adding individual shaders for each image processing channel and opening
+%   the onscreen window(s), you can use SetAnaglyphStereoParameters() to
+%   parameterize the anaglyph stereo presentation as if it were created via
+%   regular anaglyph stereo setup in stereomoded 6-9.
 %
 %
 % Supported runtime Subfunctions:
@@ -309,7 +332,9 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % 04.07.2009 Add CLUT based color correction. (MK)
 % 10.10.2009 Add 'SetExtendedGammaParameters' for extended gamma correction. (MK)
 % 05.03.2010 Add 'GainMatrix' and 'SetGainMatrix' for display
-%                shading/vignetting correction. (MK)
+%                 shading/vignetting correction. (MK)
+% 14.08.2012 Add 'AnaglyphStereo' to apply anaglyph stereo mode onto
+%            separate display outputs, e.g., as on MPI Kuka projection setup.
 
 % GL is needed for shader setup and parameter changes:
 global GL;
@@ -425,7 +450,12 @@ if strcmpi(cmd, 'GetCompiledShaders')
             
             % Build config string to bind and use our gain texture:
             icmConfig = sprintf('TEXTURERECT2D(2)=%i', icmSpec.icmlutid);
-                        
+            
+        case {'AnaglyphStereo'}
+            % Load the single-view anaglyph shader:
+            icmShaders = LoadShaderFromFile('ColoredSingleChannelAnaglyphShader.frag.txt', [], debuglevel);
+            icmIdString = sprintf('ICM:%s', icmSpec.type);
+            
         otherwise
             error('Unknown type of color correction requested! Internal bug?!?');
     end
@@ -465,7 +495,7 @@ if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
     viewId = varargin{2};
     
     % Retrieve all params for 'win'dow and given icmSpec, bind shader:
-    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmSpec.type, viewId); %#ok<NASGU>
+    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmSpec.type, viewId); %#ok<*ASGLU,NASGU>
     
     try
         % Setup initial clamping values to valid range 0.0 - 1.0:
@@ -509,11 +539,17 @@ if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
                 % store the texture id of the texture in a permanent
                 % location though:
                 icmDataForHandle(win, glsl) = icmSpec.icmlutid;
-                
+
+            case {'AnaglyphStereo'}
+                % Set RedGamma to zero, ie., "disabled" by default:
+                glUniform1f(glGetUniformLocation(glsl, 'RedGamma'), 0.0);
+                % Set 3x3 transform matrix to identity matrix by default:
+                glUniformMatrix3fv(glGetUniformLocation(glsl, 'GainsLeft'), 1, 0, [[1 0 0]; [0 1 0]; [0 0 1]]);
+
             otherwise
                 error('Unknown type of color correction requested! Internal bug?!?');
         end
-    catch
+    catch %#ok<*CTCH>
         % Empty...
         psychrethrow(psychlasterror);
     end

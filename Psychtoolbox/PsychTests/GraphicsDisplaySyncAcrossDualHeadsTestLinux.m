@@ -48,7 +48,7 @@ end
 
 driftsync = driftsync * 2;
 
-testvblirqs = 1;
+testvblirqs = 0;
 
 % Open windows:
 w(1) = Screen('OpenWindow', screenids(1), 0, []);
@@ -93,12 +93,13 @@ for i=1:nrtrials
     % Sample in close sync:
     for j=1:2
         Screen('Preference', 'ScreenToHead', screenids, 0, j-1);
-        winfo(j) = Screen('GetWindowInfo', w(1)); %#ok<AGROW>
+        winfo(j) = Screen('GetWindowInfo', w(1), 1); %#ok<AGROW>
     end
     
     for j=1:2
-        timinginfo(1, j,i) = winfo(j).Beamposition;
-        timinginfo(2, j,i) = winfo(j).LastVBLTime;
+	timinginfo(1, j, i) = winfo(j);
+        %timinginfo(1, j,i) = winfo(j).Beamposition;
+        %timinginfo(2, j,i) = winfo(j).LastVBLTime;
     end
     
     if driftsync > 1

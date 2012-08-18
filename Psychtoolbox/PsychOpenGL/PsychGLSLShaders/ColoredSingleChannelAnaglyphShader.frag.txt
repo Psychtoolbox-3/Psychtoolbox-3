@@ -1,0 +1,41 @@
+/* ColoredSingleChannelAnaglyphShader.frag.txt
+ *
+ * A more complex conversion shader for color anaglyphs than the one
+ * hard-wired into PTBs Screen command. Applies full 3x3 color gain
+ * matrix to color of one view channel, then optionally applies
+ * gamma correction to the red output channel.
+ *
+ * Standard anaglyph conversion is implemented by the default shader in
+ * Screen() and can be parameterized by SetAnaglyphStereoParameters.
+ *
+ * This shader is used for more complex/exotic ways of anaglyph conversion.
+ *
+ * Loaded/initialized by PsychColorCorrection.m as part of
+ * the PTB imaging pipeline color anaglyph shading support.
+ * Parameterized by SetAnaglyphStereoParameters.
+ *
+ * (C) 2012 Mario Kleiner - Released to you under MIT license.
+ */
+
+/* 3 by 3 color gain matrices, always denoted GainsLeft, even for right channel: */
+uniform mat3 GainsLeft;
+
+/* Gamma value for red out channel - Set zero for no gamma correction! */
+uniform float RedGamma;
+
+vec4 icmTransformColor(vec4 incolor)
+{
+    vec4 outcolor;
+
+    /* Multiply first 3 vector components with matrix: */
+    outcolor.rgb = GainsLeft * incolor.rgb;
+
+    /* Alpha is passed through unmodified: */
+    outcolor.a = incolor.a;
+
+    /* Apply gamma correction to red channel, if requested: */
+    /* Note: This op is expensive on GPUs without dynamic flow control! */
+    if (RedGamma > 0.0) outcolor.r = pow(outcolor.r, RedGamma);
+
+    return(outcolor);
+}

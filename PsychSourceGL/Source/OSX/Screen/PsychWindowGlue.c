@@ -1118,22 +1118,37 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 */
 double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
-	unsigned int screenid = windowRecord->screenNumber;
-	psych_uint64 refvblcount;
-	double t1, t2, cvTime = 0;
-	
+    unsigned int screenid = windowRecord->screenNumber;
+    psych_uint64 refvblcount;
+    double tnow, t1, t2, cvRefresh, cvTime = 0;
+
     // Should we use CoreVideo display link timestamping?
     if (useCoreVideoTimestamping && cvDisplayLink[screenid]) {
         // Yes: Retrieve data from our shared data structure:
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        
         PsychLockMutex(&(cvDisplayLinkData[screenid].mutex));
         *vblCount = cvDisplayLinkData[screenid].vblCount;
         cvTime = cvDisplayLinkData[screenid].vblTimestamp;
         PsychUnlockMutex(&(cvDisplayLinkData[screenid].mutex));
 
+        // Current time more than 0.9 video refresh durations after queried
+        // vblank timestamps cvTime?
+        cvRefresh = CVDisplayLinkGetActualOutputVideoRefreshPeriod(cvDisplayLink[screenid]);
+        if ((tnow - cvTime) > (0.9 * cvRefresh)) {
+            // Yes: It is more likely that we fetched a stale cvTime timestamp from
+            // the previous vblank instead of the current one, because we got called
+            // before the display link callback could execute for the current vblank.
+            // Assume this is the case and correct the returned timestamp and count.
+            // Add one video refresh duration and count to make it so:
+            cvTime += cvRefresh;
+            *vblCount = *vblCount + 1;
+        }
+
         // If timestamp debugging is off, we're done:
         if (PsychPrefStateGet_Verbosity() <= 19) return(cvTime);
     }
-    
+
     // Do we have a valid shared mapping?
     if (fbsharedmem[screenid].shmem) {
 		// We query each value twice and repeat this double-query until both readings of

@@ -38,6 +38,7 @@
 
 // Handle of window record before exec of 'BeginOpenGL' -- used in matching 'EndOpenGL' call:
 static 	PsychWindowRecordType *preswitchWindowRecord = NULL;
+static  int sharecontext = 0;
 
 PsychError SCREENBeginOpenGL(void)
 {
@@ -65,7 +66,6 @@ PsychError SCREENBeginOpenGL(void)
     static char seeAlsoString[] = "EndOpenGL SetOpenGLTexture GetOpenGLTexture moglcore";	
 
     PsychWindowRecordType	*windowRecord;
-    int sharecontext;
 	GLint fboid, coltexid, ztexid, stexid;
 	
     //all sub functions should have these two lines
@@ -123,7 +123,7 @@ PsychError SCREENBeginOpenGL(void)
 		glFlush();
 		
 		// Unbind possible FBOs, so system FB is active in our context:
-		if (glBindFramebufferEXT) {
+		if (glBindFramebufferEXT && (fboid > 0)) {
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 			glFlush();
 		}
@@ -135,8 +135,8 @@ PsychError SCREENBeginOpenGL(void)
 		
 		// Manually establish proper FBO binding for userspace. This will get reset automaticaly on back-transition
 		// inside PsychSetGLContext on its first invocation. If we are in non-imaging mode then there's nothing to do.
-		if (glBindFramebufferEXT) {
-			if ((fboid > 0) && (!glIsFramebufferEXT(fboid))) {
+		if (glBindFramebufferEXT && (fboid > 0)) {
+			if (!glIsFramebufferEXT(fboid)) {
 				// Special case: Need to bind a special FBO and the underlying OpenGL driver is faulty,
 				// i.e. it doesn't share FBO names accross our OpenGL contexts as it should according to
 				// spec.: We manually create a clone of our internal FBO - Create an FBO in the userspace
@@ -154,23 +154,39 @@ PsychError SCREENBeginOpenGL(void)
 				// If we reach this point, then the workaround for the worst OS in existence has worked.
 			}
 			else {
-				// Standard system framebuffer needs to be bound, or need to bind a special FBO,
-				// and the system works correctly - no workaround needed. Just bind it in new context:
+				// Need to bind a special FBO and the system works correctly - no workaround needed. Just bind it in new context:
 				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
 			}
 		}
+
+        // Is this the first time that the userspace rendering context of this window
+        // is selected for real userspace rendering?
+        if (windowRecord->needsViewportSetup) {
+            // Yes. Need to perform one-time setup actions for this context:
+            windowRecord->needsViewportSetup = FALSE;
+            
+            // Need to setup glViewPort, scissor rectangle, projection and modelview
+            // matrices to values that match the windows client rectangle. We need to
+            // do this here because some imaging pipeline display modes, e.g, stereomodes
+            // for top-bottom stereo or dualview stereo may have altered the useable client
+            // rendering area after the context was initially created. OpenGL spec states that
+            // at least the viewport and scissor rectangles are set to the full client window
+            // area at first bind of a context to its drawable, so we emulate this here on first
+            // 'BeginOpenGL' to avoid unpleasant surprises for unsuspecting users:
+            PsychSetupView(windowRecord, FALSE);        
+        }        
 		
 		// Running without imaging pipeline and a stereo mode is active?
 		if ((windowRecord->stereomode) > 0 && !(windowRecord->imagingMode & kPsychNeedFastBackingStore)) {
 			// Perform setup work for stereo drawbuffers in fixed function mode:
 			PsychSwitchFixedFunctionStereoDrawbuffer(windowRecord);
-		}
+		}        
 	}
 	else {
 		// Userspace shares context with PTB. Let's disable possibly bound GLSL shaders:
 		PsychSetShader(windowRecord, 0);
 	}
-    
+
 	// Check for GL errors:
     PsychTestForGLErrors();
     
@@ -184,11 +200,11 @@ PsychError SCREENBeginOpenGL(void)
 PsychError SCREENEndOpenGL(void)
 {
     static char useString[] = "Screen('EndOpenGL', windowPtr);";
-    static char synopsisString[] = "Finish OpenGL rendering by external OpenGL code into window 'windowPtr'. "
-        "This is the counterpart to Screen('BeginOpenGL'). Whenever you used Screen('BeginOpenGL') to enable "
-        "external OpenGL drawing from Matlab, you *must* call Screen('EndOpenGL') when you're finished with a "
-        "window, either because you want to draw into a different window, or you want to use a Screen command. "
-        "Psychtoolbox will abort your script if you omit this command. ";
+    static char synopsisString[] =  "Finish OpenGL rendering by external OpenGL code, prepare 2D drawing into window 'windowPtr'.\n"
+                                    "This is the counterpart to Screen('BeginOpenGL'). Whenever you used Screen('BeginOpenGL') to enable "
+                                    "external OpenGL drawing from Matlab, you *must* call Screen('EndOpenGL') when you're finished with a "
+                                    "window, either because you want to draw into a different window, or you want to use a Screen command. "
+                                    "Psychtoolbox will abort your script if you omit this command. ";
     static char seeAlsoString[] = "BeginOpenGL SetOpenGLTexture GetOpenGLTexture moglcore";	
     
     PsychWindowRecordType	*windowRecord;
@@ -211,7 +227,7 @@ PsychError SCREENEndOpenGL(void)
 	if (!PsychIsUserspaceRendering()) PsychErrorExitMsg(PsychError_user, "Tried to call Screen('EndOpenGL'), but userspace rendering is already disabled! Missing or mismatched Screen('BeginOpenGL')? Check your code.");
 
     // Check for OpenGL errors in external code:
-    if ((error=glGetError())!=GL_NO_ERROR) {
+    if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync) && ((error=glGetError())!=GL_NO_ERROR)) {
         printf("PTB-ERROR: Some of your external OpenGL code executed between last invocation of Screen('BeginOpenGL') and\n");
         printf("PTB-ERROR: Screen('EndOpenGL') produced an OpenGL error condition. Please check your code. The reported GL\n");
         printf("PTB-ERROR: error was: %s\n\n", (const char*) gluErrorString(error));
@@ -228,55 +244,88 @@ PsychError SCREENEndOpenGL(void)
 	
 	// Switch to our windows own OpenGL context and enable it as drawingtarget:
 
-	// Current state: Userspace context bound, possibly with a FBO binding active.
-	// Internal drawingtarget is still set properly in our internal inactive context,
-	// but possible FBO bindings are not set.
-	//
-	// Wanted intermediate state: Unbind FBO in userspace context, unbind userspace context.
-	// Bind internal context, preserve its drawingtarget, but restore possible FBO
-	// bindings for that drawingtarget.
-	
-	// Query current FBO binding in userspace context. We need to manually transfer this back to the PTB context, so
-	// it can render into our window:
-	if (glBindFramebufferEXT) {
-		fboid = 0;
-		glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &fboid);
-	}
-	
-	// Flush our context before context switch:
-	glFlush();
-	
-	// Unbind possible FBOs, so system FB is active in our context:
-	if (glBindFramebufferEXT) {
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		glFlush();
-	}
+    // MK: Note to self at 31. July 2012, after thinking about this for > 1 hour:
+    // The fboid and preswitchWindowRecord code looks redundant and as if it could
+    // get replaced by a simple PsychSetDrawingTarget(NULL) call in 'BeginOpenGL', to
+    // let the PsychSetDrawingTarget(windowRecord); call below do all the work, but
+    // *this is not the case* !!! Do not touch it! It is good as it is.
+    //
+    // Reason: The intermediate switching Voodoo is needed if PTB is used with the
+    // imaging pipeline (partially) disabled for at least one of the participating
+    // windows. We need the global currentRenderTarget to stay what it is aka 
+    // preswitchWindowRecord, and not turn to NULL while 3D rendering, because
+    // we must not trigger the transition logic from NULL to windowRecord in the call to
+    // PsychSetDrawingTarget(windowRecord); -- This would trigger a restore operation of
+    // the framebuffer as it was pre-BeginOpenGL from the shadow framebuffer backup textures,
+    // thereby undoing all the rendering work between BeginOpenGL and EndOpenGL.
+    //
+    // The only way we could get safely rid of this logic would be to always have the imaging
+    // pipeline enabled on all windows -- to make OpenGL 2.1 with FBO extension and all other
+    // required extensions mandatory for use of PTB. Iow., we would drop support for all GPU's
+    // older than about OpenGL-3 / Direct3D-10 and would accept a significant memory overhead
+    // for using all the FBO backing and FBO blitting even in use cases where enabling the
+    // full pipeline has no benefit whatsoever. This would be a bad tradeoff, saving a fraction
+    // of a millisecond here (potentially) while wasting dozens of MB VRAM+RAM and adding 1
+    // millisecond overhead and increased hardware spec requirements to any PTB script.
+    //
+    // Ok, we *can* skip it if sharecontext flag has been set to 1 to (ab)use the Screen() 2D internal
+    // OpenGL rendering context for 3D userspace rendering. In that case no actual context switching
+    // or change of framebuffer FBO bindings or any kind of framebuffer shadow backup-restore happens,
+    // so the whole 'BeginOpenGL' -> 'EndOpenGL' call sequence is mostly a no-op. The only thing done
+    // is setting the 2D drawingtarget at 'Begin/EndOpenGL' time if needed, to get the buffer bindings
+    // and viewports / scissors / matrices et al. correct, setting of the userspace flag, and some
+    // glGetError() error checking if not disabled by usercode.
+    if (sharecontext == 0 || sharecontext == 2) {
+        // Current state: Userspace context bound, possibly with a FBO binding active.
+        // Internal drawingtarget is still set properly in our internal inactive context,
+        // but possible FBO bindings are not set.
+        //
+        // Wanted intermediate state: Unbind FBO in userspace context, unbind userspace context.
+        // Bind internal context, preserve its drawingtarget, but restore possible FBO
+        // bindings for that drawingtarget.
 
-	// Bind OpenGL context of pre-userspacerendering-switch-state:
-	PsychSetGLContext(preswitchWindowRecord);
-	
-	// Rebind possible old FBOs:
-	if (glBindFramebufferEXT) {
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
-	}
+        // Query current FBO binding in userspace context. We need to manually transfer this back to the PTB context, so
+        // it can render into our window:
+        if (glBindFramebufferEXT) {
+            fboid = 0;
+            glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &fboid);
+        }
+        
+        // Bind OpenGL context of pre-userspacerendering-switch-state:
+        // This implicitely flushes the old context and unbinds any FBO's if neccessary
+        // before the transition:
+        PsychSetGLContext(preswitchWindowRecord);
+        
+        // Rebind possible old FBOs:
+        if (glBindFramebufferEXT && (fboid > 0)) {
+            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
+        }
 
-	// Reset error state for our internal context:
-    while (glGetError()!=GL_NO_ERROR);
-
+        // Reset error state for our internal context:
+        if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) while (glGetError()!=GL_NO_ERROR);
+    }
+    
 	// Current intermediate state: Preswitch state restored, ie. the OpenGL context and
 	// FBO bindings (and as part of context state all viewport/matrix/scissor setups etc.)
 	// are set as it was before 'BeginOpenGL' was called. The drawingtarget is also the
 	// same.
-	preswitchWindowRecord = NULL;
 	
-	// This call binds our internal OpenGL context for the requested 'windowRecord' and sets up the windowRecord for drawing:
-	// It's a no-op if preswitch windowRecord == the requested windowRecord. Otherwise a standard context switch and drawing
-	// target switch will occur:
-    PsychSetDrawingTarget(windowRecord); 
+    // Avoid a no-op call to PsychSetDrawingTarget() as it would still perform a redundant no-op context-switch
+    // causing a bit of overhead:
+    if (windowRecord != preswitchWindowRecord) {
+        // This call binds our internal OpenGL context for the requested 'windowRecord' and sets up the windowRecord for drawing:
+        // It's a no-op if preswitch windowRecord == the requested windowRecord. Otherwise a standard context switch and drawing
+        // target switch will occur:
+        PsychSetDrawingTarget(windowRecord); 
 
-	// Reset error state for our internal context:
-    while (glGetError()!=GL_NO_ERROR);
-  
+        // Reset error state for our internal context:
+        if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) while (glGetError()!=GL_NO_ERROR);
+    }
+    
+    // Reset preswitch record and state:
+	preswitchWindowRecord = NULL;
+    sharecontext = 0;
+    
 	// Ready for internal rendering:
     return(PsychError_none);
 }

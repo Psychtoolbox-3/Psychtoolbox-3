@@ -629,6 +629,14 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	
 	if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Moviehandle %i successfully opened for movie writing into file '%s'.\n", moviehandle, moviefile);
 
+    // Should we dump the whole encoding pipeline graph to a file for visualization
+    // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
+    if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
+        // Dump complete encoding filter graph to a .dot file for later visualization with GraphViz:
+        printf("PTB-DEBUG: Dumping movie encoder graph for movie %s to directory %s.\n", moviefile, getenv("GST_DEBUG_DUMP_DOT_DIR"));
+        GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pwriterRec->Movie), GST_DEBUG_GRAPH_SHOW_ALL, "PsychMovieWritingGraph");
+    }
+
 	// Return new handle:
 	return(moviehandle);
 

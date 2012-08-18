@@ -24,6 +24,11 @@
 
 #include "Screen.h"
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+// Need these includes to make setting display brightness work:
+#include <IOKit/graphics/IOGraphicsLib.h>
+#endif
+
 const char *FieldNames[]={"width", "height", "pixelSize", "hz"};
 
 PsychError SCREENConfigureDisplay(void)

@@ -2280,6 +2280,11 @@ if ~isempty(floc)
                     warpoperator = CreateGLOperator(win);
                     AddImageUndistortionToGLOperator(warpoperator, premaptex, warpstruct);
                     postmaptex = Screen('TransformTexture', premaptex, warpoperator, [], postmaptex);
+                    glerr = glGetError;
+                    if glerr
+                        % We get this error on some NVidia binary blob graphics driver on Linux, e.g., v295.49. Swallow it, it seems to cause no consequences:
+                        fprintf('PsychImaging: GeometryCorrection: Spurious benign gl error [%s] after computing postmap texture detected.\n', gluErrorString(glerr));
+                    end
                     curmap = Screen('GetImage', postmaptex, [], [], 1, 3);
                     Screen('Close', [premaptex, postmaptex, warpoperator]);
                     curmap(:,:,1) = curmap(:,:,1) * winwidth;

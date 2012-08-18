@@ -158,7 +158,7 @@ void* PsychAsyncCreateMovie(void* inmovieinfo)
     }
     
     // Execute our normal OpenMovie function: This does the hard work:
-    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle, movieinfo->asyncFlag, movieinfo->specialFlags1, movieinfo->pixelFormat);
+    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle, movieinfo->asyncFlag, movieinfo->specialFlags1, movieinfo->pixelFormat, movieinfo->maxNumberThreads);
 	
     // Ok, either we have a moviehandle to a valid movie, or we failed, which would
     // be signalled to the calling function via some negative moviehandle:
@@ -179,21 +179,21 @@ void* PsychAsyncCreateMovie(void* inmovieinfo)
  *      moviename = char* with the name of the moviefile.
  *      moviehandle = handle to the new movie.
  */
-void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat)
+void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads)
 {
-	if (usegs()) {
-	#ifdef PTB_USE_GSTREAMER
-	PsychGSCreateMovie(win, moviename, preloadSecs, moviehandle, asyncFlag, specialFlags1, pixelFormat);
-	return;
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	PsychQTCreateMovie(win, moviename, preloadSecs, moviehandle, specialFlags1);
-	return;
-	#endif
-	}
+    if (usegs()) {
+        #ifdef PTB_USE_GSTREAMER
+        PsychGSCreateMovie(win, moviename, preloadSecs, moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads);
+        return;
+        #endif
+    } else {
+        #ifdef PSYCHQTAVAIL
+        PsychQTCreateMovie(win, moviename, preloadSecs, moviehandle, specialFlags1);
+        return;
+        #endif
+    }
 
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 }
 
 /*

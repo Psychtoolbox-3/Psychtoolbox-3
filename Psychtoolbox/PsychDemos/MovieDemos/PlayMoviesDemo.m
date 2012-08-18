@@ -1,10 +1,10 @@
-function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat)
+function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat, maxThreads)
 %
-% PlayMoviesDemo(moviename [, backgroundMaskOut][, tolerance][, pixelFormat=4])
+% PlayMoviesDemo(moviename [, backgroundMaskOut][, tolerance][, pixelFormat=4][, maxThreads=-1])
 %
 % This demo accepts a pattern for a valid moviename, e.g.,
-% moviename='*.mpg', then it plays all movies in the current working
-% directory whose names match the provided pattern, e.g., the '*.mpg'
+% moviename=`*.mpg`, then it plays all movies in the current working
+% directory whose names match the provided pattern, e.g., the `*.mpg`
 % pattern would play all MPEG files in the current directory.
 %
 % If you don't specify a moviename, the demo will ask you if it should play
@@ -29,12 +29,19 @@ function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat)
 % color. Background color masking requires a graphics card with fragment
 % shader support and will fail otherwise.
 %
-% If the optional 'pixelFormat' is specified, it is used to choose
+% If the optional `pixelFormat` is specified, it is used to choose
 % optimized video playback methods for specific content. Valid values are 1
 % or 2 for greyscale video playback, and 7 or 8 for optimized grayscale
 % video playback on modern GPU's with GLSL shading support. Values 3, 4, 5
 % and 6 play back color video. 4 is the default, 5 or 6 may provide
 % significantly improved playback performance on modern GPUs.
+%
+% If the optional `maxThreads` is specified, it defines the maximum number
+% of parallel processing threads that should be used by multi-threaded
+% video codecs for playback. A setting of n selects n threads, a setting of
+% zero asks to auto-select an optimum number of threads for a given
+% computer. By default, a codec specific default number is used, typically
+% one thread.
 %
 
 % History:
@@ -46,6 +53,7 @@ function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat)
 %               the fairy-tales of the iPhone company.
 % 06/30/12  mk  Add 'pixelFormat' parameter, disable pathetic Apple PR
 %               videos. Enable cool videos on OSX-64Bit as well.
+% 08/03/12  mk  Add 'maxThreads' parameter.
 
 theanswer = [];
 
@@ -90,6 +98,11 @@ try
     % Use default pixelFormat if none specified:
     if nargin < 4
         pixelFormat = [];
+    end
+    
+    % Use default maxThreads if none specified:
+    if nargin < 5
+        maxThreads = [];
     end
     
     % Clear screen to background color:
@@ -177,7 +190,7 @@ try
         moviename=moviefiles(mod(iteration, moviecount)+1).name;
         
         % Open movie file and retrieve basic info about movie:
-        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat);
+        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
         
         i=0;

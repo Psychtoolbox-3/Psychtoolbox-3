@@ -343,6 +343,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
     (*winRec)->VBL_Startline = 0;
     (*winRec)->VBL_Endline = 0;
     
+    // One-Time setup of some parameters needed for userspace OpenGL context at first real bind:
+    (*winRec)->needsViewportSetup = TRUE;
+    
 	return;
 }
 

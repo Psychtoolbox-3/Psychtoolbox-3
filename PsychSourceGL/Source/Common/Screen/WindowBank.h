@@ -296,10 +296,12 @@ typedef struct _PsychWindowRecordType_{
         GLint               textureI420PlanarShader; // Optional GLSL program handle for shader to convert a YUV-I420 planar texture into a standard RGBA8 texture.
         GLint               textureI800PlanarShader; // Optional GLSL program handle for shader to convert a Y8-I800 planar texture into a standard RGBA8 texture.
 
+        psych_bool          needsViewportSetup;      // Set on userspace OpenGL contexts to signal need for glViewport setup and other one-time stuff on first 'BeginOpenGL'.
+
         //line stipple attributes, for windows not textures.
-        GLushort				stipplePattern;
-        GLint					stippleFactor;
-        psych_bool					stippleEnabled;
+        psych_bool          stippleEnabled;
+        GLushort            stipplePattern;
+        GLint               stippleFactor;
         
 		GLboolean								colorMask[4];			// psych_bool 4 element array which encodes the glColorMask() for this window.
 		unsigned int							gfxcaps;				// Bitfield of gfx-cards capabilities and limitations: See constants kPsychGfxCapXXXX above.

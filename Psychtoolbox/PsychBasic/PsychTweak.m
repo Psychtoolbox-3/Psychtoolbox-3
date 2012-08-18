@@ -51,19 +51,11 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % PsychTweak('GStreamerDumpFilterGraph', targetDirectory);
 %
 % -- Ask GStreamer to dump a snapshot of its current media processing
-% pipeline into a .dot file at each pipeline state change. These .dot files
-% can be read by open-source tools like GraphViz and turned into
+% pipeline into a .dot file at each important pipeline state change. These
+% .dot files can be read by open-source tools like GraphViz and turned into
 % visualizations of the complete structure and state of the media
 % processing pipeline. `targetDirectory` must be the full path to an
 % existing directory where the .dot files should be written to.
-%
-%
-% PsychTweak('GStreamerDecodeThreads', numThreads);
-%
-% -- Ask GStreamer to use up to `numThreads` processing threads for video
-% decoding during movie playback. By default, GStreamer decides itself,
-% based on a given hardware configuration, e.g., the number of processor
-% cores in a system.
 %
 %
 % MS-Windows only tweaks:
@@ -235,20 +227,6 @@ if strcmpi(cmd, 'GStreamerDumpFilterGraph')
     end
     
     setenv('GST_DEBUG_DUMP_DOT_DIR', val);
-    return;
-end
-
-if strcmpi(cmd, 'GStreamerDecodeThreads')
-    if length(varargin) < 1
-        error('Must provide number of video decoder threads.');
-    end
-    
-    val = varargin{1};
-    if ~isscalar(val) || ~isnumeric(val)
-        error('Must provide an integer as argument!');
-    end
-    
-    setenv('PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS', sprintf('%i', round(val)));
     return;
 end
 
