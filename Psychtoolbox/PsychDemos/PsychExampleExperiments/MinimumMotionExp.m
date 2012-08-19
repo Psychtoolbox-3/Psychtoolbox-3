@@ -1,14 +1,13 @@
-function MinimumMotionExp
-% MinimumMotionExp
+function MinimumMotionExp(writeResult)
+% MinimumMotionExp([writeResult=0])
 %
-% Minimum motion luminance measurement (Anstis and Cavanagh).
-% Rapid, precise, and works well down to 1hz, or 1  cpd.
-% Self-contained script, with optional gamma file input or default.
-% BPP constant in scripts selects BitsPlusPlus present (=1) / absent =0)
+% Minimum motion luminance measurement (Anstis and Cavanagh). Rapid,
+% precise, and works well down to 1hz, or 1  cpd. Self-contained script,
+% with optional gamma file input or default.
 %
 % Measures red/green and blue/green foveal or extrafoveal equiluminance
 % using the Cavanagh, MacLeod and Anstis (1987) sinusoidal minimum motion
-% stimulus, here drawn as a windmill. 
+% stimulus, here drawn as a windmill.
 %
 % One component of the test stimulus is a rotary sine wave where peaks of 1
 % phosphor coincide with troughs of a second phosphor. This is counterphase
@@ -23,26 +22,29 @@ function MinimumMotionExp
 % the green, or the blue phosphor luminance relative to the red. Reported
 % values are the ratios of phosphor luminances when each phosphor is at
 % maximum intensity. Average stimulus chromaticity and luminance are kept
-% constant during the adjustment. 
+% constant during the adjustment.
 %
-% The stimulus is produced by clut animation (palette mode).
-% If BPP is nonzero, we assume that DVI video output is relayed to the
-% monitor via a CRS BitsPlusPlus device, allowing fine control of
-% modulation depths and corresponding precision in luminance estimates.
-% Otherwise set BPP to zero. In either case, Psychophysics Toolbox 3 and
-% Matlab 6.1 or later are required. To run without BitsPlusPlus, which works
-% fine, set BPP to 0 in the early instructions below.
+% The stimulus is produced by clut animation (palette mode). If BPP is
+% nonzero, we assume that DVI video output is relayed to the monitor via a
+% CRS BitsPlusPlus device, or via a DataPixx/ViewPixx device allowing fine
+% control of modulation depths and corresponding precision in luminance
+% estimates. Otherwise set BPP to zero. In either case, Psychophysics
+% Toolbox 3 and Matlab 7.4 or later (or Octave 3.2 or later) are required.
 %
 % Note: Writing of result files is disabled, but can be enabled in a
-% "production setting" by changing the variable 'writeResult' to 1.
+% "production setting" by providing the optional argument 'writeResult' as
+% 1.
 %
-% This script is contributed by Don MacLeod, UCSD. It was slightly modified
-% by Mario Kleiner for portability across all supported operating systems
-% and for optimized speed.
+% This script is contributed by Don MacLeod, UCSD. It was modified by Mario
+% Kleiner for portability across all supported operating systems and for
+% optimized speed.
+%
 
 % History:
 % 03/03/08  Initial checking by MK on behalf of Don MacLeod.
 % 12/20/09  Add support for VPixx DataPixx. (MK)
+% 08/19/12  Use PsychImaging CLUT mapping mode instead of moglClutBlit().
+%           This simplifies code somewhat. (MK)
 
 clear all;
 clc;
@@ -52,18 +54,19 @@ disp('==A fast, precise, versatile and eternally fascinating photometric techniq
 fprintf('\n');
 
 % Set writeResult to 1 if you want to actually really write result files.
-% Its == 0 to suppress writing when running as PTB demo.
-writeResult = 0;
+if nargin < 1 || isempty(writeResult)
+    % It is == 0 by default to suppress writing when running as PTB demo.
+    writeResult = 0;
+end
 
-
-useBPPString = input('Do you want to use the Bits++ box for stimulation [y/n]? ', 's');
+useBPPString = input('Do you want to use the Bits++ box or DataPixx/ViewPixx for stimulation [y/n]? ', 's');
 if strcmpi(useBPPString, 'y')
-    BPP = 1;  % Use Cambridge Research Systems Bits++ box in Bits++ mode (CLUT mode).
+    BPP = 1;  % Use high precision display device in CLUT mode.
 else
     BPP = 0;  % Use standard 8 bpc graphics card.
 end
 
-if writeResult & ~exist('data','dir')
+if (writeResult > 0) && ~exist('data','dir')
     mkdir(data);  % create this subdirectory if it doesn't already exist
 end
 
@@ -83,21 +86,11 @@ escape = KbName('ESCAPE');
 GAMMA = 2.7;
 
 if BPP
-    disp('Using CRS Bits++ in Bits++ CLUT mode.')
+    disp('Using CRS Bits++ in Bits++ CLUT mode or DataPixx/ViewPixx in L48 mode.')
     GTBLENGTH = 65536;
 else
-    disp('Using standard graphics card with moglClutBlit().')
+    disp('Using standard graphics card with 8 bpc framebuffer.')
     GTBLENGTH = 256;
-
-    % Enable MatlabOpenGL for moglClutBlit Clut animation (not needed with
-    % BPP, where Clut is passed to the BitsPlusPlus in the frame buffer,
-    % with no prior Clut transformation). We set the 'no3D' flag (==1) to
-    % tell PTB that we don't need true 3D graphics, only the commands for
-    % some funky 2D stuff. We also set the debuglevel to zero (==0), so no
-    % extensive error checking is done -- saves a bit of processing time.
-    % Obviously you should only disable error checking after you've
-    % debugged your script!
-    InitializeMatlabOpenGL([], 0, 1);
 end
 
 disp('For default gamma compensation (gamma = 2.7), just hit enter at the following prompt: ');
@@ -128,7 +121,7 @@ ncycles = 18;   % number of windmill segments; spatial frequency in cpd is secto
 % ...might alternatively define spatial frequency first, derive ncycles, or else make these and/or drift rate condition-dependent. 
 % ncycles must be integer (to allow the stimulus to be drawn only once, repeated in frame-dependent colorings.) 
 currentcols=zeros(256,3);
-DateOfExperiment = date;
+DateOfExperiment = date; %#ok<*NASGU>
 MAXCOL = 1; % Palette rgb intensity values will range from zero to MAXCOL
 ADAPTRGB = MAXCOL*[ 0.5000  0.31   0.24 ]
 lurecontrast = 0.08; % Michelson contrast of lure; .05 for precision, more for easy capture
@@ -163,31 +156,37 @@ try
     % the end of the session:
     BackupCluts(screenid);
 
+    % Prepare imaging pipeline:
+    PsychImaging('PrepareConfiguration');
+    
     % Use Bits++ for stimulation?
     if BPP
-        % Use PTB's built-in setup code for Bits++ mode: This will load an
-        % identity gammatable into the graphics card, so Bits++ T-Lock
-        % codes pass through unmodified. It will also enable automatic
-        % updates of the Bits++ CLUT via Screen('LoadNormalizedGammatable',
-        % ...) - PTB will automatically convert CLUT's into proper T-Lock
-        % codes and draw them in the top line of the frame at each
-        % Screen('Flip').
-        PsychImaging('PrepareConfiguration');
+        % Use PTB's built-in setup code for Bits++ or DataPixx/Viewpixx
+        % mode: This will load an identity gammatable into the graphics
+        % card, so Bits++ T-Lock codes pass through unmodified. It will
+        % also enable automatic updates of the Bits++ / DataPixx CLUT via
+        % Screen('LoadNormalizedGammatable', ...) - PTB will automatically
+        % convert CLUT's into proper T-Lock codes and draw them in the top
+        % line of the frame at each Screen('Flip') - or perform the
+        % equivalent action for a DataPixx or ViewPixx.
         useDPIXXString = input('Do you want to use the DataPixx box instead of Bits++ box for stimulation [y/n]? ', 's');
         if strcmpi(useDPIXXString, 'y')
             PsychImaging('AddTask', 'General', 'EnableDataPixxL48Output');
         else
             PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
         end
-        wptr = PsychImaging('OpenWindow',screenid);
     else
-        % Use standard graphics output. Simply open window as usual:
-        wptr = Screen('OpenWindow',screenid); % open screen window with default background...
+        % Enable CLUT animation by CLUT mapping, using a 8bpc, 256 slot clut:
+        PsychImaging('AddTask', 'AllViews', 'EnableCLUTMapping');        
 
-        % Load InvGammaTable into graphics card for gamma correction:
+        % Load InvGammaTable immediately into graphics card for gamma correction:
         Screen('LoadNormalizedGammaTable', screenid, InvGammaTable);
     end
 
+    % Open screen window with default background and imaging pipeline setup
+    % for Bits+/Datapixx/Regular CLUT animation:
+    wptr = PsychImaging('OpenWindow', screenid);
+    
     % Open the offscreen window into which we draw the "index color image"
     % which defines the appearance of the "color wheel":
     [offwptr,screenRect] = Screen('OpenOffscreenWindow',wptr, 0); % open offscreen window
@@ -203,11 +202,11 @@ try
     flipinterval = Screen('GetFlipInterval',wptr);
     
     driftratehz = 2      % hz
-    ASSUMEDREFRESHRATE = 1/flipinterval % assumedrefresh rate
+    ASSUMEDREFRESHRATE = 1/flipinterval %#ok<*NOPRT> % assumedrefresh rate
     period = 1/driftratehz; % sec
     nframes = round(ASSUMEDREFRESHRATE*period); % frames (vertical retraces) per cycle
     if mod(ASSUMEDREFRESHRATE,driftratehz)
-        warning('Drift period is not a multiple of monitor refresh interval: rounding'); % avoidable if each frame were drawn freshly
+        warning('Drift period is not a multiple of monitor refresh interval: rounding'); %#ok<*WNTAG> % avoidable if each frame were drawn freshly
         fprintf('Stipulated drift rate: %f Hz, actual %f Hz\n', driftratehz, 1/(flipinterval*nframes));
     end
     
@@ -225,7 +224,7 @@ try
     % __________________________________________________
     datalist = [];
     for i=1:nblocks % create a list of condition indexes (to the conditionset list) in random order
-        condindex(:,i)=randperm(nconds)'; % =(1:nconds);%
+        condindex(:,i)=randperm(nconds)'; %#ok<*AGROW> % =(1:nconds);%
     end
     
     % Preallocate some matrices needed later to speedup Matlabs processing:
@@ -332,7 +331,7 @@ try
                 testdeltas(:,:,incphos) = (-lum*rangescaler*stcosine);  % incphos values, OK for low lum but can exceed range, so...
                 testdeltas(:,:,staticphos) = zeros(size(stcosine));     % nframe by sectorspercycle matrix of b values: put outside loop?
 
-                rphosvals(:,BACKINDEX+[1:sectorspercycle]) =   max(0,ADAPTRGB(1) + testdeltas(:,:,1) + luredeltas(:,:,1)); % '-lure' to make direction of response to mouse intuitive
+                rphosvals(:,BACKINDEX+[1:sectorspercycle]) =   max(0,ADAPTRGB(1) + testdeltas(:,:,1) + luredeltas(:,:,1)); %#ok<*NBRAK> % '-lure' to make direction of response to mouse intuitive
                 gphosvals(:,BACKINDEX+[1:sectorspercycle]) =   max(0,ADAPTRGB(2) + testdeltas(:,:,2) + luredeltas(:,:,2));
                 bphosvals(:,BACKINDEX+[1:sectorspercycle]) =   max(0,ADAPTRGB(3) + testdeltas(:,:,3) + luredeltas(:,:,3));
                 rphosvals(:,256) = 0; % fixation point
@@ -351,11 +350,22 @@ try
                 t_end = GetSecs;
                 cycletime = t_end - tstart;
                 if cycletime > (nframes +1) * flipinterval
-                    cycletime
                     fprintf('Requested drift rate not attained on cycle %f: reduce sectorspercycle (per spatial cycle?) %fHz vs. %fHz\n', loopcount, 1/cycletime, driftratehz)
                 end
             end
 
+            % Drawing of windmill image is only needed during first two
+            % draw cycles to put the image into the two buffers of our
+            % double-buffered window. As the window isn't cleared after
+            % a flip, no need to redraw at all following cycles:
+            if loopcount <= 2
+                % Draw offscreen window with stimulus "windmill" index image to framebuffer.
+                % Set filterMode == 0 to disable any kind of interpolation.
+                % We want the pixels exactly as defined in the offscreen
+                % window, so CLUT palette animation works:
+                Screen('DrawTexture', wptr, offwptr, [], [], [], 0);
+            end
+            
             % now transform the desired intensities (0...1) into digital
             % video card output (DVI) values for R,G,B, using the provided
             % gammatable or else the default one
@@ -388,30 +398,18 @@ try
                 % functions! The flag '2' enables this special mode,
                 % whereas a flag of 0 or 1 would affect the standard gamma
                 % tables of the graphics card:
-                Screen('LoadNormalizedGammaTable', wptr, Clut, 2);
-                
-                % Drawing of windmill image is only needed during first two
-                % draw cycles to put the image into the two buffers of our
-                % double-buffered window. As the window isn't cleared after
-                % a flip, no need to redraw at all following cycles:
-                if loopcount <= 2
-                    % Draw offscreen window with stimulus "windmill" index image to framebuffer.
-                    % Set filterMode == 0 to disable any kind of interpolation.
-                    % We want the pixels exactly as defined in the offscreen
-                    % window, so CLUT palette animation works:
-                    Screen('DrawTexture', wptr, offwptr, [], [], [], 0 );
-                end
+                Screen('LoadNormalizedGammaTable', wptr, Clut, 2);                
             else
                 % Standard graphics: Gamma correction is already done by
-                % the hardware gammatables of the graphics card (see setup at top of
-                % script). We just need to apply the current CLUT
-                % 'currentcols' to the color index image in offscreen
-                % window 'offwptr' to convert it into the final true-color
-                % RGB stimulus image for this frame - and blit it to the
-                % framebuffer: currentcols is in range [0;1] but we need
-                % range [0;255] for the 8 bpc framebuffer, thereby multiply
-                % by 255:
-                moglClutBlit(wptr, offwptr , 255*currentcols); % recycle off-screen image to screen window, applying currentcols Clut
+                % the hardware gammatables of the graphics card (see setup
+                % at top of script). We just need to apply the current CLUT
+                % 'currentcols' to the color index image in the onscreen
+                % window to convert it into the final true-color RGB
+                % stimulus image for this frame.
+                %
+                % We ask the imaging pipeline to apply itto the framebuffer
+                % at next 'Flip', similar to what the Bits++ path does:
+                Screen('LoadNormalizedGammaTable', wptr, currentcols, 2);
             end
             
             % Show updated stimulus image (or same image with updated
@@ -438,7 +436,7 @@ try
         % wait until key is released, to avoid multiple saves of one setting
         while keyisdown || any(button)
             keyisdown = KbCheck;
-            [xi, yi, button] = GetMouse(wptr);
+            [xi, yi, button] = GetMouse(wptr); %#ok<*ASGLU>
         end
    
         % Modification for PTB demo: Only write results if writeResult = 1:
@@ -473,10 +471,12 @@ try
     %                 -- Clean up --
     % __________________________________________________
     
-    % Load identity mapping CLUT into Bits++, so it works as a normal
-    % display:
-    BitsPlusPlus('LoadIdentityClut', wptr);
-
+    if BPP
+        % Load identity mapping CLUT into Bits++ / DataPixx, so it works
+        % again as a normal display:
+        BitsPlusPlus('LoadIdentityClut', wptr);
+    end
+    
     % Do a single flip to clear out display to background color:
     Screen('Flip', wptr);
     
@@ -486,38 +486,26 @@ try
     % Restore pre-session gammatable into graphics card:
     RestoreCluts;
 
-    % Disable moglClutBlit, if used in non BPP mode:
-    if ~BPP
-        moglClutBlit;
-    end
-    
     % Close window and release all ressources:
     Screen('CloseAll');
 
     % Done!
     return;
     
-catch
+catch %#ok<*CTCH>
     % Cleanup in case of error and error handling:
-    tmp = psychlasterror;
-    save lasterrormsg tmp;  % create a file with error message, in case Matlab needs to quit
-
+    
     % Switch back to normal priority:
     Priority(0);
 
     % Load identity mapping CLUT into Bits++, so it works as a normal
     % display:
-    if exist('wptr', 'variable')
+    if BPP && exist('wptr', 'var')
         BitsPlusPlus('LoadIdentityClut', wptr);
     end
     
     % Restore pre-session gammatable into graphics card:
     RestoreCluts;
-    
-    % Disable moglClutBlit, if used in non BPP mode:
-    if ~BPP
-        moglClutBlit;
-    end
     
     % Close window and release all ressources:
     Screen('CloseAll');
@@ -525,4 +513,5 @@ catch
     % Rethrow the error for Matlabs error reporting to kick in:
     psychrethrow(psychlasterror);
 end
+
 return;
