@@ -59,6 +59,9 @@ function LoadMovieIntoTexturesDemo(moviename, fromTime, toTime, indexisFrames, b
 % functionality and flexibility, but helpful if highest performance is a
 % requirement.
 %
+% The following options are only available if the GStreamer movie playback
+% engine is used, instead of Apple's legacy Quicktime implementation:
+%
 % pixelFormat - Format of video texture to create: 1 = Luminance/Grayscale
 % only, 2 = Luminance+Alpha, 3 = RGB color, 4 = RGBA, 5 = YUV-422 packed
 % pixel, 6 = YUV-I420 planar format. 5 and 6 = Y8-Y800 planar luminance
@@ -190,8 +193,18 @@ try
         
     % Open the moviefile and query some infos like duration, framerate,
     % width and height of video frames...
-    [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, async, preloadSecs, specialflags, pixelFormat);
-
+    
+    % Some legacy Screen() mex files don't support the pixelFormat flag,
+    % therefore we try to do without it if it is not used anyway, avoiding
+    % an error abort:
+    if ~isempty(pixelFormat)
+        % Use pixelFormat:
+        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, async, preloadSecs, specialflags, pixelFormat);
+    else
+        % Legacy compatible call without pixelFormat:
+        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, async, preloadSecs, specialflags);
+    end
+    
     % Move to requested timeindex where texture loading should start:
     if indexisFrames
         Screen('SetMovieTimeIndex', movie, fromTime, 1);

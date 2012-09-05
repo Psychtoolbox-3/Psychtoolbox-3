@@ -29,6 +29,9 @@ function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat, ma
 % color. Background color masking requires a graphics card with fragment
 % shader support and will fail otherwise.
 %
+% The following options are only available if the GStreamer movie playback
+% engine is used, instead of Apple's legacy Quicktime implementation:
+%
 % If the optional `pixelFormat` is specified, it is used to choose
 % optimized video playback methods for specific content. Valid values are 1
 % or 2 for greyscale video playback, and 7 or 8 for optimized grayscale
@@ -147,21 +150,23 @@ try
         if IsLinux || IsWin || IsOSX(1) || (Screen('Preference', 'OverrideMultimediaEngine') == 1)
             % Promotional videos for the best OS for cognitive science, and technical/educational
             % videos some users may find of practical use:
+            
+            % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
+            moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';            
 
             % ELC 2012 talk: Gstreamer-1.0 No-longer-compromise-flexibility-for-performance:
             moviefiles(end+1).name = 'http://d17mmld7179ppq.cloudfront.net/gstreamer-10-no-longer-compromise-flexibility-for-performance_52ca47/hd_ready.webm';
-            
-            % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
-            moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';
         end
 
-        % Don't play Apple PR bullshit videos anymore by default. Only left here
-        % for debugging.
-        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_group_20080512_480x272.mov';
-        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_sadsong_extended_20080519_480x272.mov';
-        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_breakthrough_20080401_480x272.mov';
-        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple-getamac-fat_480x376.mov';
-        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac_ads4/prlady_480x272.mov';
+        if IsOSX && ~IsOSX(1)
+            % Only play Apple PR bullshit videos on 32-Bit legacy OSX by
+            % default, where we don't have anything better to show:
+            moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_group_20080512_480x272.mov';
+            moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_sadsong_extended_20080519_480x272.mov';
+            moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_breakthrough_20080401_480x272.mov';
+            moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple-getamac-fat_480x376.mov';
+            moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac_ads4/prlady_480x272.mov';
+        end
         
         % Count all movies in our playlist:
         moviecount = size(moviefiles,2);
@@ -177,7 +182,7 @@ try
         blocking = 0;
 
         % For network playback we use a higher than default caching time:
-        preloadsecs = 10;
+        % Actually, we don't, as some network streaming videos don't like this, e.g., Youtube: preloadsecs = 10;
     end
 
     % Playbackrate defaults to 1:
@@ -190,7 +195,16 @@ try
         moviename=moviefiles(mod(iteration, moviecount)+1).name;
         
         % Open movie file and retrieve basic info about movie:
-        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);
+        % Some legacy Screen() mex files don't support the pixelFormat or
+        % maxThreads flag, therefore we try to do without them if they are not
+        % used anyway, avoiding an error abort:
+        if ~isempty(pixelFormat) || ~isempty(maxThreads)
+            [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);
+        else
+            % Legacy compatible call:
+            [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs);
+        end
+        
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
         
         i=0;

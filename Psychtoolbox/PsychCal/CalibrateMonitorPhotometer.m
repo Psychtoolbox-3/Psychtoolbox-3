@@ -1,5 +1,5 @@
-function [ gammaTable1, gammaTable2, displayBaseline, displayRange, displayGamma ] = CalibrateMonitorPhotometer(numMeasures, screenid)
-% [gammaTable1, gammaTable2, displayRange. displayGamma] = CalibrateMonitorPhotometer([numMeasures=9][, screenid=max])
+function [ gammaTable1, gammaTable2, displayBaseline, displayRange, displayGamma, maxLevel ] = CalibrateMonitorPhotometer(numMeasures, screenid)
+% [gammaTable1, gammaTable2, displayBaseline, displayRange. displayGamma, maxLevel ] = CalibrateMonitorPhotometer([numMeasures=9][, screenid=max])
 %
 % A simple calibration script for analog photometers.
 %
@@ -16,7 +16,7 @@ function [ gammaTable1, gammaTable2, displayBaseline, displayRange, displayGamma
 %
 % If the normalized gamma table is not loaded, then the cd/m^2 value of a
 % screen value can be figured out by the formula: cdm2 =
-% displayRange*(screenval/255).^(1/displayGamma) + displayBaseline.
+% displayRange*(screenval/maxLevel).^(1/displayGamma) + displayBaseline.
 %
 % Generally, you will want to load the normalized gamma tables and use them
 % in Screen('LoadNormalizedGammaTable'). For example:
@@ -38,6 +38,8 @@ function [ gammaTable1, gammaTable2, displayBaseline, displayRange, displayGamma
 %               GetNumber(). Restore gamma table after measurement. Make
 %               more robust.
 % 19.08.2012 mk Some cleanup.
+%  4.09.2012 mk Use Screen('ColorRange') to adapt number/max of intensity
+%               level to given range of framebuffer.
 
 global vals;
 global inputV;
@@ -60,13 +62,14 @@ global inputV;
         
         % Open black window:
         win = Screen('OpenWindow', screenid, 0);
+        maxLevel = Screen('ColorRange', win);
 
         % Load identity gamma table for calibration:
         LoadIdentityClut(win);
 
         vals = [];
-        inputV = [0:256/(numMeasures - 1):256]; %#ok<NBRAK>
-        inputV(end) = 255;
+        inputV = [0:(maxLevel+1)/(numMeasures - 1):(maxLevel+1)]; %#ok<NBRAK>
+        inputV(end) = maxLevel;
         for i = inputV
             Screen('FillRect',win,i);
             Screen('Flip',win);
@@ -91,7 +94,7 @@ global inputV;
     
     %Normalize values
     vals = (vals - displayBaseline) / displayRange;
-    inputV = inputV/255;
+    inputV = inputV/maxLevel;
     
     if ~exist('fittype'); %#ok<EXIST>
         fprintf('This function needs fittype() for automatic fitting. This function is missing on your setup.\n');
@@ -105,22 +108,22 @@ global inputV;
     g = fittype('x^g');
     fittedmodel = fit(inputV',vals',g);
     displayGamma = fittedmodel.g;
-    gammaTable1 = ((([0:255]'/255))).^(1/fittedmodel.g); %#ok<NBRAK>
+    gammaTable1 = ((([0:maxLevel]'/maxLevel))).^(1/fittedmodel.g); %#ok<NBRAK>
     
-    firstFit = fittedmodel([0:255]/255); %#ok<NBRAK>
+    firstFit = fittedmodel([0:maxLevel]/maxLevel); %#ok<NBRAK>
     
     %Spline interp fitting
     fittedmodel = fit(inputV',vals','splineinterp');
-    secondFit = fittedmodel([0:255]/255); %#ok<NBRAK>
+    secondFit = fittedmodel([0:maxLevel]/maxLevel); %#ok<NBRAK>
     
     figure;
-    plot(inputV, vals, '.', [0:255]/255, firstFit, '--', [0:255]/255, secondFit, '-.'); %#ok<NBRAK>
+    plot(inputV, vals, '.', [0:maxLevel]/maxLevel, firstFit, '--', [0:maxLevel]/maxLevel, secondFit, '-.'); %#ok<NBRAK>
     legend('Measures', 'Gamma model', 'Spline interpolation');
     title(sprintf('Gamma model x^{%.2f} vs. Spline interpolation', displayGamma));
     
     %Invert interpolation
     fittedmodel = fit(vals',inputV','splineinterp');
     
-    gammaTable2 = fittedmodel([0:255]/255); %#ok<NBRAK>
+    gammaTable2 = fittedmodel([0:maxLevel]/maxLevel); %#ok<NBRAK>
     
 return;

@@ -21,7 +21,7 @@
 
 #include "Screen.h"
 
-static char useString[]="[textureHandle rect] = Screen('SetOpenGLTextureFromMemPointer', windowPtr, textureHandle, imagePtr, width, height, depth [, upsidedown][, target][, glinternalformat][, gltype][, extdataformat]);";
+static char useString[]="[textureHandle rect] = Screen('SetOpenGLTextureFromMemPointer', windowPtr, textureHandle, imagePtr, width, height, depth [, upsidedown][, target][, glinternalformat][, gltype][, extdataformat][, specialFlags]);";
 static char synopsisString[] = 
 "DANGEROUS! C-PROGRAMMING EXPERTS ONLY! OTHERS STAY AWAY! "
 "Convert raw image data, provided as a pointer to a system memory buffer, into a Psychtoolbox texture. "
@@ -43,7 +43,8 @@ static char synopsisString[] =
 "to provide all of them. In that case, PTB will create an OpenGL texture with exactly the specified internal "
 "format, assuming input data that is of type 'gltype' and in numeric data format 'extdataformat'. You are "
 "completely responsible for passing properly formatted data. This is mostly useful for injecting high dynamic "
-"range texture images and other exotic texture formats. "
+"range texture images and other exotic texture formats.\n"
+"'specialFlags' Special optional texture flags, see help for Screen('MakeTexture').\n"
 "The function returns the textureHandle of the PTB texture and its defining rectangle. "
 "This routine allows external C-Code (Mex- or Oct-Files) to inject raw image data as a texture into PTB. ";
 
@@ -53,6 +54,7 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
 {
     PsychWindowRecordType *windowRecord, *textureRecord;
     int w, h, d, testarg, upsidedown, glinternalformat, glexternaltype, glexternalformat, usefloatformat;
+    int specialFlags = 0;
     double doubleMemPtr;
     GLenum target = 0;
     w=h=d=-1;
@@ -63,7 +65,7 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(11));     // The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(12));     // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(5)); // The required number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(2));    // The maximum number of outputs
     
@@ -126,6 +128,9 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
       PsychCopyInIntegerArg(11, TRUE, &glexternaltype);      
     }
 
+    // Query optional specialFlags:
+    PsychCopyInIntegerArg(12, FALSE, &specialFlags);
+    
     // Safety checks:
     if (doubleMemPtr == 0) {
         PsychErrorExitMsg(PsychError_user, "You tried to set invalid (NULL) imagePtr.");
@@ -199,7 +204,11 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     usefloatformat = 0;
     if (d == 16) usefloatformat = 1;
     if (d >= 32) usefloatformat = 2;
-    PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, 0);
+
+    PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, (specialFlags & 2) ? 1 : 0);
+
+    // specialFlags setting 8? Disable auto-mipmap generation:
+    if (specialFlags & 0x8) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;    
 
     // Return new (or old) PTB textureHandle for this texture:
     PsychCopyOutDoubleArg(1, FALSE, textureRecord->windowIndex);

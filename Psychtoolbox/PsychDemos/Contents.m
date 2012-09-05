@@ -17,6 +17,8 @@
 %    BasicSoundInputDemo     - Demonstrate basic usage of PsychPortAudio() for sound capture.
 %    BasicSoundOutputDemo    - Demonstrate basic usage of PsychPortAudio() for sound playback.
 %    BasicSoundScheduleDemo  - Demonstrate basic usage of sound schedules and buffers with PsychPortAudio().
+%    BlurredMipmapDemo       - Apply blurring via OpenGL mip-mapping to live video or movies.
+%    BlurredVideoCaptureDemo - Demonstrate application of GPU accelerated image filters to live video.
 %    BubbleDemo              - Like GazeContingentDemoOSX, but with multiple apertures.
 %    CalDemo                 - Demonstrate use of calibration structure and associated routines.
 %    ClutAnimDemo            - Demonstrate lookup table animation.

@@ -1092,7 +1092,7 @@ if strcmp(cmd, 'OpenWindow')
             warning('BrightSide HDR output device selected on a non MS-Windows platform! Unsupported! Will use dummy emulation mode instead!');
         end
         
-        if nargin > 10
+        if nargin >= 10
             [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
         else
             [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
@@ -1106,7 +1106,7 @@ if strcmp(cmd, 'OpenWindow')
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin > 10
+        if nargin >= 10
             [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
         else
             [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
@@ -1126,7 +1126,7 @@ if strcmp(cmd, 'OpenWindow')
             bpcom = 'OpenWindowMono++';
         end
         
-        if nargin > 10
+        if nargin >= 10
             [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
         else
             [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
@@ -1140,7 +1140,7 @@ if strcmp(cmd, 'OpenWindow')
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin > 10
+        if nargin >= 10
             [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
         else
             [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
@@ -1149,7 +1149,7 @@ if strcmp(cmd, 'OpenWindow')
 
     if isempty(win)
         % Standard openwindow path:
-        if nargin > 10
+        if nargin >= 10
             [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
         else
             [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);

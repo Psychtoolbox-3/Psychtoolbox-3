@@ -70,15 +70,11 @@ PsychError PSYCHHIDGetDevices(void)
     
     sprintf(tmpString, "%sPsychHardware/", PsychRuntimeGetPsychtoolboxRoot(FALSE));
     CFStringRef urlString = CFStringCreateWithCString(kCFAllocatorDefault, tmpString, kCFStringEncodingASCII);
-    CFURLRef directoryURL = CFURLCreateWithString(kCFAllocatorDefault, urlString, NULL);
+    CFURLRef directoryURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, urlString, kCFURLPOSIXPathStyle, false);
     CFRelease(urlString);
     CFArrayRef bundleArray = CFBundleCreateBundlesFromDirectory(kCFAllocatorDefault, directoryURL, NULL);
     CFRelease(directoryURL);
-    CFRelease(bundleArray);
-    
-    // This would detect if the bundle could be loaded:
-    // CFBundleRef tCFBundleRef = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.HID_Utilities"));
-    // if (tCFBundleRef) printf("YEEEEEEEAAAAAAHHHH!\n");
+    CFRelease(bundleArray);    
 #endif
 
     PsychHIDVerifyInit();

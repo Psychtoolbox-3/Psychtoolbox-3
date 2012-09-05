@@ -45,6 +45,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 04/30/2012 Add support for 64-Bit OSX. (MK)
 % 06/13/2012 Removed call to SwitchToNewPsychtoolboxHoster, no longer needed (DN)
 % 07/10/2012 Use textscan() on R2012a+ and verLessThan() to detect R2007a+ (MK)
+% 09/05/2012 Update support for 64-Bit Octave and versions > 3.2. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -302,24 +303,21 @@ if IsOctave
         % Add proper OS dependent postfix:
         if IsLinux
             rdir = [rdir 'LinuxFiles'];
-            if IsLinux(1)
-                % 64 bit Octave on 64 bit Linux. Select 64 bit mex file folder:
-                rdir = [rdir '64'];
-            end
         end
         
         if IsOSX
             rdir = [rdir 'OSXFiles'];
-            if IsOSX(1)
-                % 64 bit Octave on 64 bit OSX. Select 64 bit mex file folder:
-                rdir = [rdir '64'];
-            end
         end
         
         if IsWin
             rdir = [rdir 'WindowsFiles'];
         end
-
+        
+        if Is64Bit
+            % 64 bit Octave. Select 64 bit mex file folder:
+            rdir = [rdir '64'];
+        end
+        
         fprintf('Octave major version %i detected. Will prepend the following folder to your Octave path:\n', octavemajorv);
         fprintf(' %s ...\n', rdir);
         addpath(rdir);
@@ -343,6 +341,13 @@ if IsOctave
     if octavemajorv < 3 | octaveminorv < 2 %#ok<OR2>
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is obsolete. We strongly recommend\n', version);
+        if IsLinux
+            % On Linux everything >= 3.2 is fine:
+            fprintf('WARNING: using the latest stable version of the Octave 3.2.x series or later for use with Psychtoolbox.\n');
+        else
+            % On other OS'es we only care about >= 3.6 atm:
+            fprintf('WARNING: using the latest stable version of the Octave 3.6.x series or later for use with Psychtoolbox.\n');
+        end
         fprintf('WARNING: using the latest stable version of the Octave 3.2.x series for use with Psychtoolbox.\n');
         fprintf('WARNING: Stuff may not work at all or only suboptimal with earlier versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
@@ -355,7 +360,8 @@ if IsOctave
         fprintf('\n\n=================================================================================\n');
         fprintf('INFO: Your version %s of Octave is version 3.3 or later.\n', version);
         fprintf('INFO: Psychtoolbox seems to work correctly on Octave 3.4 - 3.6, but no extensive\n');
-        fprintf('INFO: systematic testing has been performed yet by the core developers.\n');
+        fprintf('INFO: systematic testing has been performed yet by the core developers on anything\n');
+        fprintf('INFO: but Octave 3.2.x.\n');
         fprintf('\nPress any key to continue with setup.\n');
         fprintf('=================================================================================\n\n');
         pause;

@@ -1,0 +1,66 @@
+/* Shader for color correction of RGB and Luminance textures by 3D CLUT lookup.
+ *
+ * Uses a RGB color lookup table, encoded in a 3D texture, to lookup
+ * corresponding remapped output red, green and blue intensity values
+ * for given input red, green or blue intensity values in the input texture.
+ *
+ * Input is basically a 3D color vector (red, green, blue) whose components
+ * define the 3D texture coordinate in the 3D LUT texture of the color corrected
+ * RGB texel. Trilinear interpolation is used to find interpolated colors.
+ *
+ * This shader is used by PsychColorCorrection() in 'LookupTable3D' mode,
+ * as part of PTB's built-in stimulus color correction.
+ *
+ * (w) 2012 by Mario Kleiner. Licensed under MIT license.
+*/
+
+#extension GL_EXT_texture3D : enable
+
+uniform sampler3D       ICMCLUT;
+uniform float           ICMPrescale;
+uniform float           ICMMaxInputValue;
+
+/* Allowable range for output values: To be initialized by PsychColorCorrection() typically: */
+uniform vec2            ICMClampToColorRange;
+
+vec4 icmTransformColor(vec4 incolor)
+{
+    vec4 outcolor;
+
+    /* Return alpha component unmodified: */
+    outcolor.a = incolor.a;
+
+    /* Clamp input to valid 0-ICMMaxInputValue range: */
+    incolor.rgb = clamp(incolor.rgb, vec3(0.0), vec3(ICMMaxInputValue));
+
+    /* Remap them to index in resolution range: */
+    incolor.rgb  = incolor.rgb * ICMPrescale;
+
+    /* Look up in 3D texture at location incolor.rgb: */
+    outcolor.rgb = texture3D(ICMCLUT, incolor.rgb).rgb;
+
+    /* Clamp outcolor to range given by ICMClampToColorRange: */
+    outcolor.rgb = clamp(outcolor.rgb, vec3(ICMClampToColorRange[0]), vec3(ICMClampToColorRange[1]));
+
+    return(outcolor);
+}
+
+
+float icmTransformColor1(float incolor)
+{
+    float outcolor;
+    
+    /* Clamp input to valid 0-ICMMaxInputValue range: */
+    incolor = clamp(incolor, 0.0, ICMMaxInputValue);
+
+    /* Remap to index in resolution range: */
+    incolor  = incolor * ICMPrescale;
+
+    /* Look up in 3D texture at 3D location (incolor, incolor, incolor): */
+    outcolor = texture3D(ICMCLUT, vec3(incolor)).r;
+
+    /* Clamp outcolor to range given by ICMClampToColorRange: */
+    outcolor = clamp(outcolor, ICMClampToColorRange[0], ICMClampToColorRange[1]);
+
+    return(outcolor);
+}

@@ -2,7 +2,7 @@ function SpinningMovieCube(moviename)
 % SpinningMovieCubeDemo - Demonstrate use of MATLAB-OpenGL toolbox
 %
 % This demo demonstrates use of OpenGL commands in a Matlab script together
-% with the Quicktime movie playback functions of PTB. It shows a randomly
+% with the movie playback functions of PTB. It shows a randomly
 % spinning, three dimensional textured cube. The six sides of the cube
 % show a quicktime video, loaded and played from a quicktime movie file.
 %
@@ -14,7 +14,7 @@ function SpinningMovieCube(moviename)
 % you understand that file first.
 %
 % This demo uses the Screen('GetOpenGLTexture') function to make a
-% Psychtoolbox texture  (loaded from the Quicktime movie) available to
+% Psychtoolbox texture  (loaded from the movie) available to
 % OpenGL for 3D texture mapping.
 %
 % It opens a movie file and then - in a loop - fetches video images frame
@@ -22,21 +22,18 @@ function SpinningMovieCube(moviename)
 % made available as standard OpenGL textures for drawing onto the sides of
 % the spinning cube.
 %
-%
-% The OpenGL for Matlab toolbox was developed and contributed under
-% GPL license by Prof. Richard F. Murray, University of York, Canada.
 
-%
 % 15-Dec-2005 -- created (RFM)
 % 21-Jan-2006 -- Modified for use with OpenGL-Psychtoolbox (MK)
 % 16-Feb-2006 -- Modified for use with new MOGL (MK)
 % 05-Mar-2006 -- Cleaned up for public consumption (MK)
+% 23-Aug-2012 -- Adapt to PTB 3.0.10 file structure, cleanup. (MK)
 
 % Assign default movie file, if none provided:
 if nargin < 1
-    moviename= [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];   
+    moviename= [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];   
 end;
-moviename
+moviename %#ok<NOPRT>
 
 % Is the script running in OpenGL Psychtoolbox?
 AssertOpenGL;
@@ -150,7 +147,7 @@ while (1)
         % texname(i) contains the OpenGL texture id, target is the texture
         % type, tu and tv are the texture coodinates of the (imw,imh)
         % position of the texture:
-        [ texname(i) target tu tv] = Screen('GetOpenGLTexture', win, texid, imw, imh);
+        [ texname(i) target tu tv] = Screen('GetOpenGLTexture', win, texid, imw, imh); %#ok<*AGROW>
     end;
     
     % calculate rotation angle and axis of cube for this frame:

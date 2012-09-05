@@ -33,9 +33,6 @@
    OpenGL core functionality and extensions.
  */
 #include "glew.h"
-/* Hack to take care of missing function prototypes in current glew.h */
-#define glPointParameteri glPointParameteriNV
-#define glPointParameteriv glPointParameterivNV
 
 /* Includes specific to MacOS-X version of mogl: */
 #ifdef MACOSX

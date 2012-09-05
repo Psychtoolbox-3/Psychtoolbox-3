@@ -1,0 +1,47 @@
+/* ICMMatrixMult4Shader.frag.txt
+ *
+ * Multiplies first 3 components of a 4 component vec4 color vector with a
+ * defined 4x4 matrix and creates a 4 component output color vector, consisting
+ * of the original alpha component and the 3 rgb components from the matrix
+ * multiply. This adds a 4'th constant 1 component, multiplies the resulting
+ * 4 element vector with the 4x4 matrix, then divides the resulting 4 component
+ * vector by its 4th component, then truncates it back to a 3 component rgb vector.
+ *
+ * Can be used for projective color conversions, using the fourth component to allow
+ * adding or subtracting bias values.
+ *
+ * (C) 2012 Mario Kleiner - Released to you under MIT license.
+ */
+
+/* RGB to gray conversion weights for icmTransformColor1(): */
+const vec3 ColorToGrayWeights = vec3(0.3, 0.59, 0.11);
+
+/* 4 by 4 color transformation matrix: */
+uniform mat4 M;
+
+vec4 icmTransformColor(vec4 incolor)
+{
+    vec4 outcolor, tmp;
+
+    /* Alpha is passed through unmodified: */
+    outcolor.a = incolor.a;
+
+    /* 1-extend, multiply, normalize: */
+    incolor.a = 1.0;
+    tmp = M * incolor;
+    tmp.rgb = tmp.rgb / tmp.a;
+    outcolor.rgb = tmp.rgb;
+    return(outcolor);
+}
+
+float icmTransformColor1(float incolor)
+{
+    float outcolor;
+    vec4  tmp;
+
+    /* 1-extend, multiply, normalize: */
+    tmp = M * vec4(vec3(incolor), 1.0);
+    tmp.rgb = tmp.rgb / tmp.a;
+    outcolor = dot(tmp.rgb, ColorToGrayWeights);
+    return(outcolor);
+}

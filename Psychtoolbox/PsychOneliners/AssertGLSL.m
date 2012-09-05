@@ -24,7 +24,7 @@ end;
 
 try
     extensions = glGetString(GL.EXTENSIONS);
-catch
+catch %#ok<*CTCH>
     error('AssertGLSL called before opening an Onscreen window! This will not work...');
 end;
 
@@ -32,7 +32,7 @@ if isempty(extensions)
     error('AssertGLSL called before opening an Onscreen window! This will not work...');
 end;
 
-if isempty(strfind(extensions, 'GL_ARB_shading_language')) | isempty(strfind(extensions, 'GL_ARB_shader_objects'))
+if isempty(strfind(extensions, 'GL_ARB_shading_language')) || isempty(strfind(extensions, 'GL_ARB_shader_objects'))
     Screen('CloseAll');
     error('Sorry, this M-File cannot execute on your combination of graphics hardware and driver due to complete lack of GLSL support.'); 
 end;

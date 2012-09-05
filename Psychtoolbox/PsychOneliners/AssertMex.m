@@ -69,14 +69,20 @@ if IsOctave
         % Proper extension for the .mex file?
         if isempty(strfind(fpathext, '.mex'))
             % Nope, wrong file bound:
+            if Is64Bit
+                oext = ['64' filesep];
+            else
+                oext = filesep;
+            end
+            
             if IsLinux
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/']);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles' oext]);
             end
             if IsOSX
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles/']);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles' oext]);
             end
             if IsWindows
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave3WindowsFiles\']);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave3WindowsFiles' oext]);
             end
             
             fprintf('\n\nIf you have just installed Psychtoolbox, it worked properly and suddenly stopped working\n');
@@ -87,7 +93,7 @@ if IsOctave
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
             curversion = sscanf(version, '%i.%i.%i');
-            if curversion(1) < 3 | curversion(2) < 2 %#ok<OR2>
+            if curversion(1) < 3 || curversion(2) < 2
                 fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 3.2.0 or later.\n', version);
                 error('Tried to run Psychtoolbox on an incompatible Octave version.\n');
             end
@@ -109,7 +115,7 @@ end
 inputNames = [];
 
 % Check to see if there should be a mex file for our platform.
-if isempty(inputNames) | ismember(computer, inputNames) %#ok<OR2>
+if isempty(inputNames) || ismember(computer, inputNames)
     % Element 1 will always be AssertMex. Element 2 will be the calling
     % function unless it is invoked from the commnand line.
     callStack = dbstack;

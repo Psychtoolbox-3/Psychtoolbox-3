@@ -174,7 +174,7 @@ if nargin < 1
     deviceNumber = [];
 end
 
-if ~IsWin | (IsWin & ~isempty(deviceNumber)) %#ok<OR2,AND2>
+if ~IsWin || (IsWin && ~isempty(deviceNumber))
     if ~isempty(deviceNumber)
         % All attached keyboards already detected?
         if isempty(keyboardsdetected)
@@ -205,7 +205,7 @@ if ~IsWin | (IsWin & ~isempty(deviceNumber)) %#ok<OR2,AND2>
             keyIsDown=0; keyCode=zeros(1,256);  % preallocate these variables
             for i=keyt
                 [DeviceKeyIsDown, secs, DeviceKeyCode]= PsychHID('KbCheck', i, ptb_kbcheck_enabledKeys);
-                keyIsDown = keyIsDown | DeviceKeyIsDown;
+                keyIsDown = keyIsDown || DeviceKeyIsDown;
                 keyCode = keyCode | DeviceKeyCode;
             end
         else
@@ -231,7 +231,7 @@ oldSecs = secs;
 
 % Only need to apply ptb_kbcheck_enabledKeys manually on non-OS/X systems,
 % as this is done internally in PsychHID('KbCheck') on OS/X:
-if ~macosx & ~isempty(ptb_kbcheck_enabledKeys) %#ok<AND2>
+if ~macosx && ~isempty(ptb_kbcheck_enabledKeys)
     % Mask all keys with the enabled keys:
     keyCode = uint8(double(keyCode) .* ptb_kbcheck_enabledKeys);
 

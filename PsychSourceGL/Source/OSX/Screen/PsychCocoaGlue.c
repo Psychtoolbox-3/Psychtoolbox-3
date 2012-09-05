@@ -205,9 +205,9 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
 
     // Release NSOpenGLContext's - this will also release the wrapped
     // CGLContext's and finally really destroy them:
-    if (windowRecord->targetSpecific.nsmasterContext) [windowRecord->targetSpecific.nsmasterContext release];
-    if (windowRecord->targetSpecific.nsswapContext) [windowRecord->targetSpecific.nsswapContext release];
-    if (windowRecord->targetSpecific.nsuserContext) [windowRecord->targetSpecific.nsuserContext release];
+    if (windowRecord->targetSpecific.nsmasterContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsmasterContext) release];
+    if (windowRecord->targetSpecific.nsswapContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsswapContext) release];
+    if (windowRecord->targetSpecific.nsuserContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsuserContext) release];
 
     // Zero-Out the contexts after release:
     windowRecord->targetSpecific.nsmasterContext = NULL;
@@ -286,9 +286,9 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
     // printf("Refcounts: window=%i , view=%i , mc=%i mccgl=%i sc=%i sccgl=%i\n", [cocoaWindow retainCount], [[cocoaWindow contentView] retainCount], [masterContext retainCount], CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), [glswapContext retainCount], CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
     
     // Assign contexts for use in window close sequence later on:
-    windowRecord->targetSpecific.nsmasterContext = masterContext;
-    windowRecord->targetSpecific.nsswapContext = glswapContext;
-    windowRecord->targetSpecific.nsuserContext = gluserContext;
+    windowRecord->targetSpecific.nsmasterContext = (void*) masterContext;
+    windowRecord->targetSpecific.nsswapContext = (void*) glswapContext;
+    windowRecord->targetSpecific.nsuserContext = (void*) gluserContext;
 
     // Drain the pool:
     [pool drain];
@@ -362,9 +362,9 @@ psych_bool PsychCocoaSetupAndAssignLegacyOpenGLContext(WindowRef window, PsychWi
     // printf("Legacy:Refcounts: window=%i , view=%i , mc=%i mccgl=%i sc=%i sccgl=%i\n", [cocoaWindow retainCount], [[cocoaWindow contentView] retainCount], [masterContext retainCount],CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), [glswapContext retainCount], CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
            
     // Assign contexts for use in window close sequence later on:
-    windowRecord->targetSpecific.nsmasterContext = masterContext;
-    windowRecord->targetSpecific.nsswapContext = glswapContext;
-    windowRecord->targetSpecific.nsuserContext = gluserContext;
+    windowRecord->targetSpecific.nsmasterContext = (void*) masterContext;
+    windowRecord->targetSpecific.nsswapContext = (void*) glswapContext;
+    windowRecord->targetSpecific.nsuserContext = (void*) gluserContext;
 
     // Drain the pool:
     [pool drain];

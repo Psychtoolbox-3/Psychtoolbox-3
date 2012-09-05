@@ -22,7 +22,7 @@
 
 #include "Screen.h"
 
-static char useString[] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth] [, textureShader]);";
+static char useString[] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth] [, textureShader][, specialFlags]);";
 static char synopsisString[] = 
 "Provides information about an external OpenGL texture to make it acessible for PTB as PTB texture."
 "\"windowPtr\" is the handle of the onscreen window to which texture should be attached. "
@@ -41,7 +41,8 @@ static char synopsisString[] =
 "allows you to create purely virtual textures, that only consist of such a shader and some virtual size, but don't have any "
 "real data matrix associated with it -- all content is generated on the fly. Create such a texture by providing a textureShader "
 "that will algorithmically generate the texture content, and the virtual size of the texture in glWidth, glHeight and glDepth, "
-"but set the glTexid texture handle to zero. \n"
+"but set the glTexid texture handle to zero.\n"
+"'specialFlags' Special optional texture flags, see help for Screen('MakeTexture').\n"
 "The function returns (optionally) the textureHandle of the PTB texture and its defining rectangle. "
 "This routine allows external OpenGL code to inject textures into PTB for use "
 "with it. For more info about OpenGL textures, read an OpenGL book. ";
@@ -51,6 +52,7 @@ PsychError SCREENSetOpenGLTexture(void)
 {
     PsychWindowRecordType *windowRecord, *textureRecord;
     int texid, w, h, d, testarg, textureShader, usefloatformat = 0;
+    int specialFlags = 0;
     GLenum target = 0;
     texid=w=h=d=-1;
     
@@ -58,7 +60,7 @@ PsychError SCREENSetOpenGLTexture(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(8));     //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(9));     //The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(4)); //The required number of inputs	
     PsychErrorExit(PsychCapNumOutputArgs(2));    //The maximum number of outputs
     
@@ -77,8 +79,8 @@ PsychError SCREENSetOpenGLTexture(void)
         textureRecord->windowType=kPsychTexture;
         textureRecord->screenNumber = windowRecord->screenNumber;
 
-	// Assign parent window and copy its inheritable properties:
-	PsychAssignParentWindow(textureRecord, windowRecord);
+        // Assign parent window and copy its inheritable properties:
+        PsychAssignParentWindow(textureRecord, windowRecord);
 
         // Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(textureRecord);
@@ -113,6 +115,9 @@ PsychError SCREENSetOpenGLTexture(void)
     textureShader = 0;
     PsychCopyInIntegerArg(8, FALSE, &textureShader);
 
+    // Get optional specialFlags:
+    PsychCopyInIntegerArg(9, FALSE, &specialFlags);
+    
     // Activate OpenGL rendering context of windowRecord:
     PsychSetGLContext(windowRecord);
     
@@ -167,15 +172,18 @@ PsychError SCREENSetOpenGLTexture(void)
     // Assign bpc value:
     textureRecord->bpc = (int) d;
 
-    PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, 0);
+    PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, (specialFlags & 2) ? 1 : 0);
 
+    // specialFlags setting 8? Disable auto-mipmap generation:
+    if (specialFlags & 0x8) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;    
+        
     // User specified override shader for this texture provided? This is useful for
     // basic image processing and procedural texture shading:
     if (textureShader!=0) {
-	// Assign provided shader as filtershader to this texture: We negate it so
-	// that the texture blitter routines know this is a custom shader, not our
-	// built in filter shader:
-	textureRecord->textureFilterShader = -1 * textureShader;
+        // Assign provided shader as filtershader to this texture: We negate it so
+        // that the texture blitter routines know this is a custom shader, not our
+        // built in filter shader:
+        textureRecord->textureFilterShader = -1 * textureShader;
     }
 
     // Unbind texture:

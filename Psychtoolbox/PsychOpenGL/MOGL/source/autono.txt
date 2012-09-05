@@ -16,6 +16,33 @@ glShaderSource          - special interface implemented manually
 glMultiDrawElements		- need alternate interface to this function, as it
             			  involves arrays of pointers, whereas we normally don't have
 				          access to pointers to a matrix's data in MATLAB
+glMultiDrawElementsBaseVertex - ditto.
+glCreateShaderProgramv - ditto.
+
+- these use pointers to structs and other impossible to handle stuff
+glCreateSyncFromCLeventARB
+glGetUniformIndices
+
+- these are part of the ARB_imaging extension, which we will never ever support:
+glGetColorTable
+glGetColorTableParameteriv
+glGetColorTableParameterfv
+glGetnColorTableARB
+glGetConvolutionFilter
+glGetnConvolutionFilterARB
+glGetConvolutionParameteriv
+glGetConvolutionParameterfv
+glGetHistogram
+glGetnHistogramARB
+glGetHistogramParameteriv
+glGetHistogramParameterfv
+glGetSeparableFilter
+glGetnSeparableFilterARB
+glGetMinmax
+glGetnMinmaxARB
+glGetnPixelMapfvARB
+glGetnPixelMapusvARB
+glGetnPixelMapuivARB
 
 - these involve C callback functions
 gluNurbsCallback
@@ -35,9 +62,18 @@ gluTessVertex
 gluBeginPolygon
 gluEndPolygon
 gluNextContour
+glDebugMessageCallbackARB
+glDebugMessageCallback
 
-- these are not defined yet in the GLEW library - need to manually implement interface
+- these are not defined yet in the GLEW 1.9.0 library - need to manually implement interface
 glSamplePass        - implemented manually
+glPopDebugGroup                         - omit for now.
+glVertexArrayBindVertexBufferEXT        - omit for now.
+glVertexArrayVertexAttribFormatEXT      - omit for now.
+glVertexArrayVertexAttribIFormatEXT     - omit for now.
+glVertexArrayVertexAttribLFormatEXT     - omit for now.
+glVertexArrayVertexAttribBindingEXT     - omit for now.
+glVertexArrayVertexBindingDivisorEXT    - omit for now.
 
 - these need our special malloc(),calloc(),free() buffer management to work on Matlab & Octave:
 glFeedbackBuffer    - implemented manually
@@ -51,5 +87,6 @@ glDrawRangeElements
 glNormalPointer
 glReadPixels
 glTexCoordPointer
+glTexImage2D
 glVertexAttribPointer
 glVertexPointer

@@ -116,7 +116,7 @@ if isempty(untilTime)
 end
 
 % Wait for keystroke?
-if (forWhat == 2) | (forWhat == 3) %#ok<OR2>
+if (forWhat == 2) || (forWhat == 3)
     % Wait for keystroke, ie., first make sure all keys are released, then
     % wait for a keypress:
     
@@ -140,7 +140,7 @@ end
 secs = -inf;
 while secs < untilTime
     [isDown, secs, keyCode, deltaSecs] = KbCheck(deviceNumber);
-    if (isDown == ~forWhat) | (secs >= untilTime) %#ok<OR2>
+    if (isDown == ~forWhat) || (secs >= untilTime)
         return;
     end
 

@@ -156,7 +156,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	long							screenWidth, screenHeight;
 	int								twidth, theight, pass, texcount;
 	void*							texmemptr;
-	psych_bool							recycle = FALSE, avoidCPUGPUSync;
+	psych_bool						recycle = FALSE, avoidCPUGPUSync;
 	GLenum							glerr;
 	int								verbosity;
 
@@ -282,8 +282,8 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	// This obviously wastes storage space for LA and RGB textures, but it is the only mode that is
 	// well supported (=fast) on all common gfx-hardware. Only the very latest models of NVidia and ATI
 	// are capable of handling the other formats natively in hardware :-(
-	if (texturetarget==GL_TEXTURE_2D) {
-		// This hardware doesn't support rectangle textures. We create and use power of two
+	if ((texturetarget == GL_TEXTURE_2D) && !(win->gfxcaps & kPsychGfxCapNPOTTex)) {
+		// This hardware doesn't support non-power-of-two GL_TEXTURE_2D textures. We create and use power of two
 		// textures to emulate rectangle textures...
 		
 		// Compute smallest power of two dimension that fits the texture.
@@ -490,7 +490,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				
 	}  // End of new texture creation.
 	
-	// Stage 2: If its a 2D texture or a recycled texture, fill it with content via glTexSubImage2D:
+	// Stage 2: If it is a 2D texture or a recycled texture, fill it with content via glTexSubImage2D:
 	if (texturetarget==GL_TEXTURE_2D || recycle) {
 	  // Special setup code for pot2 textures: Fill the empty power of two texture object with content:
 	  // We only fill a subrectangle (of sourceWidth x sourceHeight size) with our images content. The
@@ -737,32 +737,40 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             sourceYEnd=sourceHeight - sourceRect[kPsychTop];
         }
 
-        // Special case handling for GL_TEXTURE_2D textures. We need to map the
-	// absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
-	// 1.0 == full extent of power of two texture...
-	if (texturetarget==GL_TEXTURE_2D) {
-	  // Find size of real underlying texture (smallest power of two which is
-	  // greater than or equal to the image size:
-	  tWidth=1;
-	  while (tWidth < sourceWidth) tWidth*=2;
-	  tHeight=1;
-	  while (tHeight < sourceHeight) tHeight*=2;
+    // Special case handling for GL_TEXTURE_2D textures. We need to map the
+    // absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
+    // 1.0 == full extent of power of two texture...
+	if (texturetarget == GL_TEXTURE_2D) {
+        // NPOT supported?
+        if (!(source->gfxcaps & kPsychGfxCapNPOTTex)) {
+            // No: Find size of real underlying texture (smallest power of two which is
+            // greater than or equal to the image size:
+            tWidth=1;
+            while (tWidth < sourceWidth) tWidth*=2;
+            tHeight=1;
+            while (tHeight < sourceHeight) tHeight*=2;
+        }
+        else {
+            // Yes:
+            tWidth = sourceWidth;
+            tHeight = sourceHeight;
+        }
+        
+        // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
+        // mapping to accomodate for roundoff-error in the power-of-two gfx
+        // hardware...
+        // For a good intro into the issue of texture border seams, due to interpolation
+        // problems at texture borders, see:
+        // http://home.planet.nl/~monstrous/skybox.html
 
-	  // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
-	  // mapping to accomodate for roundoff-error in the power-of-two gfx
-	  // hardware...
-	  // For a good intro into the issue of texture border seams, due to interpolation
-	  // problems at texture borders, see:
-	  // http://home.planet.nl/~monstrous/skybox.html
-	  //sourceX-=0.5f;
-	  //sourceY-=0.5f;
-	  sourceXEnd-=0.5f;
-	  sourceYEnd-=0.5f;
-	  // Remap:
-	  sourceX=sourceX / tWidth;
-	  sourceXEnd=sourceXEnd / tWidth;
-	  sourceY=sourceY / tHeight;
-	  sourceYEnd=sourceYEnd / tHeight;
+        sourceXEnd-=0.5f;
+        sourceYEnd-=0.5f;
+
+        // Remap:
+        sourceX=sourceX / tWidth;
+        sourceXEnd=sourceXEnd / tWidth;
+        sourceY=sourceY / tHeight;
+        sourceYEnd=sourceYEnd / tHeight;
 	}
 
 	// MK: We need to reenable the proper texturing mode. This fixes bug reported in Forum message 3055,
@@ -777,39 +785,117 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		glEnable(texturetarget);
 		glBindTexture(texturetarget, source->textureNumber);
 	}
-	
+
+    // Use of OpenGL mip-mapping requested? And automatic mipmap generation wanted - aka not forbidden?
+    if (!(source->specialflags & kPsychDontAutoGenMipMaps) && (filterMode < 0 || filterMode > 1)) {
+        // Yes: Automatically build a mip-map pyramid.
+        if (texturetarget != GL_TEXTURE_2D) PsychErrorExitMsg(PsychError_user, "You asked me to use mip-mapped texture filtering on a texture that is not of GL_TEXTURE_2D type! Unsupported.");
+
+        if (NULL != glGenerateMipmapEXT) {
+            // Select highest quality downsampling method:
+            glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
+            
+            // Is automatic mipmap generation already enabled for this texture?
+            glGetTexParameteriv(texturetarget, GL_GENERATE_MIPMAP, &attrib);
+            
+            // Need to manually trigger regen if automatic mode not yet enabled, or
+            // if the "dirty" flag is set, because some render-to-texture activity has
+            // happened since last drawing this texture, which is not covered by the auto-update:
+            if (source->needsViewportSetup || !attrib) {
+                // No: We trigger hardware-accelerated mipmap generation manually for this draw call:
+                glGenerateMipmapEXT(texturetarget);
+                
+                // Enable automatic mipmap generation for future updates to this texture object. This
+                // will automatically trigger regen if new image content is uploaded into this texture
+                // object:
+                glTexParameteri(texturetarget, GL_GENERATE_MIPMAP, GL_TRUE);
+                
+                // Clear "dirty" flag:
+                source->needsViewportSetup = FALSE;
+            }
+        }
+        else if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: Was asked to draw a texture with mip-mapping, but automatic mipmap generation unsupported by this system! Check your stimulus!\n");
+        }
+    }
+
 	// Linear filtering on non-capable hardware via shader emulation?
-	if ((filterMode > 0) && (source->textureFilterShader > 0)) {
+	if ((filterMode != 0) && (source->textureFilterShader > 0)) {
 		// Yes. Bind the shader:
 		shader = source->textureFilterShader;
 		if (0 == PsychSetShader(target, shader)) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture filter shader, but your hardware doesn't support GLSL shaders.");
 
-		// Switch hardware samplers into nearest neighbour mode so we don't get any interference:
-		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);		
-	}
+        if (filterMode < 0 || filterMode > 1) {
+            // Some mip-mapped filtermode. Choose nearest neighbour sampling within mipmap levels, so shader can decide about sample locations itself.
+            // In filterMode 2 choose the nearest mipmap, in others interpolate linearly between two nearest mipmap levels:
+            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, (filterMode == 2) ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        }
+        else {
+            // No mip-mapping: Switch hardware samplers into nearest neighbour mode so we don't get any interference:
+            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        }
+
+        // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
+        // This makes even sense for negative filterMode arguments, because the filterMode
+        // parameter is passed as an attribute to the filtershader, so the shader itself can
+        // decide how to implement a specific blur level on its own, unrestricted by us:
+        glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+        glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);	
+    }
 	else {
         // Standard hardware texture sampling/filtering: Select filter-mode for texturing:
-        switch (filterMode) {
+        if (filterMode >= 0) {
+            // Select specific hardware sampling strategy:
+            switch (filterMode) {
                 case 0: // Nearest-Neighbour filtering:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                break;
-                
+                    break;
+                    
                 case 1: // Bilinear filtering:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                break;
-
-                case 2: // Linear filtering with nearest neighbour mipmapping: Needs external support to generate mipmaps.
+                    break;
+                    
+                case 2: // Linear filtering with nearest neighbour mipmapping:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                break;
-
-                case 3: // Linear filtering with linear mipmapping --> This is full trilinear filtering. Needs external support to generate mipmaps.
+                    break;
+                    
+                case 3: // Linear filtering with linear mipmapping --> This is full trilinear filtering:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                break;
+                    break;
+
+                case 4: // Nearest-Neighbour filtering with nearest neighbour mipmapping:
+                    glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    break;
+                    
+                case 5: // Nearest-Neighbour filtering with linear mipmapping:
+                    glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    break;
+            }
+
+            // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
+            glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+        }
+        else {
+            // Negative filterMode: This is mostly meant for fast drawing of blurred (low-pass filtered) textures
+            // by selecting a specific integral mip-level:
+            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            
+            // A negative filterMode means to select a specific mip-level in the
+            // mipmap pyramid, according to the filterMode, starting with mip level 0, i.e,
+            // full resolution for a value of -1, then level 1 aka half-resolution for a value
+            // of -2 etc.:
+            glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, (-1 * filterMode) - 1);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  (-1 * filterMode) - 1);
         }
 		
 		// Optional texture lookup shader set up (in Screen('MakeTexture') or due to disabled color clamping...)
@@ -1029,6 +1115,10 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+        // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
+        glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+        glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+        
         // Unbind texture:
 		glBindTexture(texturetarget, 0);
         glDisable(texturetarget);
@@ -1131,12 +1221,20 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
     // absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
     // 1.0 == full extent of power of two texture...
     if (texturetarget==GL_TEXTURE_2D) {
-        // Find size of real underlying texture (smallest power of two which is
-        // greater than or equal to the image size:
-        tWidth=1;
-        while (tWidth < sourceWidth) tWidth*=2;
-        tHeight=1;
-        while (tHeight < sourceHeight) tHeight*=2;
+        // NPOT supported?
+        if (!(tex->gfxcaps & kPsychGfxCapNPOTTex)) {
+            // No: Find size of real underlying texture (smallest power of two which is
+            // greater than or equal to the image size:
+            tWidth=1;
+            while (tWidth < sourceWidth) tWidth*=2;
+            tHeight=1;
+            while (tHeight < sourceHeight) tHeight*=2;
+        }
+        else {
+            // Yes:
+            tWidth = sourceWidth;
+            tHeight = sourceHeight;
+        }
         
         // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
         // mapping to accomodate for roundoff-error in the power-of-two gfx
@@ -1160,4 +1258,3 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
     // Done.
     return;
 }
-

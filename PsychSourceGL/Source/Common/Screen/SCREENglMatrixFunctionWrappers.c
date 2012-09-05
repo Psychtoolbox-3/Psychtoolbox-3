@@ -159,9 +159,9 @@ PsychError SCREENBeginOpenGL(void)
 			}
 		}
 
-        // Is this the first time that the userspace rendering context of this window
-        // is selected for real userspace rendering?
-        if (windowRecord->needsViewportSetup) {
+        // Is this the first time that the userspace rendering context of this
+        // onscreen window is selected for real userspace rendering?
+        if (windowRecord->needsViewportSetup && PsychIsOnscreenWindow(windowRecord)) {
             // Yes. Need to perform one-time setup actions for this context:
             windowRecord->needsViewportSetup = FALSE;
             

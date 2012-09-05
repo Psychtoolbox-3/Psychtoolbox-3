@@ -657,7 +657,7 @@ if nargin==0
     WaitSecs(1);
     keyPressed = 0;
     while (~keyPressed)
-        [keyPressed, secs, keyCodes] = KbCheck(-1);
+        [keyPressed, secs, keyCodes] = KbCheck(-1); %#ok<*ASGLU>
     end
     kbNameResult= KbName(logical(keyCodes));  %note that keyCodes should be of type logical here.
 
@@ -670,15 +670,15 @@ elseif isempty(arg)
 %recur on the result. 
 %Note that this case must come before the test for double below.  In Matlab 5 logicals are also
 %doubles but in Matlab 6.5 logicals are not doubles.  
-elseif islogical(arg) | (isa(arg,'double') & length(arg)==256) | (isa(arg,'uint8') & length(arg)==256)
+elseif islogical(arg) || (isa(arg,'double') && length(arg)==256) || (isa(arg,'uint8') && length(arg)==256)
     kbNameResult=KbName(find(arg));
 
 %if the argument is a single double or a list of doubles (list of keycodes)
 %or a single uint8 or list of uint8's (list of keycodes).
-elseif isa(arg,'double') | isa(arg,'uint8')
+elseif isa(arg,'double') || isa(arg,'uint8')
     %single element, the base case, we look up the name.
     if length(arg) == 1
-        if(arg < 1 | arg > 65535)
+        if(arg < 1 || arg > 65535)
             error('Argument exceeded allowable range of 1-65536');
         elseif arg > 255 
             kbNameResult='Undefined';
@@ -861,7 +861,7 @@ elseif ischar(arg)      % argument is a character, so find the code
         
         % End of keyname unification code.
     else
-        if IsOctave & IsWin
+        if IsOctave && IsWin
             % GNU/Octave on Windows does not yet support index mode for strcmpi, need to do it manually...
             for i=1:length(kk)
                 if strcmpi(char(kk(i)), arg)
@@ -884,7 +884,7 @@ elseif isa(arg, 'cell')
     for i = 1:length(arg)
 		codes = KbName(arg{i});
 		ncodes = numel(codes);
-		kbNameResult(cnt) = codes(1);
+		kbNameResult(cnt) = codes(1); %#ok<*AGROW>
 		if ncodes>1
 			kbNameResult(cnt+1:cnt+ncodes-1) = codes(2:ncodes);
 		end

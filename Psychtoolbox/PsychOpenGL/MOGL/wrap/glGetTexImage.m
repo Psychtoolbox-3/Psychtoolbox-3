@@ -1,4 +1,4 @@
-function pixels = glGetTexImage( target, level, format, type )
+function pixels = glGetTexImage( target, level, format, type, bufSize )
 
 % glGetTexImage  Interface to OpenGL function glGetTexImage
 %
@@ -13,7 +13,7 @@ function pixels = glGetTexImage( target, level, format, type )
 % ---protected---
 % ---skip---
 
-if nargin~=4,
+if nargin~=4 && nargin~=5,
     error('invalid number of arguments');
 end
 
@@ -76,7 +76,12 @@ switch(type)
         pixels = single(pixels);
 end;
 
-% Execute actual call to moglcore:
-moglcore( 'glGetTexImage', target, level, format, type, pixels );
+if exist('bufSize', 'var')
+    % This is actually a call to glGetnTexImageARB:
+    moglcore( 'glGetnTexImageARB', target, level, format, type, bufSize, pixels );
+else
+    % Execute actual call to moglcore:
+    moglcore( 'glGetTexImage', target, level, format, type, pixels );
+end
 
 return

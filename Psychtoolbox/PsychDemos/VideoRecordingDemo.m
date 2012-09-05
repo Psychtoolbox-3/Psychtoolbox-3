@@ -3,7 +3,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 %
 % Demonstrates simple video capture and recording to a movie file.
 %
-% Currently uses Quicktime on OS/X and GStreamer on Linux and Windows.
+% Currently uses Quicktime on legacy 32-Bit OS/X and GStreamer on 64-Bit OS/X, Linux and Windows.
 %
 % The demo starts the videocapture engine, recording video from the default
 % video source and (optionally) sound from the default audio source. It
@@ -72,7 +72,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 % History:
 % 11.2.2007 Written (MK).
 %  5.6.2011 Updated for GStreamer support on Linux and Windows (MK).
-%
+%  3.9.2012 Updated to handle both legacy Quicktime and modern GStreamer (MK).
 
 % Test if we're running on PTB-3, abort otherwise:
 AssertOpenGL;
@@ -232,7 +232,7 @@ try
 
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
-            
+    
     % Capture and record video + audio to disk:
     % Specify the special flags in 'withsound', the codec settings for
     % recording in 'codec'. Leave everything else at auto-detected defaults:
@@ -242,6 +242,13 @@ try
         % case, to make it work "most of the time(tm)":
         grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480],[] ,[], [] , codec, withsound);
     else
+        % Is this the legacy Quicktime videocapture engine?
+        if Screen('Preference', 'DefaultVideocaptureEngine') == 0
+            % Yes: Need to store the name of the moviefile in the codec
+            % parameter:
+            codec = [moviename '.mov' codec];
+        end
+        
         % No need for Windows-style workarounds:
         grabber = Screen('OpenVideoCapture', win, [], [],[] ,[], [] , codec, withsound);
     end
@@ -256,10 +263,14 @@ try
     % framerate to 15 fps, then to 7.5 fps.
 for nreps = 1:1
 
-    % Select a moviename for the recorded movie file:
-    mname = sprintf('SetNewMoviename=%s_%i.mov', moviename, nreps);
-    Screen('SetVideoCaptureParameter', grabber, mname);
-
+    % Non-legacy engine? GStreamer allows more convenient spec of
+    % moviename:
+    if Screen('Preference', 'DefaultVideocaptureEngine') > 0
+        % Select a moviename for the recorded movie file:
+        mname = sprintf('SetNewMoviename=%s_%i.mov', moviename, nreps);
+        Screen('SetVideoCaptureParameter', grabber, mname);
+    end
+    
     Screen('StartVideoCapture', grabber, 30, 1)
 
     oldtex = 0;
