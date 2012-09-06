@@ -27,8 +27,10 @@
 
 #include "Screen.h"
 
-// GStreamer support enabled? If so, we use GStreamer based movie writing.
-#ifdef PTB_USE_GSTREAMER
+// GStreamer support enabled and no Quicktime support? If so, we use GStreamer based movie writing.
+// The only system config left with QT support is 32-Bit OSX. This guarantees we use QT on that
+// config:
+#if defined(PTB_USE_GSTREAMER) && !defined(PSYCHQTAVAIL)
 
 // GStreamer includes:
 #include <gst/gst.h>

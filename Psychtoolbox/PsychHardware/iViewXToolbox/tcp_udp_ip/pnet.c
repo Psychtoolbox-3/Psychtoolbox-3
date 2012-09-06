@@ -96,6 +96,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/time.h>
 
 #define nonblockingsocket(s)  fcntl(s,F_SETFL,O_NONBLOCK)
 #define DEFAULT_USLEEP        500		/* MK: Changed from 10 msecs to 0.5 msec == 500 microsecs. for lower latency. Should not be a problem on good OS/X and Linux :-) */
@@ -657,7 +658,7 @@ void my_mexReturnArrayFromBuff(const int argno,io_buff *buff,const int line)
 {
     const int maxelements=my_mexInputSize(argno);
     const mxClassID id=str2classid(my_mexInputOptionString(argno+1));
-    int dims[20]={0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0 };
+    size_t dims[20]={0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0 };
     const int si=classid2size(id);
     int returnelements= ( (buff->pos/si)< maxelements )?(buff->pos/si):maxelements;
     int deleteelements=returnelements;

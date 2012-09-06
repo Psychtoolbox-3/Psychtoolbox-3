@@ -177,6 +177,7 @@ if streq(command,'Play')
     if nargin > 4
         error('Wrong number of arguments: see Snd.');
     end
+    
     if nargin == 4
         if isempty(sampleSize)
             sampleSize = 16;
@@ -186,19 +187,27 @@ if streq(command,'Play')
     else
         sampleSize = 16;
     end
+    
     if nargin < 3
-        rate=22254.5454545454;
+        rate = [];
     end
-    if nargin == 3
-        if isempty(rate)
-            rate=22254.5454545454;
-        end
-    end
+    
     if nargin < 2
         error('Wrong number of arguments: see Snd.');
     end
+    
     if size(signal,1) > size(signal,2)
         error('signal must be a 2 rows by n column matrix for stereo sounds.');
+    end
+    
+    if isempty(rate)
+        if ptb_snd_oldstyle
+            % Old MacOS-9 style default:
+            rate = 22254.5454545454;
+        else
+            % Let PPA decide itself:
+            rate = [];
+        end
     end
     
     if ptb_snd_oldstyle
@@ -333,7 +342,22 @@ elseif streq(command,'DefaultRate')
     if nargin>1
         error('Wrong number of arguments: see Snd.');
     end
-    err=22254.5454545454; % default sampling rate in Hz.
+    
+    if ptb_snd_oldstyle
+        % Old style - old hard-coded default:
+        err = 22254.5454545454; % default sampling rate in Hz.
+    else
+        % Audio device open?
+        if isempty(pahandle)
+            % No: Fake it - Use the most common sampling rate:
+            err = 44100;
+        else
+            % Yes: Query its default sampling rate:
+            s = PsychPortAudio('GetStatus', pahandle);
+            di = PsychPortAudio('GetDevices', [], s.OutDeviceIndex);
+            err = di.DefaultSampleRate;
+        end
+    end
     
 elseif streq(command,'Open')
     endTime=0;

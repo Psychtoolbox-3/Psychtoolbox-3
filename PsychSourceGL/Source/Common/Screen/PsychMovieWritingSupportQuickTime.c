@@ -67,8 +67,9 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
 // No Quicktime support for GNU/Linux:
 #if PSYCH_SYSTEM != PSYCH_LINUX
 
-// Shall we use the QuickTime implementation?
-#if defined(PSYCHQTAVAIL) && !defined(PTB_USE_GSTREAMER)
+// Shall we use the QuickTime implementation? It takes precedence over
+// GStreamer on the only system config which still supports QT == 32-Bit OSX:
+#if defined(PSYCHQTAVAIL)
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include <Quicktime/QuickTimeComponents.h>
