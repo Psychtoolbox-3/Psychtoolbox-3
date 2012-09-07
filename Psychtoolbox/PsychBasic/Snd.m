@@ -141,7 +141,7 @@ function err = Snd(command,signal,rate,sampleSize)
 persistent ptb_snd_oldstyle;
 persistent pahandle;
 
-global endTime;
+persistent endTime;
 if isempty(endTime)
     endTime = 0;
 end
@@ -237,6 +237,9 @@ if streq(command,'Play')
         else
             sound(signal',rate,sampleSize);
         end
+        
+        % Estimate 'endTime' for playback:
+        endTime=GetSecs+length(signal)/rate;
     else
         % New-Style via PsychPortAudio:
         if ~isempty(pahandle)
@@ -247,7 +250,7 @@ if streq(command,'Play')
             
             % Correct sampling rate set?
             props = PsychPortAudio('GetStatus', pahandle);
-            if abs(props.SampleRate - rate) > 1.0
+            if ~isempty(rate) && (abs(props.SampleRate - rate) > 1.0)
                 % Device sampleRate not within tolerance of 1 Hz to
                 % requested samplingrate. Close it, so it can get reopened
                 % with proper rate:
@@ -283,15 +286,12 @@ if streq(command,'Play')
         
     end
     
-    % Estimate 'endTime' for playback:
-    endTime=GetSecs+length(signal)/rate;
-    
 elseif streq(command,'Wait')
     if nargin>1
         error('Wrong number of arguments: see Snd.');
     end
     
-    if pahandle
+    if ~isempty(pahandle)
         % Wait blocking until end of playback:
         PsychPortAudio('Stop', pahandle, 1, 1);
     else
@@ -304,7 +304,7 @@ elseif streq(command,'IsPlaying')
         error('Wrong number of arguments: see Snd.');
     end
     
-    if pahandle
+    if ~isempty(pahandle)
         props = PsychPortAudio('GetStatus', pahandle);
         err = props.Active;
     else
@@ -320,7 +320,7 @@ elseif streq(command,'Quiet') || streq(command,'Close')
         error('Wrong number of arguments: see Snd.');
     end
     
-    if pahandle
+    if ~isempty(pahandle)
         % Stop playback asap, wait for stop:
         PsychPortAudio('Stop', pahandle, 2, 1);
         
