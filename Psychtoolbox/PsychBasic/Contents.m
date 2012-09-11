@@ -95,7 +95,6 @@
 %     PatchTrap           - Disable Mac OS routines. Dangerous! (MEX)
 %     PrepareScreen       - Called by Screen when first window is opened on a screen.
 %     Priority            - Disable interrupts. Dangerous! (MEX)
-%     PsychSerial         - Use Mac serial port. (MEX)
 %     PsychtoolboxDate    - Current version date, e.g. '1 August 1998'
 %     PsychtoolboxVersion - Current version number, e.g. 2.32
 %     RestoreScreen       - Called by Screen when last window is closed (among all screens) or Screen.mex is flushed.

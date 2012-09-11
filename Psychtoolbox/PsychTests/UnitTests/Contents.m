@@ -86,7 +86,6 @@
 % PsychBasic/PsychKinect.m
 % PsychBasic/PsychKinectCore.m
 % PsychBasic/PsychPortAudio.m
-% PsychBasic/PsychSerial.m
 % PsychBasic/PsychWatchDog.m
 % PsychBasic/PsychtoolboxDate.m
 % PsychBasic/PsychtoolboxRegistration.m

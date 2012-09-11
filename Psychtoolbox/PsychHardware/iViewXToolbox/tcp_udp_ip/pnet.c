@@ -2,7 +2,7 @@
 							  
   MEX file for the tcpip toolbox.
                                                           */
-#define VERSION "Version  2.0.5  2003-09-16"
+#define VERSION "Version  2.0.5 + PTBMods by Mario Kleiner - 2012-09-10"
 
 /*
 %   This file(s) is part of the tcp_udp_ip toolbox (C) Peter Rydesäter et al.
@@ -45,7 +45,7 @@
   mex -O pnet.c {MATLAB_INSTALL_DIR}\sys\lcc\lib\wsock32.lib -DWIN32
 
   When using Visual C++, compile this with:
-  mex -O pnet.c ws2_32.lib -DWIN32
+  mex -O pnet.c ws2_32.lib winmm.lib -DWIN32
   
   
   == Main Authour ==           == Windows support ==      == Earlie/Basic UDP support ==
@@ -415,6 +415,11 @@ void __debug_view_con_status(char *str)
 /* Portable time function using matlabs NOW                         */
 double my_now(){
     double sec;
+    
+    sec = ((double) timeGetTime()) / 1000.0;
+    return(sec);
+    
+  /* 
     double dotimenow;
     static double lastdotime;
     mxArray *plhs[1]={NULL};
@@ -428,7 +433,8 @@ double my_now(){
 	    //mexPrintf("wait... drawnow returns: %d\n",ret);
 	    lastdotime= dotimenow;
     }
-    return sec;
+    return sec;   
+  */
 }
 #else
 double my_now()

@@ -60,6 +60,12 @@ if onoctave == 0
         % mex -g -v -outdir ..\Projects\Windows\build -output PsychCV -DPTBMODULE_PsychCV -largeArrayDims  -ID:\install\QuickTimeSDK\CIncludes -I"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\Include" -ICommon\Base -ICommon\PsychCV -IWindows\Base -I..\Cohorts\ARToolkit\include Windows\Base\*.c Common\Base\*.c Common\PsychCV\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib libARvideo.lib libARgsub.lib libARgsub_lite.lib libARgsubUtil.lib libARMulti.lib libAR.lib
         % movefile(['..\Projects\Windows\build\PsychCV.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
+
+    if what == 7
+        % Build Eyelink:
+        mex -g -v -outdir ..\Projects\Windows\build -output Eyelink -DPTBMODULE_Eyelink -largeArrayDims -I"C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink" -I"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\Include" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib "C:\Program Files (x86)\SR Research\EyeLink\libs\eyelink_core.lib" "C:\Program Files (x86)\SR Research\EyeLink\libs\eyelink_w32_comp.lib" "C:\Program Files (x86)\SR Research\EyeLink\libs\eyelink_exptkit20.lib"        
+        movefile(['..\Projects\Windows\build\Eyelink.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
     
     if what == 8
         % Build PsychKinectCore:

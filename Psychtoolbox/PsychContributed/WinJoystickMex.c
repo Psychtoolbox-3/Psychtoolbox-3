@@ -11,23 +11,11 @@ mex -v -g WinJoystickMex.c -lwinmm
 
 ------------------------------------------------------------------------------
 
-    WinJoystickMex.c is Copyright (C) 2009 Mario Kleiner
+    WinJoystickMex.c is Copyright (C) 2009-2012 Mario Kleiner
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+    This program is licensed under the MIT license.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-	One copy of the license can be found in the License.txt file inside the
+	A copy of the license can be found in the License.txt file inside the
 	Psychtoolbox-3 top level folder.
 ------------------------------------------------------------------------------*/
 
@@ -50,7 +38,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 
 	if(nrhs < 1) {
 		mexPrintf("WinJoystickMex: A simple Matlab/Octave MEX file for query of simple joysticks on Microsoft Windows\n\n");
-		mexPrintf("(C) 2009 by Mario Kleiner -- Licensed to you under GPLv2 or any later version.\n");
+		mexPrintf("(C) 2009-2012 by Mario Kleiner -- Licensed to you under the MIT license.\n");
 		mexPrintf("This file is part of Psychtoolbox-3 but should also work independently.\n");
 		mexPrintf("\n");
 		mexPrintf("Usage:\n\n");

@@ -31,12 +31,6 @@
 % PsychHID            - OSX: Read/write any HID-compliant USB device. See web page:
 %                            web http://psychtoolbox.org/usb.html
 % PsychRTBox          - All: Driver for RTBox reaction time button box.
-% PsychSerial         - Win, OS9: Send and receive through serial ports. -> DEPRECATED: Use IOPort instead!
-% SERIAL              - Win: Send and receive through serial ports.      -> DEPRECATED: Use IOPort instead!
-%                            Standard Matlab function. Requires Java, so it's 
-%                            not available if you run Matlab with the
-%                            -NOJVM switch. In Win we use the -NOJVM switch 
-%                            to fix the problem with GetChar.
 % SerialComm          - OSX  Send and receive through serial ports.      -> DEPRECATED: Use IOPort instead!
 %                            web http://www.mathworks.com/matlabcentral/fileexchange/loadFile.do?objectId=4952&objectType=file -browser;
 % Snd                 - All: Play a sound. Only for simple sounds! Use PsychPortAudio for serious sound playback and capture!
