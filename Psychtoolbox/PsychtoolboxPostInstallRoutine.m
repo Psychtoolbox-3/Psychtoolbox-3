@@ -46,6 +46,9 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 06/13/2012 Removed call to SwitchToNewPsychtoolboxHoster, no longer needed (DN)
 % 07/10/2012 Use textscan() on R2012a+ and verLessThan() to detect R2007a+ (MK)
 % 09/05/2012 Update support for 64-Bit Octave and versions > 3.2. (MK)
+% 09/13/2012 Add startup.m setup for 64-Bit Matlab + 64-Bit Windows. (MK)
+% 09/14/2012 Cancel support for Octave on MS-Windows. (MK)
+% 09/14/2012 Cancel support for 32-Bit Octave on OSX. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -132,11 +135,56 @@ catch
     fprintf('Info: Failed to remove .svn subfolders from path. Not a big deal...\n');
 end
 
+% Octave on Windows? This is unsupported as of Version 3.0.10.
+if IsWin && IsOctave
+    error('Use of GNU/Octave on MS-Windows with Psychtoolbox 3.0.10 is no longer supported. Aborted.');
+end
+
+% 32-Bit Octave on OSX? This is unsupported as of Version 3.0.10.
+if IsOctave && IsOSX && ~IsOSX(1)
+    error('Use of 32-Bit GNU/Octave on OSX with Psychtoolbox 3.0.10 is no longer supported (but 64-Bit Octave would work). Aborted.');
+end
+
+% Check if our own startup function is part of the startup file and add it,
+% if it isn't already part of it. Currently we only need this for 64-Bit
+% Matlab on Windows.
+if IsWin(1) && ~IsOctave
+    % Is it already implanted? Then we ain't nothing to do:
+    if ~IsPsychStartupImplantedInStartup
+        % Nope. Does a proper file already exist?
+        whereisit = which('startup.m');
+        if isempty(whereisit)
+            % No: Create our own one.
+            whereisit = [PsychtoolboxRoot 'PsychInitialize' filesep 'startup.m'];
+            fprintf('Creating a startup.m file for Psychtoolbox at %s\n', whereisit);
+        else
+            fprintf('Adding PsychStartup() call to Matlab startup.m file for Psychtoolbox at %s\n', whereisit);            
+        end
+        
+        % whereist points to the location of the existing or to be created
+        % file. Open (or create) it in append mode:
+        try
+            fd = fopen(whereisit, 'a');
+            fprintf(fd, '\n');
+            fprintf(fd, '%% Call Psychtoolbox-3 specific startup function:\n');
+            fprintf(fd, 'if exist(''PsychStartup''), PsychStartup; end;\n');
+            fprintf(fd, '\n');
+            fclose(fd);
+        catch
+            fprintf('WARNING: Failed to update or create startup.m file to add a call to PsychStartup()! Trouble ahead.\n');
+        end
+    end
+    
+    % Execute our startup function once manually, so it works already for
+    % this session:
+    PsychStartup;
+end
+
 % Check for operating system minor version on Mac OS/X when running under
 % Matlab:
 if IsOSX
-    if ~IsOctave & ~IsOSX(1) 
-        % Running on Matlab + OS/X. Find the operating system minor version,
+    if ~IsOctave && ~IsOSX(1)
+        % Running on 32-Bit Matlab + OS/X. Find the operating system minor version,
         % i.e., the 'y' in the x.y.z number, e.g., y=3 for 10.3.7:
 
         % Get 32-digit binary encoded minor version from Gestalt() MEX file:
@@ -196,7 +244,7 @@ if IsOSX
     end
     
     % Is the operating system minor version 'minorver' < 5 on 64-Bit OSX?
-    if (minorver < 5) & IsOSX(1)
+    if (minorver < 5) && IsOSX(1)
         % Yes. This is MacOS/X 10.4 or earlier, i.e., older than 10.5
         % Leopard. In all likelihood, this current PTB release won't work on
         % such a system anymore, because the binary 64-Bit MEX files are
@@ -219,7 +267,7 @@ if IsOSX
     end
 
     % Is the operating system minor version 'minorver' < 6 on 64-Bit OSX?
-    if (minorver < 6) & IsOSX(1) %#ok<*AND2>
+    if (minorver < 6) && IsOSX(1)
         % Yes. This is MacOS/X 10.5 or earlier, i.e., older than 10.6
         % Snow Leopard. 64-Bit PTB will only provide limited functionality:
         fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
@@ -266,7 +314,7 @@ end
 
 % Special case handling for Octave:
 if IsOctave
-    % OS/X or Linux under Octave. Need to prepend the proper folder with
+    % GNU/Octave. Need to prepend the proper folder with
     % the pseudo-MEX files to path:
     rc = 0; %#ok<NASGU>
     rdir = '';
@@ -358,10 +406,10 @@ if IsOctave
     
     if octavemajorv > 3 | (octavemajorv == 3 & octaveminorv > 2) %#ok<AND2,OR2>
         fprintf('\n\n=================================================================================\n');
-        fprintf('INFO: Your version %s of Octave is version 3.3 or later.\n', version);
+        fprintf('INFO: Your version %s of Octave is more recent than version 3.2.\n', version);
         fprintf('INFO: Psychtoolbox seems to work correctly on Octave 3.4 - 3.6, but no extensive\n');
         fprintf('INFO: systematic testing has been performed yet by the core developers on anything\n');
-        fprintf('INFO: but Octave 3.2.x.\n');
+        fprintf('INFO: but Octave 3.2.\n');
         fprintf('\nPress any key to continue with setup.\n');
         fprintf('=================================================================================\n\n');
         pause;
@@ -463,20 +511,14 @@ if IsWin & ~IsOctave %#ok<AND2>
         fprintf('ERROR: are missing on your system.\n\n');
         if IsWin(1)
             % Need 64-Bit runtime:
-            fprintf('Execute the installer file vcredist_x64.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
+            fprintf('ERROR: Execute the installer file vcredist_x64.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
         else
             % Need 32-Bit runtime:
-            fprintf('Execute the installer file vcredist_x86.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
+            fprintf('ERROR: Execute the installer file vcredist_x86.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
         end
-        fprintf('You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
-        %fprintf('Go to the following URL:\n\n');
-        %fprintf('http://www.microsoft.com/downloads/details.aspx?familyid=766A6AF7-EC73-40FF-B072-9112BAB119C2&displaylang=en#filelist\n\n');
-        %fprintf('ERROR: Download and install the required runtime libraries.\n\n');
-        %fprintf('ERROR: Use the download button right to vcredist_x86.exe - The file with a size of 2.6 MB.\n');
-        %fprintf('ERROR: Then double-click and run the downloaded vcredist_x86.exe installer to update your system.\n');
-        %fprintf('ERROR: If you install the wrong runtime, it will still not work.\n\n');
+        fprintf('ERROR: You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
-        fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
+        fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox; PsychtoolboxRegistration(%i, ''%s'');\n\n', isUpdate, flavor);
         fprintf('ERROR: This will avoid a full download of Psychtoolbox over the internet and just finish the setup.\n');
         
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');

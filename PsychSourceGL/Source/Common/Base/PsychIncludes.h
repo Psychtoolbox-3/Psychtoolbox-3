@@ -30,7 +30,14 @@
 
 #include "PsychPlatform.h"
 
-//Includes dependent on runtime environment:
+// This is needed for compiling with gcc 4.6+ if -std=gnu99
+// is set, which we need to set for OML_sync_control support
+// and other features. Fixes compile failure on Ubuntu 12.10:
+#if defined(__STDC_UTF_16__) && !defined(CHAR16_T)
+typedef __CHAR16_TYPE__ char16_t;
+#endif
+
+// Includes dependent on runtime environment:
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
     // Include File with Matlab interface API definitions:
     #include "mex.h"

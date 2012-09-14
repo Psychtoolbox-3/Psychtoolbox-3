@@ -1462,7 +1462,7 @@ PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes,
 		mxPtr = PsychGetInArgMxPtr(argNum);
 		d.isThere = (mxPtr && !PsychIsDefaultMat(mxPtr)) ? kPsychArgPresent : kPsychArgAbsent; 
 		if(d.isThere == kPsychArgPresent){ //the argument is there so fill in the rest of the description
-			d.numDims = mxGetNumberOfDimensions(mxPtr);
+			d.numDims = (int) mxGetNumberOfDimensions(mxPtr);
 
 			// If the calling function doesn't allow 64 bit sized input argument dimensions, then we check if
 			// the input has a size within the positive signed integer range, i.e., at most INT_MAX elements
@@ -2735,7 +2735,7 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
 			return(FALSE);
 		}
 		
-		*numElements = mxGetM(mxPtr) * mxGetN(mxPtr);
+		*numElements = (int) (mxGetM(mxPtr) * mxGetN(mxPtr));
 		//unlike other PsychAllocIn* functions, here we allocate new memory and copy the input to it rather than simply returning a pointer into the received array.
 		//That's because we want the booleans returned to the caller by PsychAllocInFlagArgVector() to alwyas be 8-bit booleans, yet we accept as flags either 64-bit double, char, 
 		//or logical type.  Restricting to logical type would be a nuisance in the MATLAB environment and does not solve the problem because on some platforms MATLAB

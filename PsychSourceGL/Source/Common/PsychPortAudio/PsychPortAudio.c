@@ -1830,6 +1830,9 @@ PsychError PsychPortAudioExit(void)
 			pa_initialized = FALSE;
 		}
 
+		// Detach our callback function for low-level debug output:
+		PaUtil_SetDebugPrintFunction(NULL);
+
 		// Restart suspended PulseAudio server if it was suspended by us:
 		if (pulseaudio_isSuspended) {
 			// Call external "pactl" utility via shell to ask
@@ -1843,9 +1846,6 @@ PsychError PsychPortAudioExit(void)
 			pulseaudio_isSuspended = FALSE;
 		}
 	}
-
-	// Detach our callback function for low-level debug output:
-	PaUtil_SetDebugPrintFunction(NULL);
 	
 	return(PsychError_none);
 }
@@ -1877,14 +1877,14 @@ void PsychPortAudioInitialize(void)
 		}
 
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        // Sanity check dynamic portaudio_x86.dll loading on Windows:
-        if (NULL == LoadLibrary("portaudio_x86.dll")) {
+        // Sanity check dynamic portaudio dll loading on Windows:
+        if ((NULL == LoadLibrary("portaudio_x86.dll")) && (NULL == LoadLibrary("portaudio_x64.dll"))) {
             // Failed:
             printf("\n\nPTB-ERROR: Tried to initialize PsychPortAudio's PortAudio engine. This didn't work,\n");
-            printf("PTB-ERROR: because i couldn't find or load the required portaudio_x86.dll library.\n");
+            printf("PTB-ERROR: because i couldn't find or load the required portaudio_x86.dll or portaudio_x64.dll library.\n");
             printf("PTB-ERROR: Please make sure to call the InitializePsychSound function before first use of\n");
             printf("PTB-ERROR: PsychPortAudio, otherwise this error will happen.\n\n");
-			PsychErrorExitMsg(PsychError_user, "Failed to initialize due to portaudio_x86.dll loading problem. Call InitializePsychSound first! Aborted.");
+			PsychErrorExitMsg(PsychError_user, "Failed to initialize due to portaudio DLL loading problem. Call InitializePsychSound first! Aborted.");
         }
         #endif
         
@@ -1893,6 +1893,7 @@ void PsychPortAudioInitialize(void)
 
 		if ((err=Pa_Initialize())!=paNoError) {
 			printf("PTB-ERROR: Portaudio initialization failed with following port audio error: %s \n", Pa_GetErrorText(err));
+            PaUtil_SetDebugPrintFunction(NULL);
 			PsychErrorExitMsg(PsychError_system, "Failed to initialize PortAudio subsystem.");
 		}
 		else {
@@ -3106,7 +3107,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 
 		// Buffer of sufficient size for a streaming refill of this amount?
 		buffersize = sizeof(float) * (size_t) ((psych_int64) inchannels * (psych_int64) insamples);
-		if (audiodevices[pahandle].outputbuffersize < buffersize) PsychErrorExitMsg(PsychError_user, "Total capacity of audio buffer is too small for a refill of this size! Allocate an initial buffer of at least the size of the biggest refill.");
+		if (audiodevices[pahandle].outputbuffersize < (psych_int64) buffersize) PsychErrorExitMsg(PsychError_user, "Total capacity of audio buffer is too small for a refill of this size! Allocate an initial buffer of at least the size of the biggest refill.");
 
 		// Need to lock b'cause of 'playposition':
 		PsychPALockDeviceMutex(&audiodevices[pahandle]);
@@ -3716,7 +3717,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 		minSamples = minSecs * ((double) audiodevices[pahandle].streaminfo->sampleRate) * ((double) audiodevices[pahandle].inchannels) + ((double) audiodevices[pahandle].inchannels);
 
 		// Bigger than buffersize? That would be a no no...
-		if (((psych_int64) minSamples * sizeof(float)) > audiodevices[pahandle].inputbuffersize) {
+		if (((psych_int64) (minSamples * sizeof(float))) > audiodevices[pahandle].inputbuffersize) {
 			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 			PsychErrorExitMsg(PsychError_user, "Invalid 'minimumAmountToReturnSecs' parameter: The requested minimum is bigger than the whole capture buffer size!'");			
 		}
@@ -3760,7 +3761,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 	buffersize = (size_t) insamples * sizeof(float);
 
 	// Buffer "overflow" detected?
-	if (buffersize > audiodevices[pahandle].inputbuffersize) {
+	if ((psych_int64) buffersize > audiodevices[pahandle].inputbuffersize) {
 		// Ok, the buffer did overrun and captured data was lost. Limit returned data
 		// to buffersize and set the overrun flag, optionally output a warning:
 		buffersize = (size_t) audiodevices[pahandle].inputbuffersize;

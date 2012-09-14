@@ -18,6 +18,8 @@ if nargin < 2
     onoctave = IsOctave;
 end
 
+try
+    
 % Matlab or Octave build?
 if onoctave == 0
     % Matlab build:
@@ -25,7 +27,8 @@ if onoctave == 0
         % Build Screen without GStreamer:
         %mex -g -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib
 
-        % Default: Build Screen with GStreamer support:
+        % Default: Build Screen with GStreamer support: Needs the
+        % www.gstreamer.com GStreamer SDK for 64-Bit Windows.
         mex -g -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DPTB_USE_GSTREAMER -LC:\gstreamer-sdk\2012.5\x86_64\lib -IC:\gstreamer-sdk\2012.5\x86_64\include -IC:\gstreamer-sdk\2012.5\x86_64\include\gstreamer-0.10 -IC:\gstreamer-sdk\2012.5\x86_64\include\glib-2.0 -IC:\gstreamer-sdk\2012.5\x86_64\include\glib-2.0\include -IC:\gstreamer-sdk\2012.5\x86_64\lib\glib-2.0\include -IC:\gstreamer-sdk\2012.5\x86_64\include\libxml2 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lgthread-2.0 -lglib-2.0 -lgstreamer-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 LINKFLAGS="$LINKFLAGS /VERBOSE:LIB /DELAYLOAD:libgobject-2.0-0.dll /DELAYLOAD:libgthread-2.0-0.dll /DELAYLOAD:libglib-2.0-0.dll /DELAYLOAD:libgstreamer-0.10-0.dll /DELAYLOAD:libgstapp-0.10-0.dll /DELAYLOAD:libgstinterfaces-0.10-0.dll"
 
         movefile(['..\Projects\Windows\build\Screen.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
@@ -39,7 +42,7 @@ if onoctave == 0
     
     if what == 2
         % Build PsychPortAudio
-        mex -g -v -outdir ..\Projects\Windows\build -output PsychPortAudio -DPTBMODULE_PsychPortAudio -largeArrayDims -L..\Cohorts\PortAudio -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x86 LINKFLAGS="$LINKFLAGS /DELAYLOAD:portaudio_x86.dll"
+        mex -g -v -outdir ..\Projects\Windows\build -output PsychPortAudio -DPTBMODULE_PsychPortAudio -largeArrayDims -L..\Cohorts\PortAudio -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x64 LINKFLAGS="$LINKFLAGS /DELAYLOAD:portaudio_x64.dll"
         movefile(['..\Projects\Windows\build\PsychPortAudio.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
     
@@ -65,6 +68,15 @@ if onoctave == 0
         % movefile(['..\Projects\Windows\build\PsychCV.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
     
+    if what == 7
+        % Build Eyelink:
+        % Actually don't: Cannot build for 64-Bit, because SR-Research does
+        % not provide any Eyelink-SDK for 64-Bit Windows as of 11-Sep-2012.
+        % Therefore no Eyelink for the 64-Bit PTB on Windows.
+        % mex -g -v -outdir ..\Projects\Windows\build -output Eyelink -DPTBMODULE_Eyelink -largeArrayDims -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I"C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib "C:\Program Files (x86)\SR Research\EyeLink\libs\eyelink_core.lib" "C:\Program Files (x86)\SR Research\EyeLink\libs\eyelink_w32_comp.lib" "C:\Program Files (x86)\SR Research\EyeLink\libs\eyelink_exptkit20.lib"        
+        % movefile(['..\Projects\Windows\build\Eyelink.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
+        
     if what == 8
         % Build PsychKinectCore:
         mex -g -v -outdir ..\Projects\Windows\build -output PsychKinectCore -DPTBMODULE_PsychKinectCore -largeArrayDims -DWIN32 -L..\Cohorts\Kinect-v16-withsource\libusb\lib\msvc_x64 -I..\Cohorts\Kinect-v16-withsource -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib -lusb
@@ -142,6 +154,11 @@ else
         system('copy T:\projects\OpenGLPsychtoolbox\Psychtoolbox-3\PsychSourceGL\Projects\Windows\build\PsychHID.mex T:\projects\OpenGLPsychtoolbox\Psychtoolbox-3\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
     end;
     
+end
+
+catch %#ok<*CTCH>
+    % Empty. We just want to make sure the delete() call below is executed
+    % in both success and failure case.
 end
 
 delete('Common\Base\PsychScriptingGlue.c');

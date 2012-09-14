@@ -45,18 +45,30 @@ function SetupPsychtoolbox
 % 06/07/09 mk  Apply smallish fix to fix counting, contributed by Chuan Zeng.
 % 05/27/12 mk  Strip backwards compatibility support to pre-R2007a.
 %              Remove PowerPC support.
+%
+% 09/14/12 mk  Drop support for Octave on MS-Windows.
+% 09/14/12 mk  Drop support for 32-Bit Octave on OSX.
 
 % Flush all MEX files: This is needed at least on M$-Windows to
 % work if Screen et al. are still loaded.
 clear mex
 
-% Check if this is a 64-bit Octave on Windows, which we don't support at all:
-if ~isempty(strfind(computer, '_64')) & isempty(strfind(computer, 'linux')) & isempty(strfind(computer, 'apple'))
-    fprintf('Psychtoolbox does not work on a 64 bit version of GNU/Octave on MS-Windows.\n');
-    fprintf('You need to install a 32 Bit version to use Psychtoolbox with Octave on Windows.\n');
-    fprintf('Use with 64 Bit Matlab is fully supported on all operating systems.\n');
-    fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
-    error('Tried to setup on a 64 bit version of Octave, which is not supported on this operating system.');
+% Check if this is 32-Bit Octave on OSX, which we don't support anymore:
+if ~isempty(strfind(computer, 'apple-darwin')) && isempty(strfind(computer, '64'))
+    fprintf('Psychtoolbox 3.0.10 and later does no longer work with 32-Bit GNU/Octave on OSX.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave on OSX, which is fully supported.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
+end
+
+% Check if this is Octave on Windows, which we don't support at all:
+if strcmp(computer, 'i686-pc-mingw32')
+    fprintf('Psychtoolbox 3.0.10 and later does no longer work with GNU/Octave on MS-Windows.\n');
+    fprintf('You need to use MacOS/X or GNU/Linux if you want to use Psychtoolbox with Octave.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9 which did support 32-Bit Octave 3.2 on Windows.\n');
+    error('Tried to setup on Octave, which is no longer supported on MS-Windows.');
 end
 
 if strcmp(computer,'MAC')
@@ -197,28 +209,28 @@ else
     fprintf('Success.\n\n');
 end
 
-fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
-    'allow future updates by every user on this machine without requiring administrator privileges.\n']);
-
-try
-    if IsOSX || IsLinux
-        [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
-    else
-        [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
-    end
-catch %#ok<CTCH>
-    s = 0;
-    m = 'Setting file attributes is not supported under Octave.';
-end
-
-if s
-    fprintf('Success.\n\n');
-else
-    fprintf('\nFILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
-    fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
-    fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
-    fprintf('The error message of FILEATTRIB was: %s\n\n', m);
-end
+% fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
+%     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
+% 
+% try
+%     if IsOSX || IsLinux
+%         [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
+%     else
+%         [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
+%     end
+% catch %#ok<CTCH>
+%     s = 0;
+%     m = 'Setting file attributes is not supported under Octave.';
+% end
+% 
+% if s
+%     fprintf('Success.\n\n');
+% else
+%     fprintf('\nFILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
+%     fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
+%     fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
+%     fprintf('The error message of FILEATTRIB was: %s\n\n', m);
+% end
 
 if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    % Notify the post-install routine of the "pseudo-update" It will

@@ -5548,6 +5548,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	psych_bool nvidia = FALSE;
 	psych_bool ati = FALSE;
 	psych_bool intel = FALSE;
+    psych_bool llvmpipe = FALSE;
 	GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
 	GLboolean nativeStereo = FALSE;
 
@@ -5558,6 +5559,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
 	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
 	if (strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") || strstr((char*) glGetString(GL_RENDERER), "Intel")) { intel = TRUE; sprintf(windowRecord->gpuCoreId, "Intel"); }
+	if (strstr((char*) glGetString(GL_VENDOR), "VMware") || strstr((char*) glGetString(GL_RENDERER), "llvmpipe")) { llvmpipe = TRUE; sprintf(windowRecord->gpuCoreId, "gllvm"); }
 
 	// Detection code for Linux DRI driver stack with ATI GPU:
 	if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
@@ -5729,12 +5731,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		}
 
 		// INTEL specific detection logic:
-		if (intel && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
+		if ((intel || llvmpipe) && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
 			// An Intel GPU with FBO and ARB_texture_float support: These are usually of the HD graphics series and
 			// recent enough to support floating point textures and rendertargets with 16 bpc and 32 bpc float, including
 			// texture filtering and frame buffer blending, and as a bonus FP32 shading. Iow. they support the whole
 			// shebang, as they are at least OpenGL 3.0 / Direct3D-10 compliant:
-			if (verbose) printf("Assuming HD graphics core or later: Hardware supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
+			if (verbose && intel) printf("Assuming HD graphics core or later: Hardware supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
+			if (verbose && llvmpipe) printf("Assuming Gallium LLVM-Pipe rasterizer: Renderer supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
 
 			windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
 			windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;

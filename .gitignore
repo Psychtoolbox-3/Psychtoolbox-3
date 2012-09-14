@@ -15,3 +15,5 @@ project.xcworkspace/
 PsychSourceGL/Cohorts/Kinect-v16-withsource/
 PsychSourceGL/Cohorts/freeglut/
 PsychSourceGL/Cohorts/libDC1394/libdc1394-2.0.1/
+Psychtoolbox/PsychInitialize/startup.m
+Psychtoolbox/ptbflavorinfo.txt

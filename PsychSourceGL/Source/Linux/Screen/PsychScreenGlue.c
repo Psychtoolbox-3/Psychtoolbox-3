@@ -1388,7 +1388,7 @@ float PsychGetNominalFramerate(int screenNumber)
   XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, 0, NULL);
 
   // Modeline with plausible values returned by RandR?
-  if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
+  if (mode && (mode->hTotal >= mode->width) && (mode->vTotal >= mode->height)) {
     if (PsychPrefStateGet_Verbosity() > 4) {
       printf ("RandR: %s (0x%x) %6.1fMHz\n",
       mode->name, (int)mode->id,
@@ -1424,6 +1424,12 @@ float PsychGetNominalFramerate(int screenNumber)
     }
   }
 
+  // More child-protection: (utterly needed!)
+  if ((dot_clock <= 0) || (mode_line.htotal < 1) || (mode_line.vtotal < 1)) {
+      if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychGetNominalFramerate: Invalid modeline retrieved.\n");
+      return(0);
+  }
+  
   // Query vertical refresh rate. If it fails we default to the last known good value...
   // Vertical refresh rate is: RAMDAC pixel clock / width of a scanline in clockcylces /
   // number of scanlines per videoframe.

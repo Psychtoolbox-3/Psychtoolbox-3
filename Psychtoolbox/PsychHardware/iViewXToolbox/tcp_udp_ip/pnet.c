@@ -5,7 +5,7 @@
 #define VERSION "Version  2.0.5 + PTBMods by Mario Kleiner - 2012-09-10"
 
 /*
-%   This file(s) is part of the tcp_udp_ip toolbox (C) Peter RydesŠter et al.
+%   This file(s) is part of the tcp_udp_ip toolbox (C) Peter Rydesater et al.
 %   et al.  1998-2003 for running in MATLAB(R) as scripts and/or plug-ins.
 %
 %   This program is free software; you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 %   along with this program; if not, write to the Free Software
 %   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 %
-%   In addition, as a SPECIAL EXCEPTION, Peter RydesŠter, SWEDEN,
+%   In addition, as a SPECIAL EXCEPTION, Peter Rydesater, SWEDEN,
 %   gives permission to link the code of this program with any library,
 %   and distribute linked combinations of it. You must obey the GNU
 %   General Public License in all respects for all of the code in the
@@ -37,8 +37,12 @@
   Notes for Unix implementation
   Compile this with:
   
-  mex -O pnet.c
+  mex -g -v pnet.c
   
+  On Linux + gcc 4.6+ + Matlab use:
+ 
+  mex -O -g -v CFLAGS='$CFLAGS -fPIC -fexceptions' pnet.c
+ 
   Notes for Windows implementation
  
   When using LCC, compile this with:
@@ -49,9 +53,9 @@
   
   
   == Main Authour ==           == Windows support ==      == Earlie/Basic UDP support ==
-  Peter RydesŠter              Mario Bergeron             Mike Medeiros at 23-Jan-2001.
+  Peter Rydesater              Mario Bergeron             Mike Medeiros at 23-Jan-2001.
                                LYRtech
-  …stersund, Sweden            QuŽbec, Canada
+  Ostersund, Sweden            Quebec, Canada
   +46 70 560 68 16             
   Peter.Rydesater@mh.se        Mario.Bergeron@lyrtech.com
 
@@ -190,7 +194,7 @@ void Print_Start_Message(){
 	      "Loaded pnet MEX-file for the tcp/udp/ip-toolbox Compiled @ "
 	      __DATE__ " " __TIME__  "\n"
 	      VERSION "\n"
-	      "Copyright (C) Peter RydesŠter, Sweden, et al. , 1998 - 2003\n"
+	      "Copyright (C) Peter Rydesater, Sweden, et al. , 1998 - 2003\n"
 	      "GNU General Public License, se license.txt for full license notis.\n"
 	      "You are allowed to (dynamicaly) link this file with non-free code. \n\n"
 	      "   http://www.rydesater.com \n\n"
@@ -727,7 +731,7 @@ void my_mexReturnArrayFromBuff(const int argno,io_buff *buff,const int line)
 	}
 	gret_args++;
     }
-       //    debug_view_con_status("GET_ARRAY N€STAN KLAR");
+       //    debug_view_con_status("GET_ARRAY NSTAN KLAR");
     // Delete from read buffer if not "VIEW" option and dims filled
     if(my_mexFindInputOption(argno+1,"VIEW")==0 && deleteelements>0 ){
 	buff->pos-=deleteelements*si;
