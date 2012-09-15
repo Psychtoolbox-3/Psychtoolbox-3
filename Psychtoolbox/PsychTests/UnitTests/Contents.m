@@ -1,6 +1,8 @@
 % list of m-files that come with PTB, current as of revision 2302,
 % September 19th, 2011.
 %
+% Run unit tests by executing the script PsychtoolboxRoot\PsychTests\UnitTestRunAll.m
+%
 % for each m-file, the function that tests it is listed, if any
 %
 % generate with:
@@ -84,7 +86,6 @@
 % PsychBasic/PsychKinect.m
 % PsychBasic/PsychKinectCore.m
 % PsychBasic/PsychPortAudio.m
-% PsychBasic/PsychSerial.m
 % PsychBasic/PsychWatchDog.m
 % PsychBasic/PsychtoolboxDate.m
 % PsychBasic/PsychtoolboxRegistration.m
@@ -98,15 +99,6 @@
 % PsychBasic/VideoRefreshFromMeasurement.m
 % PsychBasic/WaitSecs.m
 % PsychBasic/WaitTicks.m
-% PsychBasic/clearGetSecs.m
-% PsychBasic/clearIOPort.m
-% PsychBasic/clearPsychHID.m
-% PsychBasic/clearPsychPortAudio.m
-% PsychBasic/clearScreen.m
-% PsychBasic/clearWaitSecs.m
-% PsychBasic/clearall.m
-% PsychBasic/clearmex.m
-% PsychBasic/clearmoglcore.m
 % PsychBasic/psychassert.m
 % PsychBasic/psychlasterror.m
 % PsychBasic/psychrethrow.m
@@ -408,10 +400,10 @@
 % PsychJava/JavaTimeToGetSecs.m
 % PsychJava/PsychJavaTrouble.m
 % PsychJava/psychusejava.m
-% PsychOneliners/AddStructs.m
+% PsychOneliners/AddStructs.m                                             - Oneliners_Test_Structs.m 
 % PsychOneliners/AltSize.m
 % PsychOneliners/AppleVersion.m
-% PsychOneliners/AreStructsEqualOnFields.m
+% PsychOneliners/AreStructsEqualOnFields.m                                - Oneliners_Test_Structs.m 
 % PsychOneliners/Ask.m
 % PsychOneliners/AssertGLSL.m
 % PsychOneliners/AssertMex.m
@@ -422,7 +414,7 @@
 % PsychOneliners/CatStr.m
 % PsychOneliners/CenterMatOnPoint.m
 % PsychOneliners/Circle.m
-% PsychOneliners/CleanStruct.m
+% PsychOneliners/CleanStruct.m                                            - Oneliners_Test_Structs.m 
 % PsychOneliners/CreateUniformDotsIn3DFrustum.m
 % PsychOneliners/CropBlackEdges.m
 % PsychOneliners/DeEmptify.m
@@ -432,7 +424,7 @@
 % PsychOneliners/Ellipse.m
 % PsychOneliners/EnforcePos.m
 % PsychOneliners/Explode.m
-% PsychOneliners/FillEmptyFields.m
+% PsychOneliners/FillEmptyFields.m                                        - Oneliners_Test_Structs.m 
 % PsychOneliners/FindInd.m
 % PsychOneliners/FindRepeatAlongDims.m
 % PsychOneliners/FrameRate.m
@@ -446,18 +438,16 @@
 % PsychOneliners/GetSubversionPath.m
 % PsychOneliners/GetWithDefault.m
 % PsychOneliners/GrayIndex.m
-% PsychOneliners/GroupStructArrayByFields.m
+% PsychOneliners/GroupStructArrayByFields.m                               - Oneliners_Test_Structs.m 
 % PsychOneliners/ImageToVec.m
 % PsychOneliners/Ind2Str.m
 % PsychOneliners/Interleave.m
 % PsychOneliners/IsACell.m
 % PsychOneliners/IsLinux.m
 % PsychOneliners/IsMinimumOSXVersion.m
-% PsychOneliners/IsOS9.m
 % PsychOneliners/IsOSX.m
 % PsychOneliners/IsOctave.m
 % PsychOneliners/IsWin.m
-% PsychOneliners/IsWinMatlabR11Style.m
 % PsychOneliners/KbMapKey.m
 % PsychOneliners/LoadIdentityClut.m
 % PsychOneliners/MacModelName.m
@@ -495,7 +485,7 @@
 % PsychOneliners/Speak.m
 % PsychOneliners/Stopwatch.m
 % PsychOneliners/StrPad.m
-% PsychOneliners/Struct2Vect.m
+% PsychOneliners/Struct2Vect.m                                            - Oneliners_Test_Structs.m 
 % PsychOneliners/TextBounds.m
 % PsychOneliners/TextCenteredBounds.m
 % PsychOneliners/UnpackColorImage.m

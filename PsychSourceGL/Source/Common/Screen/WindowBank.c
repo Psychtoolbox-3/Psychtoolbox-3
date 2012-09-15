@@ -343,6 +343,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
     (*winRec)->VBL_Startline = 0;
     (*winRec)->VBL_Endline = 0;
     
+    // One-Time setup of some parameters needed for userspace OpenGL context at first real bind:
+    (*winRec)->needsViewportSetup = TRUE;
+    
 	return;
 }
 
@@ -458,6 +461,8 @@ psych_bool IsWindowIndex(PsychNumdexType numdex)
 PsychError FindWindowRecord(PsychWindowIndexType windowIndex, PsychWindowRecordType **windowRecord)
 {
 	// Check for valid index: Must be within bounds of our array of windowRecord pointers, and the referenced slot must be a non-NULL ptr to a windowRecord:
+        // Preinit to safe default of NULL:
+        *windowRecord = NULL;
 	if(windowIndex<PSYCH_FIRST_WINDOW || windowIndex>PSYCH_LAST_WINDOW || ((*windowRecord = windowRecordArrayWINBANK[windowIndex]) == NULL)) return(PsychError_invalidWindex); // Invalid index!
 
 	// It is a windowRecord: Check if it is valid, ie., has been properly initialized by PTB:

@@ -124,15 +124,14 @@ PsychError SCREENFillPoly(void)
 {	
 	PsychColorType				color;
 	PsychWindowRecordType		*windowRecord;
-	int							whiteValue;
+	double						whiteValue;
 	int							i, mSize, nSize, pSize;
-	psych_bool						isArgThere;
+	psych_bool					isArgThere;
 	double						*pointList;
 	double						isConvex;
 	int							j,k;
 	int							flag;
 	double						z;
-	GLuint						tessglList;
 	
 	combinerCacheSlot = 0;
 	combinerCacheSize = 0;

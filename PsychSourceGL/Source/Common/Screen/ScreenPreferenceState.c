@@ -3,11 +3,12 @@
   
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+    Allen.Ingling@nyu.edu           awi
+    mario.kleiner@tuebingen.mpg.de  mk
   
 	PLATFORMS:	
 	
-		Mac OS X MATLAB only.
+		All.
     
 
 	HISTORY:
@@ -119,7 +120,7 @@ static double							sync_maxDeviation;				// Maximum deviation (in percent) betw
 static double							sync_maxDuration;				// Maximum duration of a calibration run in seconds.
 static int								sync_minSamples;				// Minimum number of valid measurement samples needed.
 
-static int                                                      useGStreamer;                         // Use GStreamer for multi-media processing? 1==yes.
+static int                              useGStreamer;                   // Use GStreamer for multi-media processing? 1==yes.
 
 //All state checking goes through accessors located in this file.
 
@@ -148,7 +149,14 @@ void PrepareScreenPreferences(void)
 	windowShieldingLevel=2000;
 	frameRectLadderCorrection=-1.0;
 	suppressAllWarnings=FALSE;
-	Verbosity=3;
+
+	// Default level of verbosity is 3:
+    Verbosity=3;
+
+    // Early override via environment variable, if defined:
+    if (getenv("PSYCH_SCREEN_VERBOSITY")) {
+        Verbosity = atoi(getenv("PSYCH_SCREEN_VERBOSITY"));
+    }
 
 	// Default synctest settings: 1 msec allowable max standard deviation from measured
 	// mean flip duration, at least 50 valid sync samples, at most 10% deviation between

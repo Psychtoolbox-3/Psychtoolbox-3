@@ -6,7 +6,7 @@ function resultFlag = IsOSX(is64)
 % If the optional 'is64' flag is set to one, returns
 % true if the runtime is 64 bit and on OSX.
 %
-% See also: IsWin, IsLinux, IsOS9, OSName, computer
+% See also: IsWin, IsLinux, OSName, computer
 
 % HISTORY
 % ??/??/?? awi Wrote it.
@@ -16,22 +16,18 @@ function resultFlag = IsOSX(is64)
 persistent rc;
 persistent rc64;
 
+% check input
+if nargin < 1 || isempty(is64)
+     is64 = 0;
+end
+
+
 if isempty(rc)
      rc = streq(computer,'MAC') | streq(computer, 'MACI') | streq(computer, 'MACI64') | ~isempty(strfind(computer, 'apple-darwin'));
 end
 
 if isempty(rc64)
      rc64 = rc & ~isempty(strfind(computer, '64'));
-end
-
-if nargin < 1
-     resultFlag = rc;
-     return;
-end
-
-if isempty(is64)
-     resultFlag = rc;
-     return;
 end
 
 if is64 == 0

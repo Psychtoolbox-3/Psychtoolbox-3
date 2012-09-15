@@ -7,6 +7,8 @@ function out = ShrinkMatrix(in,fac)
 % shrinking is performed by mean computation.
 
 % 05/09/08 DN  Wrote it.
+% 13/06/12 DN  Urgh, this only went over the diagonal of each NxN submatrix
+%              (where N is the scaling factor)
 
 
 % input checking
@@ -37,7 +39,9 @@ if hcut~=0 || vcut~=0
 end
 
 out = zeros(ys/fac,xs/fac,size(in,3));
-for p=1:fac
-    out = out + in(p:fac:ys,p:fac:xs,:);
+for p=1:fac     % image rows
+    for q=1:fac     % image columns
+        out = out + in(p:fac:ys,q:fac:xs,:);
+    end
 end
-out = out./fac;
+out = out./(fac^2);

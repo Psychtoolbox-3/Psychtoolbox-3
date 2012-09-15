@@ -70,6 +70,7 @@ try
     
     % and check LogVar (only check a trivial one and a complicated one as
     % LogVar is only a thin wrapper around Var2Str)
+    % This fails when no write access to PTB tree
     success = LogVarTester(a,'a') && success;
     success = LogVarTester(h,'h') && success;
     

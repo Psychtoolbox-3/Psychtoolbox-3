@@ -72,6 +72,10 @@
 % hardware that doesn't support this. Not generally useful for production
 % use.
 %
+% On MS-Windows this allows to use the Microsoft GDI software renderer,
+% ie., to not abort if that renderer is detected. Normally Screen() would
+% abort when detecting the GDI renderer.
+%
 %
 % 128 == kPsychEnforceForegroundWindow: Request application of the Windows
 % GDI calls SetForegroundWindow() and SetFocus() on each created onscreen

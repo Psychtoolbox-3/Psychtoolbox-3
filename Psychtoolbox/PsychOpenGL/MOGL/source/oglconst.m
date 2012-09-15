@@ -8,6 +8,10 @@ function oglconst(glheaderpath, aglheaderpath)
 % 09-Dec-2005 -- created (RFM)
 % 23-Jan-2005 -- constants saved in both struct and OpenGL style (RFM)
 % 05-Mar-2006 -- ability to spec. system header file path added (MK)
+% 30-Aug-2012 -- Also parse own glext.h file for up-to-date definitions (MK)
+% 30-Aug-2012 -- Make more robust: Handle 64-Bit integer defines and their
+%                quirks, as well ad #define GL_THIS GL_THAT "recursive"
+%                definitions (MK).
 
 if IsWin
     error('Parsing of GL header files on Windows not yet supported.');
@@ -47,7 +51,15 @@ end;
 % we want from the file where they're all saved.
 GL= parsefile(sprintf('%s/gl.h', glheaderpath), 'GL_');
 GL= parsefile(sprintf('%s/glext.h', glheaderpath), 'GL_', GL);
-GLU=parsefile(sprintf('%s/glu.h', glheaderpath),'GLU_');
+
+% Also parse a glext.h file if it is located in our headers/ subdirectory
+% under glext.h
+if exist('./headers/glext.h', 'file')
+    fprintf('Parsing also our private glext.h file for more up-to-date constant definitions.\n');
+    GL= parsefile('./headers/glext.h', 'GL_', GL);
+end
+
+GLU=parsefile(sprintf('%s/glu.h', glheaderpath),'GLU_'); %#ok<*NASGU>
 if IsOSX
     AGL=parsefile(sprintf('%s/agl.h', aglheaderpath),'AGL_');
 end;
@@ -113,24 +125,50 @@ while ~feof(fid),
     % if remainder of symbol name begins with a digit, then add 'N' to make
     % it a valid field name
     if ismember(fieldname(1),'0123456789'),
-        fieldname=[ 'N' fieldname ];
+        fieldname=[ 'N' fieldname ]; %#ok<*AGROW>
     end
 
     % convert value to a numeric value
     if ~isempty(r.value),
-        if strncmp(r.value,'0x',2),
-			% convert hex value
-            nvalue=hex2dec(r.value(3:end));
-		else
-			% convert decimal value
-            nvalue=str2num(r.value);
+        try
+            if strncmp(r.value,'0x',2),
+                % convert hex value:
+                
+                % First strip trailing u or l characters, which would
+                % define (u)nsigned (l)ong values etc., as hex2dec can't
+                % handle such trailing specifiers:
+                inpstring = r.value(3:end);
+                inpstring = inpstring(inpstring ~= 'u');
+                inpstring = inpstring(inpstring ~= 'l');
+                
+                % Convert filtered string to decimal:
+                nvalue=hex2dec(inpstring);
+            elseif strncmp(r.value,prefix,length(prefix)),
+                % Constant defined by name of a previously defined
+                % constant, e.g., #define GL_THIS GL_THAT.
+                %
+                % Try to find value of predecessor constant:
+                substitutionField = r.value(length(prefix)+1:end);
+                if isfield(S, substitutionField)
+                    nvalue = getfield(S, substitutionField); %#ok<*GFLD>
+                    fprintf('\n-> Substituted %s with %s value of %x \n', fieldname, substitutionField, nvalue);
+                else
+                    fprintf('\n-> FAILED Substitution of %s with %s due to missing preceeding definition!\n', fieldname, substitutionField);
+                    nvalue = [];
+                end
+            else
+                % convert decimal value
+                nvalue=str2num(r.value); %#ok<*ST2NM>
+            end
+        catch %#ok<*CTCH>
+            nvalue = [];
         end
         % assign value of zero if conversion failed, e.g., if symbol was
 		% defined using another #define, as in #define GL_THIS GL_THAT.
 		% if anything important is #defined this way, we'll have to fix
 		% up this part.
         if isempty(nvalue),
-            warning('error converting numeric value from line:  %s',codeline);
+            warning('error converting numeric value from line:  %s',codeline); %#ok<*WNTAG>
             nvalue=0;
         end
 	else
@@ -140,7 +178,7 @@ while ~feof(fid),
 
     % add numeric value to struct
     fprintf(1,'%s\t%-20s\t%s\t%.0f\n',prefix,fieldname,r.value,nvalue);
-    S=setfield(S,fieldname,nvalue);
+    S=setfield(S,fieldname,nvalue); %#ok<*SFLD>
     
     % define OpenGL-style variable in calling workspace
 	evalin('caller',sprintf('%s=%d;',r.symbol,nvalue));

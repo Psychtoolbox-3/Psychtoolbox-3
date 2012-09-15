@@ -24,6 +24,11 @@
 
 #include "Screen.h"
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+// Need these includes to make setting display brightness work:
+#include <IOKit/graphics/IOGraphicsLib.h>
+#endif
+
 const char *FieldNames[]={"width", "height", "pixelSize", "hz"};
 
 PsychError SCREENConfigureDisplay(void)
@@ -36,6 +41,19 @@ PsychError SCREENConfigureDisplay(void)
 					"'Brightness': Return or set brightness of an attached display device. Many displays and systems don't support this function. "
                     " brightness values are in the range 0.0 to 1.0 from darkest to brightest. Returns old brightness setting.\n"
 					"'NumberOutputs': Return number of active separate display outputs for given screen 'screenNumber'.\n"
+					"'Capture': Capture output 'outputId' of a screen 'screenNumber' for exclusive use by Psychtoolbox.\n"
+					"'Release': Release output 'outputId' of a screen 'screenNumber' from exclusive use by Psychtoolbox.\n"
+					"Please note that 'Capture' and 'Release' are automatically applied to a display output as appropriate "
+					"whenever a fullscreen onscreen window is opened or closed on a display. You usually don't need to call "
+					"these functions yourself, in fact, you even shouldn't call them yourself usually, as wrong use of the "
+					"functions can cause graphics malfunctions or even a freeze of the display or GUI, forcing you to kill "
+					"Matlab or Octave as a last resort to regain control over your displays. The main purpose of these "
+					"functions is to temporarily block all graphics operations or display updates on displays that are not "
+					"used for visual stimulation, ie., not covered by fullscreen onscreen windows. This prevents other running "
+					"applications from interfering with your experiment script by preventing them to take up valuable resources "
+					"on the graphics card. Display capture is not supported on all operating systems in all modes of operation. "
+					"If the functions get called on an unsupported configuration, they silently return and simply do nothing."
+					"\n\n"
 					"'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'. "
 					"Returns a struct 'oldSettings' with the current settings for that output. Only supported on Linux.\n"
 					"It returns and accepts the following optional parameters:\n"
@@ -47,11 +65,14 @@ PsychError SCREENConfigureDisplay(void)
 
 	const char *OutputFieldNames[]={"width", "height", "pixelSize", "hz", "xStart", "yStart"};
 	char *settingName = NULL;
-	PsychGenericScriptType *oldResStructArray;
 	int screenNumber, outputId;
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+	PsychGenericScriptType *oldResStructArray;
 	int newWidth, newHeight, newHz, newBpp, newX, newY;
 	psych_bool rc;
-	
+    #endif
+
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
@@ -222,7 +243,30 @@ PsychError SCREENConfigureDisplay(void)
 		return(PsychError_none);
 	}
 
-    
+	// Usercode wants to capture a display screen?
+	if (PsychMatch(settingName, "Capture")) {
+		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
+		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+		if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number."); 
+
+		// This functions is only supported on OSX for the time being, a no-op on other platforms:
+		if ((PSYCH_SYSTEM == PSYCH_OSX) && !PsychIsScreenCaptured(screenNumber)) PsychCaptureScreen(screenNumber);
+
+		return(PsychError_none);
+	}
+
+	// Usercode wants to release a display screen?
+	if (PsychMatch(settingName, "Release")) {
+		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
+		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+		if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number."); 
+
+		// This functions is only supported on OSX for the time being, a no-op on other platforms:
+		if ((PSYCH_SYSTEM == PSYCH_OSX) && PsychIsScreenCaptured(screenNumber)) PsychReleaseScreen(screenNumber);
+
+		return(PsychError_none);
+	}
+
 #if PSYCH_SYSTEM != PSYCH_LINUX
 	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
 #else

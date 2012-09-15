@@ -47,7 +47,7 @@ function AssertOpenGL
 %  troubleshooting tips in the "Download" and "Frequently asked questions"
 %  sections of our Psychtoolbox Wiki at http://www.psychtoolbox.org
 %
-% See also: IsOSX, IsOS9 , IsWin, IsLinux.
+% See also: IsOSX, IsWin, IsLinux.
 
 % HISTORY
 % 7/10/04   awi     wrote it.
@@ -61,6 +61,7 @@ function AssertOpenGL
 %                   GStreamer runtime.
 % 03/24/12  mk      Add do_braindead_shortcircuit_evaluation() to avoid
 %                   warnings on Octave 3.6 and later.
+% 09/05/12  mk      Disable shortcircuit operator warning.
 
 % Ok, we sneak this in here, because we don't know a better place for it:
 if IsOctave
@@ -79,6 +80,9 @@ if IsOctave
         % support pre-R2007a at least to some degree, we should be able to
         % run at least some basic correctness tests:
         do_braindead_shortcircuit_evaluation(1);
+        
+        % Disable associated Octave warning:
+        warning('off', 'Octave:possible-matlab-short-circuit-operator');
     end
 end
 
@@ -90,14 +94,14 @@ try
    % OpenGL PTB,we will get thrown into the catch-branch...
    value=Screen('Preference', 'SkipSyncTests'); %#ok<NASGU>
    return;
-catch
+catch %#ok<*CTCH>
    fprintf('\n\n\nA very simple test call to the Screen() MEX file failed in AssertOpenGL, indicating\n');
    fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
    fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
 
-   if IsWin & IsOctave %#ok<AND2>
+   if IsWin && IsOctave
 		le = psychlasterror;
-		if ~isempty(strfind(le.message, 'library or dependents')) & ~isempty(strfind(le.message, 'Screen.mex')) %#ok<AND2>
+		if ~isempty(strfind(le.message, 'library or dependents')) && ~isempty(strfind(le.message, 'Screen.mex'))
 			% Likely the required GStreamer runtimes aren't installed yet!
 			fprintf('The most likely cause, based on the fact you are running on Octave under Windows\n');
 			fprintf('and given this error message: %s\n', le.message);

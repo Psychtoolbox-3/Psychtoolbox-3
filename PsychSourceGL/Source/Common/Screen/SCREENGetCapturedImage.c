@@ -38,14 +38,14 @@ static char synopsisString[] =
 "Psychtoolbox will reuse that texture by overwriting its previous image content with the new image, instead of creating a completely new "
 "texture for the new image. Use of this ''recycling facility'' may allow for higher capture framerates and lower latencies on low-end "
 "graphics hardware in some cases. Providing a value of 'oldTexture'=0 is the same as leaving it out. The optional argument 'specialmode' "
-"allows to request special treatment of textures. Currently, specialmode = 1 will force PTB to use power-of-two textures instead of other "
-"formats. This is usually less efficient, unless you want to do realtime blurring of images. If you set specialmode = 2, then "
+"allows to request special treatment of textures. Currently, specialmode = 1 will ask PTB to use GL_TEXTURE_2D textures instead of other "
+"formats. This is sometimes less efficient, unless you want to do realtime blurring of images. If you set specialmode = 2, then "
 "the optional return value 'summed_intensityOrRawImageMatrix' will not return the summed pixel intensity, but a Matlab uint8 Matrix with "
 "the captured raw image data for direct use within Matlab, e.g., via the image processing toolbox. If you set 'specialmode = 4 and "
 "provide a double-encoded memory pointer in 'targetmemptr', then PTB will copy the raw image data into that buffer. The buffer is "
 "expected to be of sufficient size, otherwise a crash will occur (Experts only!).\n"
 "A 'specialmode' == 8 will require high-precision drawing, see the specialFlag == 2 setting in Screen('MakeTexture') for a "
-"description of its meaning. \n"
+"description of its meaning. A 'specialMode' == 16 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
 "'capturetimestamp' contains the system time when the returned image was captured. This timestamp has been verified to "
 "be very precise on Linux with suitable professional IIDC 1394 firewire cameras when the dc1394 capture engine is used. "
 "The same may be true for OS/X, although this hasn't been extensively tested. If other operating systems, capture engines "
@@ -270,6 +270,9 @@ PsychError SCREENGetCapturedImage(void)
 		// our current capture engine implementations only return 8 bpc fixed textures.
 		// The 'userRequest' flag is set if specialmode flag is set to 8.
 		PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, 0, (specialmode & 8) ? 1 : 0);
+
+        // specialmode setting 16? Disable auto-mipmap generation:
+        if (specialmode & 16) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;    
 
 		// Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(textureRecord);

@@ -49,11 +49,6 @@ TO DO:
 
 #include "Screen.h"
 
-// Need Cocoa definition of NSOpenGLContext for windowing:
-#if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
-#include <Cocoa/Cocoa.h>
-#endif
-
 //constants
 #define PSYCH_MAX_SCREENS				10		//the total possible number of screens
 #define PSYCH_LAST_SCREEN				9		//the highest possible screen index
@@ -96,8 +91,9 @@ TO DO:
 #define kPsychGfxCapNeedsUnsignedByteRGBATextureUpload 8192		// Hw requires use of GL_UNSIGNED_BYTE instead of GL_UNSIGNED_INT_8_8_8_8_REV for optimal RGBA8 texture upload.
 #define kPsychGfxCapSupportsOpenML 16384	// System supports OML_sync_control extension of OpenML for precisely timed bufferswaps and stimulus onset timestamping.
 #define kPsychGfxCapSNTex16		32768		// Hw supports 16 bit signed normalized integer textures.
-#define kPsychGfxCapUYVYTexture         65536		// Hw supports UYVY encoded textures. Used for GStreamer video capture/playback engine optimizations.
-#define kPsychGfxCapNativeStereo        (1 << 17)       // Hw supports native OpenGL quad-buffered stereo (frame-sequential etc.).
+#define kPsychGfxCapUYVYTexture 65536		// Hw supports UYVY encoded textures. Used for GStreamer video capture/playback engine optimizations.
+#define kPsychGfxCapNativeStereo (1 << 17)  // Hw supports native OpenGL quad-buffered stereo (frame-sequential etc.).
+#define kPsychGfxCapNPOTTex     (1 << 18)   // Hw supports non-power-of-twp GL_TEXTURE_2D textures.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
@@ -136,12 +132,13 @@ TO DO:
 
 #define kPsychGUIWindow					 32 // 'specialflags' setting 32 means: This window should behave like a regular GUI window, e.g, allow moving it.
 #define kPsychPlanarTexture				 64 // 'specialflags' setting 64: This texture uses a planar storage format instead of pixel-interleaved.
+#define kPsychDontAutoGenMipMaps        128 // 'specialflags' setting 128: This texture shall not auto-generate its mip-map chain on demand.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,S-65536. --> Flag 32768 and Flags of 2^17 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,1024,S-2048,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 128,256,512,4096, 16384
+// 1,2,4,8,16,32,64,128,1024,S-2048,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 256,512,4096, 16384
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -164,6 +161,7 @@ typedef struct PsychFBO {
 	int						width;		// Width of FBO.
 	int						height;		// Height of FBO.
 	int						multisample; // Multisampling level of FBO: 0 == No multisampling. > 0 means Multisampled.
+    GLenum                  textarget;  // Type of texture target for texture coltexid (GL_TEXTURE_RECTANGLE_EXT or GL_TEXTURE_2D etc.)
 } PsychFBO;
 
 // Typedefs for WindowRecord in WindowBank.h
@@ -203,9 +201,10 @@ typedef struct{
         void*				deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
 		WindowRef			windowHandle;			// Handle for Carbon + AGL window when using windowed mode. (NULL in non-windowed mode).
         #ifdef __LP64__
-        NSOpenGLContext*    nsmasterContext;        // Cocoa OpenGL master context.
-        NSOpenGLContext*    nsswapContext;          // Cocoa OpenGL async swap context.
-        NSOpenGLContext*    nsuserContext;          // Cocoa OpenGL userspace rendering context.
+        // NSOpenGLContext* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
+        void*    nsmasterContext;        // Cocoa OpenGL master context.
+        void*    nsswapContext;          // Cocoa OpenGL async swap context.
+        void*    nsuserContext;          // Cocoa OpenGL userspace rendering context.
         #endif
 } PsychTargetSpecificWindowRecordType;
 #endif 
@@ -293,11 +292,16 @@ typedef struct _PsychWindowRecordType_{
 		GLint				textureLookupShader;	// Optional GLSL handle for nearest neighbour texture drawing shader.
 		GLint				textureByteAligned;		// 0 = No knowledge about byte alignment of texture data. > 1, texture rows are x byte aligned.
 		GLint				texturePlanarShader[4]; // Optional GLSL program handles for shaders to apply to planar storage textures - 4 handles for 4 possible channel counts.
+        GLint               textureI420PlanarShader; // Optional GLSL program handle for shader to convert a YUV-I420 planar texture into a standard RGBA8 texture.
+        GLint               textureI800PlanarShader; // Optional GLSL program handle for shader to convert a Y8-I800 planar texture into a standard RGBA8 texture.
 
-	//line stipple attributes, for windows not textures.
-	GLushort				stipplePattern;
-	GLint					stippleFactor;
-	psych_bool					stippleEnabled;
+        psych_bool          needsViewportSetup;     // Set on userspace OpenGL contexts of onscreen windows to signal need for glViewport setup and other one-time
+                                                    // stuff on first Screen('BeginOpenGL'). Also (ab)used for textures and offscreen windows to track "dirty" state.
+
+        //line stipple attributes, for windows not textures.
+        psych_bool          stippleEnabled;
+        GLushort            stipplePattern;
+        GLint               stippleFactor;
         
 		GLboolean								colorMask[4];			// psych_bool 4 element array which encodes the glColorMask() for this window.
 		unsigned int							gfxcaps;				// Bitfield of gfx-cards capabilities and limitations: See constants kPsychGfxCapXXXX above.

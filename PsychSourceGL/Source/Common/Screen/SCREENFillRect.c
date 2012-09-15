@@ -3,11 +3,12 @@
   
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
-  
+		Allen.Ingling@nyu.edu           awi 
+        mario.kleiner@tuebingen.mpg.de  mk
+ 
 	PLATFORMS:	
 	
-		Only OS X for now.
+		All.
     
 
 	HISTORY:
@@ -39,7 +40,9 @@ static char synopsisString[] =
 	"Fill \"rect\". \"color\" is the clut index (scalar or [r g b] triplet or [r g b a] quadruple) "
 	"that you want to poke into each pixel;  default produces white with the standard CLUT for this "
 	"window's pixelSize. Default \"rect\" is entire window, so you can use this function to clear "
-	"the window.\n"
+	"the window. Please note that clearing the entire window will set the background color of the "
+	"window to the clear color, ie., future Screen('Flip') commands will clear to the new background "
+	"clear color specified in Screen('FillRect').\n"
 	"Instead of filling one rectangle, you can also specify a list of multiple rectangles to be "
 	"filled - this is much faster when you need to draw many rectangles per frame. To fill n "
 	"rectangles, provide \"rect\" as a 4 rows by n columns matrix, each column specifying one "
@@ -55,9 +58,8 @@ PsychError SCREENFillRect(void)
 	PsychColorType					color;
 	PsychRectType					rect;
 	PsychWindowRecordType			*windowRecord;
-	int								whiteValue;
-	psych_bool							isArgThere, isScreenRect;
-	GLdouble						dVals[4]; 
+	double							whiteValue;
+	psych_bool						isArgThere, isScreenRect;
     double							*xy, *colors;
 	unsigned char					*bytecolors;
 	int								numRects, i, nc, mc, nrsize;

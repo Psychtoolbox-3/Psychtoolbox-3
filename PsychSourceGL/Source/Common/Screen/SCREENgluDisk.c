@@ -7,8 +7,7 @@
   
 	PLATFORMS:
 	
-		Only OS X for now.
-    
+		All.
 
 	HISTORY:
   
@@ -17,10 +16,8 @@
  
   
 	TO DO:
-  
 
 */
-
 
 #include "Screen.h"
 
@@ -36,8 +33,8 @@ PsychError SCREENgluDisk(void)
 	PsychColorType			color;
 	double					*xPosition, *yPosition, dotSize;
 	PsychWindowRecordType	*windowRecord;
-	int						whiteValue;
-	psych_bool					isArgThere;
+	double					whiteValue;
+	psych_bool				isArgThere;
 	GLUquadricObj			*diskQuadric;
     
 	//all sub functions should have these two lines
@@ -53,10 +50,10 @@ PsychError SCREENgluDisk(void)
 	
 	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color);
-		if(!isArgThere){
-			whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
-			PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
-		}
+    if(!isArgThere){
+        whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
+        PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
+    }
 
  	PsychCoerceColorMode( &color);
         
@@ -87,8 +84,3 @@ PsychError SCREENgluDisk(void)
  	//All psychfunctions require this.
 	return(PsychError_none);
 }
-
-
-
-
-

@@ -1,5 +1,14 @@
 % Psychtoolbox:PsychCal.
 %
+% Calibration routines for monitors, e.g., gamma correction.
+% For a very simple gamma calibration of a standard monitor with a manually
+% controlled photometer, use CalibrateMonitorPhotometer.
+%
+% For advanced calibration, with manual or automatic photometers, with
+% standard monitors or high precision displays like Bits+,
+% DataPixx/ViewPixx etc. use CalibrateMonSpd.
+%
+%
 % help Psychtoolbox % For an overview, triple-click me & hit enter.
 % help PsychDemos   % For demos, triple-click me & hit enter.
 %
@@ -9,8 +18,9 @@
 %   CalibrateFitGamma   - Fit the gamma function to the calibration measurements.
 %   CalibrateFitLinMod  - Fit the linear model to spectral calibration data.
 %   CalibrateFitYoked   - Fit a very special kind of yoked calibration data.
+%   CalibrateManualDrvr - Driver for manual monitor calibration, called by CalibrateMonSpd.
 %   CalibrateMonDrvr    - Common code called by monitor calibration programs.  Script.
-%   CalibrateMonitorPhotometer - Manual calibration procedure for use with manually controlled photometers.
+%   CalibrateMonitorPhotometer - Simple calibration procedure for use with manually controlled photometers.
 %   CalibrateMonSpd     - Run standard monitor spectral calibration.  Script.
 %   CalibratePlotGamma  - Plot the gamma functions in a calibration structure.
 %   CalibratePlotSpectra - Plot the device spectra in a calibration structure.
@@ -39,7 +49,6 @@
 %   MeasMonSpd          - Set monitor and measure spd.
 %   MeasMonXYZ          - Set monitor and measure XYZ.
 %   MeasureDpi          - Measure monitor dpi.
-%   NotYetUpdatedForPTB3 - As the name suggests.
 %   PolarToSensor       - Convert from polar to linear coordinates.
 %   PrimaryToGamut      - Force primary coordinates into gamut.
 %   PrimaryToSensor     - Convert from primary to sensor coordinates.

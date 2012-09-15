@@ -7,6 +7,7 @@ function CMClose(meterType)
 % meterType 2 is the CVI (need CVIToolbox)
 % meterType 3 is the CRS Colorimeter
 % meterType 4 is the PR655
+% meterType 5 is the PR670
 %
 % 2/15/02  dhb  Wrote it.
 % 4/13/02  dgp	Cosmetic.
@@ -22,11 +23,7 @@ end
 switch meterType
 	case 1
 		% PR-650
-		if IsWin || IsOS9 || IsOSX || IsLinux
-			PR650close;
-		else
-			error(['Unsupported OS ' computer]);
-		end
+        PR650close;
 	case 2
 		if ~exist('CVIClose') %#ok<EXIST>
 			error('Need CVIToolbox to call CVIClose (meterType 2)');
@@ -36,11 +33,10 @@ switch meterType
 		CRSColorClose;
 	case 4
 		% PR-655
-		if IsWin || IsOS9 || IsOSX || IsLinux
-			PR655close;
-		else
-			error(['Unsupported OS ' computer]);
-		end
+        PR655close;
+    case 5
+		% PR-670
+        PR670close;
 	otherwise,
 		error('Unknown meter type');
 end

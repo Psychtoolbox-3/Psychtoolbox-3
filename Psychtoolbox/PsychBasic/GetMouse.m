@@ -186,8 +186,8 @@ if nargin < 2
     mouseDev = [];
 end
 
-if IsLinux & (nargout >= 6)
-    [globalX, globalY, rawButtons, focus, valuators, valinfo] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev);
+if IsLinux && (nargout >= 6)
+    [globalX, globalY, rawButtons, focus, valuators, valinfo] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev); %#ok<ASGLU>
 else
     valinfo = [];
 end

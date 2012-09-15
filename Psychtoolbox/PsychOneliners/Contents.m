@@ -46,10 +46,11 @@
 %   IsLinux                 - Shorthand for testing whether running under Linux.
 %   IsMinimumOSXVersion     - Query if this is a specific OS/X version or higher.
 %   IsOctave                - Shortand for testing whether running under Octave.
-%   IsOS9                   - Shorthand for streq(computer,'MAC2').
-%   IsOSX                   - Shorthand for streq(computer,'MAC').
-%   IsWin                   - Shorthand for streq(computer,'PCWIN').
+%   IsOSX                   - Return if running on a Apple OSX operating system.
+%   IsWin                   - Return if running on a MS-Windows operating system.
+%   Is64Bit                 - Return if script is running on a 64-Bit Octave or Matlab.
 %   KbMapKey                - Checks if any of specified keys is depressed in a vector returned by KbCheck, KbWait etc.
+%   kPsychGUIWindow         - Flag to ask Screen() to create onscreen windows with behaviour similar to normal GUI windows.
 %   LoadIdentityClut        - Loads the identity CLUT on a specified monitor.
 %   log10nw                 - Compute log base 10 without annoying warnings.
 %   MacModelName            - Mac model name, e.g. 'PowerBook G4 15"'.

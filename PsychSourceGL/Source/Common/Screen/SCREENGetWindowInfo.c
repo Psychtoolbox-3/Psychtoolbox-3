@@ -231,7 +231,7 @@ PsychError SCREENGetWindowInfo(void)
 
     PsychWindowRecordType *windowRecord;
     double beamposition, lastvbl;
-    int infoType = 0, retIntArg;
+    int infoType = 0;
     double auxArg1, auxArg2, auxArg3;
     CGDirectDisplayID displayId;
     psych_uint64 postflip_vblcount;
@@ -261,7 +261,8 @@ PsychError SCREENGetWindowInfo(void)
 		const char *CoreGraphicsFieldNames[]={ "CGSFps", "CGSValue1", "CGSValue2", "CGSValue3", "CGSDebugOptions" };
 		const int CoreGraphicsFieldCount = 5;
 		float cgsFPS, val1, val2, val3;
-		
+		int retIntArg;
+        
 		// This (undocumented) Apple call retrieves information about performance statistics of
 		// the Core graphics server, also known as WindowServer or Quartz compositor:
 		CGSGetPerformanceData(_CGSDefaultConnection(), &cgsFPS, &val1, &val2, &val3);
@@ -301,7 +302,7 @@ PsychError SCREENGetWindowInfo(void)
 			// Want us to change settings?
 			if ( (infoType == 3) && PsychCopyInDoubleArg(3, FALSE, &auxArg1) && PsychCopyInDoubleArg(4, FALSE, &auxArg2) && PsychCopyInDoubleArg(5, FALSE, &auxArg3)) {
 				if (auxArg1 < 0) auxArg1 = 0;
-				targetVBL = auxArg1;
+				targetVBL = (psych_uint64) auxArg1;
 				if (PsychOSSetPresentParameters(windowRecord, targetVBL, (int) auxArg3, auxArg2)) {
 					if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: GetWindowInfo: Call to PsychOSSetPresentParameters(%i, %i, %f) SUCCESS!\n", (int) auxArg1, (int) auxArg3, auxArg2);
 				}

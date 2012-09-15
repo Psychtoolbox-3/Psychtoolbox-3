@@ -9,13 +9,13 @@ function res=NearestResolution(screenNumber,width,height,hz,pixelSize)
 % you'll use the returned "res" to set your screen's resolution:
 %
 % SetResolution('Resolution', screenNumber, res)
-% 
+%
 % Also see SetResolution, ResolutionTest, and Screen Resolution and Resolutions.
 
 % HISTORY:
 % 1/28/00 dgp Wrote it.
-% 9/17/01 dgp Frans Cornelissen, f.w.cornelissen@med.rug.nl, discovered that iBooks 
-%			  always report a framerate of NaN. So we ignore framerate when 
+% 9/17/01 dgp Frans Cornelissen, f.w.cornelissen@med.rug.nl, discovered that iBooks
+%			  always report a framerate of NaN. So we ignore framerate when
 %			  Screen Resolutions returns NaN Hz.
 % 4/29/02 dgp Screen Resolutions is only available on Mac.
 % 6/6/02  dgp Accept res instead of parameter list.
@@ -23,49 +23,49 @@ function res=NearestResolution(screenNumber,width,height,hz,pixelSize)
 % 2/28/08 mk  Fix parsing, error handling and documentation...
 
 if nargin<2 || nargin>5
-	error(sprintf('%s\n%s','USAGE: res=NearestResolution(screenNumber,[width,height,hz,pixelSize])',...
-                       '           res=NearestResolution(screenNumber [,width][,height][,hz][,pixelSize])',...
-	                   '           res=NearestResolution(screenNumber,desiredRes)'));
+    error(sprintf('%s\n%s','USAGE: res=NearestResolution(screenNumber,[width,height,hz,pixelSize])',...
+        '           res=NearestResolution(screenNumber [,width][,height][,hz][,pixelSize])',...
+        '           res=NearestResolution(screenNumber,desiredRes)'));
 end
 
 if nargin<5
-	pixelSize=[];
+    pixelSize=[];
 end
 
 if nargin<4
-	hz=[];
+    hz=[];
 end
 
 if nargin<3
-	height=[];
+    height=[];
 end
 
 if nargin==2
     % 'desiredRes' could be a struct or a vector:
     if isa(width,'struct')
         % It is a struct:
-		res=width;
+        res=width;
         
-		if isfield(res,'width')
-			width=res.width
+        if isfield(res,'width')
+            width=res.width
         else
             width=[];
         end
         
-		if isfield(res,'height')
-			height=res.height;
+        if isfield(res,'height')
+            height=res.height;
         else
             height = [];
         end
-
+        
         if isfield(res,'hz')
-			hz=res.hz;
+            hz=res.hz;
         else
             hz = [];
         end
-
+        
         if isfield(res,'pixelSize')
-			pixelSize=res.pixelSize;
+            pixelSize=res.pixelSize;
         else
             pixelSize = [];
         end
@@ -73,7 +73,7 @@ if nargin==2
         % It is a vector:
         res=width;
         
-        if length(res)>0
+        if ~isempty(res)
             width = res(1);
         else
             error('The second argument "desiredRes" is neither a valid struct, nor a valid vector!');
@@ -84,13 +84,13 @@ if nargin==2
         else
             height = [];
         end
-
+        
         if length(res)>2
             hz = res(3);
         else
             hz = [];
         end
-
+        
         if length(res)>3
             pixelSize = res(4);
         else
@@ -99,8 +99,8 @@ if nargin==2
     end
 end
 
-if screenNumber<0 | screenNumber>Screen('Screens')
-	error(sprintf('Invalid screenNumber %d.',screenNumber));
+if screenNumber<0 || screenNumber>Screen('Screens')
+    error(sprintf('Invalid screenNumber %d.',screenNumber));
 end
 
 res=Screen(screenNumber,'Resolutions'); % get a list of available resolutions
@@ -111,7 +111,7 @@ wish.hz=hz;
 wish.pixelSize=pixelSize;
 
 for i=1:length(res)
-	d(i)=distance(wish,res(i));
+    d(i)=distance(wish,res(i));
 end
 
 [x,i]=min(d);
@@ -122,7 +122,7 @@ res=res(i);
 %	res.pixelSize=res.pixelSizes(ip);
 %end
 
-if isempty(wish.pixelSize) | ~isfinite(wish.pixelSize)
+if isempty(wish.pixelSize) || ~isfinite(wish.pixelSize)
     res.pixelSize = [];
 end
 
@@ -133,19 +133,19 @@ function d=distance(a,b)
 % "a" has "pixelSize" field, but "b" has "pixelSizes" field.
 d=0;
 
-if ~isempty(a.width) & isfinite(a.width)
-	d=d+log10(a.width/b.width)^2;
+if ~isempty(a.width) && isfinite(a.width)
+    d=d+log10(a.width/b.width)^2;
 end
 
-if ~isempty(a.height) & isfinite(a.height)
-	d=d+log10(a.height/b.height)^2;
+if ~isempty(a.height) && isfinite(a.height)
+    d=d+log10(a.height/b.height)^2;
 end
 
 % b.hz may be reported as zero on some operating systems when display is a
 % flat-panel. We need to ignore the 'hz' wish in that case, as there will
 % be only one fixed framerate on theses systems anyway (usually 60 hz).
-if ~isempty(a.hz) & isfinite(a.hz) & ~isempty(b.hz) & isfinite(b.hz) & (b.hz > 0)
-	d=d+log10(a.hz/b.hz)^2;
+if ~isempty(a.hz) && isfinite(a.hz) && ~isempty(b.hz) && isfinite(b.hz) && (b.hz > 0)
+    d=d+log10(a.hz/b.hz)^2;
 end
 
 % Totally ignore pixelSize for matching: This has no meaning for PTB-3's

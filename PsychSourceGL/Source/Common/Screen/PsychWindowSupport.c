@@ -56,7 +56,6 @@
 #endif
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
-//#ifndef MATLAB_R11
 #include "ptbstartlogo.h"
 #else
 /* This is a placeholder for ptbstartlogo.h until the fu%&$ing M$-Compiler can handle it.
@@ -232,6 +231,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     double maxStddev, maxDeviation, maxDuration;	// Sync thresholds and settings...
     int minSamples;
     int vblbias, vbltotal;
+    int gpuMaintype, gpuMinortype;
 
     // Splash screen support:
     char splashPath[FILENAME_MAX];
@@ -307,17 +307,34 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	// some 'ConserveVRAM' flag, we will try to share ressources of all OpenGL contexts
 	// to simplify multi-window operations.
 	if ((sharedContextWindow == NULL) && ((conserveVRAM & kPsychDontShareContextRessources) == 0) && (PsychCountOpenWindows(kPsychDoubleBufferOnscreen) + PsychCountOpenWindows(kPsychSingleBufferOnscreen) > 0)) {
-		// Try context ressource sharing: Assign first onscreen window as sharing window:
-		i = PSYCH_FIRST_WINDOW - 1;
-		do {
-			i++;
-			FindWindowRecord(i, &((*windowRecord)->slaveWindow));
-		} while (((*windowRecord)->slaveWindow->windowType != kPsychDoubleBufferOnscreen) && ((*windowRecord)->slaveWindow->windowType != kPsychSingleBufferOnscreen));
-		// Ok, now we should have the first onscreen window assigned as slave window.
-		if(PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This oncreen window tries to share OpenGL context ressources with window %i.\n", i);
+	  // Try context ressource sharing: Assign first onscreen window as sharing window:
+	  i = PSYCH_FIRST_WINDOW - 1;
+	  do {
+	    // Try next window index:
+	    i++;
+
+	    // Skip this one if it is ourselves:
+	    if (i == (*windowRecord)->windowIndex) i++;
+
+	    // Abort search if no further windowRecords available (invalid_Windex return code):
+	    if (PsychError_invalidWindex == FindWindowRecord(i, &((*windowRecord)->slaveWindow))) break;
+
+	    // Repeat search if this ain't an onscreen window, or on Linux, if it is located on a
+	    // different X-Screen aka screenNumber, because windows can't share resources across X-Screens:
+	  } while (!PsychIsOnscreenWindow((*windowRecord)->slaveWindow) ||
+		   ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->slaveWindow->screenNumber != screenSettings->screenNumber)));
+
+	  // Sanity check - Do conditions hold for valid sharing window?
+	  if (!((*windowRecord)->slaveWindow) || !PsychIsOnscreenWindow((*windowRecord)->slaveWindow) ||
+	      ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->slaveWindow->screenNumber != screenSettings->screenNumber))) {
+	    // Failed: Invalidate slaveWindow, so no context sharing takes place - It would fail anyway in lower-level layer:
+	    (*windowRecord)->slaveWindow = NULL;
+	    if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This onscreen window could not find a peer window for sharing of OpenGL context ressources.\n");
+	  } else {
+	    // Ok, now we should have the first onscreen window assigned as slave window.
+	    if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This onscreen window tries to share OpenGL context ressources with window %i.\n", i);
+	  }
 	}
-	
-    //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOSOpenOnscreenWindow\n");
     
     // Call the OS specific low-level Window & Context setup routine:
     if (!PsychOSOpenOnscreenWindow(screenSettings, (*windowRecord), numBuffers, stereomode, conserveVRAM)) {
@@ -363,18 +380,22 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
 			printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
 			printf("PTB-WARNING: set to 'Full' (rightmost position).\n\n");
-			printf("PTB-WARNING: Actually..., it is pointless to continue with the software renderer, that will cause more trouble than good.\n");
-			printf("PTB-WARNING: I will abort now. Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
-			printf("PTB-WARNING: command: Screen('Preference', 'Verbosity', 1); to get a functional, but close to useless window up and running.\n\n\n");
-			
-			// We abort! Close the onscreen window:
-			PsychOSCloseWindow(*windowRecord);
-
-			// Free the windowRecord:
-			FreeWindowRecordFromPntr(*windowRecord);
-
-			// Done. Return failure:
-			return(FALSE);			
+            
+            // Only allow to continue if kPsychUseSoftwareRenderer flag is set. Otherwise abort here:
+            if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseSoftwareRenderer) == 0) {
+                printf("PTB-WARNING: Actually..., it is pointless to continue with the software renderer, that will cause more trouble than good.\n");
+                printf("PTB-WARNING: I will abort now. Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
+                printf("PTB-WARNING: command: Screen('Preference', 'ConserveVRAM', 64); to get a functional, but close to useless window up and running.\n\n\n");
+                
+                // We abort! Close the onscreen window:
+                PsychOSCloseWindow(*windowRecord);
+                
+                // Free the windowRecord:
+                FreeWindowRecordFromPntr(*windowRecord);
+                
+                // Done. Return failure:
+                return(FALSE);
+            }
 		}
 	}
 	#endif
@@ -393,16 +414,18 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		}
 		else {
 			// Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
-			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) || strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_VENDOR), "Intel")) {
+			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) ||
+			    !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+			    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
 				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
 				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
 				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for setup information.\n");
-				printf("PTB-ERROR: On Linux you must either configure your system by executing the script PsychLinuxConfiguration once,\n");
+				printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
 				printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
 				PsychOSCloseWindow(*windowRecord);
 				FreeWindowRecordFromPntr(*windowRecord);
-				return(FALSE);			
+				return(FALSE);
 			}
 			
 			// Basic support seems to be there, set the request flag.
@@ -850,7 +873,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// Yes: Adapt clear color to color of top-left splash pixel,
 			// so colors match:
 			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: glClear splash image top-left reference pixel: %i %i %i\n", splash_image.pixel_data[0],splash_image.pixel_data[1],splash_image.pixel_data[2]);
-			glClearColor(((float) splash_image.pixel_data[0]) / 255.0, ((float) splash_image.pixel_data[1]) / 255.0, ((float) splash_image.pixel_data[2]) / 255.0, 1.0);
+			glClearColor((GLclampf) (((float) splash_image.pixel_data[0]) / 255.0), (GLclampf) (((float) splash_image.pixel_data[1]) / 255.0), (GLclampf) (((float) splash_image.pixel_data[2]) / 255.0), 1.0);
 		}
 		else {
 			// No: Clear to white to prepare drawing of our default hard-coded logo:
@@ -2740,7 +2763,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Part 1 of workaround- /checkcode for syncing to vertical retrace:
     if (vblsyncworkaround) {
         glDrawBuffer(GL_BACK);
-        glRasterPos2f(0, screenheight);
+        glRasterPos2f(0, (GLfloat) screenheight);
         glDrawPixels(1,1,GL_RED,GL_UNSIGNED_BYTE, &id);
     }
  
@@ -3085,17 +3108,25 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		PsychOSFlipWindowBuffers(windowRecord);
 		
 		// Also swap the slave window, if any:
-		if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
-		
+		if (windowRecord->slaveWindow) {
+		  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+		  PsychSetGLContext(windowRecord->slaveWindow);
+		  PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
+		  PsychSetGLContext(windowRecord);
+		}
+
 		// Multiflip with vbl-sync requested?
 		if (multiflip==1) {
 			//  Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace"
 			//  for all onscreen windows except our primary one:
 			for(i=0;i<numWindows;i++) {
 				if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+				  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+				  PsychSetGLContext(windowRecordArray[i]);
+				  PsychOSFlipWindowBuffers(windowRecordArray[i]);
 				}
 			}
+			PsychSetGLContext(windowRecord);
 		}
     }
 
@@ -3170,9 +3201,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// Immediately flip all onscreen windows except our primary one:
 			for(i=0;i<numWindows;i++) {
 				if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+				  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+				  PsychSetGLContext(windowRecordArray[i]);
+				  PsychOSFlipWindowBuffers(windowRecordArray[i]);
 				}
 			}
+			// Restore to our context:
+			PsychSetGLContext(windowRecord);
 		}
 		
         // Query and return rasterbeam position immediately after Flip and before timestamp:
@@ -3217,6 +3252,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 						PsychYieldIntervalSeconds(0);
 					}
 				}
+                else {
+                    // Set to "invalid" default:
+                    dwmPostOnsetVBLCount = 0;
+                    dwmOnsetVBLTime = 0;
+                    postFlipFrameId = 0;
+                }
 			#endif
 			
 			// No DWM timestamps?
@@ -3336,7 +3377,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				}
 
 				// Create fake beampos value for this invocation of Flip so we return an ok timestamp:
-				*beamPosAtFlip = vbl_startline;
+				*beamPosAtFlip = (int) vbl_startline;
 			}
 			
             if (*beamPosAtFlip >= vbl_startline) {
@@ -4045,7 +4086,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             printf("PTB-WARNING: or the mechanism for detection of swap completion is broken. In any case, this is an operating system or gfx-driver bug!\n");
         }
         
-        *numSamples = n;
+        *numSamples = (int) n;
         *stddev = tstddev;
 		
 		// Verbose output requested? We dump our whole buffer of samples to the console:
@@ -4091,10 +4132,11 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 */
 void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int belltype)
 {
-    double tdeadline, tcurrent, v=0;
-    GLdouble color[4];
-    int f=0;
-    int scanline;
+    double tdeadline, tcurrent;
+    GLclampf v=0;
+    GLclampf color[4];
+    float f = 0;
+    float scanline;
     CGDirectDisplayID cgDisplayID;
     float w,h;
     int visual_debuglevel;
@@ -4108,7 +4150,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     if (belltype == 2 && visual_debuglevel < 1) return;
     if (belltype == 3 && visual_debuglevel < 5) return;
     
-    glGetDoublev(GL_COLOR_CLEAR_VALUE, (GLdouble*) &color);
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, (GLfloat*) &color);
 
     PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
     tdeadline+=duration;
@@ -4116,8 +4158,8 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(windowRecord);
 
-    w=PsychGetWidthFromRect(windowRecord->rect);
-    h=PsychGetHeightFromRect(windowRecord->rect);
+    w = (float) PsychGetWidthFromRect(windowRecord->rect);
+    h = (float) PsychGetHeightFromRect(windowRecord->rect);
     
     // Clear out both buffers so it doesn't lool like junk:
     glClearColor(0,0,0,1);
@@ -4137,7 +4179,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         PsychGetAdjustedPrecisionTimerSeconds(&tcurrent);
 
         // Calc our visual ;-)
-        v=0.5 + 0.5 * sin(tcurrent*6.283);
+        v = (float) (0.5 + 0.5 * sin(tcurrent*6.283));
         
         switch (belltype) {
             case 0: // Info - Make it blue
@@ -4154,15 +4196,15 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
                 f=1-f;
                 glBegin(GL_QUADS);
                 glColor3f(f,f,f);
-                glVertex2f(0.00*w, 0.00*h);
-                glVertex2f(2.00*w, 0.00*h);
-                glVertex2f(2.00*w, 3.00*h);
-                glVertex2f(0.00*w, 3.00*h);
+                glVertex2f(0.00f*w, 0.00f*h);
+                glVertex2f(2.00f*w, 0.00f*h);
+                glVertex2f(2.00f*w, 3.00f*h);
+                glVertex2f(0.00f*w, 3.00f*h);
                 glColor3f(0,0,v);
-                glVertex2f(0.00*w, 0.00*h);
-                glVertex2f(1.00*w, 0.00*h);
-                glVertex2f(1.00*w, 1.00*h);
-                glVertex2f(0.00*w, 1.00*h);
+                glVertex2f(0.00f*w, 0.00f*h);
+                glVertex2f(1.00f*w, 0.00f*h);
+                glVertex2f(1.00f*w, 1.00f*h);
+                glVertex2f(0.00f*w, 1.00f*h);
                 glEnd();
             break;
         }
@@ -4172,29 +4214,29 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         // Draw a yellow triangle with black border:
         glColor3f(0,0,0);
         glBegin(GL_TRIANGLES);
-        glVertex2f(0.1*w, 0.1*h);
-        glVertex2f(0.9*w, 0.1*h);
-        glVertex2f(0.5*w, 0.9*h);
+        glVertex2f(0.1f*w, 0.1f*h);
+        glVertex2f(0.9f*w, 0.1f*h);
+        glVertex2f(0.5f*w, 0.9f*h);
         glColor3f(1,1,0);
-        glVertex2f(0.2*w, 0.2*h);
-        glVertex2f(0.8*w, 0.2*h);
-        glVertex2f(0.5*w, 0.8*h);
+        glVertex2f(0.2f*w, 0.2f*h);
+        glVertex2f(0.8f*w, 0.2f*h);
+        glVertex2f(0.5f*w, 0.8f*h);
         glEnd();
         // Draw a black exclamation mark into triangle:
         glBegin(GL_QUADS);
         glColor3f(0,0,0);
-        glVertex2f(0.47*w, 0.23*h);
-        glVertex2f(0.53*w, 0.23*h);
-        glVertex2f(0.53*w, 0.55*h);
-        glVertex2f(0.47*w, 0.55*h);
-        glVertex2f(0.47*w, 0.60*h);
-        glVertex2f(0.53*w, 0.60*h);
-        glVertex2f(0.53*w, 0.70*h);
-        glVertex2f(0.47*w, 0.70*h);
+        glVertex2f(0.47f*w, 0.23f*h);
+        glVertex2f(0.53f*w, 0.23f*h);
+        glVertex2f(0.53f*w, 0.55f*h);
+        glVertex2f(0.47f*w, 0.55f*h);
+        glVertex2f(0.47f*w, 0.60f*h);
+        glVertex2f(0.53f*w, 0.60f*h);
+        glVertex2f(0.53f*w, 0.70f*h);
+        glVertex2f(0.47f*w, 0.70f*h);
         glEnd();
         
         // Initiate back-front buffer flip:
-	PsychOSFlipWindowBuffers(windowRecord);
+        PsychOSFlipWindowBuffers(windowRecord);
         
         // Our old VBL-Sync trick again... We need sync to VBL to visually check if
         // beamposition is locked to VBL:
@@ -4209,7 +4251,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         glFinish();
 
         // Query and visualize scanline immediately after VBL onset, aka return of glFinish();
-        scanline=(int) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);    
+        scanline = (float) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);    
         if (belltype==3) {
             glColor3f(1,1,0);
             glBegin(GL_LINES);
@@ -4906,7 +4948,6 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 {
     static unsigned int	recursionLevel = 0;
     PsychWindowRecordType *parentRecord;
-    int	twidth, theight;
     psych_bool EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
     psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
 
@@ -5042,10 +5083,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 
 				// Transition to offscreen rendertarget?
 				if (windowRecord->windowType == kPsychTexture) {
-					// Yes. Need to bind the texture as framebuffer object. This only works for rectangle textures.
-					if (PsychGetTextureTarget(windowRecord)!=GL_TEXTURE_RECTANGLE_EXT) {
-						PsychErrorExitMsg(PsychError_user, "You tried to draw into a special power-of-two offscreen window or texture. Sorry, this is not supported.");
-					}
+					// Yes. Need to bind the texture as framebuffer object.
 					
 					// It also only works on RGB or RGBA textures, not Luminance or LA textures, and the texture needs to be upright.
 					// PsychNormalizeTextureOrientation takes care of swapping it upright and converting it into a RGB or RGBA format,
@@ -5063,6 +5101,9 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 					// only create a full blown FBO on demand here.
 					PsychCreateShadowFBOForTexture(windowRecord, TRUE, -1);
 
+                    // Set "dirty" flag on texture: (Ab)used to trigger regeneration of mip-maps during texture drawing of mip-mapped textures.
+                    windowRecord->needsViewportSetup = TRUE;
+                    
 					// Switch to FBO for given texture or offscreen window:
 					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[0]->fboid);
 
@@ -5112,15 +5153,15 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 		else {
                 // Use standard OpenGL without framebuffer objects for drawing target switch:
                 // This code path is executed when the imaging pipeline is disabled. It only uses
-		// OpenGL 1.1 functionality so it should work on any piece of gfx-hardware:
-				
+                // OpenGL 1.1 functionality so it should work on any piece of gfx-hardware:
+
                 // Whatever is bound at the moment needs to be backed-up into a texture...
                 // If currentRendertarget is NULL then we've got nothing to back up.
-		// If currentRendertarget is using the imaging pipeline in any way, then there's also no
-		// need for any backups, as all textures/offscreen windows are backed by FBO's and the
-		// system framebuffer is just used as backingstore for onscreen windows, ie., no need
-		// to ever backup system framebuffer into any kind of texture based storage.
-		// Therefore skip this if any imaging mode is active (i.e., imagingMode is non-zero):
+                // If currentRendertarget is using the imaging pipeline in any way, then there's also no
+                // need for any backups, as all textures/offscreen windows are backed by FBO's and the
+                // system framebuffer is just used as backingstore for onscreen windows, ie., no need
+                // to ever backup system framebuffer into any kind of texture based storage.
+                // Therefore skip this if any imaging mode is active (i.e., imagingMode is non-zero):
                 if (currentRendertarget && (currentRendertarget->imagingMode == 0)) {
                     // There is a bound render target in non-imaging mode: Any backups of its current backbuffer to some
 					// texture backing store needed?
@@ -5228,10 +5269,10 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
     else {
         // windowRecord==NULL. Reset of currentRendertarget and framebufferobject requested:
 
-	// Bind system framebuffer if FBO's supported on this system:
+        // Bind system framebuffer if FBO's supported on this system:
         if (glBindFramebufferEXT && currentRendertarget) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-	// Reset current rendertarget to 'none':
+        // Reset current rendertarget to 'none':
         currentRendertarget = NULL;
     }
 
@@ -5312,8 +5353,15 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
 		if (PsychGetTextureTarget(backupRendertarget)==GL_TEXTURE_2D) {
 			// Ok, we need to create an empty texture of suitable power-of-two size:
 			// Now we can do subimage texturing...
-			twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
-			theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+            if (!(backupRendertarget->gfxcaps & kPsychGfxCapNPOTTex)) {            
+                twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
+                theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+            } else {
+                // GPU has NPOT support, take it "as is":
+                twidth  = (int) PsychGetWidthFromRect(backupRendertarget->rect);
+                theight = (int) PsychGetHeightFromRect(backupRendertarget->rect);
+            }
+            
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
 			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(backupRendertarget->rect), (int) PsychGetHeightFromRect(backupRendertarget->rect));
 		}
@@ -5333,8 +5381,11 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
 			// Texture. Handle size correctly:
 			if ((backupRendertarget->textureOrientation <= 1) && (PsychGetTextureTarget(backupRendertarget)==GL_TEXTURE_2D)) {
 				// Transposed power of two texture. Need to realloc texture...
-				twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
-				theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+                if (!(backupRendertarget->gfxcaps & kPsychGfxCapNPOTTex)) {
+                    // No non-power-of-two support: Need to find closest matching POT texture size:
+                    twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
+                    theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+                }
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
 				
 				// Reassign real size:
@@ -5497,6 +5548,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	psych_bool nvidia = FALSE;
 	psych_bool ati = FALSE;
 	psych_bool intel = FALSE;
+    psych_bool llvmpipe = FALSE;
 	GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
 	GLboolean nativeStereo = FALSE;
 
@@ -5507,6 +5559,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
 	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
 	if (strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") || strstr((char*) glGetString(GL_RENDERER), "Intel")) { intel = TRUE; sprintf(windowRecord->gpuCoreId, "Intel"); }
+	if (strstr((char*) glGetString(GL_VENDOR), "VMware") || strstr((char*) glGetString(GL_RENDERER), "llvmpipe")) { llvmpipe = TRUE; sprintf(windowRecord->gpuCoreId, "gllvm"); }
 
 	// Detection code for Linux DRI driver stack with ATI GPU:
 	if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
@@ -5536,6 +5589,11 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (verbose) printf("GPU supports UYVY - YCrCb texture formats for optimized handling of video content.\n");
 	}
 
+    if (glewIsSupported("GL_ARB_texture_non_power_of_two")) {
+        windowRecord->gfxcaps |= kPsychGfxCapNPOTTex;
+		if (verbose) printf("GPU supports non-power-of-two textures.\n");        
+    }
+    
 	// Is this a GPU with known broken drivers that yield miserable texture creation performance
 	// for RGBA8 textures when using the standard optimized settings?
 	// As far as we know (June 2008), ATI hardware under MS-Windows and Linux has this driver bugs,
@@ -5673,12 +5731,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		}
 
 		// INTEL specific detection logic:
-		if (intel && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
+		if ((intel || llvmpipe) && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
 			// An Intel GPU with FBO and ARB_texture_float support: These are usually of the HD graphics series and
 			// recent enough to support floating point textures and rendertargets with 16 bpc and 32 bpc float, including
 			// texture filtering and frame buffer blending, and as a bonus FP32 shading. Iow. they support the whole
 			// shebang, as they are at least OpenGL 3.0 / Direct3D-10 compliant:
-			if (verbose) printf("Assuming HD graphics core or later: Hardware supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
+			if (verbose && intel) printf("Assuming HD graphics core or later: Hardware supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
+			if (verbose && llvmpipe) printf("Assuming Gallium LLVM-Pipe rasterizer: Renderer supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
 
 			windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
 			windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;

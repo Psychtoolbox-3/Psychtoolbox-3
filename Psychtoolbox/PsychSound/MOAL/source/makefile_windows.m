@@ -1,28 +1,26 @@
-function makefile_windows(postR2007a)
-% Makefile for building the moalcore.dll MEX file for Matlab+OpenAL under
-% M$-Windows. Call it while inside the .../MOAL/source folder. You'll
-% have to copy the OpenAL32.lib and the header files from the Creative
-% labs OpenAL SDK into the include/ and libs/ folder of you Visual Studio
-% installation for this to work.
+function makefile_windows
+% Makefile for building the moalcore MEX file for Matlab+OpenAL under
+% MS-Windows. Call it while inside the .../MOAL/source folder. You'll
+% have to install the Creative labs OpenAL SDK into ...
+% C:\Program Files (x86)\OpenAL 1.1 SDK\
+% ... which is the default install location on Windows-7.
+%
+% The SDK is currently available from:
+% http://connect.creativelabs.com/openal
+%
 
-if nargin < 1
-    postR2007a = [];
+if ~IsWin
+    error('This makefile is only for building moalcore on MS-Windows!');
 end
 
-if isempty(postR2007a)
-    postR2007a = 0;
-end
-
-postR2007a
-
-if postR2007a
-    % R2007a or later build: User R2007a:
-    mex -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output moalcore -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -IT:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychSound\MOAL\source -DWINDOWS -DTARGET_OS_WIN32 windowhacks.c al_auto.c al_manual.c moalcore.c alm.c user32.lib openal32.lib
-    dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\moalcore.mexw32 T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
+if IsWin(1)
+    % 64-Bit R2007a or later build:
+    mex -g -v -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
 else
-    % Pre R2007a build: Use Matlab R11:
-    mex -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychSound\MOAL\source\ -output moalcore -IC:\Programme\MicrosoftVisualStudio\VC98\Include -IT:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychSound\MOAL\source -DWINDOWS windowhacks.c al_auto.c al_manual.c moalcore.c alm.c user32.lib openal32.lib
-    dos('copy T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychSound\MOAL\source\moalcore.dll T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR11\');
+    % 32-Bit R2007a or later build:
+    mex -g -v -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win32" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
 end
+
+movefile(['moalcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
 
 return;

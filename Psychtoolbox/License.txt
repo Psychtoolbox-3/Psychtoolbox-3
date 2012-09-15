@@ -140,6 +140,11 @@
 %                           author and source of the file.
 %
 % Matlab/Octave to OpenGL wrapper MOGL - MIT license : Richard F. Murray, Mario Kleiner.
+% MOGL moglcore for MS-Windows links dynamically against the freeglut library, which is
+% Copyright (c) 1999-2000 Pawel W. Olszta, licensed to us under compatible MIT/X11 license.
+% The source code and license file can be found in PsychSourceGL/Cohorts/freeglut.zip.
+% The license itself can be found in Psychtoolbox/PsychOpenGL/MOGL/core/Copying-freeglut.txt
+%
 % Matlab/Octave to OpenAL wrapper MOAL - MIT license : Richard F. Murray, Mario Kleiner.
 %
 % GLSL shaders for the OpenGL GLSL.m demo from the "Orange book" are

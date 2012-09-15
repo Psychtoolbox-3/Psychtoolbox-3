@@ -50,7 +50,7 @@ if ischar(frequency)
   end
 end
 
-sampleRate = 8192;
+sampleRate = Snd('DefaultRate');
 
 nSample = sampleRate*durationSec;
 soundVec = sin(2*pi*frequency*(1:nSample)/sampleRate);

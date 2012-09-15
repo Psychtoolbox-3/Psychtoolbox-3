@@ -436,7 +436,8 @@ PsychError SCREENWaitUntilAsyncFlipCertain(void)
 	"in the return argument 'VBLTimestamp'. An estimate of Stimulus-onset time is returned in 'StimulusOnsetTime'. "
 	"'swapCertainTime' is the system time when certainty of bufferswap was detected. ";
 	static char seeAlsoString[] = "'AsyncFlipBegin' 'AsyncFlipCheckEnd' 'AsyncFlipEnd'";
-	
+
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX	
 	PsychWindowRecordType *windowRecord;
 	double timestamp, stimulusOnset;
 	int	   beamposition;
@@ -444,7 +445,8 @@ PsychError SCREENWaitUntilAsyncFlipCertain(void)
 	double vbl_time_elapsed, onset_time_togo, currentrefreshestimate;
 	psych_bool   swappending;
 	long   scw, sch;
-	
+#endif
+
 	// Push usage string and/or give online help:
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	

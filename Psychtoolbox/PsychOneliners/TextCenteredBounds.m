@@ -52,10 +52,6 @@ y0=round((r(RectTop)+2*r(RectBottom))/3);
 if iscell(text)
 	for i=1:length(text)
 		string=char(text(i));
-        if IsOS9
-			width=Screen(w,'TextWidth',string);
-            Screen(w,'DrawText',string,x0-width/2,y0,255);
-		end
         if IsOSX
 			bounds=Screen('TextBounds',w,string);
 			width=bounds(3);
@@ -65,10 +61,6 @@ if iscell(text)
 else
 	for i=1:size(text,1)
 		string=char(text(i,:));
-        if IsOS9
-			width=Screen(w,'TextWidth',string);
-            Screen(w,'DrawText',string,x0-width/2,y0,255);
-		end
         if IsOSX
 			bounds=Screen('TextBounds',w,string);
 			width=bounds(3);

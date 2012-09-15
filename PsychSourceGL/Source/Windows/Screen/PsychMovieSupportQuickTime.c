@@ -19,15 +19,10 @@
 
 */
 
-#include "Screen.h"
+#include "PsychMovieSupportQuickTime.h"
 
-// MK: Experimental switch: If set to 1, then we use old-style
-// GWorlds for Quicktime rendering and manually convert them
-// into OpenGL textures. This should default to zero for releases
-// This is a test to find out if we can enable QT support on M$-Windows
-// despite the braindamage of Apples Windows QT-7 SDK...
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
-#define warte PsychWaitIntervalSeconds(10);
+// Only enable Quicktime movie playback support if Quicktime is available:
+#ifdef PSYCHQTAVAIL
 
 // Include QT Medialayer for Windows compatibility:
 #include <QTML.h>
@@ -44,11 +39,6 @@ void CVOpenGLTextureGetCleanTexCoords(void* a, float* b, float* c, float* d, flo
 
 // ... and enable old style GWorld rendering, so this doesn't do any harm...
 #define PSYCH_USE_QT_GWORLDS 1
-
-#else
-// OS-X: We don't use GWorlds but the new and shiny QTVisualcontexts and such...
-#define PSYCH_USE_QT_GWORLDS 0
-#endif 
 
 #define PSYCH_MAX_MOVIES 100
 
@@ -175,7 +165,6 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     *moviehandle = -1;
     // We startup the Quicktime subsystem only on first invocation.
     if (firsttime) {
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
         // Initialize Quicktime for Windows compatibility layer: This will fail if
         // QT isn't installed on the Windows machine...
         error = InitializeQTML(0);
@@ -186,7 +175,6 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 		else {
 			// printf("InitializeQTML() passed...\n"); fflush(NULL);
         }
-#endif
 
         // Initialize Quicktime-Subsystem:
         error = EnterMovies();
@@ -217,12 +205,6 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Slot slotid will contain the movie record for our new movie object:
     slotid=i;
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-    // Create name-string for moviename:
-    movieLocation = CFStringCreateWithCString (kCFAllocatorDefault, moviename, kCFStringEncodingASCII);
-    printf("CFStringCreateWithCString... passed\n", moviename); fflush(NULL);
-#endif
-
     // Zero-out new record in moviebank:
     movieRecordBANK[slotid].theMovie=NULL;    
     movieRecordBANK[slotid].QTMovieContext=NULL;    
@@ -233,62 +215,7 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Assign flags:
     movieRecordBANK[slotid].specialFlags1 = specialFlags1;
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-
-    if (!PSYCH_USE_QT_GWORLDS) {
-        // Create QTGLTextureContext:
-        error = QTOpenGLTextureContextCreate (kCFAllocatorDefault,
-                                                    win->targetSpecific.contextObject,
-                                                    win->targetSpecific.pixelFormatObject,
-                                                    NULL,
-                                                    &QTMovieContext);
-        if (error!=noErr) {
-            PsychErrorExitMsg(PsychError_internal, "OpenGL Quicktime visual context creation failed!!!");
-        }        
-    }
-    
-    // Create QTAudioContext for default CoreAudio device:
-    coreAudioDeviceUID = NULL; // Use default audio-output device.
-    error =QTAudioContextCreateForAudioDevice (kCFAllocatorDefault, coreAudioDeviceUID, NULL, &QTAudioContext);
-    if (error!=noErr) {
-        PsychErrorExitMsg(PsychError_internal, "Quicktime audio context creation failed!!!");
-    }
-	 else {
-          // fprintf(stderr, "QTAudioContext created...\n"); fflush(NULL);
-    }    
-
-    // The Movie location 
-    newMovieProperties[propcount].propClass = kQTPropertyClass_DataLocation;
-    newMovieProperties[propcount].propID = kQTDataLocationPropertyID_CFStringPosixPath;
-    newMovieProperties[propcount].propValueSize = sizeof(CFStringRef);
-    newMovieProperties[propcount++].propValueAddress = &movieLocation;
-    
-    if (!PSYCH_USE_QT_GWORLDS) {
-        // The Movie visual context
-        newMovieProperties[propcount].propClass = kQTPropertyClass_Context;
-        newMovieProperties[propcount].propID = kQTContextPropertyID_VisualContext;
-        newMovieProperties[propcount].propValueSize = sizeof(QTVisualContextRef);
-        newMovieProperties[propcount++].propValueAddress = &QTMovieContext;
-    }
-    
-    // The Movie audio context
-    newMovieProperties[propcount].propClass = kQTPropertyClass_Context;
-    newMovieProperties[propcount].propID = kQTContextPropertyID_AudioContext;
-    newMovieProperties[propcount].propValueSize = sizeof(QTAudioContextRef);
-    newMovieProperties[propcount++].propValueAddress = &QTAudioContext;
-
-    // The Movie active
-    newMovieProperties[propcount].propClass = kQTPropertyClass_NewMovieProperty;
-    newMovieProperties[propcount].propID = kQTNewMoviePropertyID_Active;
-    newMovieProperties[propcount].propValueSize = sizeof(trueValue);
-    newMovieProperties[propcount++].propValueAddress = &trueValue;
-    
-    // Instantiate the Movie
-    error = NewMovieFromProperties(propcount, newMovieProperties, 0, NULL, &theMovie);
-    CFRelease(movieLocation);
-
-#else
-	 // M$-Windows movie loading...
+	// M$-Windows movie loading...
 
     // make a copy of our full path name
     strcpy ( (char *)theFullPath, moviename);
@@ -308,7 +235,6 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
       // printf("P4: Movie opened... %s\n", (error==noErr) ? "Ok" : "Failed"); fflush(NULL);
       CloseMovieFile(movieResFile);
 	 }
-#endif
 
     // printf("P5: Movie opened... %s\n", (error==noErr) ? "Ok" : "Failed"); fflush(NULL);
 
@@ -564,11 +490,6 @@ int PsychQTGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     // Activate OpenGL context of target window:
     PsychSetGLContext(win);
 
-    // Explicitely disable Apple's Client storage extensions. For now they are not really useful to us.
-#if PSYCH_SYSTEM == PSYCH_OSX
-    glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
-#endif
-
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided.");
     }
@@ -578,7 +499,7 @@ int PsychQTGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     }
     
     if (NULL == out_texture && !checkForImage) {
-        PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of out_texture ptr passed!!!");
+        PsychErrorExitMsg(PsychError_user, "Sorry, use of a 'specialFlags2' setting of 2 for skipping texture creation is not supported by the Quicktime engine.");
     }
     
     // Fetch references to objects we need:
@@ -1053,13 +974,11 @@ void PsychQTExitMovies(void)
     // and for some reason it reliably hangs Matlab, so one has to force-quit it :-(
     // Don't do this: ExitMovies();
 
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
     // Shutdown Quicktime core system:
     // ExitMovies();
     
     // Shutdown Quicktime for Windows compatibility layer:
     // TerminateQTML();
-#endif
 
 	 // Reset the firsttime flag, so system gets restarted properly in PsychQTCreateMovie():
 	 firsttime = TRUE;    
@@ -1175,3 +1094,4 @@ double PsychQTSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     return(oldtime);
 }
 
+#endif

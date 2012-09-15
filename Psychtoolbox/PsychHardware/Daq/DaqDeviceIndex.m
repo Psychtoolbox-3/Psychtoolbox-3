@@ -99,10 +99,6 @@ end % if ~nargin || isempty(DeviceName)
 
 NumInterfaces = [];
 
-if IsWinMatlabR11Style
-    error('Sorry, the DAQ toolbox functions are unsupported on Matlab versions before R2007a');
-end
-
 LoadPsychHID;
 devices=PsychHID('Devices');
 daq=[];

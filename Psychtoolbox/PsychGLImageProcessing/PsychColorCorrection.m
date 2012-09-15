@@ -116,12 +116,32 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %   additional parameters for use of a more complex gamma correction function.
 %
 %
+% * 'MatrixMultiply4' : Multiply with 4x4 color transformation matrix:
+%
+%   Extend RGB component of color by a fourth "constant 1" component,
+%   multiply by specified 4-by-4 matrix, normalize by dividing result by
+%   4'th component, return transformed rgb components as output color. Pass
+%   through alpha-channel unmodified.
+%
+%   rgbw' = M * [r,g,b,1]'
+%   out.rgb = [r', g', b'] / w'
+%   out.a = a
+%
+%
 % * 'LookupTable' : Apply color correction by color table lookup, ie. a CLUT.
 %
 %   This will allow to pass in a color lookup table of selectable
 %   granularity (ie., number of slots) and range, which is later on used to
 %   lookup corresponding corrected color values for given framebuffer input
 %   values.
+%
+%
+% * 'LookupTable3D' : Apply color correction by a 3D color table lookup.
+%
+%   This will allow to pass in a 3D color lookup table of selectable
+%   granularity (ie., number of slots per dimension) and range, which is
+%   later on used to lookup corresponding corrected color values for given
+%   framebuffer input values.
 %
 %
 % * 'GainMatrix' : Apply color gain correction by 2D gain matrix lookup.
@@ -149,10 +169,40 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %
 %   See below for description of 'SetGainMatrix'.
 %
+% * 'AnaglyphStereo' : Apply anaglyph stereo algorithm.
+%
+%   This loads a similar anaglyph shader as the one used in stereoModes 6
+%   to 9 when the function SetAnaglyphStereoParameters('ColorAnaglyphMode')
+%   or its siblings was used. This is useful if you want to employ anaglyph
+%   stereo presentation, but not by rendering a full anaglyph image into
+%   one single framebuffer for output to a single display or projector, but
+%   if you want to direct the "left-eye" anaglyph image to a different
+%   display or projector than the "right-eye" anaglyph image. An example
+%   would be having two video projectors attached to two video outputs of a
+%   graphics card. One projector shall project the left-eye image, the
+%   other one the right-eye image. In this case you'd choose a stereoMode
+%   of 4 or 5 (typically on Linux or Windows) for desktop spanning stereo
+%   output, or 10 (on OSX) for dual-window stereo output. Then you'd use ...
+%   PsychImaging('AddTask', 'LeftView', 'DisplayColorCorrection', 'AnaglyphStereo')
+%   ... and ...
+%   PsychImaging('AddTask', 'RightView', 'DisplayColorCorrection', 'AnaglyphStereo')
+%   ... to add an anaglyph shader to the end of each view channel.
+%
+%   After adding individual shaders for each image processing channel and opening
+%   the onscreen window(s), you can use SetAnaglyphStereoParameters() to
+%   parameterize the anaglyph stereo presentation as if it were created via
+%   regular anaglyph stereo setup in stereomoded 6-9.
 %
 %
 % Supported runtime Subfunctions:
 % ===============================
+%
+% oldlevel = PsychColorCorrection('Verbosity' [, newlevel]);
+% Return current level of verbosity in optional 'oldlevel', optionally set
+% new level of verbosity via 'newlevel'. The level of verbosity affects how
+% much status output is printed in some routines: 0 = Nothing, 1 = Only
+% errors, 2 = Errors and warnings, 3 = Errors + Warnings + Some info.
+%
 %
 % The following routines must be called *after* opening a window for which color
 % correction is enabled. They can be called anytime and changed settings
@@ -165,6 +215,7 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % separately. Allowable values for viewId are 'AllViews', 'LeftView' and
 % 'RightView', corresponding to the 'whichChannel' setting that you used
 % when setting up the window with PsychImaging().
+%
 %
 % PsychColorCorrection('SetColorClampingRange', window, min, max [,viewId]);
 % - Set the range of allowable output color or luminance intensity values
@@ -215,6 +266,12 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % 'bias' Bias/Offset to apply to final result before output (Default is 0.0).
 %
 %
+% PsychColorCorrection('SetMultMatrix4', window, matrix [, viewId]);
+% - Set the 4-by-4 color transformation matrix to use for the 'MatrixMultiply4'
+% color correction method. 'matrix' must be the 2D 4 rows by 4 columns
+% matrix to use. By default, the matrix is set to an identity matrix.
+%
+%
 % PsychColorCorrection('SetLookupTable', window, clut [, viewId][, maxinput=1][, scalefactor]);
 % - Assign color lookup table 'clut' for use with color correction method
 % 'LookupTable'. 'clut' must be a 1 column vector for pure luminance lookup
@@ -250,6 +307,79 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % default to the range 0.0 - 1.0.
 %
 %
+% PsychColorCorrection('SetLookupTable3D', window, clut [, viewId][, maxinput=1][, scalefactor][, precision=0][, interpolate=1]);
+% - Assign 4D color lookup table 'clut' for use with color correction method
+% 'LookupTable3D'. 'clut' must be a 4D 3-by-m-by-n-by-p matrix. The first dimension encodes the
+% output color values to use:
+% clut(1,r,g,b) == Corrected red color value for input color [r,g,b].
+% clut(2,r,g,b) == Corrected green color value for input color [r,g,b].
+% clut(3,r,g,b) == Corrected blue color value for input color [r,g,b].
+%
+% clut must have at least one element in each color index dimension, ie., m, n
+% and p must be >= 1, but usually will have more elements in each dimension
+% for a meaningful lookup color correction. In theory you would need m, n
+% and p to be == 2^bpc for a given output device bitdepths bpc, e.g, for a
+% 8 bit output device, m,n,p would need to be 2^8 = 256 elements for a perfect
+% one-to-one mapping. In reality you likely don't want to use such large
+% sizes, as such a huge and dense 3D CLUT would take up considerable
+% amounts of graphics memory and cause large slowdowns of all drawing
+% operations. For good performance and portability of your code to older
+% graphics cards, choose modest sizes, as small as possible.
+%
+% At runtime, color correction will be performed by the following 3D table
+% lookup procedure: Let Rin, Gin, Bin be the input red, green and blue
+% color components, and Rout, Gout, Bout the final output values for the
+% framebuffer. First Rin, Gin and Bin are clamped individually to the range
+% 0.0 - 'maxinput' (maxinput is 1.0 by default), scalefactor is chosen by
+% default as scalefactor = (1.0 / maxinput), ie., it maps the possible
+% input range 0 - 'maxinput' to the range 0.0 - 1.0, which covers the full
+% range of entries stored in the clut. This is the most reasonable default,
+% but can be changed by the optional 'scalefactor' and 'maxinput'
+% arguments.
+%
+% Then the output color for each component is looked up in the proper 3D
+% slot of the passed clut:
+%
+% Rout = clut(1, Rin * scalefactor, Gin * scalefactor, Bin * scalefactor);
+% Gout = clut(2, Rin * scalefactor, Gin * scalefactor, Bin * scalefactor);
+% Bout = clut(3, Rin * scalefactor, Gin * scalefactor, Bin * scalefactor);
+%
+% Color values (Rin, Gin, Bin) == (0,0,0) map to the first elements in the
+% cluts dimensions, ie., clut(:,1,1,1). Maximum values (maxinput, maxinput,
+% maxinput) map - after scaling with the default scalefactor - to
+% coordinates (1.0, 1.0, 1.0) in the normalized 3D color coordinate space
+% and are looked up in the maximal clut element indices of each dimension,
+% ie., clut(:,m,n,p) for our 3-by-m-by-n-by-p clut. Intermediate values are
+% mapped accordingly to proper clut element indices.
+%
+% By default, color values for fractional indices inbetween reference
+% values in the clut are interpolated linearly between the eight nearest
+% neighbour reference values in the 3 dimensional space --> This is
+% trilinear interpolation across all 3 color dimensions of the CLUT. If you
+% set the optional parameter 'interpolate' to zero, then simple nearest
+% neighbour sampling is performed instead.
+%
+% The optional 'precision' flag controls the precision with which entries
+% in the CLUT should be stored and processed: precision = 0 is the default
+% and stores values with 8 bit precision for 256 different intensity levels
+% for Rout, Gout and Bout. A setting of 1 will store values with 16 bpc
+% floating point precision to resolve up to 10 bits or 1024 levels of
+% linear precision. A setting of 2 will store values with 32 bpc floating
+% point precision for up to 23 bits of linear precision. Be aware that
+% precision values > 0 will increase memory consumption by a factor of 2x
+% or 4x, which can be significant for lookup tables of non-trivial size.
+%
+% Final looked up, Rout, Gout and Bout are clamped to the valid output range as set
+% by the function PsychColorCorrection('SetColorClampingRange', ...); by
+% default to the range 0.0 - 1.0.
+%
+% Essentially, this color correction allows to define arbitrary mappings of
+% RGB input triplets to RGB output triplets, providing a large amount of
+% flexibility. Be aware though that strongly discontinuous mappings of input
+% colors to output colors can have a significant negative impact on the
+% drawing performance of your graphics card. Define your clut's wisely!
+%
+%
 % PsychColorCorrection('SetGainMatrix', window, matrix [, viewId][, precision=2]);
 %
 % - Set gain matrix for method 'GainMatrix'.
@@ -276,12 +406,14 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %
 % Call this *before* opening a window:
 %
+%
 % PsychColorCorrection('ChooseColorCorrection', methodname);
 % - Specify the method to be used for color correction for the next
 % onscreen window that will be opened. This needs to be called *before* the
 % window is opened, however its usually done automatically at the right
 % moment by routines like PsychImaging() or BitsPlusPlus() if you use these
 % to open windows.
+%
 %
 % Called after Screen('OpenWindow') during shader and pipeline setup:
 %
@@ -298,6 +430,7 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % Called after linking and attaching the final processing GLSL program
 % objects and slots to the imaging pipelines hook chain(s):
 %
+%
 % PsychColorCorrection('ApplyPostGLSLLinkSetup', window, viewId);
 % - Perform whatever setup work is needed after final GLSL program object
 % has been created and attached to imaging pipeline.
@@ -309,10 +442,18 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % 04.07.2009 Add CLUT based color correction. (MK)
 % 10.10.2009 Add 'SetExtendedGammaParameters' for extended gamma correction. (MK)
 % 05.03.2010 Add 'GainMatrix' and 'SetGainMatrix' for display
-%                shading/vignetting correction. (MK)
+%                 shading/vignetting correction. (MK)
+% 14.08.2012 Add 'AnaglyphStereo' to apply anaglyph stereo mode onto
+%            separate display outputs, e.g., as on MPI Kuka projection
+%            setup. (MK)
+% 21.08.2012 Add support for 3D CLUTs for "color cube" lookups. (MK)
+% 21.08.2012 Add 'Verbosity' level support. (MK)
+% 24.08.2012 Add 'SetMultMatrix4' support for 4-by-4 matrix multiply. (MK)
+%
 
 % GL is needed for shader setup and parameter changes:
 global GL;
+persistent verbosity;
 persistent specReady;
 persistent icmSpec;
 persistent icmDataForHandle;
@@ -322,6 +463,7 @@ if isempty(specReady)
     % override this...
     specReady = 1;
     icmSpec.type = 'ClampOnly';
+    verbosity = 3;
 end
 
 % Child protection:
@@ -348,6 +490,15 @@ if strcmpi(cmd, 'ChooseColorCorrection')
     return;
 end
 
+if strcmpi(cmd, 'Verbosity')
+    varargout{1} = verbosity;
+    
+    if nargin == 2
+        verbosity = varargin{1};
+    end
+    
+    return;
+end
 
 % Retrieve a (previously specified) collection of precompiled shader
 % objects. These implement the subroutines for color processing, according
@@ -402,9 +553,14 @@ if strcmpi(cmd, 'GetCompiledShaders')
             icmShaders = LoadShaderFromFile('ICMSimpleGammaCorrectionShader.frag.txt', [], debuglevel);
             icmIdString = sprintf('ICM:%s', icmSpec.type);
             
+        case {'MatrixMultiply4'}
+            % Load our matrix multiply shader:
+            icmShaders = LoadShaderFromFile('ICMMatrixMult4Shader.frag.txt', [], debuglevel);
+            icmIdString = sprintf('ICM:%s', icmSpec.type);
+            
         % Color correction by CLUT texture lookup table operation:
         case {'LookupTable'}
-            % Load our bog-standard power-law shader:
+            % Load our 1D CLUT color correction shader:
             icmShaders = LoadShaderFromFile('ICMCLUTCorrectionShader.frag.txt', [], debuglevel);
             icmIdString = sprintf('ICM:%s', icmSpec.type);
 
@@ -414,6 +570,18 @@ if strcmpi(cmd, 'GetCompiledShaders')
             % Build config string to bind and use our CLUT texture:
             icmConfig = sprintf('TEXTURERECT2D(2)=%i', icmSpec.icmlutid);
             
+        % Color correction by indexing into 3D texture lookup table:
+        case {'LookupTable3D'}
+            % Load our 3D CLUT color correction shader:
+            icmShaders = LoadShaderFromFile('ICM3DCLUTCorrectionShader.frag.txt', [], debuglevel);
+            icmIdString = sprintf('ICM:%s', icmSpec.type);
+
+            % Generate texture handle for fillout later on:
+            icmSpec.icmlutid = glGenTextures(1);
+            
+            % Build config string to bind and use our CLUT 3D texture:
+            icmConfig = sprintf('TEXTURE3D(2)=%i', icmSpec.icmlutid);
+
         % Vignetting correction by lookup into a 2D per-pixel gain texture:
         case {'GainMatrix'}
             % Load our 2D gain correction shader:
@@ -425,7 +593,12 @@ if strcmpi(cmd, 'GetCompiledShaders')
             
             % Build config string to bind and use our gain texture:
             icmConfig = sprintf('TEXTURERECT2D(2)=%i', icmSpec.icmlutid);
-                        
+            
+        case {'AnaglyphStereo'}
+            % Load the single-view anaglyph shader:
+            icmShaders = LoadShaderFromFile('ColoredSingleChannelAnaglyphShader.frag.txt', [], debuglevel);
+            icmIdString = sprintf('ICM:%s', icmSpec.type);
+            
         otherwise
             error('Unknown type of color correction requested! Internal bug?!?');
     end
@@ -465,7 +638,7 @@ if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
     viewId = varargin{2};
     
     % Retrieve all params for 'win'dow and given icmSpec, bind shader:
-    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmSpec.type, viewId); %#ok<NASGU>
+    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmSpec.type, viewId); %#ok<*ASGLU,NASGU>
     
     try
         % Setup initial clamping values to valid range 0.0 - 1.0:
@@ -501,6 +674,20 @@ if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
                 % location though:
                 icmDataForHandle(win, glsl) = icmSpec.icmlutid;
                 
+            case {'LookupTable3D'}
+                % Set CLUT texture unit to 2:
+                glUniform1i(glGetUniformLocation(glsl, 'ICMCLUT'), 2);
+                % Setup everything to a pretty meaningless but safe
+                % mapping, which will likely just produce all-white,
+                % regardless of input:
+                glUniform1f(glGetUniformLocation(glsl, 'ICMPrescale'), 1.0);
+                glUniform1f(glGetUniformLocation(glsl, 'ICMMaxInputValue'), 1.0);
+                % Note that we won't setup the CLUT texture yet. This is a
+                % mandatory step after initial setup of the display. We do
+                % store the texture id of the clut texture in a permanent
+                % location though:
+                icmDataForHandle(win, glsl) = icmSpec.icmlutid;
+                
             case {'GainMatrix'}
                 % Set Gain matrix texture unit to 2:
                 glUniform1i(glGetUniformLocation(glsl, 'ICMGainField'), 2);
@@ -509,11 +696,21 @@ if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
                 % store the texture id of the texture in a permanent
                 % location though:
                 icmDataForHandle(win, glsl) = icmSpec.icmlutid;
+
+            case {'AnaglyphStereo'}
+                % Set RedGamma to zero, ie., "disabled" by default:
+                glUniform1f(glGetUniformLocation(glsl, 'RedGamma'), 0.0);
+                % Set 3x3 transform matrix to identity matrix by default:
+                glUniformMatrix3fv(glGetUniformLocation(glsl, 'GainsLeft'), 1, 0, [[1 0 0]; [0 1 0]; [0 0 1]]);
+
+            case {'MatrixMultiply4'}
+                % Set 4x4 transform matrix to identity matrix by default:
+                glUniformMatrix4fv(glGetUniformLocation(glsl, 'M'), 1, 0, [[1 0 0 0]; [0 1 0 0]; [0 0 1 0]; [0 0 0 1]]);
                 
             otherwise
                 error('Unknown type of color correction requested! Internal bug?!?');
         end
-    catch
+    catch %#ok<*CTCH>
         % Empty...
         psychrethrow(psychlasterror);
     end
@@ -818,6 +1015,57 @@ if strcmpi(cmd, 'SetExtendedGammaParameters')
     return;
 end
 
+if strcmpi(cmd, 'SetMultMatrix4')
+    % Need GL from here on...
+    if isempty(GL)
+        error('SetMultMatrix4: No internal GL struct defined in "SetMultMatrix4" routine?!? This is a bug - Check code!!');
+    end
+    
+    if nargin < 2
+        error('SetMultMatrix4: Must provide window handle to onscreen window as 2nd argument!');
+    end
+
+    if nargin < 3
+        error('SetMultMatrix4: Must provide 4-by-4 color transformation matrix.');
+    end
+    
+    % Fetch window handle:
+    win = varargin{1};
+    
+    % Fetch matrix:
+    mat = varargin{2};
+    
+    if ~isnumeric(mat)
+        error('SetMultMatrix4: Matrix must contain numbers!');
+    end
+    
+    if size(mat,1)~=4 || size(mat,2)~=4
+        error('SetMultMatrix4: Matrix must have 4 rows and 4 columns!');
+    end
+
+    if nargin < 4
+        viewId = [];
+    else
+        viewId = varargin{3};
+    end
+
+    icmId = 'MatrixMultiply4';
+    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmId, viewId); %#ok<NASGU>
+    
+    try
+        % Set 4x4 transform matrix to identity matrix by default:
+        glUniformMatrix4fv(glGetUniformLocation(glsl, 'M'), 1, 0, single(mat));
+    catch
+        % Empty...
+        psychrethrow(psychlasterror);
+    end
+    
+    % Unbind shader:
+    glUseProgram(0);
+
+    return;
+end
+
 if strcmpi(cmd, 'SetLookupTable')
     
     % Need GL from here on...
@@ -858,7 +1106,7 @@ if strcmpi(cmd, 'SetLookupTable')
     end
     
     % Optional max input value provided? Assign most common 1.0 if not:
-    if nargin < 5
+    if nargin < 5 || isempty(varargin{4})
         ICMMaxInputValue = 1.0;
     else
         ICMMaxInputValue = varargin{4};
@@ -866,10 +1114,10 @@ if strcmpi(cmd, 'SetLookupTable')
 
     % Optional scaling factor provided? Assign proper scaler for clut size,
     % and max input value if not:
-    if nargin < 6
+    if nargin < 6 || isempty(varargin{5})
         ICMPrescale = ( size(clut,1) -1 ) / ICMMaxInputValue;
     else
-        ICMPrescale = varargin{4};
+        ICMPrescale = varargin{5};
     end
 
     % Retrieve all params for 'win'dow and our 'LookupTable' icmSpec, bind shader.
@@ -903,33 +1151,34 @@ if strcmpi(cmd, 'SetLookupTable')
     if winfo.GLSupportsTexturesUpToBpc >= 32
         % Full 32 bits single precision float:
         internalFormat = GL.LUMINANCE_FLOAT32_APPLE;
-        fprintf('PsychColorCorrection: Using a 32 bit float CLUT -> 23 bits effective linear output precision for color correction.\n');
+        if verbosity >= 3, fprintf('PsychColorCorrection: Using a 32 bit float CLUT -> 23 bits effective linear output precision for color correction.\n'); end
     else
         % No float32 textures:
         if (winfo.GLSupportsTexturesUpToBpc >= 16)
             % Choose 16 bpc float textures:
             internalFormat = GL.LUMINANCE_FLOAT16_APPLE;
-            fprintf('PsychColorCorrection: Using a 16 bit float CLUT -> 10 bits effective linear output precision for color correction.\n');
+            if verbosity >= 3, fprintf('PsychColorCorrection: Using a 16 bit float CLUT -> 10 bits effective linear output precision for color correction.\n'); end
         else
             % No support for > 8 bpc textures at all and/or no need for
             % more than 8 bpc precision or range. Choose 8 bpc texture:
             internalFormat = GL.LUMINANCE;
-            fprintf('PsychColorCorrection: Using a 8 bit integer CLUT -> 8 bits effective linear output precision for color correction.\n');
+            if verbosity >= 3, fprintf('PsychColorCorrection: Using a 8 bit integer CLUT -> 8 bits effective linear output precision for color correction.\n'); end
 
             % Plain old 8 bits fixed point:
-            if (max(max(clut)) > 255) || (min(min(clut)) < 0)
-                % Ohoh, out of range values for integer texture! Try if we
-                % can use a float16 texture, even if no linear texture
-                % filtering is possible that way. Loss of accuracy is
-                % better than completely wrong results.
-                fprintf('\nWARNING!PsychColorCorrection: CLUT contains values greater than 255 or negative values, which your hardware can''t handle!!\n');
-                fprintf('WARNING!PsychColorCorrection: This will likely cause remapping artifacts in color correction!!\n');
+            if (max(max(clut)) > 1) || (min(min(clut)) < 0)
+                % Ohoh, out of range values for integer texture!
+                if verbosity >= 2
+                    fprintf('\nWARNING!PsychColorCorrection: CLUT contains values greater than 1.0 or negative values, which your hardware can''t handle!!\n');
+                    fprintf('WARNING!PsychColorCorrection: This will likely cause remapping artifacts in color correction!!\n');
+                end
             end
             
             if (winfo.BitsPerColorComponent > 8)
-                fprintf('WARNING!PsychColorCorrection: Your hardware can only handle 8 bit precision color correction in outputrange 0-255,\n');                
-                fprintf('WARNING!PsychColorCorrection: but your framebuffer is configured for more than 8 bit precision. This may cause\n');                
-                fprintf('WARNING!PsychColorCorrection: loss of effective precision in color correction and thereby unwanted artifacts!\n');                
+                if verbosity >= 2
+                    fprintf('WARNING!PsychColorCorrection: Your hardware can only handle 8 bit precision color correction in outputrange 0.0 - 1.0,\n');
+                    fprintf('WARNING!PsychColorCorrection: but your framebuffer is configured for more than 8 bit precision. This may cause\n');
+                    fprintf('WARNING!PsychColorCorrection: loss of effective precision in color correction and thereby unwanted artifacts!\n');
+                end
             end
         end
     end
@@ -957,6 +1206,207 @@ if strcmpi(cmd, 'SetLookupTable')
     % Assign lookuptable data to texture:
     glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, internalFormat, size(clut, 1), size(clut, 2), 0, GL.LUMINANCE, GL.FLOAT, clut);
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
+
+    % Done.
+    return;
+end
+
+if strcmpi(cmd, 'SetLookupTable3D')
+    
+    % Need GL from here on...
+    if isempty(GL)
+        error('SetLookupTable3D: No internal GL struct defined in "SetLookupTable3D" routine?!? This is a bug - Check code!!');
+    end
+    
+    if nargin < 2
+        error('SetLookupTable3D: Must provide window handle to onscreen window as 2nd argument!');
+    end
+
+    if nargin < 3
+        error('SetLookupTable3D: Must provide CLUT 4D matrix for which a 3D color lookup table should be built!');
+    end
+    
+    % Fetch window handle:
+    win = varargin{1};
+    
+    % Fetch clut:
+    clut = varargin{2};
+    
+    if ~isnumeric(clut)
+        error('SetLookupTable3D: CLUT matrix must contain number(s)!');
+    end
+    
+    if ndims(clut) ~= 4
+        error('SetLookupTable3D: Encoding CLUT must be a 4D matrix with indices (channel, redinput, greeninput, blueinput)!');
+    end
+    
+    if size(clut,1)~=3
+        error('SetLookupTable3D: Encoding CLUT must be a 4D matrix whose first dimension has a size of 3 elements for (R,G,B) color triplets!');
+    end
+
+    if size(clut,2) < 1 || size(clut,3) < 1 || size(clut,4) < 1
+        error('SetLookupTable3D: Encoding 4D CLUT must have at least one element in each of the three input color dimensions 2,3 and 4!');
+    end
+
+    if nargin < 4
+        viewId = [];
+    else
+        viewId = varargin{3};
+    end
+    
+    % Optional max input value provided? Assign most common 1.0 if not:
+    if nargin < 5 || isempty(varargin{4})
+        ICMMaxInputValue = 1.0;
+    else
+        ICMMaxInputValue = varargin{4};
+    end
+
+    % Optional scaling factor provided? Assign proper scaler for normalized
+    % 3D texture coordinate range of clut texture and max input value if not:
+    if nargin < 6 || isempty(varargin{5})
+        ICMPrescale = 1.0 / ICMMaxInputValue;
+    else
+        ICMPrescale = varargin{5};
+    end
+
+    % Optional precision spec provided? Assign if so.
+    if nargin < 7 || isempty(varargin{6})
+        % Default to precision zero for simple 8 bit integer precision -
+        % sufficient to drive a standard 8 bpc integer framebuffer.
+        % Our strategy for 3D LUT's is different than for normal linear
+        % LUT's, where we choose the highest precision (32 bpc float) by
+        % default. The reason is that memory consumption of 3D textures
+        % increases with O(n^3) for n levels per input dimension, as
+        % opposed to O(n) for linear LUT's. Choosing higher precisions by
+        % default could get us into a out-of-memory condition very quickly.
+        % Even if the texture fits into VRAM, a 3D texture used for color
+        % lookup and applied per pixel could quickly trash the texture
+        % caches and cause a breakdown of performance.
+        precision = 0;
+    else
+        precision = varargin{6};
+    end
+    
+    % Trilinear interpolation switch provided?
+    if nargin < 8 || isempty(varargin{7})
+        % Default to trilinear interpolation:
+        interpolate = 1;
+    else
+        interpolate = varargin{7};
+    end
+    
+    % Retrieve all params for 'win'dow and our 'LookupTable' icmSpec, bind shader.
+    icmId = 'LookupTable3D';
+    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmId, viewId); %#ok<NASGU>
+    
+    try
+        % Setup initial clamping values to valid range 0.0 - maximum in passed CLUT:
+        glUniform2f(glGetUniformLocation(glsl, 'ICMClampToColorRange'), 0.0, max(max(max(max(clut)))));
+
+        % Setup max input value and prescaler:
+        glUniform1f(glGetUniformLocation(glsl, 'ICMMaxInputValue'), ICMMaxInputValue);
+        glUniform1f(glGetUniformLocation(glsl, 'ICMPrescale'), ICMPrescale);        
+    catch
+        % Empty...
+        psychrethrow(psychlasterror);
+    end
+    
+    % Unbind shader:
+    glUseProgram(0);
+    
+    if isempty(icmDataForHandle) || size(icmDataForHandle, 1) < win || size(icmDataForHandle, 2) < glsl || Screen('WindowKind',win) ~= 1
+        error('SetLookupTable3D: Tried to assign clut to a non-onscreen window or one which doesn''t have "LookupTable3D" based color correction enabled!');
+    end
+    
+    % Convert 'clut' to single(), so it is a float format for OpenGL:
+    clut = single(clut);
+    
+    % Try to encode in highest precision format that the hardware supports, but no more than what is requested by usercode:
+    winfo = Screen('GetWindowInfo', win);
+    if (winfo.GLSupportsTexturesUpToBpc >= 32) && (winfo.GLSupportsFilteringUpToBpc >= 32 || interpolate == 0) && (precision >= 2)
+        % Full 32 bits single precision float with linear filtering:
+        internalFormat = GL.RGB_FLOAT32_APPLE;
+        if verbosity >= 3, fprintf('PsychColorCorrection: Using a 32 bit float 3D CLUT -> 23 bits effective linear output precision for color correction.\n'); end
+    else
+        % No float32 textures with linear filtering:
+        if (winfo.GLSupportsTexturesUpToBpc >= 16) && (winfo.GLSupportsFilteringUpToBpc >= 16 || interpolate == 0) && (precision >= 1)
+            % Choose 16 bpc float textures with linear filtering:
+            internalFormat = GL.RGB_FLOAT16_APPLE;
+            if verbosity >= 3, fprintf('PsychColorCorrection: Using a 16 bit float 3D CLUT -> 10 bits effective linear output precision for color correction.\n'); end
+        else
+            % No support for > 8 bpc textures with linear filtering at all
+            % and/or no need for more than 8 bpc precision or range. Choose
+            % 8 bpc texture:
+            internalFormat = GL.RGB;
+            if verbosity >= 3, fprintf('PsychColorCorrection: Using a 8 bit integer 3D CLUT -> 8 bits effective linear output precision for color correction.\n'); end
+
+            % Plain old 8 bits fixed point:
+            if (max(max(max(max(clut)))) > 1) || (min(min(min(min(clut)))) < 0)
+                % Ohoh, out of range values for integer texture!
+                if verbosity >= 2
+                    fprintf('\nWARNING!PsychColorCorrection: 3D CLUT contains values greater than 1.0 or negative values, which your hardware can''t handle!!\n');
+                    fprintf('WARNING!PsychColorCorrection: This will likely cause remapping artifacts in color correction!!\n');
+                end
+            end
+            
+            if (winfo.BitsPerColorComponent > 8)
+                if verbosity >= 2
+                    fprintf('WARNING!PsychColorCorrection: Your hardware can only handle 8 bit precision color correction in outputrange 0.0 - 1.0,\n');
+                    fprintf('WARNING!PsychColorCorrection: but your framebuffer is configured for more than 8 bit precision. This may cause\n');
+                    fprintf('WARNING!PsychColorCorrection: loss of effective precision in color correction and thereby unwanted artifacts!\n');
+                end
+            end
+        end
+    end
+    
+    max3DSize = glGetIntegerv(GL.MAX_3D_TEXTURE_SIZE);
+    if size(clut,2) > max3DSize || size(clut,3) > max3DSize || size(clut,4) > max3DSize
+        error('SetLookupTable3D: Tried to assign a clut with (%i,%i,%i) slots. This is more than your graphics hardware can handle! [Maximum is %i slots].', size(clut,2), size(clut,3), size(clut,4), max3DSize);
+    end
+    
+    % Bind relevant texture object:
+    glBindTexture(GL.TEXTURE_3D, icmDataForHandle(win, glsl));
+    
+    % Set filters properly:
+    if interpolate > 0
+        % We want trilinear filtering:
+        glTexParameteri(GL.TEXTURE_3D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
+        glTexParameteri(GL.TEXTURE_3D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
+    else
+        % We want nearest neighbour lookup:
+        glTexParameteri(GL.TEXTURE_3D, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
+        glTexParameteri(GL.TEXTURE_3D, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
+    end
+    
+    % Want clamp-to-edge behaviour to saturate at minimum and maximum
+    % color values:
+    glTexParameteri(GL.TEXTURE_3D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
+    glTexParameteri(GL.TEXTURE_3D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
+    glTexParameteri(GL.TEXTURE_3D, GL.TEXTURE_WRAP_R, GL.CLAMP_TO_EDGE);
+    
+    % Clear any pending OpenGL errors:
+    while glGetError(); end;
+    
+    % Assign lookuptable data to texture:
+    glTexImage3D(GL.TEXTURE_3D, 0, internalFormat, size(clut, 2), size(clut, 3), size(clut, 4), 0, GL.RGB, GL.FLOAT, clut);
+    
+    % Check and handle errors:
+    err = glGetError;
+    if err ~= GL.NO_ERROR
+        if err == GL.INVALID_VALUE
+            % Can only get a invalid_value if power-of-two constraint is
+            % violated on a GPU which does not support NPOT textures:
+            error('SetLookupTable3D: LUT creation failed. Most likely cause: Your graphics card requires all 3D-CLUT dimensions to have a number of elements which is a power of two.\n');            
+        elseif err == GL.OUT_OF_MEMORY
+            error('SetLookupTable3D: LUT creation failed. Your graphics card has insufficient free memory to handle a CLUT of this size. Try to reduce CLUT size.');
+        else
+            % Something else went bonkers:
+            error('SetLookupTable3D: OpenGL error during lookup table texture creation: %s\n', gluErrorString(err));
+        end
+    end
+    
+    % Done, LUT is ready, unbind:
+    glBindTexture(GL.TEXTURE_3D, 0);
 
     % Done.
     return;
@@ -1051,7 +1501,7 @@ if strcmpi(cmd, 'SetGainMatrix')
         if ch == 3
             internalFormat = GL.RGB_FLOAT32_APPLE;
         end
-        fprintf('PsychColorCorrection: Using a 32 bit float matrix -> 23 bits (6 decimal digits) effective linear precision for color correction gain matrix.\n');
+        if verbosity >= 3, fprintf('PsychColorCorrection: Using a 32 bit float matrix -> 23 bits (6 decimal digits) effective linear precision for color correction gain matrix.\n'); end
     else
         % No float32 textures:
         if (winfo.GLSupportsTexturesUpToBpc >= 16) && (precision >= 1)
@@ -1060,7 +1510,7 @@ if strcmpi(cmd, 'SetGainMatrix')
             if ch == 3
                 internalFormat = GL.RGB_FLOAT16_APPLE;
             end
-            fprintf('PsychColorCorrection: Using a 16 bit float matrix -> 10 bits (3 decimal digits) effective linear precision for color correction gain matrix.\n');
+            if verbosity >= 3, fprintf('PsychColorCorrection: Using a 16 bit float matrix -> 10 bits (3 decimal digits) effective linear precision for color correction gain matrix.\n'); end
         else
             % No support for > 8 bpc textures at all and/or no need for
             % more than 8 bpc precision or range. Choose 8 bpc texture:
@@ -1069,20 +1519,26 @@ if strcmpi(cmd, 'SetGainMatrix')
                 internalFormat = GL.RGB8;
             end
             
-            fprintf('PsychColorCorrection: Using a 8 bit integer matrix -> 8 bits (2 decimal digits) effective linear precision for color correction gain matrix.\n');
-            fprintf('PsychColorCorrection: Gain values will be restricted to range 0.0 - 1.0, with 256 levels, ie. steps of 1/256!\n');
-
+            if verbosity >= 3
+                fprintf('PsychColorCorrection: Using a 8 bit integer matrix -> 8 bits (2 decimal digits) effective linear precision for color correction gain matrix.\n');
+                fprintf('PsychColorCorrection: Gain values will be restricted to range 0.0 - 1.0, with 256 levels, ie. steps of 1/256.\n');
+            end
+            
             % Plain old 8 bits fixed point:
             if (max(max(max(clut))) > 1) || (min(min(min(clut))) < 0)
                 % Ohoh, out of range values for integer texture!
-                fprintf('\nWARNING!PsychColorCorrection: Matrix contains values greater than one or negative values, which your hardware can''t handle!!\n');
-                fprintf('WARNING!PsychColorCorrection: This will likely cause remapping artifacts in gain correction!!\n');
+                if verbosity >= 2 
+                    fprintf('\nWARNING!PsychColorCorrection: Matrix contains values greater than one or negative values, which your hardware can''t handle!!\n');
+                    fprintf('WARNING!PsychColorCorrection: This will likely cause remapping artifacts in gain correction!!\n');
+                end
             end
             
             if (winfo.BitsPerColorComponent > 8)
-                fprintf('WARNING!PsychColorCorrection: Your hardware can only handle 8 bit precision gain correction width 256 discrete levels,\n');                
-                fprintf('WARNING!PsychColorCorrection: but your framebuffer is configured for more than 8 bit precision. This may cause\n');                
-                fprintf('WARNING!PsychColorCorrection: loss of effective precision in gain correction and thereby unwanted artifacts!\n');                
+                if verbosity >= 2
+                    fprintf('WARNING!PsychColorCorrection: Your hardware can only handle 8 bit precision gain correction width 256 discrete levels,\n');
+                    fprintf('WARNING!PsychColorCorrection: but your framebuffer is configured for more than 8 bit precision. This may cause\n');
+                    fprintf('WARNING!PsychColorCorrection: loss of effective precision in gain correction and thereby unwanted artifacts!\n');
+                end
             end
         end
     end

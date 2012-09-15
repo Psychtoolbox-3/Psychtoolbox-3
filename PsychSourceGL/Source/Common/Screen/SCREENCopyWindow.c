@@ -41,11 +41,8 @@ static char seeAlsoString[] = "PutImage, GetImage, OpenOffscreenWindow, MakeText
 
 PsychError SCREENCopyWindow(void) 
 {
-	PsychRectType			sourceRect, targetRect, targetRectInverted;
+	PsychRectType			sourceRect, targetRect;
 	PsychWindowRecordType	*sourceWin, *targetWin;
-	GLdouble				sourceVertex[2], targetVertex[2]; 
-	double					t1;
-	double					sourceRectWidth, sourceRectHeight;
 	GLuint					srcFBO, dstFBO;
 	GLenum					glerr;
 	
@@ -151,8 +148,8 @@ PsychError SCREENCopyWindow(void)
 
 		// Perform blit-operation: If blitting from a multisampled FBO into a non-multisampled one, this will also perform the
 		// multisample resolve operation:
-		glBlitFramebufferEXT(sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], sourceRect[kPsychRight], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop],
-							 targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop],
+		glBlitFramebufferEXT((GLint) sourceRect[kPsychLeft], (GLint) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom]), (GLint) sourceRect[kPsychRight], (GLint) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop]),
+							 (GLint) targetRect[kPsychLeft], (GLint) (PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom]), (GLint) targetRect[kPsychRight], (GLint) (PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop]),
 							 GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
 		if (PsychPrefStateGet_Verbosity() > 5) {
@@ -221,13 +218,13 @@ PsychError SCREENCopyWindow(void)
 			PsychSetShader(targetWin, 0);
 
 			// Start position for pixel write is:
-			glRasterPos2f(targetRect[kPsychLeft], targetRect[kPsychBottom]);
+			glRasterPos2f((float) targetRect[kPsychLeft], (float) targetRect[kPsychBottom]);
 			
 			// Zoom factor if rectangle sizes don't match:
-			glPixelZoom(PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect), PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect));
+			glPixelZoom((float) (PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect)), (float) (PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect)));
 			
 			// Perform pixel copy operation:
-			glCopyPixels(sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
+			glCopyPixels((int) sourceRect[kPsychLeft], (int) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom]), (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
 			
 			// That's it.
 			glPixelZoom(1,1);
@@ -281,7 +278,7 @@ PsychError SCREENCopyWindow(void)
 		glBindTexture(PsychGetTextureTarget(targetWin), targetWin->textureNumber);
 		
 		// Copy into texture:
-		glCopyTexSubImage2D(PsychGetTextureTarget(targetWin), 0, targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom],
+		glCopyTexSubImage2D(PsychGetTextureTarget(targetWin), 0, (int) targetRect[kPsychLeft], (int) (PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom]), (int) sourceRect[kPsychLeft], (int) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom]),
 							(int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect));
 		
 		// Unbind texture object:
@@ -307,13 +304,13 @@ PsychError SCREENCopyWindow(void)
 		PsychSetShader(targetWin, 0);
 
 		// Start position for pixel write is:
-		glRasterPos2f(targetRect[kPsychLeft], targetRect[kPsychBottom]);
+		glRasterPos2f((float) targetRect[kPsychLeft], (float) targetRect[kPsychBottom]);
 		
 		// Zoom factor if rectangle sizes don't match:
-		glPixelZoom(PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect), PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect));
+		glPixelZoom((float) (PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect)), (float) (PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect)));
 		
 		// Perform pixel copy operation:
-		glCopyPixels(sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
+		glCopyPixels((int) sourceRect[kPsychLeft], (int) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom]), (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
 		
 		// That's it.
 		glPixelZoom(1,1);

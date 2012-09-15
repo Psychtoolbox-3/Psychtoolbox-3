@@ -152,6 +152,20 @@ void gl_selectbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
   glSelectBuffer((GLsizei)mxGetScalar(prhs[0]), ptr);
 }
 
+void gl_teximage2d( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glTexImage2D) mogl_glunsupported("glTexImage2D");
+	glTexImage2D((GLenum)mxGetScalar(prhs[0]),
+		(GLint)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLsizei)mxGetScalar(prhs[3]),
+		(GLsizei)mxGetScalar(prhs[4]),
+		(GLint)mxGetScalar(prhs[5]),
+		(GLenum)mxGetScalar(prhs[6]),
+		(GLenum)mxGetScalar(prhs[7]),
+        (const GLvoid*) ((mxGetM(prhs[8]) * mxGetN(prhs[8]) > 1) ? mxGetData(prhs[8]) : moglScalarToPtrOffset(prhs[8])));
+}
+
 void moglmalloc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
   // Allocate a memory buffer of prhs[0] bytes size. ptr points to start of buffer:
   void* ptr = PsychMallocTemp((size_t) mxGetScalar(prhs[0]), 1);
@@ -797,7 +811,7 @@ void glu_tesscallback( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 // *** it's important that this list be kept in alphabetical order, 
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=35;
+int gl_manual_map_count=36;
 cmdhandler gl_manual_map[] = {
 { "glBufferData",                   gl_bufferdata                       },
 { "glColorPointer",                 gl_colorpointer                     },
@@ -814,6 +828,7 @@ cmdhandler gl_manual_map[] = {
 { "glSelectBuffer",                 gl_selectbuffer                     },
 { "glShaderSource",                 gl_shadersource                     },
 { "glTexCoordPointer",              gl_texcoordpointer                  },
+{ "glTexImage2D",                   gl_teximage2d                       },
 { "glVertexAttribPointer",          gl_vertexattribpointer              },
 { "glVertexPointer",                gl_vertexpointer                    },
 { "gluDeleteTess",                  glu_deletetess                      },

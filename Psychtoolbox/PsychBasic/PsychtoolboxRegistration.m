@@ -93,7 +93,7 @@ try
         ostype = 'MacOS-X';
         osversion = compinfo.system;
         % Query machine architecture via Unix 'arch' utility.
-        [rc arch] = system('arch');
+        [rc arch] = system('arch'); %#ok<*ASGLU>
         arch=deblank(arch);
     end
     
@@ -109,7 +109,7 @@ try
             try
                 [status, osversion] = system('uname -s');
                 osversion = deblank(osversion);
-            catch
+            catch %#ok<*CTCH>
                 osversion = 'Unknown';
             end
         end

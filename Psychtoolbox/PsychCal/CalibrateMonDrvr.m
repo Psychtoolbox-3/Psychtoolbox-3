@@ -47,6 +47,10 @@ function cal = CalibrateMonDrvr(cal, USERPROMPT, whichMeterType, blankOtherScree
 % 11/08/06  dhb, cgb Living in the 0-1 world ....
 % 11/10/06  dhb     Get rid of round() around production of input levels.
 % 9/26/08   cgb, dhb Fix dacsize when Bits++ is used.  Fit gamma with full number of levels. 
+% 8/19/12   dhb     Add codelet suggested by David Jones to clean up at end.  See comment in CalibrateMonSpd.
+% 8/19/12   mk      Rewrite setup and clut code to be able to better cope with all
+%                   the broken operating systems / drivers / gpus and to also
+%                   support DataPixx/ViewPixx devices.
 
 global g_usebitspp;
 
@@ -57,7 +61,7 @@ if isempty(g_usebitspp)
 end
 
 % Measurement parameters
-monWls = SToWls(cal.describe.S);
+monWls = SToWls(cal.describe.S); %#ok<*NASGU>
 
 % Define input settings for the measurements
 mGammaInputRaw = linspace(0, 1, cal.describe.nMeas+1)';
@@ -65,7 +69,6 @@ mGammaInputRaw = mGammaInputRaw(2:end);
 
 % Make manual measurements here if desired.  This needs to come first.
 if cal.manual.use
-    error('Manual measurements not yet converted to PTB-3.  Fix CalibrateManualDrvr if you need this.');
     CalibrateManualDrvr;
 end
 
@@ -77,7 +80,7 @@ if USERPROMPT
 		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
                 cal.describe.leaveRoomTime);
 		fprintf('to leave room.\n');
-		GetChar;
+        KbStrokeWait(-1);
 	else
 		fprintf('Focus radiometer on the displayed box.\n');
 		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
@@ -86,29 +89,48 @@ if USERPROMPT
 	end
 end
 
-% Blank other screen
+% Blank other screen, if requested:
 if blankOtherScreen
-	[window1, screenRect1] = Screen('OpenWindow', cal.describe.whichBlankScreen, 0);
-    if g_usebitspp
-        Screen('LoadNormalizedGammaTable', window1, linspace(0, 1, 256)' * [1 1 1]);
-        BitsPlusSetClut(window1, zeros(256, 3));
-    else
-        Screen('LoadNormalizedGammaTable', window1, zeros(256,3));
-    end
+    % We simply open an onscreen window with black background color:
+    Screen('OpenWindow', cal.describe.whichBlankScreen, 0);
 end
 
-% Blank screen to be measured
-[window, screenRect] = Screen('OpenWindow', cal.describe.whichScreen, 0);
-if (cal.describe.whichScreen == 0)
-	HideCursor;
-else
-	%Screen('MatlabToFront');
+% Setup screen to be measured
+% ---------------------------
+
+% Prepare imaging pipeline for Bits+ Bits++ CLUT mode, or DataPixx/ViewPixx
+% L48 CLUT mode (which is pretty much the same). If such a special output
+% device is used, the Screen('LoadNormalizedGammatable', win, clut, 2);
+% command uploads 'clut's into the device at next Screen('Flip'), taking
+% care of possible graphics driver bugs and other quirks:
+PsychImaging('PrepareConfiguration');
+
+if g_usebitspp == 1
+    % Setup for Bits++ CLUT mode. This will automatically load proper
+    % identity gamma tables into the graphics hardware and into the Bits+:
+    PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
 end
-theClut = zeros(256, 3);
+
+if g_usebitspp == 2
+    % Setup for DataPixx/ViewPixx etc. L48 CLUT mode. This will
+    % automatically load proper identity gamma tables into the graphics
+    % hardware and into the device:
+    PsychImaging('AddTask', 'General', 'EnableDataPixxL48Output');
+end
+
+% Open the window:
+[window, screenRect] = PsychImaging('OpenWindow', cal.describe.whichScreen);
+if (cal.describe.whichScreen == 0)
+    HideCursor;
+end
+
+theClut = zeros(256,3);
 if g_usebitspp
-    Screen('LoadNormalizedGammaTable', window, linspace(0, 1, 256)' * [1 1 1]);
-    BitsPlusSetClut(window, theClut);
+    % Load zero theClut into device:
+    Screen('LoadNormalizedGammaTable', window, theClut, 2);
+    Screen('Flip', window);    
 else
+    % Load zero lut into regular graphics card:
     Screen('LoadNormalizedGammaTable', window, theClut);
 end
 
@@ -122,19 +144,18 @@ end
 theClut(2,:) = [1 1 1];
 Screen('FillRect', window, 1, boxRect);
 if g_usebitspp
-    BitsPlusSetClut(window, theClut .* (2^16 - 1));
+    Screen('LoadNormalizedGammaTable', window, theClut, 2);
+    Screen('Flip', window, 0, 1);
 else
-	Screen('Flip', window);
     Screen('LoadNormalizedGammaTable', window, theClut);
 end
 
 % Wait for user
 if USERPROMPT == 1
-    FlushEvents;
     fprintf('Set up radiometer and hit any key when ready\n');
-    GetChar;
+    KbStrokeWait(-1);
     fprintf('Pausing for %d seconds ...', cal.describe.leaveRoomTime);
-    %WaitSecs(cal.describe.leaveRoomTime);
+    WaitSecs(cal.describe.leaveRoomTime);
     fprintf(' done\n');
 end
 
@@ -142,7 +163,8 @@ end
 theClut(1,:) = cal.bgColor';
 if g_usebitspp
     Screen('FillRect', window, 1, boxRect);
-    BitsPlusSetClut(window, theClut .* (2^16 - 1));
+    Screen('LoadNormalizedGammaTable', window, theClut, 2);
+    Screen('Flip', window, 0, 1);
 else
     Screen('LoadNormalizedGammaTable', window, theClut);
 end
@@ -153,9 +175,9 @@ t0 = clock;
 mon = zeros(cal.describe.S(3)*cal.describe.nMeas,cal.nDevices);
 for a = 1:cal.describe.nAverage
     for i = 1:cal.nDevices
-        disp(sprintf('Monitor device %g',i));
+        disp(sprintf('Monitor device %g',i)); %#ok<*DSPS>
         Screen('FillRect', window, 1, boxRect);
-        Screen('Flip', window, 0, double(g_usebitspp));
+        Screen('Flip', window, 0, 1);
 
         % Measure ambient
         darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
@@ -164,7 +186,7 @@ for a = 1:cal.describe.nAverage
         mGammaInput = zeros(cal.nDevices, cal.describe.nMeas);
         mGammaInput(i,:) = mGammaInputRaw';
         sortVals = rand(cal.describe.nMeas,1);
-        [null, sortIndex] = sort(sortVals);
+        [null, sortIndex] = sort(sortVals); %#ok<*ASGLU>
         %fprintf(1,'MeasMonSpd run %g, device %g\n',a,i);
         [tempMon, cal.describe.S] = MeasMonSpd(window, mGammaInput(:,sortIndex), ...
             cal.describe.S, [], whichMeterType, theClut);
@@ -183,9 +205,23 @@ for a = 1:cal.describe.nAverage
 end
 mon = mon / cal.describe.nAverage;
 
-% Close the screen
-Screen(window, 'Close');
-ShowCursor;
+% Close the screen, restore cluts:
+if g_usebitspp
+    % Load identity clut on Bits++ / DataPixx et al.:
+    BitsPlusPlus('LoadIdentityClut', window);
+    Screen('Flip', window);
+end
+
+% Restore graphics card gamma tables to original state:
+RestoreCluts;
+
+% Show hidden cursor:
+if cal.describe.whichScreen == 0
+	ShowCursor;
+end
+
+% Close all windows:
+Screen('CloseAll');
 
 % Report time
 t1 = clock;
@@ -205,8 +241,5 @@ cal = CalibrateFitLinMod(cal);
 cal.rawdata.rawGammaInput = mGammaInputRaw;
 cal = CalibrateFitGamma(cal, 2^cal.describe.dacsize);
 
-% Blank other screen
-if blankOtherScreen
-	Screen('Close', window1);
-end
-
+% Done:
+return;

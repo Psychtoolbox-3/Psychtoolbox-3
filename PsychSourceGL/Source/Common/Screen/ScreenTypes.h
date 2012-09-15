@@ -254,7 +254,7 @@ void				PsychInitDepthStruct(PsychDepthType *depth);
 int					PsychGetNumDepthsFromStruct(PsychDepthType *depth);
 int					PsychGetValueFromDepthStruct(int index, PsychDepthType *depth);
 void				PsychAddValueToDepthStruct(int value, PsychDepthType *depth);
-psych_bool				PsychIsMemberDepthStruct(PsychDepthType *depth, PsychDepthType *depthSet);
+psych_bool			PsychIsMemberDepthStruct(PsychDepthType *depth, PsychDepthType *depthSet);
 void				PsychCopyDepthStruct(PsychDepthType *toDepth, PsychDepthType *fromDepth);
 
 // Useless function, always returns RGBA mode, the only one we support.

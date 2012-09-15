@@ -93,43 +93,12 @@ if macosxrecent
     return;
 end
 
-if ~IsWinMatlabR11Style
-    if nargin==2
-        [secs]= PsychHID('KbTriggerWait', keyCode, deviceNumber);
-    elseif nargin == 1
-        [secs]= PsychHID('KbTriggerWait', keyCode);
-    elseif nargin == 0
-        error('Trigger key code must be specified in KbTriggerWait');
-    elseif nargin > 2
-        error('Too many arguments supplied to KbTriggerWait');
-    end
-else
-    % Pre R2007a Matlab on MS-Windows: We use the built-in KbCheck facility as fallback.
-    if nargin==2
-        while(1)
-            [isDown,secs,code] = KbCheck(deviceNumber);
-            if isDown
-                if any(ismember(find(code), keyCode))
-                    return;
-                end
-            end
-            % Wait for 5 msecs to prevent system overload.
-            WaitSecs('YieldSecs', 0.005);
-        end
-    elseif nargin==1
-        while(1)
-            [isDown,secs,code] = KbCheck();
-            if isDown
-                if any(ismember(find(code), keyCode))
-                    return;
-                end
-            end
-            % Wait for 5 msecs to prevent system overload.
-            WaitSecs('YieldSecs', 0.005);
-        end
-    elseif nargin == 0
-        error('Trigger key code must be specified in KbTriggerWait');
-    elseif nargin > 2
-        error('Too many arguments supplied to KbTriggerWait');
-    end
+if nargin==2
+    [secs]= PsychHID('KbTriggerWait', keyCode, deviceNumber);
+elseif nargin == 1
+    [secs]= PsychHID('KbTriggerWait', keyCode);
+elseif nargin == 0
+    error('Trigger key code must be specified in KbTriggerWait');
+elseif nargin > 2
+    error('Too many arguments supplied to KbTriggerWait');
 end

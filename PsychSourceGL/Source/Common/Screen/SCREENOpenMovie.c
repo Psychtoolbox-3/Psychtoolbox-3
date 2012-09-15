@@ -28,7 +28,7 @@
 
 #include "Screen.h"
 
-static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0]);";
+static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1]);";
 static char synopsisString[] = 
 		"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
         "return a handle 'moviePtr' on success.\nOn OS-X and Windows, media files are handled by use of "
@@ -73,8 +73,44 @@ static char synopsisString[] =
 		"'specialFlags1' Optional flags, numbers to be added together: 1 = Use YUV video decoding instead of RGBA, if "
 		"supported by movie codec and GPU - May be more efficient. 2 = Don't decode and use sound - May be more efficient. "
 		"On Linux you may need to specify a setting of 2 if you try to use movie playback at the same time as "
-		"PsychPortAudio sound output, otherwise movie playback may hang.\n"
-        "CAUTION: On OS/X, some movie files, e.g., MPEG-1 movies sometimes cause Matlab to hang. This seems to be "
+		"PsychPortAudio sound output, otherwise movie playback may hang. A flag of 4 will draw motion vectors on top "
+        "of decoded video frames, for debugging or entertainment. A flag of 8 will ask the video decoder to skip all "
+        "B-Frames during decoding to reduce processor load on very slow machines. Not all codecs may support flags 4 or "
+        "8, in which case these flags are silently ignored. A flag of 16 asks Screen to convert all video textures "
+        "immediately into a format which makes them useable as offscreen windows, and for the Screen('TransformTexture') "
+        "function as well as for drawing them with your own custom GLSL shaders. Normally this conversion would be "
+        "deferred until needed, ie. it would get skipped if you would just draw the texture regularly. If you know "
+        "already that you want to use the texture with one of the given functions, manually triggering the conversion "
+        "via this flag may be a bit more efficient - or convenient if you want to use your own GLSL shaders.\n"
+        "'pixelFormat' optional argument specifying the pixel format of decoded video frames. Not all possible valid "
+        "values are supported by all video codecs, graphics cards and operating systems. If an unsupported format is "
+        "requested, Screen() will try to choose the closest matching format that meets or exceeds the specified format, "
+        "at a performance or efficiency penalty. If no sufficiently close match is possible without severely degraded "
+        "performance or other restrictions, the function will abort with an error. The following formats are supported "
+        "on some setups: 1 = Luminance/Greyscale image, 2 = Luminance+Alpha, 3 = RGB 8 bit per channel, 4 = RGBA8, "
+        "5 = YUV 4:2:2 packed pixel format on some graphics hardware, 6 = YUV-I420 planar format, using GLSL shaders "
+        "for color space conversion on suitable graphics cards. 7 or 8 = Y8-Y800 planar format, using GLSL shaders. "
+        "The always supported default is '4' == RGBA8 format. "
+        "A setting of 6 (for color) or 7/8 (for grayscale) for selection of YUV-I420/Y8-Y800 format, as supported by at "
+        "least the H264 and HuffYUV video codecs on any GPU with "
+        "shader support, can be especially efficient for fast playback of high resolution video. As this format uses "
+        "shaders for post-processing, it should be fast for texture drawing, but can incur significant overhead if you "
+        "try to draw into a texture of this format, or try to post-process it via Screen('TransformTexture'). If you try "
+        "to attach your own shaders to such a texture during Screen('DrawTexture'), you will need to implement color "
+        "conversion yourself in your shaders, as your shaders would override Screen's builtin color conversion shader.\n"
+        "'maxNumberThreads' Optional parameter which allows to set the maximum number of parallel processing threads "
+        "that should be used by multi-threaded video codecs to decode the movie. The parameter has no effect on single "
+        "threaded codecs and default behaviour is to let the codec do whatever it wants. A setting of zero tells the "
+        "codec to use multi-threaded decoding with a number of threads that is auto-selected to be optimal for your given "
+        "computer. A number n greater zero asks the codec to use at most n threads for decoding. The most safe choice is "
+        "to not specify this parameter - this should work even with problematic movie formats. If you need higher playback "
+        "performance, e.g., for high resolution video or high framerate playback, you should set the parameter to zero to "
+        "leave the optimal choice to the video codec. This should work flawlessly with well encoded high quality movie files "
+        "and can provide a significant performance boost on multi-core computers. Specify a discrete non-zero number of threads "
+        "if you want to benefit from multi-core decoding but want to prevent movie playback from using up all available computation "
+        "power, e.g., because you want to run some other timing-sensitive tasks in parallel and want to make sure to leave some processor "
+        "cores dedicated to them.\n"
+        "CAUTION: On 32-Bit OS/X, some movie files, e.g., MPEG-1 movies sometimes cause Matlab to hang. This seems to be "
         "a bad interaction between parts of Apples Quicktime toolkit and Matlabs Java Virtual Machine (JVM). "
         "If you experience stability problems, please start Matlab with JVM and desktop disabled, e.g., "
         "with the command: 'matlab -nojvm'. An example command sequence in a terminal window could be: "
@@ -86,20 +122,22 @@ PsychAsyncMovieInfo asyncmovieinfo;
 
 PsychError SCREENOpenMovie(void) 
 {
-        PsychWindowRecordType			*windowRecord;
+        PsychWindowRecordType                   *windowRecord;
         char                                    *moviefile;
         int                                     moviehandle = -1;
         int                                     framecount;
         double                                  durationsecs;
         double                                  framerate;
-	double                                  aspectRatio;
+        double                                  aspectRatio;
         int                                     width;
         int                                     height;
         int                                     asyncFlag = 0;
 		int                                     specialFlags1 = 0;
         static psych_bool                       firstTime = TRUE;
-	double					preloadSecs = 1;
-        int					rc;
+        double                                  preloadSecs = 1;
+        int                                     rc;
+        int                                     pixelFormat = 4;
+        int                                     maxNumberThreads = -1;
 
         if (firstTime) {
             // Setup asyncopeninfo on first invocation:
@@ -107,16 +145,16 @@ PsychError SCREENOpenMovie(void)
             asyncmovieinfo.asyncstate = 0; // State = No async open in progress.
         }
         
-	// All sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+        // All sub functions should have these two lines
+        PsychPushHelp(useString, synopsisString, seeAlsoString);
+        if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-        PsychErrorExit(PsychCapNumInputArgs(5));            // Max. 5 input args.
+        PsychErrorExit(PsychCapNumInputArgs(7));            // Max. 7 input args.
         PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
         PsychErrorExit(PsychCapNumOutputArgs(7));           // Max. 7 output args.
         
         // Get the window record from the window record argument and get info from the window record
-	windowRecord = NULL;
+        windowRecord = NULL;
         PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, FALSE, &windowRecord);
         // Only onscreen windows allowed:
         if(windowRecord && !PsychIsOnscreenWindow(windowRecord)) {
@@ -137,17 +175,25 @@ PsychError SCREENOpenMovie(void)
         PsychCopyInIntegerArg(5, FALSE, &specialFlags1);
 		if (specialFlags1 < 0) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'specialFlags1' setting! Only positive values allowed.");
 
-	// Queueing of a new movie for seamless playback requested?
-	if (asyncFlag & 2) {
+        // Get the (optional) pixelFormat:
+        PsychCopyInIntegerArg(6, FALSE, &pixelFormat);
+        if (pixelFormat < 1 || pixelFormat > 8) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 8 are allowed.");
+
+        // Get the (optional) maxNumberThreads:
+        PsychCopyInIntegerArg(7, FALSE, &maxNumberThreads);
+        if (maxNumberThreads < -1) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'maxNumberThreads' setting! Only values of -1 or greater are allowed.");
+    
+        // Queueing of a new movie for seamless playback requested?
+        if (asyncFlag & 2) {
             // Yes. Do a special call, just passing the moviename of the next
             // movie to play. Pass the relevant moviehandle as retrieved from
             // preloadSecs:
             moviehandle = (int) preloadSecs;
             preloadSecs = 0;
-            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1);
+            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads);
             if (moviehandle == -1) PsychErrorExitMsg(PsychError_user, "Could not queue new moviefile for gapless playback.");
             return(PsychError_none);
-	}
+        }
 
         // Asynchronous Open operation in progress or requested?
         if ((asyncmovieinfo.asyncstate == 0) && !(asyncFlag & 1)) {
@@ -155,7 +201,7 @@ PsychError SCREENOpenMovie(void)
 
             // Try to open the named 'moviefile' and create & initialize a corresponding movie object.
             // A MATLAB handle to the movie object is returned upon successfull operation.
-            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1);
+            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads);
         }
         else {
             // Asynchronous open operation requested or running:
@@ -167,7 +213,9 @@ PsychError SCREENOpenMovie(void)
                     asyncmovieinfo.preloadSecs = preloadSecs;
                     asyncmovieinfo.asyncFlag = asyncFlag;
                     asyncmovieinfo.specialFlags1 = specialFlags1;
-					
+                    asyncmovieinfo.pixelFormat = pixelFormat;
+					asyncmovieinfo.maxNumberThreads = maxNumberThreads;
+                    
                     if (windowRecord) {
                         memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
                     } else {
@@ -384,8 +432,8 @@ PsychError SCREENCreateMovie(void)
 	
 	// Get the optional size:
 	// Default Width and Height of movie frames is derived from size of window:
-	width = PsychGetWidthFromRect(windowRecord->clientrect);
-	height = PsychGetHeightFromRect(windowRecord->clientrect);
+	width  = (int) PsychGetWidthFromRect(windowRecord->clientrect);
+	height = (int) PsychGetHeightFromRect(windowRecord->clientrect);
 	PsychCopyInIntegerArg(3, kPsychArgOptional, &width);
 	PsychCopyInIntegerArg(4, kPsychArgOptional, &height);
 	

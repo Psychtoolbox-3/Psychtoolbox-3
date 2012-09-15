@@ -55,7 +55,8 @@ private:
 	UInt32							fDeviceType;
 	UInt32							fCardType;
 	UInt16							fPCIDeviceId;
-    IOPCIDevice*					fPCIDevice;
+	UInt16							fPCIVendorId;
+	IOPCIDevice*					fPCIDevice;
 	IOMemoryMap*					fRadeonMap;
 	IOVirtualAddress				fRadeonRegs;
 	UInt32							fRadeonSize;

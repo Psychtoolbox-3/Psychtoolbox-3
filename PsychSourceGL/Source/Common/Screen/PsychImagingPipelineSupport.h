@@ -84,7 +84,7 @@ int		PsychGetHookByName(const char* hookName);
 void	PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo, psych_bool scissor_ignore);
 
 // Create OpenGL framebuffer object for internal rendering, setup PTB info struct for it:
-psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool needzbuffer, int width, int height, int multisample);
+psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool needzbuffer, int width, int height, int multisample, int specialFlags);
 
 // Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
 void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_bool asRendertarget, int forImagingmode);
@@ -101,6 +101,8 @@ GLuint  PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, c
 // Assign special filter/lookup shaders to textures, e.g., in HDR mode, for float textures, etc...
 psych_bool PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord, int usefloatformat, int userRequest);
 psych_bool PsychAssignPlanarTextureShaders(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord, int channels);
+psych_bool PsychAssignPlanarI420TextureShader(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord);
+psych_bool PsychAssignPlanarI800TextureShader(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord);
 
 // Builtin functions:
 

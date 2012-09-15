@@ -599,21 +599,13 @@ if strcmpi(cmd, 'OpenWindowBits++')
     end
     
     if targetdevicetype == 1
-        % If we're on Windows with a R11 based Matlab configuration,
-        % need to use the slow ugly method due to limitations in
-        % MEX files built against pre R2007a Matlabs:
-        if IsWinMatlabR11Style
-            rclutcmd = 'PsychDataPixx(1, ';
-            Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutViaRuntime', rclutcmd);
-        else
-            % We need this weird evalin('base', ...); wrapper so the
-            % function gets called from the base-workspace, where the
-            % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
-            % define it there reliably due to incompatibilities between
-            % Matlab and Octave in variable assignment inside Screen() :-(
-            rclutcmd = 'evalin(''base'', ''PsychDataPixx(1, IMAGINGPIPE_GAMMATABLE);'');';
-            Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
-        end
+        % We need this weird evalin('base', ...); wrapper so the
+        % function gets called from the base-workspace, where the
+        % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
+        % define it there reliably due to incompatibilities between
+        % Matlab and Octave in variable assignment inside Screen() :-(
+        rclutcmd = 'evalin(''base'', ''PsychDataPixx(1, IMAGINGPIPE_GAMMATABLE);'');';
+        Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
     end
     
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
@@ -627,11 +619,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
         end
         
         if targetdevicetype == 1
-            if IsWinMatlabR11Style
-                Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutViaRuntime', rclutcmd);
-            else
-                Screen('HookFunction', win, 'PrependMFunction', 'RightFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
-            end
+            Screen('HookFunction', win, 'PrependMFunction', 'RightFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
         end
         
         Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
@@ -1046,21 +1034,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         end
 
         if targetdevicetype == 1
-            % If we're on Windows with a R11 based Matlab configuration,
-            % need to use the slow ugly method due to limitations in
-            % MEX files built against pre R2007a Matlabs:
-            if IsWinMatlabR11Style
-                rclutcmd = 'PsychDataPixx(1, ';
-                Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutViaRuntime', rclutcmd);
-            else
-                % We need this weird evalin('base', ...); wrapper so the
-                % function gets called from the base-workspace, where the
-                % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
-                % define it there reliably due to incompatibilities between
-                % Matlab and Octave in variable assignment inside Screen() :-(
-                rclutcmd = 'evalin(''base'', ''PsychDataPixx(1, IMAGINGPIPE_GAMMATABLE);'');';
-                Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
-            end
+            % We need this weird evalin('base', ...); wrapper so the
+            % function gets called from the base-workspace, where the
+            % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
+            % define it there reliably due to incompatibilities between
+            % Matlab and Octave in variable assignment inside Screen() :-(
+            rclutcmd = 'evalin(''base'', ''PsychDataPixx(1, IMAGINGPIPE_GAMMATABLE);'');';
+            Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
         end
 
         Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
@@ -1074,11 +1054,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
             end
 
             if targetdevicetype == 1
-                if IsWinMatlabR11Style
-                    Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutViaRuntime', rclutcmd);
-                else
-                    Screen('HookFunction', win, 'PrependMFunction', 'RightFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
-                end
+                Screen('HookFunction', win, 'PrependMFunction', 'RightFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
             end
 
             Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');

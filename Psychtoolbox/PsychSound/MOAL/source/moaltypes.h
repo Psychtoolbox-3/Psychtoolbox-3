@@ -6,6 +6,7 @@
  *
  * 05-Feb-2007 -- created (MK)
  * 24-Mar-2011 -- Make 64-bit clean, remove totally bitrotten Octave-2 support (MK).
+ * 01-Jul-2012 -- Kill Matlab R11 compatibility cruft (MK).
  *
  */
 
@@ -51,17 +52,8 @@ ALenum  alcASASetListener(const ALuint property, ALvoid *data, ALuint dataSize);
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
-#include <AL/al.h>
-#include <AL/alc.h>
-
-#ifndef PTBOCTAVE3MEX
-#ifndef TARGET_OS_WIN32
-
-/* Hacks to get Windows versions of Matlab R11 builds running. */
-mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
-
-#endif
-#endif
+#include <al.h>
+#include <alc.h>
 
 #endif
 

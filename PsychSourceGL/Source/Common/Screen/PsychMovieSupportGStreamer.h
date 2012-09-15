@@ -27,7 +27,7 @@
 
 void PsychGSMovieInit(void);
 int  PsychGSGetMovieCount(void);
-void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1);
+void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads);
 void PsychGSGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes, double* aspectRatio);
 void PsychGSDeleteMovie(int moviehandle);
 void PsychGSDeleteAllMovies(void);

@@ -8,6 +8,7 @@ function [ M, C ] = mcinfo( funcp )
 % 24-Jan-2005 -- created;  adapted from code in autocode.m (RFM)
 % 06-Feb-2007 -- Modified; can now handle OpenAL as well. (MK)
 % 24-Mar-2011 -- Modified; Perform 64-bit safe wrapping of encoded memory pointers. (MK)
+% 28-Aug-2012 -- Modified; Handle datatypes GLint64, GLuint64 and GLsync. (MK)
 
 % make lowercase function name, e.g., glVertex3dv --> gl_vertex3dv
 k=min(find(funcp.fname~=lower(funcp.fname))); %#ok<MXFND>
@@ -34,7 +35,7 @@ M.allocate=0;		        % flag indicating whether arguments to
 % arguments to C function and M-file
 if strcmp(funcp.argouttype.basetype,'void')==0,
 	% scalar return argument
-	if isempty(funcp.argouttype.stars),
+	if isempty(funcp.argouttype.stars) && strcmp(funcp.argouttype.basetype,'GLsync')==0,
 		C.arg_out{1}=sprintf('plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);\n\t*mxGetPr(plhs[0])=(double)');
 		M.arg_out{1}='r';
 		M.mogl_out{1}='r';
@@ -69,8 +70,34 @@ for j=1:numel(funcp.argin.args),
 		funcp.argin.args(j).argname=sprintf('arg%d',j);
 	end
 
-	% scalar input argument?
-	if isempty(funcp.argin.args(j).type.stars),
+    % 64-Bit (unsigned) integer scalar input argument?
+	if isempty(funcp.argin.args(j).type.stars) && (strcmp(funcp.argin.args(j).type.basetype,'GLint64') || strcmp(funcp.argin.args(j).type.basetype,'GLuint64')),
+        % These need special treatment, as a double scalar can't fully
+        % represent a 64-Bit integer without loss of precision:
+		C.arg_in{end+1}=sprintf('(%s) *((%s*) mxGetData(prhs[%d]))',funcp.argin.args(j).type.full,funcp.argin.args(j).type.basetype,j-1);
+		M.arg_in{end+1}=funcp.argin.args(j).argname;
+        if strcmp(funcp.argin.args(j).type.basetype,'GLint64')
+            % Wrapper needs to cast to int64()
+            M.mogl_in{end+1} = sprintf('int64(%s)', funcp.argin.args(j).argname);
+        else
+            % Wrapper needs to cast to uint64()
+            M.mogl_in{end+1} = sprintf('uint64(%s)', funcp.argin.args(j).argname);
+        end
+        
+    % GLsync handle scalar input argument?
+	elseif isempty(funcp.argin.args(j).type.stars) && strcmp(funcp.argin.args(j).type.basetype,'GLsync'),
+        % New style: Memory pointers are encoded opaque inside double
+        % scalar values. This is 64-bit safe.
+        % TODO: We could also use a mxUINT64_CLASS type aka uint64(), which
+        % would be nicer, but only after we decide to completely drop
+        % support for Matlab versions < R2007a.
+        C.arg_in{end+1}=sprintf('(%s) PsychDoubleToPtr(mxGetScalar(prhs[%d]))',funcp.argin.args(j).type.full,j-1);
+		M.arg_in{end+1}=funcp.argin.args(j).argname;
+		M.arg_in_check{end+1}=sprintf('if ~strcmp(class(%s),''double''),\n\terror([ ''argument ''''%s'''' must be a pointer coded as type double '' ]);\nend\n',funcp.argin.args(j).argname,funcp.argin.args(j).argname);
+		M.mogl_in{end+1}=funcp.argin.args(j).argname;
+        
+	% other scalar input argument?
+    elseif isempty(funcp.argin.args(j).type.stars),
 		C.arg_in{end+1}=sprintf('(%s)mxGetScalar(prhs[%d])',funcp.argin.args(j).type.full,j-1);
 		M.arg_in{end+1}=funcp.argin.args(j).argname;
 		M.mogl_in{end+1}=funcp.argin.args(j).argname;
@@ -97,7 +124,11 @@ for j=1:numel(funcp.argin.args),
 				mcast='double';
 			case { 'GLfloat' 'GLclampf' 'ALfloat' 'ALclampf' }
 				mcast='single';
-			case { 'GLint' 'GLsizei' 'ALint' 'ALsizei' }
+			case { 'GLint64' }
+                mcast='int64';
+			case { 'GLuint64' }
+                mcast='uint64';
+            case { 'GLint' 'GLsizei' 'ALint' 'ALsizei' }
 				mcast='int32';
 			case { 'GLuint' 'GLenum' 'GLbitfield' 'GLUnurbs' 'GLUtesselator' 'GLUquadric' 'ALuint' 'ALenum' 'ALbitfield' }
 				mcast='uint32';
@@ -111,7 +142,7 @@ for j=1:numel(funcp.argin.args),
 				mcast='uint8';
 			case { 'GLvoid' 'void' 'ALvoid' }
 				mcast='';
-            case { 'GLhandleARB' 'GLhandle' 'ALhandleARB' 'ALhandle' }
+            case { 'GLhandleARB' 'GLhandle' 'ALhandleARB' 'ALhandle' 'GLsync'}
                 % We use a double as an opaque data type for these, as they
                 % can be pointers or integers of 32-bit or 64-bit size.
                 % Safe approach is to use double, as it can contain 64-bits

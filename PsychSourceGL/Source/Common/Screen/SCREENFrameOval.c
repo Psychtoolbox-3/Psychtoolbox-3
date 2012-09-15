@@ -74,13 +74,10 @@ static char seeAlsoString[] = "FillOval";
             
 PsychError SCREENFrameOval(void)  
 {
-	PsychColorType			color;
 	PsychRectType			rect;
 	double					numSlices, outerRadius, xScale, yScale, xTranslate, yTranslate, rectY, rectX, penWidth, penHeight, penSize, innerRadius;
 	PsychWindowRecordType	*windowRecord;
-	int						whiteValue;
-	psych_bool					isArgThere;
-	GLdouble				dVals[4]; 
+	psych_bool				isArgThere;
     double					*xy, *colors;
 	unsigned char			*bytecolors;
 	double*					penSizes;
@@ -179,7 +176,7 @@ PsychError SCREENFrameOval(void)
 
 			// Compute disk quadric for given params: This is awfully slow and would
 			// benefit a lot from shader magic on modern GPUs:
-			gluDisk(diskQuadric, innerRadius, outerRadius, numSlices, 1);
+			gluDisk(diskQuadric, innerRadius, outerRadius, (int) numSlices, 1);
 
 			// Done.
 			glPopMatrix();

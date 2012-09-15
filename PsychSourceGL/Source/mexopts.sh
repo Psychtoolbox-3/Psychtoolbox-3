@@ -164,9 +164,34 @@ echo "Error: Did not imbed 'options.sh' code"; exit 1 #imbed options.sh mac 12
             ;;
         maci)
 #----------------------------------------------------------------------------
-echo "Error: Did not imbed 'options.sh' code"; exit 1 #imbed options.sh maci 12
-#----------------------------------------------------------------------------
+            CC='gcc-4.0'
+            CFLAGS="-fno-common -no-cpp-precomp -fexceptions -arch i386 -mmacosx-version-min='10.4'"
+            CLIBS="$MLIBS -lstdc++"
+            COPTIMFLAGS='-O3 -DNDEBUG'
+            CDEBUGFLAGS='-g'
+#
+            CXX=g++-4.0
+            CXXFLAGS="-fno-common -no-cpp-precomp -fexceptions -arch i386 -mmacosx-version-min='10.4'"
+            CXXLIBS="$MLIBS -lstdc++"
+            CXXOPTIMFLAGS='-O3 -DNDEBUG'
+            CXXDEBUGFLAGS='-g'
+#
+            FC='g95'
+            FFLAGS="-fexceptions"
+            FC_LIBDIR=`$FC -print-file-name=libf95.a 2>&1 | sed -n '1s/\/*libf95\.a//p'`
+            FLIBS="$MLIBS -L$FC_LIBDIR -lf95"
+            FOPTIMFLAGS='-O'
+            FDEBUGFLAGS='-g'
+#
+            LD="$CC"
+            LDEXTENSION='.mexmaci'
+            LDFLAGS="-bundle -Wl,-flat_namespace -undefined suppress -arch i386 -mmacosx-version-min='10.4' -Wl,-exported_symbols_list,$TMW_ROOT/extern/lib/$Arch/$MAPFILE"
+            LDOPTIMFLAGS='-O'
+            LDDEBUGFLAGS='-g'
+#
+            POSTLINK_CMDS=':'
             ;;
+
         maci64)
 #----------------------------------------------------------------------------
             # StorageVersion: 1.0

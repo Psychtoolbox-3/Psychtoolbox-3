@@ -68,6 +68,7 @@ int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex);
 int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, double maxwaittimesecs);
 int PsychIsMSVista(void);
 int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle);
+psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask);
 
 //end include once
 #endif

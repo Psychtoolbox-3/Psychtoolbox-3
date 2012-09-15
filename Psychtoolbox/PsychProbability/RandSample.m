@@ -6,7 +6,7 @@ function x=RandSample(list,dims)
 % RandSample(-1:1,[10,10]) returns a 10x10 array of samples from the list
 % -1:1.  RandSample is a quick way to generate samples (e.g. visual noise)
 % from a bounded Gaussian distribution. Also see RAND, RANDN, Randi,
-% Sample, and Shuffle.
+% RandSel, Sample, and Shuffle.
 % 
 % "list" can be a double, char, cell, or struct array, but it must be a 
 % vector (1xn or nx1). In the future, we may accept matrices (mxn) and treat

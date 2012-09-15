@@ -1,7 +1,7 @@
-function VideoCaptureDemo(fullscreen, fullsize, roi, depth, deviceId)
+function VideoCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, cameraname)
 % Demonstrate simple use of built-in video capture engine.
 %
-% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]][, depth][,deviceId=0])
+% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]][, depth][,deviceId=0][, cameraname])
 %
 % VideoCaptureDemo initializes the first attached and supported camera on
 % your computer (e.g, the built-in iSight of Apple Macintosh computers),
@@ -25,12 +25,16 @@ function VideoCaptureDemo(fullscreen, fullsize, roi, depth, deviceId)
 % preserving the original aspect ratio.
 %
 % 'roi' Selects a rectangular subregion of the camera for display. By
-% default, it selects a [0 0 640 480] rectangle, ie. the full are of a
+% default, it selects a [0 0 640 480] rectangle, ie. the full area of a
 % camera with 640 x 480 pixels resolution. This parameter may need tweaking
 % for some cameras, as some drivers have bugs and don't work well with all
 % settings.
 %
 % 'deviceId' Device index of video capture device. Defaults to system default.
+%
+% 'cameraname' Name string for selection of video capture device. This is
+% only honored if 'deviceId' is a negative number, and only for certain
+% video capture plugins. Defaults to none.
 %
 
 % History:
@@ -62,8 +66,12 @@ if nargin < 4
     depth = [];
 end
 
-if nargin < 5 || isempty(deviceId)
+if nargin < 5
     deviceId = [];
+end
+
+if nargin < 6
+    cameraname = [];
 end
 
 screenid=max(Screen('Screens'));
@@ -81,21 +89,21 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], []);
-%     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
-%     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
-%     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
-%     gamma = Screen('SetVideoCaptureParameter', grabber, 'Gamma')
-%     shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter',7)
-%     Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
-%     vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
-%     model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
-%     fps  = Screen('SetVideoCaptureParameter', grabber, 'GetFramerate')
-%     roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
+    grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], cameraname);
+    %brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
+    %exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
+    %gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
+    %gamma = Screen('SetVideoCaptureParameter', grabber, 'Gamma')
+    %shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter', 7)
+    %Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
+    %vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
+    %model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
+    %fps  = Screen('SetVideoCaptureParameter', grabber, 'GetFramerate')
+    %roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
 
 for repcount=1:1
     Screen('StartVideoCapture', grabber, 30, 1);
-
+    
     dstRect = [];
     oldpts = 0;
     count = 0;
@@ -141,13 +149,13 @@ for repcount=1:1
 
             % Print pts:
             Screen('DrawText', win, sprintf('%.4f', pts - t), 0, 0, 255);
-             if count>0
+            if count>0
                 % Compute delta:
                 delta = (pts - oldpts) * 1000;
                 oldpts = pts;
                 Screen('DrawText', win, sprintf('%.4f', delta), 0, 20, 255);
             end;
-            
+
             % Show it.
             Screen('Flip', win);
             Screen('Close', tex);
@@ -156,12 +164,11 @@ for repcount=1:1
         count = count + 1;
     end;
     telapsed = GetSecs - t %#ok<NOPRT>
-    Screen('StopVideoCapture', grabber);
+    Screen('StopVideoCapture', grabber);    
 end
-
     Screen('CloseVideoCapture', grabber);
     Screen('CloseAll');
     avgfps = count / telapsed %#ok<NOPRT,NASGU>
 catch
    Screen('CloseAll');
-end;
+end

@@ -46,6 +46,13 @@ function [warpstruct, filterMode] = CreateDisplayWarp(window, calibfilename, sho
 % DisplayUndistortionHalfCylinder.m -- Undistortion for projection of
 % images to a half-cylindrical projection surface.
 %
+% DisplayUndistortionSphere.m -- Undistortion for projection of
+% images to a spherical or half-spherical projection surface.
+%
+% DisplayUndistortionCSV.m -- Import undistortion information from
+% a .csv file with a warp mesh description suitable for use with NVidia's
+% Warp API. This creates a compatible display warping to use of that NVidia
+% technology.
 %
 
 % History:
@@ -59,6 +66,8 @@ function [warpstruct, filterMode] = CreateDisplayWarp(window, calibfilename, sho
 %           Support for half-cylinder projection. (MK).
 % 25.8.2011 Adapt code for sphere projection undistortion to new convention
 %           of Ingmar Schneider's shader code. (MK).
+% 27.7.2012 Add support for DisplayUndistortionCSV() aka "NVidia Warp-API" format (MK).
+%
 
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
@@ -374,6 +383,48 @@ switch(calib.warptype)
 
         % Ready.
         
+    case {'CSVDisplayList'}
+        % Build warp display list for a calibration/remapping method that
+        % is compatible with the method used, e.g., by NVidia's Warp API:
+        
+        % Query effective onscreen window size:
+        [winWidth, winHeight] = Screen('WindowSize', window);
+        
+        % Compute vertex- and texcoord-arrays that define the mesh
+        % of quadrilaterals which should be rendered (with the stimulus
+        % texture applied) to create the undistortion warp:
+        [xyzcalibpos, xytexcoords] = CSVComputeWarpMesh(winWidth, winHeight, calib.scal, showCalibOutput);
+
+        % Build the unwarp mesh display list within the OpenGL context of
+        % Psychtoolbox:
+        Screen('BeginOpenGL', window, 1);
+        
+        % Build a display list that corresponds to the current calibration:
+        gld = glGenLists(1);
+        glNewList(gld, GL.COMPILE);
+        
+        % "Draw" the warp-mesh once, so it gets recorded in the display list:
+        glColor4f(1,1,1,1);
+        glEnableClientState(GL.VERTEX_ARRAY);
+        glVertexPointer(2, GL.DOUBLE, 0, xyzcalibpos);
+        glEnableClientState(GL.TEXTURE_COORD_ARRAY);
+        glTexCoordPointer(2, GL.DOUBLE, 0, xytexcoords);
+
+        glDrawArrays(GL.QUADS, 0, length(xyzcalibpos)/2);
+
+        glDisableClientState(GL.TEXTURE_COORD_ARRAY);
+        glDisableClientState(GL.VERTEX_ARRAY);
+
+        % List ready - and already updated in the imaging pipeline:
+        glEndList;
+
+        Screen('EndOpenGL', window);
+
+        % Assign display list to output warpstruct:
+        warpstruct.gld = gld;
+
+        % Ready.
+        
     otherwise
         sca;
         error('Unknown calibration method id: %s!', calib.warptype);
@@ -479,7 +530,7 @@ end
 if ~IsOctave
     % Matlab: Use 'v4' method - the interpolation method used by Matlab V4
     % for interpolation:
-    vertexCoordsFit(:,1)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTXCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2), 'v4');
+    vertexCoordsFit(:,1)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTXCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2), 'v4'); %#ok<*GRIDD>
     vertexCoordsFit(:,2)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTYCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2), 'v4');
 else
     % Octave: griddata() is also supported by GNU/Octave, but the 'v4' method is
@@ -489,6 +540,8 @@ else
     % Octave vs. Matlab:
     % Ok - Actually it doesn't work at all on Octave, because the relevant
     % implementation of Octave's griddata() seems to be quite buggy :-(
+    % TODO FIXME: Is this still true? Octave 3.4 supports 'cubic' and maybe
+    % 'linear' has been fixed already?
     vertexCoordsFit(:,1)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTXCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2));
     vertexCoordsFit(:,2)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTYCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2));
 end
@@ -545,10 +598,11 @@ yverts= zeros(1, numVerts);
 vectaddress=0;
 
 if showCalibOutput
-    figure(55)
-    plot(vertexCoords(:,1), vertexCoords(:,2), 'r.')
-    hold on
-    plot(vertexCoordsFit(:,1), vertexCoordsFit(:,2), 'b.')
+    figure(100);
+    axis ij;
+    hold on;
+    plot(vertexCoords(:,1), vertexCoords(:,2), 'r.');
+    plot(vertexCoordsFit(:,1), vertexCoordsFit(:,2), 'b.');
 end
 
 for y=1:(yLoomSize-1)
@@ -597,3 +651,64 @@ xytexcoords(2:2:end) = ytemp;
 return;
 
 % --- End of Helper routines for setup of the calibration method 'BVLDisplayList' ---
+
+% --- Helper routines for setup of the calibration method 'CSVDisplayList' ---
+
+function [xyzcalibpos, xytexcoords] = CSVComputeWarpMesh(windowWidth, windowHeight, scal, showCalibOutput)
+% [xyzcalibpos, xytexcoords] = CSVComputeWarpMesh(windowWidth, windowHeight, scal, showCalibOutput)
+%
+% Use the calibration information stored in 'scal', together with the
+% current 'windowWidth' and 'windowHeight' of the onscreen window to
+% generate vectors of vertex coordinates and texture coordinates for a mesh
+% that performs the proper "display undistortion".
+%
+% History:
+% 07/26/12  Derived from BVLComputeWarpMesh.m with major simplifications. (MK)
+%
+
+% Generate the calibration vertices here so we only do this once.
+xLoomSize = size(scal.vcoords, 2);
+yLoomSize = size(scal.vcoords, 1);
+numVerts = xLoomSize * yLoomSize;
+
+% vertexCoords = Nx2 array, N rows of [x y] pairs. Row-Major format encoding.
+textureCoords = zeros(numVerts, 2);
+vertexCoords  = zeros(numVerts, 2);
+
+% Parse the matrices passed in scal and rearrange them to the format of the
+% vertexCoords and textureCoords vectors: Scanning is row-major order.
+% We also scale all positions with window width and height, as the scal
+% matrices contain normalized coordinates in 0.0 - 1.0 range for display
+% width/height of a "unit display". vcoords can exceed that range or be
+% negative - they are assigned to positions outside the framebuffer.
+for y=1:yLoomSize
+    for x=1:xLoomSize
+        index = ((y-1) * xLoomSize) + x;
+        vertexCoords(index, :)  = [scal.vcoords(y, x, 1) * windowWidth, scal.vcoords(y, x, 2) * windowHeight];
+        textureCoords(index, :) = [scal.tcoords(y, x, 1) * windowWidth, scal.tcoords(y, x, 2) * windowHeight];
+    end
+end
+
+% Compute final vertex- and texcoords. Need to swap y-positions upside-down
+% as our internal vertex/texcoord assignment is upside down wrt. original
+% calibration:
+textureCoords(:,2) = windowHeight - textureCoords(:,2);
+
+% Some debug plots, if requested:
+if showCalibOutput
+    figure;
+    hold on;
+    axis ij;
+    plot(textureCoords(:,1), textureCoords(:,2), 'b.');
+    plot(vertexCoords(:,1), vertexCoords(:,2), 'r.');
+    hold off;
+end
+
+% textureCoords are regularly spaced texture 2D coordinates.
+% vertexCoords are irregularly placed vertex 2D coordinates.
+[xyzcalibpos, xytexcoords] = BVLGeneratetextcoord(yLoomSize, xLoomSize, textureCoords, vertexCoords, showCalibOutput);
+
+% Done. Return results:
+return;
+
+% --- End of helper routines for setup of the calibration method 'CSVDisplayList' ---

@@ -586,7 +586,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
 
     // Finalize attribute array with NULL.
-    attribs[attribcount]=(CGLPixelFormatAttribute)NULL;
+    attribs[attribcount++]=(CGLPixelFormatAttribute)NULL;
 
     // Init to zero:
     windowRecord->targetSpecific.pixelFormatObject = NULL;
@@ -638,8 +638,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		}
 		
         if (!useCocoa) {
-            // Switch to fullscreen display: We don't support windowed display on OS-X
+            // Switch to fullscreen display: We need different functions for 10.5+ (which we require/support for 64-Bit mode)
+            // and earlier OS versions (which we support in 32-Bit mode for the time being) for doing exactly the same thing
+            // without any gain in flexibility or for any other rational reasons. This idiocy brought to you by the
+            // world leader in pathetic patent lawsuits and pr-bullshit. Of course they changed their mindless minds
+            // again for 10.7+ and deprecated the replacement function for the function that was deprecated in 10.6+.
+            // I can't wait for the day when we are forced to switch to the 10.7 SDK, when a whole new world of pain will
+            // open up to us.
+            #ifdef __LP64__
+            error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);
+            #else
             error=CGLSetFullScreen(windowRecord->targetSpecific.contextObject);
+            #endif
             if (error) {
                 printf("\nPTB-ERROR[CGLSetFullScreen failed: %s]:The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n", CGLErrorString(error));
                 CGLSetCurrentContext(NULL);
@@ -850,7 +860,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             
             if (!useCocoa) {
                 // Attach it to our onscreen drawable:
+                #ifdef __LP64__
+                error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glusercontextObject, displayMask);
+                #else
                 error=CGLSetFullScreen(windowRecord->targetSpecific.glusercontextObject);
+                #endif
                 if (error) {
                     printf("\nPTB-ERROR[CGLSetFullScreen for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
                     CGLSetCurrentContext(NULL);
@@ -933,7 +947,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             
             if (!useCocoa) {
                 // Attach it to our onscreen drawable:
+                #ifdef __LP64__
+                error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glswapcontextObject, displayMask);
+                #else
                 error=CGLSetFullScreen(windowRecord->targetSpecific.glswapcontextObject);
+                #endif
                 if (error) {
                     printf("\nPTB-ERROR[CGLSetFullScreen for swapcontext failed: %s]: Attaching private OpenGL context async-bufferswaps failed.\n\n", CGLErrorString(error));
                     CGLSetCurrentContext(NULL);
@@ -1118,22 +1136,37 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 */
 double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
-	unsigned int screenid = windowRecord->screenNumber;
-	psych_uint64 refvblcount;
-	double t1, t2, cvTime = 0;
-	
+    unsigned int screenid = windowRecord->screenNumber;
+    psych_uint64 refvblcount;
+    double tnow, t1, t2, cvRefresh, cvTime = 0;
+
     // Should we use CoreVideo display link timestamping?
     if (useCoreVideoTimestamping && cvDisplayLink[screenid]) {
         // Yes: Retrieve data from our shared data structure:
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        
         PsychLockMutex(&(cvDisplayLinkData[screenid].mutex));
         *vblCount = cvDisplayLinkData[screenid].vblCount;
         cvTime = cvDisplayLinkData[screenid].vblTimestamp;
         PsychUnlockMutex(&(cvDisplayLinkData[screenid].mutex));
 
+        // Current time more than 0.9 video refresh durations after queried
+        // vblank timestamps cvTime?
+        cvRefresh = CVDisplayLinkGetActualOutputVideoRefreshPeriod(cvDisplayLink[screenid]);
+        if ((tnow - cvTime) > (0.9 * cvRefresh)) {
+            // Yes: It is more likely that we fetched a stale cvTime timestamp from
+            // the previous vblank instead of the current one, because we got called
+            // before the display link callback could execute for the current vblank.
+            // Assume this is the case and correct the returned timestamp and count.
+            // Add one video refresh duration and count to make it so:
+            cvTime += cvRefresh;
+            *vblCount = *vblCount + 1;
+        }
+
         // If timestamp debugging is off, we're done:
         if (PsychPrefStateGet_Verbosity() <= 19) return(cvTime);
     }
-    
+
     // Do we have a valid shared mapping?
     if (fbsharedmem[screenid].shmem) {
 		// We query each value twice and repeat this double-query until both readings of

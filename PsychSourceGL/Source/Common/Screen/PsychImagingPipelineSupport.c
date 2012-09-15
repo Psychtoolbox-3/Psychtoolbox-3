@@ -120,6 +120,82 @@ static char texturePlanar4FragmentShaderSrc[] =
 "    gl_FragColor = texcolor * unclampedFragColor; \n"
 "} \n";
 
+/* Sampling and conversion shader from YUV-I420 planar format to standard RGBA8
+ * format. Samples our YUV I420 planar luminance texture, builds yuv sample, then
+ * performs color space conversion from yuv to rgb.
+ *
+ * This shader is based on BSD licensed example code from Peter Bengtsson, from
+ * http://www.fourcc.org/source/YUV420P-OpenGL-GLSLang.c
+ */
+static char texturePlanarI420FragmentShaderSrc[] =
+"/* YUV-I420 planar texture sampling fragment shader.               */ \n"
+"/* Retrieves YUV sample from proper locations in planes.           */ \n"
+"/* Converts YUV sample to RGB color triplet and applies            */ \n"
+"/* GL_MODULATE texture function emulation before fragment output.  */ \n"
+"\n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
+"varying vec2 texNominalSize; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    float r, g, b, y, u, v;\n"
+"    float nx, ny;\n"
+"\n"
+"    nx = gl_TexCoord[0].x;\n"
+"    ny = gl_TexCoord[0].y;\n"
+"\n"
+"    y = texture2DRect(Image, vec2(nx, ny)).r;\n"
+"    ny = floor(ny * 0.5);\n"
+"    nx = floor(nx * 0.5);\n"
+"    if (mod(ny, 2.0) >= 0.5) {\n"
+"        nx += texNominalSize.x * 0.5;\n"
+"    }\n"
+"\n"
+"    ny = (ny - mod(ny, 2.0)) * 0.5;\n"
+"    u = texture2DRect(Image, vec2(nx, ny + texNominalSize.y)).r; \n"
+"    v = texture2DRect(Image, vec2(nx, ny + (1.25 * texNominalSize.y))).r; \n"
+"\n"
+"    y = 1.1643 * (y - 0.0625);\n"
+"    u = u - 0.5;\n"
+"    v = v - 0.5;\n"
+"\n"
+"    r = y + 1.5958 * v;\n"
+"    g = y - 0.39173 * u - 0.81290 * v;\n"
+"    b = y + 2.017 * u;\n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = vec4(r, g, b, 1.0) * unclampedFragColor; \n"
+"} \n";
+
+/* Sampling and conversion shader from Y8-I800 planar format to standard RGBA8
+ * format. Samples our Y8 I800 planar luminance texture, then performs color
+ * space conversion from y to rgb.
+ */
+static char texturePlanarI800FragmentShaderSrc[] =
+"/* Y8-I800 planar texture sampling fragment shader.                */ \n"
+"/* Retrieves Y8 sample from proper location.                       */ \n"
+"/* Converts Y8 sample to RGB color triplet and applies             */ \n"
+"/* GL_MODULATE texture function emulation before fragment output.  */ \n"
+"\n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    float y = texture2DRect(Image, gl_TexCoord[0].xy).r;\n"
+"    y = 1.1643 * (y - 0.0625);\n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = vec4(y, y, y, 1.0) * unclampedFragColor; \n"
+"} \n";
+
 char texturePlanarVertexShaderSrc[] =
 "/* Simple pass-through vertex shader: Emulates fixed function pipeline, but passes  */ \n"
 "/* modulateColor as varying unclampedFragColor to circumvent vertex color       */ \n"
@@ -544,7 +620,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	winwidth=(int)PsychGetWidthFromRect(windowRecord->rect);
 	winheight=(int)PsychGetHeightFromRect(windowRecord->rect);
 
-	if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), 0, FALSE, winwidth, winheight, 0)) {
+	if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), 0, FALSE, winwidth, winheight, 0, 0)) {
 		// Failed!
 		PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline.");
 	}
@@ -583,7 +659,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// In dual window output mode, we may only have one merged/composited stereo view or even only
 		// a single monoscopic view, but we still distribute that view to both finalizedFBO's aka different
 		// onscreen windows backbuffers, possibly with separate output formatting / postprocessing.
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for dual-window stereo.");
 		}
@@ -595,7 +671,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
 		// Home-Grown frame-sequential stereo mode: Need one real finalizedFBO for each of the
 		// two stereo streams:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for frame-sequential stereo (left eye).");
 		}
@@ -603,7 +679,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		windowRecord->finalizedFBO[0]=fbocount;
 		fbocount++;
 
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for frame-sequential stereo (right eye).");
 		}
@@ -640,7 +716,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
 		// These FBO's may need a z-buffer or stencil buffer as well if 3D rendering is
 		// enabled:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 		}
@@ -655,7 +731,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		
 		// If we are in stereo mode, we'll need a 2nd buffer for the right-eye channel:
 		if (windowRecord->stereomode > 0) {
-			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample)) {
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 			}
@@ -713,7 +789,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	
 		if (!targetisfinalFB) {
 			// Yes. Setup real inputBuffers as multisample-resolve targets:
-			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 inputBufferFBO of imaging pipeline.");
 			}
@@ -730,7 +806,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// If we are in stereo mode, we'll need a 2nd buffer for the right-eye channel:
 		if (windowRecord->stereomode > 0) {
 			if (!targetisfinalFB) {
-				if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
+				if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 					// Failed!
 					PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 inputBufferFBO of imaging pipeline.");
 				}
@@ -785,7 +861,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
 		if (!targetisfinalFB) {
 			// These FBO's don't need z- or stencil buffers anymore:
-			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
 			}			
@@ -803,7 +879,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		if (windowRecord->stereomode > 0) {
 			if (!targetisfinalFB) {
 				// These FBO's don't need z- or stencil buffers anymore:
-				if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
+				if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 					// Failed!
 					PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
 				}			
@@ -824,7 +900,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		
 		// Allocate a bounce-buffer as well if multi-pass rendering is requested:
 		if (imagingmode & kPsychNeedDualPass || imagingmode & kPsychNeedMultiPass) {
-			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
 			}
@@ -864,7 +940,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		}
 
 		// These FBO's don't need z- or stencil buffers anymore:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline.");
 		}
@@ -925,7 +1001,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		}
 		else {
 			// We need a new, private bounce-buffer:
-			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline [1st bounce buffer].");
 			}
@@ -935,7 +1011,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		}
 		
 		// In any case, we need a new private 2nd bounce buffer for the special case of the final processing chain:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline [2nd bounce buffer].");
 		}
@@ -1023,19 +1099,19 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					// cross-talk / ghosting:
 					
 					// Left-eye channel (channel 1):
-					rg = (windowRecord->stereomode==kPsychAnaglyphRGStereo || windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0;
-					gg = (windowRecord->stereomode==kPsychAnaglyphGRStereo) ? 1.0 : 0.0;
-					bg = (windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0;
+					rg = (float) ((windowRecord->stereomode==kPsychAnaglyphRGStereo || windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0);
+					gg = (float) ((windowRecord->stereomode==kPsychAnaglyphGRStereo) ? 1.0 : 0.0);
+					bg = (float) ((windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0);
 					glUniform3f(glGetUniformLocation(glsl, "Gains1"), rg, gg, bg);
 
 					// Right-eye channel (channel 2):
-					rg = (windowRecord->stereomode==kPsychAnaglyphGRStereo || windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0;
-					gg = (windowRecord->stereomode==kPsychAnaglyphRGStereo) ? 1.0 : 0.0;
-					bg = (windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0;
+					rg = (float) ((windowRecord->stereomode==kPsychAnaglyphGRStereo || windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0);
+					gg = (float) ((windowRecord->stereomode==kPsychAnaglyphRGStereo) ? 1.0 : 0.0);
+					bg = (float) ((windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0);
 					glUniform3f(glGetUniformLocation(glsl, "Gains2"), rg, gg, bg);
 					
 					// Define default weights for RGB -> Luminance conversion: We default to the standardized NTSC color weights.
-					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.299, 0.587, 0.114);
+					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.299f, 0.587f, 0.114f);
 					// Define background bias color to add: Normally zero for standard anaglyph:
 					glUniform3f(glGetUniformLocation(glsl, "ChannelBias"), 0.0, 0.0, 0.0);
 
@@ -1303,8 +1379,9 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
  * It checks for correct setup and then stores all relevant information in the PsychFBO struct, pointed by
  * fbo. On success it returns true, on failure it returns false.
  */
-psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool needzbuffer, int width, int height, int multisample)
+psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool needzbuffer, int width, int height, int multisample, int specialFlags)
 {
+    GLenum texturetarget;
 	GLenum fborc;
 	GLint bpc;
 	GLboolean isFloatBuffer;
@@ -1313,6 +1390,9 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 	// Eat all GL errors:
 	PsychTestForGLErrors();
 	
+    // Select type of texture target:
+    texturetarget = (specialFlags & 0x1) ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_EXT;
+    
 	// If fboInternalFomrat!=1 then we need to allocate and assign a proper PsychFBO struct first:
 	if (fboInternalFormat!=1) {
 		*fbo = (PsychFBO*) malloc(sizeof(PsychFBO));
@@ -1326,6 +1406,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		(*fbo)->width = width;
 		(*fbo)->height = height;
 		(*fbo)->multisample = multisample;
+        (*fbo)->textarget = texturetarget;
 		
 		// fboInternalFormat == 0 --> Only allocate and assign, don't initialize FBO.
 		if (fboInternalFormat==0) return(TRUE);
@@ -1341,14 +1422,14 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			glGenTextures(1, (GLuint*) &((*fbo)->coltexid));
 			
 			// Bind it as rectangle texture:
-			glBindTexture(GL_TEXTURE_RECTANGLE_EXT, (*fbo)->coltexid);
+			glBindTexture(texturetarget, (*fbo)->coltexid);
 			
 			// Create proper texture: Just allocate proper format, don't assign data.
-			glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, fboInternalFormat, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+			glTexImage2D(texturetarget, 0, fboInternalFormat, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 		}
 		else {
 			// Yes. Bind it as rectangle texture:
-			glBindTexture(GL_TEXTURE_RECTANGLE_EXT, (*fbo)->coltexid);
+			glBindTexture(texturetarget, (*fbo)->coltexid);
 		}
 		
 		if (glGetError()!=GL_NO_ERROR) {
@@ -1359,16 +1440,16 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		
 		// Setup texture wrapping behaviour to clamp, as other behaviours are
 		// unsupported on many gfx-cards for rectangle textures:
-		glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
-		glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+		glTexParameterf(texturetarget,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+		glTexParameterf(texturetarget,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
 		
 		// Setup filtering for the textures - Use nearest neighbour by default, as floating
 		// point filtering usually unsupported.
-		glTexParameterf(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-		glTexParameterf(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+		glTexParameterf(texturetarget, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameterf(texturetarget, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 		
 		// Texture ready, unbind it.
-		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+		glBindTexture(texturetarget, 0);
 	}
 	else {
 		// Multisampled FBO: Setup a multisampled renderbuffer as color attachment;
@@ -1420,7 +1501,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 	
 	if (multisample == 0) {
 		// Attach the texture as color buffer zero:
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->coltexid, 0);
+		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, texturetarget, (*fbo)->coltexid, 0);
 	}
 	else {
 		// Attach the renderbuffer as color buffer zero:
@@ -1483,17 +1564,17 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			
 			// Create texture object for z-buffer (or z+stencil buffer) and set it up:
 			glGenTextures(1, (GLuint*) &((*fbo)->ztexid));
-			glBindTexture(GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid);
+			glBindTexture(texturetarget, (*fbo)->ztexid);
 			
 			// Setup texture wrapping behaviour to clamp, as other behaviours are
 			// unsupported on many gfx-cards for rectangle textures:
-			glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_S,GL_CLAMP);
-			glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_T,GL_CLAMP);
+			glTexParameterf(texturetarget,GL_TEXTURE_WRAP_S,GL_CLAMP);
+			glTexParameterf(texturetarget,GL_TEXTURE_WRAP_T,GL_CLAMP);
 			
 			// Setup filtering for the textures - Use nearest neighbour by default, as floating
 			// point filtering usually unsupported.
-			glTexParameterf(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-			glTexParameterf(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+			glTexParameterf(texturetarget, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+			glTexParameterf(texturetarget, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 			
 			// Just to be safe...
 			PsychTestForGLErrors();
@@ -1505,25 +1586,25 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 				
 				// Create proper texture: Just allocate proper format, don't assign data.
 				if (glewIsSupported("GL_EXT_packed_depth_stencil")) {
-					glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, GL_DEPTH24_STENCIL8_EXT, width, height, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
+					glTexImage2D(texturetarget, 0, GL_DEPTH24_STENCIL8_EXT, width, height, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
 				}
 				else {
 					// Ancient drivers with only NV extension support...
-					glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, GL_DEPTH_COMPONENT24_SGIX, width, height, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
+					glTexImage2D(texturetarget, 0, GL_DEPTH_COMPONENT24_SGIX, width, height, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
 				}
 				
 				PsychTestForGLErrors();
 				
 				// Texture ready, unbind it.
-				glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+				glBindTexture(texturetarget, 0);
 				
 				// Attach the texture as depth buffer...
-				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
+				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, texturetarget, (*fbo)->ztexid, 0);
 				PsychTestForGLErrors();
 				
 				if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
 					// ... and as stencil buffer ...
-					glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
+					glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, texturetarget, (*fbo)->ztexid, 0);
 					if (glGetError()) {
 						// Attaching stencil buffer doesnt work :( We try to live without it...
 						while(glGetError());
@@ -1549,13 +1630,13 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: packed_depth_stencil unsupported. Attaching 24 bit depth texture and 8 bit stencil renderbuffer...\n"); 
 				
 				// Create proper texture: Just allocate proper format, don't assign data.
-				glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+				glTexImage2D(texturetarget, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
 				
 				// Depth texture ready, unbind it.
-				glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+				glBindTexture(texturetarget, 0);
 				
 				// Attach the texture as depth buffer...
-				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
+				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, texturetarget, (*fbo)->ztexid, 0);
 				
 				if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
 					// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
@@ -1812,7 +1893,7 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_
 		
 		if (textureRecord->textureNumber > 0) {
 			// Allocate and assign FBO object info structure PsychFBO:
-			PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 0, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0);
+			PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 0, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0, (PsychGetTextureTarget(textureRecord) == GL_TEXTURE_2D) ? 1 : 0);
 			
 			// Manually set up the color attachment texture id to our texture id:
 			textureRecord->fboTable[0]->coltexid = textureRecord->textureNumber;
@@ -1832,7 +1913,7 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_
 			// Need 32 bpc floating point precision?
 			if (forImagingmode & kPsychNeed32BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; textureRecord->bpc = 32; }
 			
-			PsychCreateFBO(&(textureRecord->fboTable[0]), fboInternalFormat, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0);
+			PsychCreateFBO(&(textureRecord->fboTable[0]), fboInternalFormat, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0, (PsychGetTextureTarget(textureRecord) == GL_TEXTURE_2D) ? 1 : 0);
 			
 			// Manually set up the texture id from our color attachment texture id:
 			textureRecord->textureNumber = textureRecord->fboTable[0]->coltexid;
@@ -1847,7 +1928,7 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_
 	if (asRendertarget && textureRecord->fboTable[0]->fboid==0) {
 		// Initialize and setup real FBO object (optionally with z- and stencilbuffer) and attach the texture
 		// as color attachment 0, aka main colorbuffer:				
-		if (!PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 1, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0)) {
+		if (!PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 1, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0, (PsychGetTextureTarget(textureRecord) == GL_TEXTURE_2D) ? 1 : 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_internal, "Preparation of drawing into an offscreen window or texture failed when trying to create associated framebuffer object!");
 			
@@ -1878,6 +1959,9 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 	psych_bool needzbuffer, isplanar;
 	int width, height;
 
+    // Is this a planar encoding texture?
+    isplanar = (PsychIsTexture(sourceRecord) && (sourceRecord->specialflags & kPsychPlanarTexture)) ? TRUE : FALSE;
+    
 	// The source texture sourceRecord could be in any of PTB's supported
 	// internal texture orientations. It may be upright as an Offscreen window,
 	// or flipped upside down as some textures from the video grabber or Quicktime,
@@ -1888,12 +1972,10 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 	// step to transform the texture into normalized orientation. We also perform a
 	// preprocessing step on any CoreVideo texture from Quicktime. Although such a
 	// texture may be properly oriented, it is of a non-renderable YUV color format, so
-	// we need to recreate it in a RGB renderable format.
-	if (sourceRecord->textureOrientation != 2 || sourceRecord->targetSpecific.QuickTimeGLTexture != NULL) {
-		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap for source gl-texture %i --> ", sourceRecord->textureNumber);
-		
-		// Is this a planar encoding texture?
-		isplanar = (PsychIsTexture(sourceRecord) && (sourceRecord->specialflags & kPsychPlanarTexture)) ? TRUE : FALSE;
+	// we need to recreate it in a RGB renderable format. Non-planar textures would also
+    // wreak havoc if not converted into standard pixel-interleaved format:
+	if (sourceRecord->textureOrientation != 2 || sourceRecord->targetSpecific.QuickTimeGLTexture != NULL || isplanar) {
+		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap or format conversion for source gl-texture %i --> ", sourceRecord->textureNumber);
 		
 		// Soft-reset drawing engine in a safe way:
 		PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
@@ -1944,8 +2026,8 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		// Override detected width and height for planar textures:
 		if (isplanar) {
 			// They are actually the net size as specified by their rect's:
-			width  = PsychGetWidthFromRect(sourceRecord->rect);
-			height = PsychGetHeightFromRect(sourceRecord->rect);
+			width  = (int) PsychGetWidthFromRect(sourceRecord->rect);
+			height = (int) PsychGetHeightFromRect(sourceRecord->rect);
 		}
 		
 		// Renderable format? Pure luminance or luminance+alpha formats are not renderable on most hardware.
@@ -1991,7 +2073,7 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		}
 		
 		// Now create proper FBO:
-		if (!PsychCreateFBO(&(sourceRecord->fboTable[0]), (GLenum) fboInternalFormat, needzbuffer, width, height, 0)) {
+		if (!PsychCreateFBO(&(sourceRecord->fboTable[0]), (GLenum) fboInternalFormat, needzbuffer, width, height, 0, (PsychGetTextureTarget(sourceRecord) == GL_TEXTURE_2D) ? 1 : 0)) {
 			PsychErrorExitMsg(PsychError_internal, "Failed to normalize texture orientation - Creation of framebuffer object failed!");
 		}
 		
@@ -2011,8 +2093,14 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		glLoadIdentity();
 		
 		// For planar textures we need to bind the planar -> interleaved conversion shader:
-		if (isplanar) PsychSetShader(sourceRecord, -1 * sourceRecord->textureFilterShader);
-		
+		if (isplanar) {
+            if ((sourceRecord->textureFilterShader == 0) && (PsychPrefStateGet_Verbosity() > 1)) {
+                printf("PTB-WARNING: Failed to normalize texture orientation and format: Conversion shader missing for this special texture!\n");
+            }
+            
+            PsychSetShader(sourceRecord, -1 * sourceRecord->textureFilterShader);
+		}
+        
 		// Now blit the old "disoriented" texture into the new FBO: The textureNumber of sourceRecord
 		// references the old texture, the PsychFBO of sourceRecord defines the new texture...
 		if (glIsEnabled(GL_BLEND)) {
@@ -2073,7 +2161,6 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_bool openglpart)
 {
 	int i;
-	PtrPsychHookFunction hookfunc, hookiter;
 	PsychFBO* fboptr;
 	
 	// Do OpenGL specific cleanup:
@@ -2370,7 +2457,7 @@ void PsychPipelineDeleteHookSlot(PsychWindowRecordType *windowRecord, const char
 {
 	PtrPsychHookFunction hookfunc;
 	PtrPsychHookFunction *prehookfunc;
-	int targetidx, idx;
+	int idx;
 	int hookidx=PsychGetHookByName(hookString);
 	if (hookidx==-1) PsychErrorExitMsg(PsychError_user, "RemoveHook: Unknown (non-existent) hook name provided.");
 
@@ -2795,7 +2882,7 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
 	char  varName[256];
 	char* pCurrent		= cmdString;
 	char* pToken		= NULL;
-	int   i, j, k, count;
+	int   i;
 	
 	double* dbltarget	= NULL;
 	PsychGenericScriptType*	newvar = NULL;
@@ -3019,23 +3106,26 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 	if (srcfbo2) {
 		// srcfbo2 is valid: Assign its color buffer texture:
 		if (PsychPrefStateGet_Verbosity()>4) printf("TexUnit 1 reading from texid -- %i\n", srcfbo2->coltexid);
-		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, srcfbo2->coltexid);
+		glBindTexture(srcfbo2->textarget, srcfbo2->coltexid);
 		// Set texture application mode to replace:
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 		
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(srcfbo2->textarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(srcfbo2->textarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(srcfbo2->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(srcfbo2->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
-		glEnable(GL_TEXTURE_RECTANGLE_EXT);
 		glDisable(GL_TEXTURE_2D);
+		glDisable(GL_TEXTURE_RECTANGLE_EXT);
+		glEnable(srcfbo2->textarget);
 	}
 	else {
 		// srcfbo2 doesn't exist: Unbind and deactivate 2nd unit:
 		if (PsychPrefStateGet_Verbosity() > 10) printf("TexUnit 1 not reading from srcfbo2\n");
 		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
 		glDisable(GL_TEXTURE_RECTANGLE_EXT);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDisable(GL_TEXTURE_2D);
 	}
 
 	// Assign color texture of srcfbo1 to texture unit 0:
@@ -3043,24 +3133,27 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 	if (srcfbo1) {
 		// srcfbo1 is valid: Assign its color buffer texture:
 		if (PsychPrefStateGet_Verbosity()>4) printf("TexUnit 0 reading from texid -- %i\n", srcfbo1->coltexid);
-		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, srcfbo1->coltexid);
+		glBindTexture(srcfbo1->textarget, srcfbo1->coltexid);
 
 		// Set texture application mode to replace:
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 		
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
-		glEnable(GL_TEXTURE_RECTANGLE_EXT);
 		glDisable(GL_TEXTURE_2D);
+		glDisable(GL_TEXTURE_RECTANGLE_EXT);
+		glEnable(srcfbo1->textarget);
 	}
 	else {
 		// srcfbo1 doesn't exist: Unbind and deactivate 1st unit:
 		if (PsychPrefStateGet_Verbosity() > 10) printf("TexUnit 0 not reading from srcfbo1\n");
 		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
 		glDisable(GL_TEXTURE_RECTANGLE_EXT);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDisable(GL_TEXTURE_2D);
 	}
 
 	
@@ -3201,9 +3294,9 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 			rc = FALSE;
 		} else {
 			// Attach shader:
-			while(glGetError());
+			if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) while(glGetError());
 			glUseProgram(hookfunc->shaderid);
-			if ((glerr = glGetError())!=GL_NO_ERROR) {
+			if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync) && ((glerr = glGetError())!=GL_NO_ERROR)) {
 				if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Blitter invocation failed: glUseProgram(%i) failed with error: %s\n", hookfunc->shaderid, gluErrorString(glerr));
 				rc = FALSE;
 			}
@@ -3293,7 +3386,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
 	int w, h, x, y;
-	float sx, sy;
+	float sx, sy, wt, ht;
 	char* strp;
 	psych_bool bilinearfiltering;
 
@@ -3305,6 +3398,10 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	// Query dimensions of viewport:
 	w = (*srcfbo1)->width;
 	h = (*srcfbo1)->height;
+    
+    // Same for texture coordinate space, depending on type of texture in use:
+    wt = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1.0 : (float) w;
+    ht = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1.0 : (float) h;
 
 	// Check for override width x height parameter in the blitterString: An integral (w,h)
 	// size the blit. This allows to blit a target quad with a size different from srcfbo1, without
@@ -3320,8 +3417,8 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	if (strstr(hookfunc->pString1, "Bilinear")) {
 		// Yes. Enable it.
 		bilinearfiltering = TRUE;
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	}
 	else {
 		bilinearfiltering = FALSE;
@@ -3352,7 +3449,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		glPushMatrix();
 		
 		// Apply global (x,y) offset:
-		glTranslatef(x, y, 0);
+		glTranslatef((float) x, (float) y, 0);
 		
 		// Apply scaling:
 		glScalef(sx, sy, 1);
@@ -3370,33 +3467,33 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	// but PTB has to use a different system (changed by special gluOrtho2D) transform),
 	// because our 2D coordinate system needs to conform to the standards of the old
 	// Psychtoolboxes and of typical windowing systems. -- A tribute to the past.
-	
+
 	// Upper left vertex in window
-	glTexCoord2f(0, h);
-	glVertex2f(0, 0);		
-	
+	glTexCoord2f(0, ht);
+	glVertex2f(0, 0);
+
 	// Lower left vertex in window
 	glTexCoord2f(0, 0);
-	glVertex2f(0, h);		
-	
+	glVertex2f(0, (float) h);
+
 	// Lower right  vertex in window
-	glTexCoord2f(w, 0);
-	glVertex2f(w, h);		
-	
+	glTexCoord2f(wt, 0);
+	glVertex2f((float) w, (float) h);
+
 	// Upper right in window
-	glTexCoord2f(w, h);
-	glVertex2f(w, 0);		
-	
+	glTexCoord2f(wt, ht);
+	glVertex2f((float) w, 0);
+
 	glEnd();
-	
+
 	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
 		glPopMatrix();
 	}
 
 	if (bilinearfiltering) {
 		// Disable filtering again:
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 
 	// Done.
@@ -3440,8 +3537,8 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 	if (strstr(hookfunc->pString1, "Bilinear")) {
 		// Yes. Enable it.
 		bilinearfiltering = TRUE;
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	}
 	else {
 		bilinearfiltering = FALSE;
@@ -3472,7 +3569,7 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 		glPushMatrix();
 		
 		// Apply global (x,y) offset:
-		glTranslatef(x, y, 0);
+		glTranslatef((float) x, (float) y, 0);
 		
 		// Apply scaling:
 		glScalef(sx, sy, 1);
@@ -3495,8 +3592,8 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 
 	if (bilinearfiltering) {
 		// Disable filtering again:
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 
 	// Done.
@@ -3743,8 +3840,8 @@ psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windo
 	glBegin(GL_QUADS);
 	glVertex2f(0, h-2);
 	glVertex2f(w, h-2);
-	glVertex2f(w, PsychGetHeightFromRect(windowRecord->rect)+1);
-	glVertex2f(0, PsychGetHeightFromRect(windowRecord->rect)+1);
+	glVertex2f(w, (float) PsychGetHeightFromRect(windowRecord->rect)+1);
+	glVertex2f(0, (float) PsychGetHeightFromRect(windowRecord->rect)+1);
 	glEnd();
 
 	// Draw the sync-lines:
@@ -3896,8 +3993,59 @@ psych_bool PsychAssignPlanarTextureShaders(PsychWindowRecordType* textureRecord,
 	}
 
 	// Assign our onscreen windows planarshader to this texture:
-	textureRecord->textureFilterShader = -1 * windowRecord->texturePlanarShader[channels - 1];
+    // We don't support GL_TEXTURE_2D textures yet though, so only auto-assign shader for rectangle textures.
+	if (textureRecord && !(PsychGetTextureTarget(textureRecord) == GL_TEXTURE_2D)) textureRecord->textureFilterShader = -1 * windowRecord->texturePlanarShader[channels - 1];
 
 	// Done.
 	return(TRUE);
+}
+
+psych_bool PsychAssignPlanarI420TextureShader(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord)
+{
+    // Remap windowRecord to its parent if any. We want the associated "toplevel" onscreen window,
+    // because only that contains the required shader and gfcaps in a reliable way:
+    windowRecord = PsychGetParentWindow(windowRecord);
+
+    // Do we already have a I420 planar sampling texture shader?
+    if (windowRecord->textureI420PlanarShader == 0) {
+        // Nope. Need to create one:
+        windowRecord->textureI420PlanarShader = PsychCreateGLSLProgram(texturePlanarI420FragmentShaderSrc, texturePlanarVertexShaderSrc, NULL);
+
+        if (windowRecord->textureI420PlanarShader == 0) {
+            printf("PTB-ERROR: Failed to create planar YUV-I420 filter shader for video texture.\n");
+            return(FALSE);
+        }
+    }
+
+    // Assign our onscreen windows planar I420 shader to this texture:
+    // We don't support GL_TEXTURE_2D textures yet though, so only auto-assign shader for rectangle textures.    
+    if (textureRecord && !(PsychGetTextureTarget(textureRecord) == GL_TEXTURE_2D)) textureRecord->textureFilterShader = -1 * windowRecord->textureI420PlanarShader;
+
+    // Done.
+    return(TRUE);
+}
+
+psych_bool PsychAssignPlanarI800TextureShader(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord)
+{
+    // Remap windowRecord to its parent if any. We want the associated "toplevel" onscreen window,
+    // because only that contains the required shader and gfcaps in a reliable way:
+    windowRecord = PsychGetParentWindow(windowRecord);
+    
+    // Do we already have a I800 planar sampling texture shader?
+    if (windowRecord->textureI800PlanarShader == 0) {
+        // Nope. Need to create one:
+        windowRecord->textureI800PlanarShader = PsychCreateGLSLProgram(texturePlanarI800FragmentShaderSrc, texturePlanarVertexShaderSrc, NULL);
+        
+        if (windowRecord->textureI800PlanarShader == 0) {
+            printf("PTB-ERROR: Failed to create planar Y8-I800 filter shader for video texture.\n");
+            return(FALSE);
+        }
+    }
+    
+    // Assign our onscreen windows planar I800 shader to this texture:
+    // We don't support GL_TEXTURE_2D textures yet though, so only auto-assign shader for rectangle textures.    
+    if (textureRecord && !(PsychGetTextureTarget(textureRecord) == GL_TEXTURE_2D)) textureRecord->textureFilterShader = -1 * windowRecord->textureI800PlanarShader;
+    
+    // Done.
+    return(TRUE);
 }

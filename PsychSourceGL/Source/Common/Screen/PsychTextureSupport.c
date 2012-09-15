@@ -143,87 +143,12 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 		win->textureByteAligned=0;
 }
 
-
-/*
-	PsychCreateTextureForWindow()
-	
-	For each onscreen window we create only one OpenGL texture.  Psychtoolbox textures are not really OpenGL textures but are instead blocks of memory 
-	holding images in texture format.  To display a Psychtoolbox texture we blit the image memory into the onscree window's texture then
-	draw  the texture to the screen.  This results in two copies, first from the image memory to another block of system memory which is the texture,
-	then from the texture across the video bus to the video memory.  
-	
-	It would be better if Psychtoolbox textures were actual textures and we could avoid the first copy, but the combination of TextureRect+ClientTexture+TextureRange
-	extensions seems to place an unacceptable limit of 96 MB on the total texture size. Going without the TextureRange extension seems to cause too much variability in 
-	the blit times.  Nonetheless it would be worthwhile to create preferences for selectively enableing these extensions and searching more thourougly for a combination
-	which gives us higher blit rates than the current dual-copy method, particularly in light of the fact that different video cards may give different behavior.
-	
-*/
-void PsychCreateTextureForWindow(PsychWindowRecordType *win)
-{
-	GLenum				textureHint;
-	double				frameWidth, frameHeight;
-
-	PsychSetGLContext(win);
-        // MK: Width and height swapped due to texture rotation trick in PsychBlitTextureToDisplay:
-	frameHeight=PsychGetWidthFromRect(win->rect);
-	frameWidth=PsychGetHeightFromRect(win->rect);
-	
-	//create a texture number for this texture
-	glGenTextures(1, &win->textureNumber);
-
-	//choose the texture accleration extension
-	// FIXME	textureHint= GL_STORAGE_SHARED_APPLE;  //GL_STORAGE_PRIVATE_APPLE, GL_STORAGE_CACHED_APPLE
-
-	win->textureMemorySizeBytes= (unsigned long)(frameWidth * frameHeight * sizeof(GLuint));
-	win->textureMemory=malloc(win->textureMemorySizeBytes);
-	
-	//setup texturing
-	glDisable(GL_TEXTURE_2D);
-	glEnable(GL_TEXTURE_RECTANGLE_EXT);
-	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, win->textureNumber);
-
-
-	// glTextureRangeAPPLE(GL_TEXTURE_RECTANGLE_EXT, 0, NULL);
-	// MK: Leave this untouched, altough i couldn't find a situation where it helps performance at with my code...
-	// FIXME         glTextureRangeAPPLE(GL_TEXTURE_RECTANGLE_EXT,win->textureMemorySizeBytes, win->textureMemory);
-
-        // MK: Slows things down in current configuration, therefore disabled: glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_STORAGE_HINT_APPLE , textureHint);
-        // Not using GL_STORAGE_SHARED_APPLE provided increased reliability of timing and significantly shorter rendering times
-        // when testing with a G5-Mac with 1.6Ghz CPU and 256 MB RAM, MacOS-X 10.3.7, using 12 textures of 800x800 pixels each.
-        // Rendering times with this code are around 6 msecs, while original PTB 1.0.40 code took 17 ms on average...
-        // Can't test this on other machines like G4 or machines with more RAM...
-        // -> Sometimes, GL_STORAGE_SHARED_APPLE is faster, but only if texture width and height are divisable by 16 and
-        // all used memory is page-aligned and a couple other conditions are met. So... Sometimes you are 20% faster, but most of
-        // the time you are 2 to 3 times slower than without this extensions...
-        // The "Principle of least surprise" would suggest to disable the extension, because the end-user doesn't
-        // expect sudden and random changes in performance of his PTB scripts.
-        // Alternatively one could code up different path's depending on if the preconditions are met or not...
-        //
-        // We could reenable the extension, if wanted, but then the MakeTexture code needs to be modified in a way
-        // that will slow down MakeTexture a bit. It's a tradeoff between speed of DrawTexture and speed of MakeTexture.
-        //
-        // BTW -> Does disabling the extension solve "severe tearing bug" reported in Forum message 3007?
-        // Explanation: GL_STORAGE_SHARED_APPLE enables texture fetches over AGP bus via DMA operations and
-        // should increase performance. But DMA only triggers when texture width is divisible by 8, in all other
-        // cases it's disabled. Bug in message 3007 only happens when texture width is divisible by 8. Could this
-        // be a bug in the G4 Laptops graphics hardware (DMA-Engine) or in its OpenGL driver???
-        // Would be interesting to find out... --> Solved! Was a OpenGL driver bug - resolved in MacOS-X 10.3.7
-	// FIXME	glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE);
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-	// MK: Setting GL_UNPACK_ALIGNMENT == 1 fixes a bug, where textures are drawn incorrectly, if their
-	// width or height is not divisible by 4.
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-	glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, GL_RGBA, (GLsizei)frameWidth, (GLsizei)frameHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, win->textureMemory);
-	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);  //glColor does not work while a texture is bound.  
-}
-
-
-
 void PsychCreateTexture(PsychWindowRecordType *win)
 {
-	GLenum                          texturetarget, oldtexturetarget;
+    #if PSYCH_SYSTEM == PSYCH_OSX
 	GLenum							textureHint;
+    #endif
+	GLenum                          texturetarget, oldtexturetarget;
 	double							sourceWidth, sourceHeight;
 	GLint                           glinternalFormat = 0, gl_realinternalformat = 0;
 	static GLint                    gl_lastrequestedinternalFormat = 0;
@@ -231,7 +156,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	long							screenWidth, screenHeight;
 	int								twidth, theight, pass, texcount;
 	void*							texmemptr;
-	psych_bool							recycle = FALSE, avoidCPUGPUSync;
+	psych_bool						recycle = FALSE, avoidCPUGPUSync;
 	GLenum							glerr;
 	int								verbosity;
 
@@ -348,7 +273,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		sourceWidth=PsychGetWidthFromRect(win->rect);
 	}
 	
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, sourceWidth);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, (int) sourceWidth);
 	
 	// We used to have different cases for Luminance, Luminance+Alpha, RGB, RGBA.
 	// This way we saved texture memory for the source->textureMemory -- Arrays, as well as copy-time
@@ -357,8 +282,8 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	// This obviously wastes storage space for LA and RGB textures, but it is the only mode that is
 	// well supported (=fast) on all common gfx-hardware. Only the very latest models of NVidia and ATI
 	// are capable of handling the other formats natively in hardware :-(
-	if (texturetarget==GL_TEXTURE_2D) {
-		// This hardware doesn't support rectangle textures. We create and use power of two
+	if ((texturetarget == GL_TEXTURE_2D) && !(win->gfxcaps & kPsychGfxCapNPOTTex)) {
+		// This hardware doesn't support non-power-of-two GL_TEXTURE_2D textures. We create and use power of two
 		// textures to emulate rectangle textures...
 		
 		// Compute smallest power of two dimension that fits the texture.
@@ -371,8 +296,8 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	}
 	else {
 		// Hardware supports rectangular textures: Use texture as-is:
-		twidth=sourceWidth;
-		theight=sourceHeight;
+		twidth  = (int) sourceWidth;
+		theight = (int) sourceHeight;
 		texmemptr=win->textureMemory;
 	}
 	
@@ -565,7 +490,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				
 	}  // End of new texture creation.
 	
-	// Stage 2: If its a 2D texture or a recycled texture, fill it with content via glTexSubImage2D:
+	// Stage 2: If it is a 2D texture or a recycled texture, fill it with content via glTexSubImage2D:
 	if (texturetarget==GL_TEXTURE_2D || recycle) {
 	  // Special setup code for pot2 textures: Fill the empty power of two texture object with content:
 	  // We only fill a subrectangle (of sourceWidth x sourceHeight size) with our images content. The
@@ -608,7 +533,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		// If there is a mismatch between wish and reality, report it:
 		if (false || gl_realinternalformat != glinternalFormat) {
 			// Mismatch between requested format and format that the OpenGL has chosen:
-			printf("PTB-WARNING: In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=%x\n", win->depth, gl_realinternalformat);
+			printf("PTB-WARNING: In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=x%x\n", win->depth, gl_realinternalformat);
 			printf("PTB-WARNING: Requested size = %i bits, real size = %i bits.\n", win->depth, gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits); 
 			printf("PTB-WARNING: This could mean that something went wrong when creating the texture!\n");
 			fflush(NULL);
@@ -655,7 +580,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		// in its proper (upright 0 deg.) orientation. Let's make a screenshot and
 		// store it as a "new" texture into our current texture object - effectively
 		// transposing the texture into normal format:                        
-		glCopyTexImage2D(texturetarget, 0, glinternalFormat, 0, screenHeight - sourceHeight, sourceWidth, sourceHeight, 0);
+		glCopyTexImage2D(texturetarget, 0, glinternalFormat, 0, (GLint) (screenHeight - sourceHeight), (GLsizei) sourceWidth, (GLsizei) sourceHeight, 0);
 		
 		// Reenable alpha-blending:
 		glEnable(GL_BLEND);
@@ -812,32 +737,40 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             sourceYEnd=sourceHeight - sourceRect[kPsychTop];
         }
 
-        // Special case handling for GL_TEXTURE_2D textures. We need to map the
-	// absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
-	// 1.0 == full extent of power of two texture...
-	if (texturetarget==GL_TEXTURE_2D) {
-	  // Find size of real underlying texture (smallest power of two which is
-	  // greater than or equal to the image size:
-	  tWidth=1;
-	  while (tWidth < sourceWidth) tWidth*=2;
-	  tHeight=1;
-	  while (tHeight < sourceHeight) tHeight*=2;
+    // Special case handling for GL_TEXTURE_2D textures. We need to map the
+    // absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
+    // 1.0 == full extent of power of two texture...
+	if (texturetarget == GL_TEXTURE_2D) {
+        // NPOT supported?
+        if (!(source->gfxcaps & kPsychGfxCapNPOTTex)) {
+            // No: Find size of real underlying texture (smallest power of two which is
+            // greater than or equal to the image size:
+            tWidth=1;
+            while (tWidth < sourceWidth) tWidth*=2;
+            tHeight=1;
+            while (tHeight < sourceHeight) tHeight*=2;
+        }
+        else {
+            // Yes:
+            tWidth = sourceWidth;
+            tHeight = sourceHeight;
+        }
+        
+        // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
+        // mapping to accomodate for roundoff-error in the power-of-two gfx
+        // hardware...
+        // For a good intro into the issue of texture border seams, due to interpolation
+        // problems at texture borders, see:
+        // http://home.planet.nl/~monstrous/skybox.html
 
-	  // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
-	  // mapping to accomodate for roundoff-error in the power-of-two gfx
-	  // hardware...
-	  // For a good intro into the issue of texture border seams, due to interpolation
-	  // problems at texture borders, see:
-	  // http://home.planet.nl/~monstrous/skybox.html
-	  //sourceX-=0.5f;
-	  //sourceY-=0.5f;
-	  sourceXEnd-=0.5f;
-	  sourceYEnd-=0.5f;
-	  // Remap:
-	  sourceX=sourceX / tWidth;
-	  sourceXEnd=sourceXEnd / tWidth;
-	  sourceY=sourceY / tHeight;
-	  sourceYEnd=sourceYEnd / tHeight;
+        sourceXEnd-=0.5f;
+        sourceYEnd-=0.5f;
+
+        // Remap:
+        sourceX=sourceX / tWidth;
+        sourceXEnd=sourceXEnd / tWidth;
+        sourceY=sourceY / tHeight;
+        sourceYEnd=sourceYEnd / tHeight;
 	}
 
 	// MK: We need to reenable the proper texturing mode. This fixes bug reported in Forum message 3055,
@@ -852,39 +785,117 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		glEnable(texturetarget);
 		glBindTexture(texturetarget, source->textureNumber);
 	}
-	
+
+    // Use of OpenGL mip-mapping requested? And automatic mipmap generation wanted - aka not forbidden?
+    if (!(source->specialflags & kPsychDontAutoGenMipMaps) && (filterMode < 0 || filterMode > 1)) {
+        // Yes: Automatically build a mip-map pyramid.
+        if (texturetarget != GL_TEXTURE_2D) PsychErrorExitMsg(PsychError_user, "You asked me to use mip-mapped texture filtering on a texture that is not of GL_TEXTURE_2D type! Unsupported.");
+
+        if (NULL != glGenerateMipmapEXT) {
+            // Select highest quality downsampling method:
+            glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
+            
+            // Is automatic mipmap generation already enabled for this texture?
+            glGetTexParameteriv(texturetarget, GL_GENERATE_MIPMAP, &attrib);
+            
+            // Need to manually trigger regen if automatic mode not yet enabled, or
+            // if the "dirty" flag is set, because some render-to-texture activity has
+            // happened since last drawing this texture, which is not covered by the auto-update:
+            if (source->needsViewportSetup || !attrib) {
+                // No: We trigger hardware-accelerated mipmap generation manually for this draw call:
+                glGenerateMipmapEXT(texturetarget);
+                
+                // Enable automatic mipmap generation for future updates to this texture object. This
+                // will automatically trigger regen if new image content is uploaded into this texture
+                // object:
+                glTexParameteri(texturetarget, GL_GENERATE_MIPMAP, GL_TRUE);
+                
+                // Clear "dirty" flag:
+                source->needsViewportSetup = FALSE;
+            }
+        }
+        else if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: Was asked to draw a texture with mip-mapping, but automatic mipmap generation unsupported by this system! Check your stimulus!\n");
+        }
+    }
+
 	// Linear filtering on non-capable hardware via shader emulation?
-	if ((filterMode > 0) && (source->textureFilterShader > 0)) {
+	if ((filterMode != 0) && (source->textureFilterShader > 0)) {
 		// Yes. Bind the shader:
 		shader = source->textureFilterShader;
 		if (0 == PsychSetShader(target, shader)) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture filter shader, but your hardware doesn't support GLSL shaders.");
 
-		// Switch hardware samplers into nearest neighbour mode so we don't get any interference:
-		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);		
-	}
+        if (filterMode < 0 || filterMode > 1) {
+            // Some mip-mapped filtermode. Choose nearest neighbour sampling within mipmap levels, so shader can decide about sample locations itself.
+            // In filterMode 2 choose the nearest mipmap, in others interpolate linearly between two nearest mipmap levels:
+            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, (filterMode == 2) ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        }
+        else {
+            // No mip-mapping: Switch hardware samplers into nearest neighbour mode so we don't get any interference:
+            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        }
+
+        // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
+        // This makes even sense for negative filterMode arguments, because the filterMode
+        // parameter is passed as an attribute to the filtershader, so the shader itself can
+        // decide how to implement a specific blur level on its own, unrestricted by us:
+        glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+        glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);	
+    }
 	else {
         // Standard hardware texture sampling/filtering: Select filter-mode for texturing:
-        switch (filterMode) {
+        if (filterMode >= 0) {
+            // Select specific hardware sampling strategy:
+            switch (filterMode) {
                 case 0: // Nearest-Neighbour filtering:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                break;
-                
+                    break;
+                    
                 case 1: // Bilinear filtering:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                break;
-
-                case 2: // Linear filtering with nearest neighbour mipmapping: Needs external support to generate mipmaps.
+                    break;
+                    
+                case 2: // Linear filtering with nearest neighbour mipmapping:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                break;
-
-                case 3: // Linear filtering with linear mipmapping --> This is full trilinear filtering. Needs external support to generate mipmaps.
+                    break;
+                    
+                case 3: // Linear filtering with linear mipmapping --> This is full trilinear filtering:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                break;
+                    break;
+
+                case 4: // Nearest-Neighbour filtering with nearest neighbour mipmapping:
+                    glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    break;
+                    
+                case 5: // Nearest-Neighbour filtering with linear mipmapping:
+                    glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    break;
+            }
+
+            // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
+            glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+        }
+        else {
+            // Negative filterMode: This is mostly meant for fast drawing of blurred (low-pass filtered) textures
+            // by selecting a specific integral mip-level:
+            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            
+            // A negative filterMode means to select a specific mip-level in the
+            // mipmap pyramid, according to the filterMode, starting with mip level 0, i.e,
+            // full resolution for a value of -1, then level 1 aka half-resolution for a value
+            // of -2 etc.:
+            glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, (-1 * filterMode) - 1);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  (-1 * filterMode) - 1);
         }
 		
 		// Optional texture lookup shader set up (in Screen('MakeTexture') or due to disabled color clamping...)
@@ -936,7 +947,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 
 	// A globalAlpha of DBL_MAX means: Don't set vertex color here, higher-level code
 	// has done it already. Used in SCREENDrawTexture for a global override color...
-	if (globalAlpha != DBL_MAX) glColor4f(1, 1, 1, globalAlpha);
+	if (globalAlpha != DBL_MAX) glColor4f(1, 1, 1, (GLfloat) globalAlpha);
 	
 	// Apply a rotation transform for rotated drawing, either to modelview-,
 	// or texture matrix.
@@ -980,14 +991,14 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		// info gets potentially transformed by the texture matrix, also each vertex
 		// only sees one corner of the srcRect: Therefore we encode srcrect = [left top right bottom]
 		// on demand:
-		if ((attrib = glGetAttribLocationARB(shader, "srcRect")) >= 0) glVertexAttrib4fARB(attrib, sourceRect[kPsychLeft], sourceRect[kPsychTop], sourceRect[kPsychRight], sourceRect[kPsychBottom]);
+		if ((attrib = glGetAttribLocationARB(shader, "srcRect")) >= 0) glVertexAttrib4fARB(attrib, (GLfloat) sourceRect[kPsychLeft], (GLfloat) sourceRect[kPsychTop], (GLfloat) sourceRect[kPsychRight], (GLfloat) sourceRect[kPsychBottom]);
 
 		// 'dstRect' parameter: The glVertex() calls below encode target pixel coordinates
 		// - and thereby the corners of 'dstRect' - into each vertex, however this
 		// info gets potentially transformed by the modelview/proj. matrix, also each vertex
 		// only sees one corner of the dstRect: Therefore we encode dstrect = [left top right bottom]
 		// on demand:
-		if ((attrib = glGetAttribLocationARB(shader, "dstRect")) >= 0) glVertexAttrib4fARB(attrib, targetRect[kPsychLeft], targetRect[kPsychTop], targetRect[kPsychRight], targetRect[kPsychBottom]);
+		if ((attrib = glGetAttribLocationARB(shader, "dstRect")) >= 0) glVertexAttrib4fARB(attrib, (GLfloat) targetRect[kPsychLeft], (GLfloat) targetRect[kPsychTop], (GLfloat) targetRect[kPsychRight], (GLfloat) targetRect[kPsychBottom]);
 
 		// 'sizeAngleFilterMode' - if requested - encodes texture width in .x component, height in .y
 		// requested rotationAngle in .z and the 'filterMode' flags in .w:
@@ -1104,6 +1115,10 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+        // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
+        glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+        glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+        
         // Unbind texture:
 		glBindTexture(texturetarget, 0);
         glDisable(texturetarget);
@@ -1158,7 +1173,7 @@ GLenum PsychGetTextureTarget(PsychWindowRecordType *win)
 void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
 {
     GLdouble       sourceWidth, sourceHeight, tWidth, tHeight;
-    GLdouble       sourceX, sourceY, sourceXEnd, sourceYEnd;
+    GLdouble       sourceX, sourceY;
     GLenum         texturetarget;
     
     if (!PsychIsTexture(tex)) {
@@ -1206,12 +1221,20 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
     // absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
     // 1.0 == full extent of power of two texture...
     if (texturetarget==GL_TEXTURE_2D) {
-        // Find size of real underlying texture (smallest power of two which is
-        // greater than or equal to the image size:
-        tWidth=1;
-        while (tWidth < sourceWidth) tWidth*=2;
-        tHeight=1;
-        while (tHeight < sourceHeight) tHeight*=2;
+        // NPOT supported?
+        if (!(tex->gfxcaps & kPsychGfxCapNPOTTex)) {
+            // No: Find size of real underlying texture (smallest power of two which is
+            // greater than or equal to the image size:
+            tWidth=1;
+            while (tWidth < sourceWidth) tWidth*=2;
+            tHeight=1;
+            while (tHeight < sourceHeight) tHeight*=2;
+        }
+        else {
+            // Yes:
+            tWidth = sourceWidth;
+            tHeight = sourceHeight;
+        }
         
         // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
         // mapping to accomodate for roundoff-error in the power-of-two gfx
@@ -1235,4 +1258,3 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
     // Done.
     return;
 }
-

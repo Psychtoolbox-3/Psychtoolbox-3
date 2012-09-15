@@ -8,9 +8,7 @@ function result = HatRightUp
 %  10/6/05    awi Note here cosmetic changes by dgp between 7/21/03 and 10/6/05
 
 
-if isOS9 
-	result = 5;
-elseif isOSX 
+if IsOSX 
 	result = 2;
 end
 

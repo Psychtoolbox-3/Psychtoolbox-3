@@ -42,10 +42,12 @@ static char synopsisString[] =
 	"You need to enable Alpha-Blending via Screen('BlendFunction',...) for the transparency values to have an effect.\n"
 	"The argument 'optimizeForDrawAngle' if provided, asks Psychtoolbox to optimize the texture for especially fast "
 	"drawing at the specified rotation angle. The default is 0 == Optimize for upright drawing. If 'specialFlags' is set "
-	"to 1 and the width and height of the imageMatrix are powers of two (e.g., 64 x 64, 256 x 256, 512 x 512, ...), then "
-	"the texture is created as an OpenGL power-of-two texture of type GL_TEXTURE_2D. Otherwise Psychtoolbox will try to "
-	"pick the most optimal format for fast drawing and low memory consumption. Power-of-two textures are especially useful "
-	"for animation of drifting gratings (see the demos) and for simple use with the OpenGL 3D graphics functions.\n"
+	"to 1 and the width and height of the imageMatrix are powers of two (e.g., 64 x 64, 256 x 256, 512 x 512, ...), or "
+    "your graphics card supports so called non-power-of-two textures, then the texture is created as an OpenGL texture "
+	"of type GL_TEXTURE_2D. Otherwise Psychtoolbox will try to "
+	"pick the most optimal format for fast drawing and low memory consumption. GL_TEXTURE_2D textures are especially useful "
+	"for animation of drifting gratings, for simple use with the OpenGL 3D graphics functions and for blurring. Use of "
+    "GL_TEXTURE_2D textures is currently not automatically compatible with use of specialFlags settings 2 or 4.\n"
 	"If 'specialFlags' is set to 2 then PTB will try to use its own high quality texture filtering algorithm for drawing "
 	"of bilinearly filtered textures instead of the hardwares built-in method. This only works on modern hardware with "
 	"fragment shader support and is slower than using the hardwares built in filtering, but it may provide higher precision "
@@ -59,6 +61,7 @@ static char synopsisString[] =
 	"as well. Your mileage may vary, so only use this flag if you need extra speed and after verifying your stimuli still look "
 	"correct. The biggest speedup is expected for creation of standard 8 bit integer textures from uint8 input matrices, "
 	"e.g., images from imread(), but also for 8 bit integer Luminance+Alpha and RGB textures from double format input matrices.\n"
+    "A 'specialFlags' == 8 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
 	"'floatprecision' defines the precision with which the texture should be stored and processed. Default value is zero, "
 	"which asks to store textures with 8 bit per color component precision, a suitable format for standard images read via "
 	"imread(). A non-zero value will store the textures color component values as floating point precision numbers, useful "
@@ -180,7 +183,8 @@ PsychError SCREENMakeTexture(void)
     PsychCopyInIntegerArg(4, FALSE, &usepoweroftwo);
 
     // Check if size constraints are fullfilled for power-of-two mode:
-    if (usepoweroftwo & 1) {
+    // We relax this constraint if GPU supports non-power-of-two texture extension.
+    if ((usepoweroftwo & 1) && !(windowRecord->gfxcaps & kPsychGfxCapNPOTTex)) {
 		for(ix = 1; ix < (size_t) xSize; ix*=2);
 		if (ix != (size_t) xSize) {
 			PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Power-of-two texture requested but width of imageMatrix is not a power of two!");
@@ -253,9 +257,9 @@ PsychError SCREENMakeTexture(void)
 		texturePointer = textureRecord->textureMemory;
 	}
 	
-    // Does script explicitely request usage of a GL_TEXTURE_2D power-of-two texture?
+    // Does script explicitely request usage of a GL_TEXTURE_2D texture?
     if (usepoweroftwo & 1) {
-      // Enforce creation as a power-of-two texture:
+      // Enforce creation as a GL_TEXTURE_2D texture:
       textureRecord->texturetarget=GL_TEXTURE_2D;
     }
 
@@ -656,6 +660,9 @@ PsychError SCREENMakeTexture(void)
 		// Yes. Label it as such:
 		textureRecord->textureOrientation = 2;
 	}
+    
+    // specialFlags setting 8? Disable auto-mipmap generation:
+    if (usepoweroftwo & 0x8) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;
     
     if(PsychPrefStateGet_DebugMakeTexture()) 	//MARK #4
         StoreNowTime();

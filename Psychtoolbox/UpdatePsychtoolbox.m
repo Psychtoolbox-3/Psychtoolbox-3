@@ -49,6 +49,9 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 %              clients.
 % 05/27/12 mk  Strip backwards compatibility support to pre-R2007a.
 %              Remove PowerPC support.
+%
+% 09/14/12 mk  Drop support for Octave on MS-Windows.
+% 09/14/12 mk  Drop support for 32-Bit Octave on OSX.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -82,14 +85,22 @@ if any(isspace(targetdirectory))
     fprintf('The targetdirectory spec contains white-space. This should work, but has not been tested extensively.\n');
 end
 
-% Check if this is a 64-bit Matlab or Octave, which we don't support at all:
-if strcmp(computer,'PCWIN64') || ...
-  (~isempty(strfind(computer, '_64')) && isempty(strfind(computer, 'linux')) && isempty(strfind(computer, 'apple'))) 
-    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave on MS-Windows.\n');
-    fprintf('You need to install a 32 bit Matlab or Octave to install and use Psychtoolbox.\n');
-    fprintf('Use with 64 bit Matlab or (soon) Octave is fully supported on GNU/Linux and MacOSX.\n');
-    fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
-    error('Tried to setup on a 64 bit version of Matlab or Octave, which is not supported on this operating system.');
+% Check if this is 32-Bit Octave on OSX, which we don't support anymore:
+if ~isempty(strfind(computer, 'apple-darwin')) && isempty(strfind(computer, '64'))
+    fprintf('Psychtoolbox 3.0.10 and later does no longer work with 32-Bit GNU/Octave on OSX.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave on OSX, which is fully supported.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
+end
+
+% Check if this is Octave on Windows, which we don't support at all:
+if strcmp(computer, 'i686-pc-mingw32')
+    fprintf('Psychtoolbox 3.0.10 and later does no longer work with GNU/Octave on MS-Windows.\n');
+    fprintf('You need to use MacOS/X or GNU/Linux if you want to use Psychtoolbox with Octave.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9 which did support 32-Bit Octave 3.2 on Windows.\n');
+    error('Tried to setup on Octave, which is no longer supported on MS-Windows.');
 end
 
 if strcmp(computer,'MAC')
@@ -102,11 +113,11 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-isWin = strcmp(computer,'PCWIN') || strcmp(computer, 'i686-pc-mingw32');
-isOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
-isLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
+IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
+IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
+IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~isWin && ~isOSX && ~isLinux
+if ~IsWin && ~IsOSX && ~IsLinux
     os = computer;
     if strcmp(os,'MAC2')
         os = 'Mac OS9';
@@ -130,7 +141,7 @@ svnpath = GetSubversionPath;
 
 % Check that subversion client is installed.
 % Currently, we only know how to check this for Mac OSX.
-if isOSX && isempty(svnpath)
+if IsOSX && isempty(svnpath)
     fprintf('The Subversion client "svn" is not in its expected\n');
     fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
     fprintf('download and install the most recent Subversion client from:\n');
@@ -143,7 +154,7 @@ fprintf('About to update your working copy of the OpenGL-based Psychtoolbox-3.\n
 updatecommand=[svnpath 'svn update '  targetRevision ' ' strcat('"',targetdirectory,'"') ];
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
-if isOSX || isLinux
+if IsOSX || IsLinux
     err=system(updatecommand);
     result = 'For reason, see output above.';
 else

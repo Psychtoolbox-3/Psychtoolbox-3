@@ -27,6 +27,8 @@ function [spd,S] = MeasMonSpd(window, settings, S, syncMode, whichMeterType, bit
 %	        dhb   Change calling conventions to remove unused args.
 % 9/14/00   dhb   Sync mode is not actually used.  Arg still passed for backwards compat.
 % 2/27/02   dhb   Change noMeterAvail to whichMeterType.
+% 8/19/12   mk    Rewrite g_usebitspp path to use PTB imaging pipeline for higher robustness 
+%                 and to support more display devices.
 
 % Declare Bits++ box global
 global g_usebitspp;
@@ -55,7 +57,7 @@ defaultWhichMeterType = 1;
 if g_usebitspp
     theClut = bitsppClut;
 else
-    theClut = Screen('ReadNormalizedGammaTable',window);
+    theClut = Screen('ReadNormalizedGammaTable', window);
 end
 
 % Check args and set defaults
@@ -63,13 +65,14 @@ if nargin < 5 || isempty(whichMeterType)
 	whichMeterType = defaultWhichMeterType;
 end
 if nargin < 4 || isempty(syncMode)
+    % FIXME: Not used? MeasSpd() would accept it as argument.
 	syncMode = defaultSync;
 end
 if nargin < 3 || isempty(S)
 	S = defaultS;
 end
 
-[null, nMeas] = size(settings);
+[null, nMeas] = size(settings); %#ok<*ASGLU>
 spd = zeros(S(3), nMeas);
 for i = 1:nMeas
     % Set the color.
@@ -79,7 +82,7 @@ for i = 1:nMeas
         case 0
             theClut(2,:) = settings(:, i)';
             if g_usebitspp
-                BitsPlusSetClut(window, theClut .* (2^16 - 1), [], false);
+                Screen('LoadNormalizedGammaTable', window, theClut, 2);
                 Screen('Flip', window, 0, 1);
             else
                 Screen('LoadNormalizedGammaTable', window, theClut);
@@ -89,7 +92,7 @@ for i = 1:nMeas
         case 1
             theClut(2,:) = settings(:, i)';
             if g_usebitspp
-                BitsPlusSetClut(window, theClut .* (2^16 - 1), [], false);
+                Screen('LoadNormalizedGammaTable', window, theClut, 2);
                 Screen('Flip', window, 0, 1);
             else
                 Screen('LoadNormalizedGammaTable',window, theClut);
@@ -97,9 +100,8 @@ for i = 1:nMeas
             spd(:,i) = MeasSpd(S);
         case 2
             error('CVI interface not yet ported to PTB-3.');
-            cviCal = LoadCVICalFile;
-            spd(:,i) =  CVICalibratedDarkMeasurement(cviCal, S, [], [], [], ...
-                                                     window, 1, settings(:,i));
+            % cviCal = LoadCVICalFile;
+            % spd(:,i) =  CVICalibratedDarkMeasurement(cviCal, S, [], [], [], window, 1, settings(:,i));
         otherwise
             error('Invalid meter type set');
     end

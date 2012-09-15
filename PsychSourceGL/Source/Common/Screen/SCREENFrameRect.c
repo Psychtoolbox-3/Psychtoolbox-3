@@ -45,15 +45,11 @@ static char synopsisString[] =
 static char seeAlsoString[] = "FillRect";	
 
 PsychError SCREENFrameRect(void)  
-{
-	
-	PsychColorType					color;
+{	
 	PsychRectType					rect;
 	PsychWindowRecordType			*windowRecord;
-	int								whiteValue;
-	psych_bool							isArgThere;
+	psych_bool						isArgThere;
 	double							penSize, lf, fudge;
-	GLdouble						dVals[4]; 
     double							*xy, *colors, *penSizes;
 	unsigned char					*bytecolors;
 	int								numRects, i, j, nc, mc, nrsize;

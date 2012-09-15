@@ -4,11 +4,11 @@
 	AUTHORS:
   
 		Allen.Ingling@nyu.edu               awi
-                mario.kleiner at tuebingen.mpg.de   mk
+        mario.kleiner at tuebingen.mpg.de   mk
   
 	PLATFORMS: 
 	
-		Only OS X for now.
+		All.
   
 	PROJECTS:
   
@@ -77,7 +77,7 @@ void InitializeSynopsis()
 
 	// Open or close a window or texture:
 	synopsis[i++] = "\n% Open or close a window or texture:";
-	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode]);";	
+	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode][,specialFlags]);";	
 	synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,specialFlags] [,multiSample]);";
 	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";	
 	synopsis[i++] = "Screen('Close', [windowOrTextureIndex or list of textureIndices/offscreenWindowIndices]);";
@@ -199,7 +199,7 @@ void InitializeSynopsis()
 	
 	// Movie and multimedia handling functions:
 	synopsis[i++] = "\n% Movie and multimedia playback functions:";
-	synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0]);";
+	synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1]);";
 	synopsis[i++] =  "Screen('CloseMovie', moviePtr);";
 	synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex], [specialFlags = 0] [, specialFlags2 = 0]);";
 	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
@@ -237,8 +237,8 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('BeginOpenGL', windowPtr [, sharecontext]);  % Prepare window for external OpenGL drawing.";
 	synopsis[i++] = "Screen('EndOpenGL', windowPtr);  % Finish external OpenGL drawing.";
 	synopsis[i++] = "[targetwindow, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');";
-	synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTextureFromMemPointer', windowPtr, textureHandle, imagePtr, width, height, depth [, upsidedown][, target][, glinternalformat][, gltype][, extdataformat]);";
-	synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth] [, textureShader]);";
+	synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTextureFromMemPointer', windowPtr, textureHandle, imagePtr, width, height, depth [, upsidedown][, target][, glinternalformat][, gltype][, extdataformat][, specialFlags]);";
+	synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth][, glHeight][, glDepth][, textureShader][, specialFlags]);";
 	synopsis[i++] = "[ gltexid gltextarget texcoord_u texcoord_v ] =Screen('GetOpenGLTexture', windowPtr, textureHandle [, x][, y]);";
 	
 	synopsis[i++] = "\n% Support for plugins and for builtin high performance image processing pipeline:";
@@ -253,7 +253,6 @@ void InitializeSynopsis()
 	}
 }
 
-
 PsychError PsychDisplayScreenSynopsis(void)
 {
 	int i;
@@ -263,8 +262,3 @@ PsychError PsychDisplayScreenSynopsis(void)
 		
 	return(PsychError_none);
 }
-
-
-
-
-

@@ -25,7 +25,7 @@ assert(all(qVec),'At least one input is not a vector');
 
 % ensure all inputs are cell (wrap in cell if not)
 qCell   = cellfun(@iscell,varargin);
-temp    = num2cell({varargin{~qCell}});
+temp    = num2cell(varargin(~qCell));
 varargin(~qCell) = temp;
 
 % get lengths and check

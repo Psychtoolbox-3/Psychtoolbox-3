@@ -15,7 +15,7 @@ function callStack = AssertMex(varargin)
 % missing or dysfunctional Screen mex files properly.
 %  _________________________________________________________________________
 %
-% See also: AssertOpenGL, COMPUTER, IsOSX, IsOS9, IsWin
+% See also: AssertOpenGL, COMPUTER, IsOSX, IsWin
 
 % HISTORY:
 %
@@ -69,14 +69,20 @@ if IsOctave
         % Proper extension for the .mex file?
         if isempty(strfind(fpathext, '.mex'))
             % Nope, wrong file bound:
+            if Is64Bit
+                oext = ['64' filesep];
+            else
+                oext = filesep;
+            end
+            
             if IsLinux
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/']);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles' oext]);
             end
             if IsOSX
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles/']);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles' oext]);
             end
             if IsWindows
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave3WindowsFiles\']);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave3WindowsFiles' oext]);
             end
             
             fprintf('\n\nIf you have just installed Psychtoolbox, it worked properly and suddenly stopped working\n');
@@ -87,7 +93,7 @@ if IsOctave
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
             curversion = sscanf(version, '%i.%i.%i');
-            if curversion(1) < 3 | curversion(2) < 2 %#ok<OR2>
+            if curversion(1) < 3 || curversion(2) < 2
                 fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 3.2.0 or later.\n', version);
                 error('Tried to run Psychtoolbox on an incompatible Octave version.\n');
             end
@@ -109,7 +115,7 @@ end
 inputNames = [];
 
 % Check to see if there should be a mex file for our platform.
-if isempty(inputNames) | ismember(computer, inputNames) %#ok<OR2>
+if isempty(inputNames) || ismember(computer, inputNames)
     % Element 1 will always be AssertMex. Element 2 will be the calling
     % function unless it is invoked from the commnand line.
     callStack = dbstack;
@@ -168,12 +174,19 @@ if isempty(inputNames) | ismember(computer, inputNames) %#ok<OR2>
         
         if IsWin
             fprintf('On Microsoft Windows with supported Matlab versions (>= V7.4) it could also be that\n');
-            fprintf('the required Visual C++ 2005 runtime libraries are missing on your system.\n');
-            fprintf('Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
-            fprintf('fix this problem. Make sure you follow the download link to Visual Studio SERVICE PACK 1,\n');
-            fprintf('(the latter links), *not* Visual Studio without the SP1.\n\nAfter fixing the problem, retry.\n\n');
+            fprintf('the required Visual C++ 2010 runtime libraries are missing on your system.\n');
+            fprintf('The Psychtoolbox/PsychContributed/ subfolder contains installer files for them, which\n');
+            fprintf('you can execute after quitting Matlab. The name of the file is ');
+            if IsWin(1)
+                fprintf('vcredist_x64.exe\n');
+            else
+                fprintf('vcredist_x86.exe\n');
+            end
+            %fprintf('Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
+            %fprintf('fix this problem. Make sure you follow the download link to Visual Studio SERVICE PACK 1,\n');
+            %fprintf('(the latter links), *not* Visual Studio without the SP1.\n\nAfter fixing the problem, retry.\n\n');
             
-            if strcmp(computer,'PCWIN64')
+            if IsWin(1)
                 % 64 bit Matlab running on 64 bit Windows?!? That won't work.
                 fprintf('And another possible reason for failure:\n\n');
                 fprintf('It seems that you are running a 64-bit version of Matlab on your system.\n');

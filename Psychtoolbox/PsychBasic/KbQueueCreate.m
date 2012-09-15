@@ -137,10 +137,6 @@ function KbQueueCreate(deviceNumber, keyList)
 
 persistent macosxrecent;
 if isempty(macosxrecent)
-    if IsWinMatlabR11Style
-        error('Sorry, keyboard queue functions are unsupported on Matlab versions before R2007a');
-    end
-    
     macosxrecent = IsOSX;
     LoadPsychHID;
 

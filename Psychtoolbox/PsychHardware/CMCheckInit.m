@@ -13,6 +13,7 @@ function CMCheckInit(meterType, PortString)
 % meterType 2 is the CVI (need CVIToolbox) - Not yet implemented!
 % meterType 3 is the CRS Colorimeter
 % meterType 4 is the PR655
+% meterType 5 is the PR670
 %
 % For the PR-series colorimeters, 'PortString' is the optional name of a
 % device string for the serial port or Serial-over-USB port to which the
@@ -27,8 +28,6 @@ function CMCheckInit(meterType, PortString)
 % Other Colorimeters, e.g., CRS ColorCal, have their own specific setup
 % methods and this routine just calls their setup code with default
 % settings.
-%
-
 %
 % 9/15/93 dhb		Modified to use new CMInit properly.
 % 1/18/94 jms		Added gHardware switch
@@ -50,10 +49,13 @@ function CMCheckInit(meterType, PortString)
 % 2/07/09  mk       Add experimental setup code for use of IOPort instead of SerialComm.
 % 2/11/09  cgb,mk   Small fixes: Now we use IOPort instead of SerialComm --
 %                   by default. Verified to work for both PR650 and PR655 toolboxes.
+% 7/16/12  dhb      Choose right global default for 64-bit Matlab.  Hope I
+%                   did this in a way that doesn't break anything else.
+% 7/20/12  dhb      Undid 7/16/12 change.  Error was due to a stale IOPort on my path
 
 global g_serialPort g_useIOPort;
 
-% If g_useIOPort == 1 the IOPort driver shall be used instead of SerialComm:
+% Default method of serial communication
 if isempty(g_useIOPort)
     g_useIOPort = 1;
 end
@@ -198,8 +200,32 @@ switch meterType
             end
         else
             error(['Unsupported OS ' computer]);
-        end
-        
+		end
+		
+	% PR-670 - Functionality should be very similar to the PR-655, though
+	%          it looks like there are a few more commands available for
+	%          the 670.
+	case 5
+		if IsWin || IsOSX || IsLinux
+			% Look for port information in "calibration" file.  If
+			% no special information present, then use defaults.
+			meterports = LoadCalFile('PR670Ports');
+			if isempty(meterports)
+				portNameIn = FindSerialPort(PortString, g_useIOPort);
+			else
+				portNameIn = meterports.in;
+			end
+			
+			stat = PR670init(portNameIn);
+			if strcmp(stat, ' REMOTE MODE')
+				disp('Successfully connected to PR-670!');
+			else
+				disp('Failed to make contact.  If device is connected, try turning it off, type clear all, and then re-trying CMCheckInit.');
+			end
+		else
+			error(['Unsupported OS ' computer]);
+		end
+		
     otherwise,
         error('Unknown meter type');
 end

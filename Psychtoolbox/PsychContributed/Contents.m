@@ -38,7 +38,8 @@
 %                               drivers and installer that are needed to
 %                               use the Microsoft XBOX Kinect under
 %                               Windows. Type "help PsychKinect" for more
-%                               infos.
+%                               infos. The PsychSourceGL/Cohorts/Kinect-v16-withsource.zip
+%                               file contains corresponding source code.
 %
 % libusb-1.0.dll               This is the 32 bit Windows experimental version of
 %                              libusb-1.0 from ...
@@ -47,6 +48,15 @@
 %                              It is licensed under LGPL v2+. You can get a
 %                              more recent version of this dll from the
 %                              website mentioned above if you like.
+%
+%                              The corresponding source code can be found
+%                              in the PsychSourceGL/Cohorts/libusb1-win32/
+%                              subfolder after you have downloaded the full
+%                              ptb source (help UseTheSource).
+%
+% x64/libusb-1.0.dll           This is the 64-Bit windows version for
+%                              64-Bit Matlab.
+%
 %
 % simplepsychtoolboxsetup.sh   Configure OS X priority.  Call from Unix shell, not MATLAB.
 %
@@ -69,6 +79,18 @@
 %                              See help read_rle_rgbe for copyright & authorship info. This is
 %                              a helper routine for ReadHDR - the recommended function for user
 %                              scripts.
+%
+% vcredist_x86.exe             Microsoft Visual C++ 2010 runtime 32-Bit
+%                              redistributable installer. You must use this
+%                              to install the Visual C runtime if you want
+%                              to use the Psychtoolbox for 32-Bit Matlab on
+%                              Microsoft Windows.
+%
+% vcredist_x64.exe             Microsoft Visual C++ 2010 runtime 64-Bit
+%                              redistributable installer. You must use this
+%                              to install the Visual C runtime if you want
+%                              to use the Psychtoolbox for 64-Bit Matlab on
+%                              Microsoft Windows.
 %
 % WinJoystickMex               WinJoystickMex is a very simple/rudimentary
 %                              joystick driver for basic query of position

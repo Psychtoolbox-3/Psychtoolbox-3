@@ -461,7 +461,7 @@ psych_bool PsychCopyInSingleDepthArg(int position, psych_bool required, PsychDep
         return(FALSE);
     if(m!=1 || n!=1 || p!=1)
         PsychErrorExitMsg(PsychError_invalidDepthArg, "1x1 depth argument expected");
-    PsychAddValueToDepthStruct(depthArray[0], depth); 
+    PsychAddValueToDepthStruct((int) depthArray[0], depth); 
     return(TRUE);
 }
 
@@ -493,6 +493,3 @@ psych_bool PsychCopyOutDepthArg(int position, psych_bool required, PsychDepthTyp
         depthsArray[i]=(double)PsychGetValueFromDepthStruct(i,depths);
     return(TRUE);
 }
-
-
-

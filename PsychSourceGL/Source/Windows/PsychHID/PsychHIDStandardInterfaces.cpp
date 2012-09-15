@@ -19,10 +19,6 @@
 
 */
 
-// Define direct input version explicitely to avoid compiler warnings.
-#define DIRECTINPUT_VERSION 0x0800
-#include <dinput.h>
-
 #include "PsychHIDStandardInterfaces.h"
 
 #ifdef __cplusplus

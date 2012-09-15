@@ -517,3 +517,32 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 	// Perform wait for signalled condition with a timeout at absolute system time abstime:
 	return(pthread_cond_timedwait(condition, mutex, &abstime));
 }
+
+/* Set thread affinity mask of calling thread to the modules global cpuMask:
+ * 
+ * 'curCpuMask' is an in/out pointer. If NULL, it is completely ignored. If non-NULL,
+ * the target variable of the pointer will contain the new cpu mask after a change
+ * of mask. If the target variable already contains a valid (non-zero) current cpu mask
+ * and it matches the new target cpu mask, then the actual mask change is omitted, assuming it
+ * is redundant, thereby saving some system call overhead.
+ *
+ * Threads can avoid redundant switches if they keep track of their current cpu mask
+ * by caching it in the *curCpuMask pointer target. They can pass in a zero value if
+ * unsure, or a NULL pointer if they are neither interested in caching, nor in the old
+ * or new value.
+ *
+ * Returns the old pre-switch affinity mask as a 64-Bit bitfield.
+ * Comparing the return value (previous mask) with the *curCpuMask value (new mask)
+ * allows the caller to check if the affinity mask was actually changed, resulting
+ * in a possible thread migration.
+ *
+ * If this function is called without the time lock held, ie., from outside
+ * of other timeglue functions, a small race condition exists which may cause
+ * deferred updated to the real new affinity mask due to 
+ *
+ */
+psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
+{
+    // No-op on OSX:
+    return(INT64_MAX);
+}

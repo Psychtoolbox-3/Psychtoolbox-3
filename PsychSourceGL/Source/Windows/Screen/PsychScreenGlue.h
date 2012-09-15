@@ -71,6 +71,9 @@ char*                       PsychGetDisplayDeviceName(int screenNumber);
 int                         PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber);
 psych_bool					PsychOSIsKernelDriverAvailable(int screenId);
 
+// Return identifying information about GPU for a given screen screenNumber:
+psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);
+
 //end include once
 #endif
 

@@ -41,9 +41,11 @@
 % CreateProceduralNoise         - Create a procedural texture for fast drawing of random noise patches.
 % CreateProceduralSineGrating   - Create a procedural texture for fast drawing of sine grating patches.
 % CreatePseudoGrayLUT           - Create a lookup table for pseudogray conversion - Internal helper function.
+% CreateResolutionPyramid       - Build a mip-map image resolution pyramid for given texture.
 % CreateSinglePassImageProcessingShader - Create a single pass image processing shader for simple but common operations.
 % DisplayUndistortionBezier     - Interactive geometric display calibration for simple needs.
 % DisplayUndistortionBVL        - Interactive geometric display calibration. Recommended!
+% DisplayUndistortionCSV        - Import ASCII data file with geometric display calibration for NVidia "Warp API".
 % DisplayUndistortionHalfCylinder - Interactive geometric display calibration for half-cylinder or spherical projections.
 % DisplayUndistortionSphere     - Interactive geometric display calibration for spherical projections.
 % HookProcessingChains          - Documentation about hook chains and their options.

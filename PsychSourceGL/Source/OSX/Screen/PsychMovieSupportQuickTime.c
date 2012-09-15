@@ -58,6 +58,7 @@ typedef struct {
     QTVisualContextRef  QTMovieContext;
     QTAudioContextRef   QTAudioContext;
     GWorldPtr           QTMovieGWorld;
+    PsychWindowRecordType* parentRecord;
     int loopflag;
     double movieduration;
     int nrframes;
@@ -232,6 +233,7 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].QTMovieContext=NULL;    
     movieRecordBANK[slotid].QTAudioContext=NULL;
     movieRecordBANK[slotid].QTMovieGWorld=NULL;
+    movieRecordBANK[slotid].parentRecord=NULL;
 
     // Assign flags:
     movieRecordBANK[slotid].specialFlags1 = specialFlags1;
@@ -372,6 +374,7 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].theMovie=theMovie;    
     movieRecordBANK[slotid].QTMovieContext=QTMovieContext;    
     movieRecordBANK[slotid].QTAudioContext=QTAudioContext;
+    movieRecordBANK[slotid].parentRecord=win;
     movieRecordBANK[slotid].loopflag = 0;
     *moviehandle = slotid;
 
@@ -452,7 +455,10 @@ void PsychQTDeleteMovie(int moviehandle)
     if (movieRecordBANK[moviehandle].theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
-        
+    
+    // Make sure OpenGL context of our parent window record is active:
+    PsychSetGLContext(movieRecordBANK[moviehandle].parentRecord);
+    
     // Stop movie playback immediately:
     MoviesTask(movieRecordBANK[moviehandle].theMovie, 0);
     StopMovie(movieRecordBANK[moviehandle].theMovie);
@@ -553,7 +559,7 @@ int PsychQTGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     }
     
     if (NULL == out_texture && !checkForImage) {
-        PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of out_texture ptr passed!!!");
+        PsychErrorExitMsg(PsychError_user, "Sorry, use of a 'specialFlags2' setting of 2 for skipping texture creation is not supported by the Quicktime engine.");
     }
     
     // Fetch references to objects we need:

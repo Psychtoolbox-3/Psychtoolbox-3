@@ -107,10 +107,6 @@ end
 
 % Connect to the ColorCal2 if we haven't already.
 if isempty(usbHandle)
-    if IsWinMatlabR11Style
-        error('Sorry, ColorCal2 is unsupported on Matlab versions before R2007a');
-    end
-    
     LoadPsychHID;
 
 	usbHandle = PsychHID('OpenUSBDevice', 2145, 4097);

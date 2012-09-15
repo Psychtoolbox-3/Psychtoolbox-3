@@ -68,7 +68,7 @@ char *BreakLines(char *string,long lineLength)
 	int here;
 	
 	leftMargin=0;
-	length=strlen(string);
+	length = (long) strlen(string);
 	while(1){
 		rightMargin=leftMargin+lineLength;
 		if(rightMargin>=length)return string;		/* successful completion */

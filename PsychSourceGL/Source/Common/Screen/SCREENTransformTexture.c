@@ -43,10 +43,7 @@ static char seeAlsoString[] = "";
 PsychError SCREENTransformTexture(void) 
 {
 	PsychWindowRecordType	*sourceRecord, *targetRecord, *proxyRecord, *sourceRecord2;
-	int testarg, tmpimagingmode, specialFlags, usefloatformat, d;
-	PsychFBO *fboptr;
-	GLint fboInternalFormat;
-	psych_bool needzbuffer;
+	int testarg, specialFlags, usefloatformat, d;
 	
     // All subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -161,8 +158,7 @@ PsychError SCREENTransformTexture(void)
 		PsychAllocInWindowRecordArg(4, TRUE, &targetRecord);
 		if (!PsychIsTexture(targetRecord)) PsychErrorExitMsg(PsychError_user, "'targetTexture' argument must be a handle to a texture or offscreen window.");
 	}
-	
-	
+
 	// Make sure our source textures have at least a pseudo FBO for read-access:
 	PsychCreateShadowFBOForTexture(sourceRecord, FALSE, -1);
 	if (sourceRecord2) PsychCreateShadowFBOForTexture(sourceRecord2, FALSE, -1);
@@ -182,7 +178,7 @@ PsychError SCREENTransformTexture(void)
 	usefloatformat = 0;
 	if (d == 16) usefloatformat = 1;
 	if (d >= 32) usefloatformat = 2;
-	PsychAssignHighPrecisionTextureShaders(targetRecord, sourceRecord, usefloatformat, (specialFlags & 2) ?  0 : 1);
+	PsychAssignHighPrecisionTextureShaders(targetRecord, sourceRecord, usefloatformat, (specialFlags & 2) ?  1 : 0);
 	
 	// Make sure our proxy has suitable bounce buffers if we need any:
 	if (proxyRecord->imagingMode & (kPsychNeedDualPass | kPsychNeedMultiPass)) {
@@ -207,6 +203,9 @@ PsychError SCREENTransformTexture(void)
 	// Restore previous settings:
 	glPopAttrib();
 
+    // Set "dirty" flag on texture: (Ab)used to trigger regeneration of mip-maps during texture drawing of mip-mapped textures.
+    targetRecord->needsViewportSetup = TRUE;
+    
 	//Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, targetRecord->windowIndex);
 

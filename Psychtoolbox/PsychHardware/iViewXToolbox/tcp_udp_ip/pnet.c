@@ -2,10 +2,10 @@
 							  
   MEX file for the tcpip toolbox.
                                                           */
-#define VERSION "Version  2.0.5  2003-09-16"
+#define VERSION "Version  2.0.5 + PTBMods by Mario Kleiner - 2012-09-10"
 
 /*
-%   This file(s) is part of the tcp_udp_ip toolbox (C) Peter Rydesäter et al.
+%   This file(s) is part of the tcp_udp_ip toolbox (C) Peter Rydesater et al.
 %   et al.  1998-2003 for running in MATLAB(R) as scripts and/or plug-ins.
 %
 %   This program is free software; you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 %   along with this program; if not, write to the Free Software
 %   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 %
-%   In addition, as a SPECIAL EXCEPTION, Peter Rydesäter, SWEDEN,
+%   In addition, as a SPECIAL EXCEPTION, Peter Rydesater, SWEDEN,
 %   gives permission to link the code of this program with any library,
 %   and distribute linked combinations of it. You must obey the GNU
 %   General Public License in all respects for all of the code in the
@@ -37,21 +37,25 @@
   Notes for Unix implementation
   Compile this with:
   
-  mex -O pnet.c
+  mex -g -v pnet.c
   
+  On Linux + gcc 4.6+ + Matlab use:
+ 
+  mex -O -g -v CFLAGS='$CFLAGS -fPIC -fexceptions' pnet.c
+ 
   Notes for Windows implementation
  
   When using LCC, compile this with:
   mex -O pnet.c {MATLAB_INSTALL_DIR}\sys\lcc\lib\wsock32.lib -DWIN32
 
   When using Visual C++, compile this with:
-  mex -O pnet.c ws2_32.lib -DWIN32
+  mex -O pnet.c ws2_32.lib winmm.lib -DWIN32
   
   
   == Main Authour ==           == Windows support ==      == Earlie/Basic UDP support ==
-  Peter Rydesäter              Mario Bergeron             Mike Medeiros at 23-Jan-2001.
+  Peter Rydesater              Mario Bergeron             Mike Medeiros at 23-Jan-2001.
                                LYRtech
-  Östersund, Sweden            Québec, Canada
+  Ostersund, Sweden            Quebec, Canada
   +46 70 560 68 16             
   Peter.Rydesater@mh.se        Mario.Bergeron@lyrtech.com
 
@@ -95,6 +99,9 @@
 #include <arpa/inet.h> 
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
+#include <sys/time.h>
+
 #define nonblockingsocket(s)  fcntl(s,F_SETFL,O_NONBLOCK)
 #define DEFAULT_USLEEP        500		/* MK: Changed from 10 msecs to 0.5 msec == 500 microsecs. for lower latency. Should not be a problem on good OS/X and Linux :-) */
 #endif
@@ -187,7 +194,7 @@ void Print_Start_Message(){
 	      "Loaded pnet MEX-file for the tcp/udp/ip-toolbox Compiled @ "
 	      __DATE__ " " __TIME__  "\n"
 	      VERSION "\n"
-	      "Copyright (C) Peter Rydesäter, Sweden, et al. , 1998 - 2003\n"
+	      "Copyright (C) Peter Rydesater, Sweden, et al. , 1998 - 2003\n"
 	      "GNU General Public License, se license.txt for full license notis.\n"
 	      "You are allowed to (dynamicaly) link this file with non-free code. \n\n"
 	      "   http://www.rydesater.com \n\n"
@@ -407,10 +414,16 @@ void __debug_view_con_status(char *str)
     mexPrintf("--------------------\n");
 }
 
+#ifdef WIN32
 /********************************************************************/
 /* Portable time function using matlabs NOW                         */
 double my_now(){
     double sec;
+    
+    sec = ((double) timeGetTime()) / 1000.0;
+    return(sec);
+    
+  /* 
     double dotimenow;
     static double lastdotime;
     mxArray *plhs[1]={NULL};
@@ -424,8 +437,19 @@ double my_now(){
 	    //mexPrintf("wait... drawnow returns: %d\n",ret);
 	    lastdotime= dotimenow;
     }
-    return sec;
+    return sec;   
+  */
 }
+#else
+double my_now()
+{
+    struct timeval tv;
+    double sec;
+    gettimeofday(&tv, NULL);
+    sec = (double) tv.tv_sec + ((double) tv.tv_usec) / (double) 1e6;
+    return(sec);
+}
+#endif
 
 /*******************************************************************************/
 /* Checks that given index is valid index and set current index, "con_index"   */
@@ -644,7 +668,7 @@ void my_mexReturnArrayFromBuff(const int argno,io_buff *buff,const int line)
 {
     const int maxelements=my_mexInputSize(argno);
     const mxClassID id=str2classid(my_mexInputOptionString(argno+1));
-    int dims[20]={0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0 };
+    size_t dims[20]={0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0 };
     const int si=classid2size(id);
     int returnelements= ( (buff->pos/si)< maxelements )?(buff->pos/si):maxelements;
     int deleteelements=returnelements;
@@ -707,7 +731,7 @@ void my_mexReturnArrayFromBuff(const int argno,io_buff *buff,const int line)
 	}
 	gret_args++;
     }
-       //    debug_view_con_status("GET_ARRAY NÄSTAN KLAR");
+       //    debug_view_con_status("GET_ARRAY NSTAN KLAR");
     // Delete from read buffer if not "VIEW" option and dims filled
     if(my_mexFindInputOption(argno+1,"VIEW")==0 && deleteelements>0 ){
 	buff->pos-=deleteelements*si;
@@ -903,7 +927,7 @@ int read2buff(const int len,int newline,int noblock)
 	    break;
 	if( con[con_index].read.pos>=len )
 	    break;
-	if(timeoutat<=my_now() || noblock)
+	if(noblock || timeoutat<=my_now())
 	    break;
 	if(newline){
 	    int n;
@@ -1006,7 +1030,7 @@ int tcpiplisten(int noblock)
     while(1){
 	    if ((new_fd = accept(sock_fd, (struct sockaddr *)&con[con_index].remote_addr,&sin_size)) > -1)
             break;
-        if(timeoutat<=my_now()|| noblock)
+        if(noblock || timeoutat<=my_now())
 	        return -1;
 	    usleep(DEFAULT_USLEEP);
     }

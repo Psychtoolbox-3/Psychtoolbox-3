@@ -7,18 +7,34 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb, aux1, aux2)
 % 'stereomode' parameter set to one of the anaglyph modes (i.e. one of
 % 6=Red-Green anaglyph, 7=Green-Red, 8=Red-Blue, 9=Blue-Red, where
 % Red-Green means "Left eye displayed in red channel, right eye displayed
-% in green channel"). You also need to enable the Psychtoolbox image
-% processing pipeline by setting the 'imagingmode' parameter to at least
-% 'kPsychNeedFastBackingStore'.
+% in green channel").
+%
+% Anaglyph stereo also works in stereo modes 2, 3, 4, 5 and 10 if you used
+% the ...
+% PsychImaging('AddTask', 'LeftView', 'DisplayColorCorrection', 'AnaglyphStereo')
+% ... and ...
+% PsychImaging('AddTask', 'RightView', 'DisplayColorCorrection', 'AnaglyphStereo')
+% ... setup sequence to add an anaglyph shader to the end of each view
+% channel. However, in those "non-pure" exotic anaglyph modes only a subset
+% of the commands mentioned here work, specifically the ones for advanced
+% anaglyph display, ie., subfunctions 'ColorAnaglyphMode' and friends. Inverted mode
+% or simple mode or changing NTSC weights or simple gains does not work in
+% this configuration.
+%
+% Additionally you also need to enable the Psychtoolbox image processing
+% pipeline by using the PsychImaging() command for configuring and opening
+% onscreen windows.
 %
 % Example:
-% imagingmode = kPsychNeedFastBackingStore;
+% PsychImaging('PrepareConfiguration');
 % stereomode = 6;
-% windowPtr = Screen('OpenWindow', screenid, bgcolor, [], [], [], stereomode, 0, imagingmode);
+% windowPtr = PsychImaging('OpenWindow', screenid, bgcolor, [], [], [], stereomode);
 %
-% See help PsychGLImageProcessing for an overview of the imaging pipeline.
+% See 'help PsychImaging' and 'help PsychGLImageProcessing' for an overview
+% of the imaging pipeline.
 %
 % Parameters and their meaning:
+% -----------------------------
 %
 % 'windowPtr' is the handle to a anaglyph stereo onscreen window.
 %
@@ -131,6 +147,9 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb, aux1, aux2)
 % 17.2.2007  Implemented setup code for Max di Lucas inversion trick (MK).
 % 11.11.2007 Implemented setup code for extended/exotic anaglyph shading
 %            and for color overlay support. (MK)
+% 14.08.2012 Implement setup code for anaglyph stereo shaders inside per-view
+%            channels, to handle separate display outputs, e.g., as on MPI
+%            Kuka projection setup.
 
 persistent inverted;
 
@@ -145,11 +164,25 @@ try
         error('Insufficient number of input arguments.');
     end
     
+    % Assume combined shader in 'StereoCompositingBlit' chain:
+    combinedAnaglyph = 1;
+
     % Query GLSL shader handle for anaglyph shader:
-    [slot shaderid blittercfg voidptr glsl luttexid] = Screen('HookFunction', win, 'Query', 'StereoCompositingBlit', 'StereoCompositingShader');
+    [slot shaderid blittercfg voidptr glsl] = Screen('HookFunction', win, 'Query', 'StereoCompositingBlit', 'StereoCompositingShaderAnaglyph'); %#ok<*ASGLU>
 
     % Shader found?
     if slot == -1
+        % Nope. Retry with per-view channels.
+        combinedAnaglyph = 0;
+        [slot shaderid blittercfg voidptr glsl(1)] = Screen('HookFunction', win, 'Query', 'StereoLeftCompositingBlit', 'ICM:AnaglyphStereo');
+        if slot ~= -1
+            [slot shaderid blittercfg voidptr glsl(2)] = Screen('HookFunction', win, 'Query', 'StereoRightCompositingBlit', 'ICM:AnaglyphStereo');
+        end
+    end
+    
+    % Still no shader?
+    if slot == -1
+        % Game over:
         error('Either the imaging pipeline is not enabled for given onscreen window, or it is not switched to Anaglyph stereo mode.');
     end
     
@@ -158,8 +191,9 @@ try
     end
     
     % Bind it:
-    glUseProgram(glsl);
-catch
+    glUseProgram(glsl(1));
+    
+catch %#ok<*CTCH>
     % If anything failed. Unbind:
     glUseProgram(0);
     psychrethrow(psychlasterror);
@@ -171,8 +205,14 @@ end
     end
 
     if strcmpi(cmd, 'InvertedMode')
+        if ~combinedAnaglyph
+            warning('PTB:SetAnaglyphStereoParametersUNSUPPORTED', 'SetAnaglyphStereoParameters(''InvertedMode'') is not supported for separate-viewchannel anaglyph mode. Ignored!');
+            retval = 0;
+            return;
+        end
+        
         % Switch to inverted display (Max di Lucas trick):
-        if isempty(find(inverted == win))
+        if isempty(find(inverted == win)) %#ok<*EFIND>
             % Switch needed: Add windowhandle to our list of inverted
             % windows:
             inverted = [inverted win];
@@ -199,6 +239,12 @@ end
     end
 
     if strcmpi(cmd, 'StandardMode')
+        if ~combinedAnaglyph
+            warning('PTB:SetAnaglyphStereoParametersUNSUPPORTED', 'SetAnaglyphStereoParameters(''StandardMode'') is not supported for separate-viewchannel anaglyph mode. Ignored!');
+            retval = 0;            
+            return;
+        end
+        
         % Switch to standard, non-inverted display:
         winidx = find(inverted == win);
         if ~isempty(winidx)
@@ -224,6 +270,12 @@ end
     end
 
     if strcmpi(cmd, 'BackgroundColorBias')
+        if ~combinedAnaglyph
+            warning('PTB:SetAnaglyphStereoParametersUNSUPPORTED', 'SetAnaglyphStereoParameters(''BackgroundColorBias'') is not supported for separate-viewchannel anaglyph mode. Ignored!');
+            retval = [0, 0, 0];
+            return;
+        end
+        
         uniloc = glGetUniformLocation(glsl, 'ChannelBias');
         retval = glGetUniformfv(glsl, uniloc) * WhiteIndex(win);
         if nargin>=3
@@ -239,6 +291,12 @@ end
     end
 
     if strcmpi(cmd, 'ColorToLuminanceWeights')
+        if ~combinedAnaglyph
+            warning('PTB:SetAnaglyphStereoParametersUNSUPPORTED', 'SetAnaglyphStereoParameters(''ColorToLuminanceWeights'') is not supported for separate-viewchannel anaglyph mode. Ignored!');
+            retval = [0, 0, 0];
+            return;
+        end
+        
         uniloc = glGetUniformLocation(glsl, 'ColorToGrayWeights');
         retval = glGetUniformfv(glsl, uniloc);
         if nargin>=3
@@ -250,6 +308,12 @@ end
     end
 
     if strcmpi(cmd, 'LeftGains')
+        if ~combinedAnaglyph
+            warning('PTB:SetAnaglyphStereoParametersUNSUPPORTED', 'SetAnaglyphStereoParameters(''LeftGains'') is not supported for separate-viewchannel anaglyph mode. Ignored!');
+            retval = [0, 0, 0];
+            return;
+        end
+        
         uniloc = glGetUniformLocation(glsl, 'Gains1');
         retval = abs(glGetUniformfv(glsl, uniloc));
 
@@ -268,6 +332,12 @@ end
     end
     
     if strcmpi(cmd, 'RightGains')
+        if ~combinedAnaglyph
+            warning('PTB:SetAnaglyphStereoParametersUNSUPPORTED', 'SetAnaglyphStereoParameters(''RightGains'') is not supported for separate-viewchannel anaglyph mode. Ignored!');
+            retval = [0, 0, 0];
+            return;
+        end
+        
         uniloc = glGetUniformLocation(glsl, 'Gains2');
         retval = abs(glGetUniformfv(glsl, uniloc));
 
@@ -349,9 +419,12 @@ end
         % created by Screen('OpenWindow', ...) by default) to a more
         % complex and flexible shader. Either that, or reparameterize that
         % shader...
-
-        % Color anaglyph shader already bound to imaging pipeline?
-        if ~strcmpi(shaderid, 'StereoCompositingShaderAnaglyphExtended')
+        
+        % Color anaglyph shader already bound to imaging pipeline? Only for
+        % regular combined case, as we know the proper shader is bound
+        % otherwise, because it was already created by
+        % PsychColorCorrection() during pipeline setup in PsychImaging():
+        if combinedAnaglyph && ~strcmpi(shaderid, 'StereoCompositingShaderAnaglyphExtended')
             % Nope. Destroy old default shader and replace it by our
             % shader:
             Screen('HookFunction', win, 'Remove', 'StereoCompositingBlit', slot);
@@ -377,33 +450,83 @@ end
             % parameters...
         end
         
-        unilocleft = glGetUniformLocation(glsl, 'GainsLeft');
-        unilocright = glGetUniformLocation(glsl, 'GainsRight');
-        gammaloc = glGetUniformLocation(glsl, 'RedGamma');
-        
-        if exist('rgb', 'var') && ~isempty(rgb)
-            if size(rgb,1)~=3 | size(rgb,2)~=3
-                error('Provided left-gain matrix parameter must be a 3x3 component matrix.');
+        if combinedAnaglyph
+            % Regular case, one shader to rule them all:
+            unilocleft = glGetUniformLocation(glsl, 'GainsLeft');
+            unilocright = glGetUniformLocation(glsl, 'GainsRight');
+            gammaloc = glGetUniformLocation(glsl, 'RedGamma');
+            
+            if exist('rgb', 'var') && ~isempty(rgb)
+                if size(rgb,1)~=3 || size(rgb,2)~=3
+                    error('Provided left-gain matrix parameter must be a 3x3 component matrix.');
+                end
+                glUniformMatrix3fv( unilocleft, 1, 0, rgb);
             end
-            glUniformMatrix3fv( unilocleft, 1, 0, rgb);
-        end
+            
+            if exist('aux1', 'var') && ~isempty(aux1)
+                if size(aux1,1)~=3 || size(aux1,2)~=3
+                    error('Provided right-gain matrix parameter must be a 3x3 component matrix.');
+                end
+                glUniformMatrix3fv( unilocright, 1, 0, aux1);
+            end
+            
+            if exist('aux2', 'var') && ~isempty(aux2)
+                if size(aux2,1)~=1 || size(aux2,2)~=1
+                    error('Provided gamma parameter must be a scalar.');
+                end
+                glUniform1f( gammaloc, aux2);
+            end
+        else
+            % Separate shaders for left- and right view channel:
 
-        if exist('aux1', 'var') && ~isempty(aux1)
-            if size(aux1,1)~=3 | size(aux1,2)~=3
-                error('Provided right-gain matrix parameter must be a 3x3 component matrix.');
+            % Handle left channel shader first:
+            unilocleft = glGetUniformLocation(glsl(1), 'GainsLeft');
+            gammaloc = glGetUniformLocation(glsl(1), 'RedGamma');
+            
+            glUseProgram(glsl(1));
+            if exist('rgb', 'var') && ~isempty(rgb)
+                if size(rgb,1)~=3 || size(rgb,2)~=3
+                    error('Provided left-gain matrix parameter must be a 3x3 component matrix.');
+                end
+                glUniformMatrix3fv( unilocleft, 1, 0, rgb);
             end
-            glUniformMatrix3fv( unilocright, 1, 0, aux1);
-        end
+            
+            if exist('aux2', 'var') && ~isempty(aux2)
+                if size(aux2,1)~=1 || size(aux2,2)~=1
+                    error('Provided gamma parameter must be a scalar.');
+                end
+                glUniform1f( gammaloc, aux2);
+            end
 
-        if exist('aux2', 'var') && ~isempty(aux2)
-            if size(aux2,1)~=1 | size(aux2,2)~=1
-                error('Provided gamma parameter must be a scalar.');
+            % Handle right channel shader similarly:
+            glUseProgram(glsl(2));
+
+            % Even the "right gain matrix" is named "GainsLeft" in this case:
+            unilocright = glGetUniformLocation(glsl(2), 'GainsLeft');
+            gammaloc = glGetUniformLocation(glsl(2), 'RedGamma');
+            
+            if exist('aux1', 'var') && ~isempty(aux1)
+                if size(aux1,1)~=3 || size(aux1,2)~=3
+                    error('Provided right-gain matrix parameter must be a 3x3 component matrix.');
+                end
+                glUniformMatrix3fv( unilocright, 1, 0, aux1);
             end
-            glUniform1f( gammaloc, aux2);
+            
+            if exist('aux2', 'var') && ~isempty(aux2)
+                if size(aux2,1)~=1 || size(aux2,2)~=1
+                    error('Provided gamma parameter must be a scalar.');
+                end
+                glUniform1f( gammaloc, aux2);
+            end            
         end
     end
 
     if strcmpi(cmd, 'CreateMonoOverlay')
+        winfo = Screen('GetWindowInfo', win);
+        if winfo.StereoMode < 2 || winfo.StereoMode > 9
+            error('SetAnaglyphStereoParameters(''CreateMonoOverlay'') is not supported in current stereomode %i!', winfo.StereoMode);
+        end
+
         % Create a monoscopic overlay window which is not affected by
         % anaglyph conversion, but just overlaid to the final rendering.
         glUseProgram(0);

@@ -29,21 +29,6 @@
 
 #include "Screen.h"
 
-
-/*
-	PsychGetColorSizeFromWindowRecord()
-	
-	Accepts a windows records and return the size in bits of a color plane. This assumes that all color planes have the same size.
-	We might have to augment this to account for situations when this is not true.  
-	
-*/
-int PsychGetColorSizeFromWindowRecord(PsychWindowRecordType *windowRecord)
-{
-	PsychErrorExitMsg(PsychError_internal, "PsychGetColorSizeFromWindowRecord not implemented!!!");
-}
-
-
-
 int PsychGetWindowDepthValueFromWindowRecord(PsychWindowRecordType *windowRecord)
 {
     if(PsychIsOnscreenWindow(windowRecord)) 

@@ -9,10 +9,9 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % program, checking for all required resources and privileges before it
 % starts.
 %
-% CAUTION: Psychtoolbox *will not work* yet with 64 bit versions of Matlab
-% or Octave on Microsoft Windows. It will work with 64 bit Matlab and
-% Octave on Linux and 64-Bit Matlab on OSX, with 64-Bit Octave support on
-% OSX planned.
+% CAUTION: Psychtoolbox *will not work* with GNU/Octave on Microsoft, or
+% with 32-Bit Octave on OSX, as support for these setups has been cancelled
+% for the 3.0.10 series.
 %
 % If you want to download older versions of Psychtoolbox than 3.0.10, use
 % the DownloadLegacyPsychtoolbox() function instead of this function.
@@ -271,19 +270,30 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 %              question if old PTB folder should be deleted, caused
 %              *deletion* of the folder! Oh dear! This bug present since
 %              late 2011.
+%
+% 09/14/12 mk  Drop support for Octave on MS-Windows.
+% 09/14/12 mk  Drop support for 32-Bit Octave on OSX.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
 clear mex
 
-% Check if this is a 64-bit Matlab or Octave, which we don't support at all:
-if strcmp(computer,'PCWIN64') | ...
-  (~isempty(strfind(computer, '_64')) & isempty(strfind(computer, 'linux')) & isempty(strfind(computer, 'apple'))) 
-    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave on MS-Windows.\n');
-    fprintf('You need to install a 32 bit Matlab or Octave to install and use Psychtoolbox.\n');
-    fprintf('Use with 64 bit Matlab or (soon) Octave is fully supported on GNU/Linux and MacOSX.\n');
-    fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
-    error('Tried to setup on a 64 bit version of Matlab or Octave, which is not supported on this operating system.');
+% Check if this is 32-Bit Octave on OSX, which we don't support anymore:
+if ~isempty(strfind(computer, 'apple-darwin')) && isempty(strfind(computer, '64'))
+    fprintf('Psychtoolbox 3.0.10 and later does no longer work with 32-Bit GNU/Octave on OSX.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave on OSX, which is fully supported.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
+end
+
+% Check if this is Octave on Windows, which we don't support at all:
+if strcmp(computer, 'i686-pc-mingw32')
+    fprintf('Psychtoolbox 3.0.10 and later does no longer work with GNU/Octave on MS-Windows.\n');
+    fprintf('You need to use MacOS/X or GNU/Linux if you want to use Psychtoolbox with Octave.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9 which did support 32-Bit Octave 3.2 on Windows.\n');
+    error('Tried to setup on Octave, which is no longer supported on MS-Windows.');
 end
 
 if strcmp(computer,'MAC')
@@ -296,11 +306,11 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-isWin = strcmp(computer,'PCWIN') | strcmp(computer, 'i686-pc-mingw32');
-isOSX = ~isempty(strfind(computer, 'MAC')) | ~isempty(strfind(computer, 'apple-darwin'));
-isLinux = strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
+IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
+IsOSX = ~isempty(strfind(computer, 'MAC')) | ~isempty(strfind(computer, 'apple-darwin'));
+IsLinux = strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~isWin & ~isOSX & ~isLinux
+if ~IsWin & ~IsOSX & ~IsLinux
     os = computer;
     if strcmp(os,'MAC2')
         os = 'Mac OS9';
@@ -340,7 +350,7 @@ if nargin < 1
 end
 
 if isempty(targetdirectory)
-    if isOSX
+    if IsOSX
         % Set default path for OSX install:
         targetdirectory=fullfile(filesep,'Applications');
     else
@@ -442,7 +452,7 @@ fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetd
 fprintf('\n');
 
 % Check for alternative install location of Subversion:
-if isWin
+if IsWin
     % Search for Windows executable in path:
     svnpath = which('svn.exe');
 else
@@ -460,7 +470,7 @@ else
     % simply have to hope that it is in some system dependent search path.
 
     % Currently, we only know how to check this for Mac OSX.
-    if isOSX
+    if IsOSX
         % Try OS/X 10.5 Leopard install location for svn first:
         svnpath='/usr/bin/';
         if exist('/usr/bin/svn','file')~=2
@@ -533,7 +543,7 @@ if success
 else
 	fprintf('Write permission test in folder %s failed.\n', targetdirectory);
     if strcmp(m,'Permission denied')
-        if isOSX
+        if IsOSX
             fprintf([
             'Sorry. You would need administrator privileges to install the \n'...
             'Psychtoolbox into the ''%s'' folder. You can either quit now \n'...
@@ -616,7 +626,7 @@ end
 
 % Handle Windows ambiguity of \ symbol being the filesep'arator and a
 % parameter marker:
-if isWin
+if IsWin
     searchpattern = [filesep filesep 'Psychtoolbox[' filesep pathsep ']'];
     searchpattern2 = [filesep filesep 'Psychtoolbox'];
 else
@@ -663,10 +673,10 @@ while any(regexp(path,searchpattern))
 end
 
 % Download Psychtoolbox
-if isOSX
+if IsOSX
     fprintf('I will now download the latest Psychtoolbox for OSX.\n');
 else
-    if isLinux
+    if IsLinux
         fprintf('I will now download the latest Psychtoolbox for Linux.\n');
     else
         fprintf('I will now download the latest Psychtoolbox for Windows.\n');
@@ -699,7 +709,7 @@ fprintf('%s\n',checkoutcommand);
 fprintf('Downloading. It''s nearly 100 MB, which can take many minutes. \nAlas there may be no output to this window to indicate progress until the download is complete. \nPlease be patient ...\n');
 fprintf('If you see some message asking something like "accept certificate (p)ermanently, (t)emporarily? etc."\n');
 fprintf('then please press the p key on your keyboard, possibly followed by pressing the ENTER key.\n\n');
-if isOSX | isLinux
+if IsOSX | IsLinux
     [err]=system(checkoutcommand);
     result = 'For reason, see output above.';
 else
@@ -718,7 +728,7 @@ end
 %     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
 %     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
 %     fprintf('%s\n\n',checkoutcommand);
-%     if isOSX | isLinux
+%     if IsOSX | IsLinux
 %         [err]=system(checkoutcommand);
 %         result = 'For reason, see output above.';
 %     else
@@ -735,7 +745,7 @@ end
 %     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
 %     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
 %     fprintf('%s\n\n',checkoutcommand);
-%     if isOSX | isLinux
+%     if IsOSX | IsLinux
 %         [err]=system(checkoutcommand);
 %         result = 'For reason, see output above.';
 %     else
@@ -778,27 +788,27 @@ else
     fprintf('Success.\n\n');
 end
 
-fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
-    'allow future updates by every user on this machine without requiring administrator privileges.\n']);
-try
-    if isOSX | isLinux
-        [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
-    else
-        [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
-    end
-catch
-    s = 0;
-    m = 'Setting file attributes is not supported under Octave.';
-end
-
-if s
-    fprintf('Success.\n\n');
-else
-    fprintf('\nFILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
-    fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
-    fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
-    fprintf('The error message of FILEATTRIB was: %s\n\n', m);
-end
+% fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
+%     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
+% try
+%     if IsOSX | IsLinux
+%         [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
+%     else
+%         [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
+%     end
+% catch
+%     s = 0;
+%     m = 'Setting file attributes is not supported under Octave.';
+% end
+% 
+% if s
+%     fprintf('Success.\n\n');
+% else
+%     fprintf('\nFILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
+%     fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
+%     fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
+%     fprintf('The error message of FILEATTRIB was: %s\n\n', m);
+% end
 
 fprintf('You can now use your newly installed ''%s''-flavor Psychtoolbox. Enjoy!\n',flavor);
 fprintf('Whenever you want to upgrade your Psychtoolbox to the latest ''%s'' version, just\n',flavor);

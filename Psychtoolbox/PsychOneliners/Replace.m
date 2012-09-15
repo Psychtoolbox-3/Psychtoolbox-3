@@ -9,7 +9,7 @@ function [A, tf] = Replace(A, S1, S2)
 %      Replace([1 NaN Inf 8 99],[NaN Inf 99],[12 13 14]) % -> [1 12 13 8 14]
 %
 %   [B, TF] = Replace(A,S1,S2) also returns a logical vector TF of the same
-%   size as A. TF is true for those elements that are Replaced.
+%   size as A. TF is true for those elements that are replaced.
 %
 %   A and S1 can be cell arrays of strings. In that case S2 should be a
 %   cell array as well but can contain mixed types. Example:

@@ -5,6 +5,8 @@ function p = cparse( str , openal)
 % p = cparse( str )
 
 % 22-Dec-2005 -- created (RFM)
+% 28-Aug-2012 -- Modified; Handle datatypes GLint64, GLuint64 and GLsync. (MK)
+% 28-Aug-2012 -- Modified; Make more robust against unparseable functions. (MK)
 
 if nargin<2
     openal = 0;
@@ -28,7 +30,7 @@ p.full=str;
 
 % make list of data types
 ctypes='void|char|unsigned char|signed char|short|unsigned short|signed short|short int|unsigned short int|signed short int|int|unsigned int|signed int|long|unsigned long|signed long|long int|unsigned long int|signed long int|float|double';
-ogltypes='GLenum|GLboolean|GLbitfield|GLbyte|GLshort|GLint|GLsizei|GLubyte|GLushort|GLuint|GLfloat|GLclampf|GLdouble|GLclampd|GLvoid|GLintptr|GLsizeiptr|GLchar|GLUnurbs|GLUquadric|GLUtesselator|GLhandleARB';
+ogltypes='GLenum|GLboolean|GLbitfield|GLbyte|GLshort|GLint64|GLint|GLsizei|GLubyte|GLushort|GLuint64|GLuint|GLfloat|GLclampf|GLdouble|GLclampd|GLvoid|GLintptr|GLsizeiptr|GLchar|GLUnurbs|GLUquadric|GLUtesselator|GLhandleARB|GLsync';
 oaltypes='ALenum|ALboolean|ALbitfield|ALbyte|ALshort|ALint|ALsizei|ALubyte|ALushort|ALuint|ALfloat|ALclampf|ALdouble|ALclampd|ALvoid|ALintptr|ALsizeiptr|ALchar';
 types=[ ctypes '|' ogltypes '|' oaltypes];
 
@@ -44,9 +46,9 @@ else
     r=regexp(str,sprintf('(?<const>const)? ?(?<basetype>%s) ?(?<stars>[\\* ]*) ?(?<fname>\\w+) ?\\( ?(?<argin>.*) ?\\).*',types),'names');
 end
 
-if isempty(r)    
+if isempty(r) || length(r) < 1   
     p = [];
-    % fprintf('Skipped!\n');
+    fprintf('Skipped! [%s]\n', str);
     return;
 end
 
@@ -66,6 +68,12 @@ p.argin.full='';
 for i=1:numel(p.argin.args),
 
     r=regexp(p.argin.args(i).full,sprintf('(?<const>const)? ?(?<basetype>%s) ?(?<stars>[\\* ]*) ?(?<argname>\\w*)',types),'names');
+    if isempty(r) || length(r) < 1
+        p = [];
+        fprintf('Skipped-II! [%s]\n', str);
+        return;
+    end
+    
     r.stars=r.stars(find(r.stars~=' '));
     p.argin.args(i).type.full=strtrim([ r.const ' ' r.basetype r.stars ]);
     p.argin.args(i).full=strtrim([ r.const ' ' r.basetype r.stars ' ' r.argname ]);

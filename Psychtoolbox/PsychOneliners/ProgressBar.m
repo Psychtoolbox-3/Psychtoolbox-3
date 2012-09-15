@@ -18,6 +18,12 @@ function f = ProgressBar(nMax,str)
 %   merged with utility by us / CSSM by: DN 2008
 %  2008-09-16  DN Added elapsed time and estimated time left
 
+if IsOctave
+    % Octave either doesn't do nested functions, or doesn't have persistent
+    % state within nested functions, at least in version 3.2.4
+    error('ProgressBar is not supported on Octave');
+end
+
 if nargin>1
     head = sprintf('%s\n',str);
 else

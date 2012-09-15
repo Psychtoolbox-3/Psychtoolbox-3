@@ -69,9 +69,12 @@ static char synopsisString[] =
 	"32 bits floating point precision per color component. If 64 bits are selected but the "
 	"hardware does not support this in float precision, a 15 bit precision per color channel "
 	"signed integer format will be tried instead.\n"
-	"'specialFlags' optional parameter to set special properties, defaults to zero. If you set "
-	"it to 2 then the offscreen window will be drawn with especially high precision, see "
-	"specialFlags setting of 2 in help for Screen('DrawTexture') for more explanation. \n"
+	"'specialFlags' optional parameter to set special properties, defaults to zero. "
+    "If you set it to 1 then the offscreen window is created in GL_TEXTURE_2D format if possible. Use of "
+    "GL_TEXTURE_2D format is currently not automatically compatible with use of specialFlags setting 2.\n"
+    "If you set 'specialFlags' to 2 then the offscreen window will be drawn with especially high precision, see "
+	"specialFlags setting of 2 in help for Screen('DrawTexture') for more explanation.\n"
+    "A 'specialFlags' == 8 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
 	"'multiSample' optional number of samples to use for anti-aliased drawing: This defaults "
 	"to zero if omitted, ie., no anti-aliasing is performed when drawing into this offscreen "
 	"window. If you set a positive non-zero number of samples and your system supports "
@@ -98,8 +101,6 @@ PsychError SCREENOpenOffscreenWindow(void)
     int						screenNumber, depth, targetScreenNumber;
     PsychRectType			rect;
     PsychColorType			color;
-    PsychColorModeType  	mode; 
-    psych_bool				didWindowOpen;
     PsychWindowRecordType	*exampleWindowRecord, *windowRecord, *targetWindow;
     psych_bool				wasColorSupplied;
     char*					texturePointer;
@@ -340,7 +341,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 		}
 
 		// Allocate framebuffer object for this Offscreen window:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[0]), fboInternalFormat, needzbuffer, PsychGetWidthFromRect(rect), PsychGetHeightFromRect(rect), multiSample)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[0]), fboInternalFormat, needzbuffer, (int) PsychGetWidthFromRect(rect), (int) PsychGetHeightFromRect(rect), multiSample, specialFlags)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_user, "Creation of Offscreen window in imagingmode failed for some reason :(");
 		}
@@ -353,8 +354,8 @@ PsychError SCREENOpenOffscreenWindow(void)
 		windowRecord->textureNumber = windowRecord->fboTable[0]->coltexid;
 		windowRecord->textureMemorySizeBytes = 0;
 		windowRecord->textureMemory = NULL;
-		windowRecord->texturetarget = GL_TEXTURE_RECTANGLE_EXT;
-		windowRecord->surfaceSizeBytes = PsychGetWidthFromRect(rect) * PsychGetHeightFromRect(rect) * (windowRecord->depth / 8);
+		windowRecord->texturetarget = (specialFlags & 0x1) ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_EXT;
+		windowRecord->surfaceSizeBytes = (size_t) (PsychGetWidthFromRect(rect) * PsychGetHeightFromRect(rect) * (windowRecord->depth / 8));
 
 		// Set bpc for FBO backed offscreen window:
 		windowRecord->bpc = (int) (windowRecord->depth / 4);
@@ -381,22 +382,22 @@ PsychError SCREENOpenOffscreenWindow(void)
 		nbytes=0;
 		switch (depth) {
 			case 8: // Pure LUMINANCE texture:
-				memset((void*) texturePointer, color.value.rgba.r, windowRecord->textureMemorySizeBytes);
+				memset((void*) texturePointer, (int) color.value.rgba.r, windowRecord->textureMemorySizeBytes);
 				break;
 				
 			case 16: // LUMINANCE + ALPHA
 				while (nbytes < windowRecord->textureMemorySizeBytes) {
-					*(texturePointer++) = color.value.rgba.r;
-					*(texturePointer++) = color.value.rgba.a;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.r;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.a;
 					nbytes+=2;
 				}
 				break;
 				
 			case 24: // RGB:
 				while (nbytes < windowRecord->textureMemorySizeBytes) {
-					*(texturePointer++) = color.value.rgba.r;
-					*(texturePointer++) = color.value.rgba.g;
-					*(texturePointer++) = color.value.rgba.b;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.r;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.g;
+					*(texturePointer++) = (psych_uint8) color.value.rgba.b;
 					nbytes+=3;
 				}
 				break;        
@@ -405,20 +406,20 @@ PsychError SCREENOpenOffscreenWindow(void)
 				if (bigendian) {
 					// Code for big-endian machines, e.g., PowerPC:
 					while (nbytes < windowRecord->textureMemorySizeBytes) {
-						*(texturePointer++) = color.value.rgba.a;
-						*(texturePointer++) = color.value.rgba.r;
-						*(texturePointer++) = color.value.rgba.g;
-						*(texturePointer++) = color.value.rgba.b;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.a;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.r;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.g;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.b;
 						nbytes+=4;
 					}
 				}
 				else {
 					// Code for little-endian machines, e.g., IntelPC, IntelMAC, aka Pentium.
 					while (nbytes < windowRecord->textureMemorySizeBytes) {
-						*(texturePointer++) = color.value.rgba.b;
-						*(texturePointer++) = color.value.rgba.g;
-						*(texturePointer++) = color.value.rgba.r;
-						*(texturePointer++) = color.value.rgba.a;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.b;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.g;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.r;
+						*(texturePointer++) = (psych_uint8) color.value.rgba.a;
 						nbytes+=4;
 					}
 				}
@@ -461,7 +462,10 @@ PsychError SCREENOpenOffscreenWindow(void)
 	}
 	else {
 		// Old-style setup for non-FBO Offscreen windows:
-		
+        
+        // Special texture format?
+		if (specialFlags & 0x1) windowRecord->texturetarget = GL_TEXTURE_2D;
+        
 		// Let's create and bind a new texture object and fill it with our new texture data.
 		PsychCreateTexture(windowRecord);
     }
@@ -469,6 +473,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 	// Assign GLSL filter-/lookup-shaders if needed:
 	PsychAssignHighPrecisionTextureShaders(windowRecord, targetWindow, usefloatformat, (specialFlags & 2) ? 1 : 0);
 	
+    // specialFlags setting 8? Disable auto-mipmap generation:
+    if (specialFlags & 0x8) windowRecord->specialflags |= kPsychDontAutoGenMipMaps;    
+
     // Window ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(windowRecord);
     

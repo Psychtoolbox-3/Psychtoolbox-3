@@ -1931,4 +1931,3 @@ void PsychQTExitVideoCapture(void)
 }
 
 #endif
-

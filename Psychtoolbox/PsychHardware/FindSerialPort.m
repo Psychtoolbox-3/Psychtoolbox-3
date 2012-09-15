@@ -96,19 +96,6 @@ if nargin < 3 || isempty(dontFail)
     dontFail = 0;
 end
 
-if IsOS9
-	fprintf('I think that you are using Mac OS 9. If so, you should not be trying\n');
-	fprintf('to use FindSerialPort.  In fact, you shouldn''t need to.  I think that\n');
-	fprintf('PsychSerial is your friend.\n\n');
-	error('Please upgrade to OS/X or use some other method to establish serial communication.');
-end
-
-if ~(IsOSX || IsWin || IsLinux)
-	fprintf('It appears that you are using an operating system other than Mac OS/X,\n');
-	fprintf('Linux or Windows. I hope that you are using some other Unix variant.\n');
-	fprintf('If so, FindSerialPort may work for you. We have not tested it. You are about to...\n');
-end
-
 % Init to all-empty return arguments:
 PortNumber = [];
 

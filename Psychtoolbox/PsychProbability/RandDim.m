@@ -12,6 +12,6 @@ if dimsize==1 || dim>ndims(in)
     return;
 end
 
-v(1:ndims(in))  = {':'};                % Create the index that will transform x. a(':') werkt net zo goed als a(:)
+v(1:ndims(in))  = {':'};                % Create the index that will transform x. a(':') works just as well as a(:)
 v{dim}          = randperm(dimsize);    % Throw in random order indices for the dim-to-be-randomized.
 mat             = in(v{:});             % Use this indexing cell
