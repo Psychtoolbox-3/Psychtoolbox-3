@@ -3,11 +3,11 @@
 	089C1669FE841209C02AAC07 /* Project object */ = {
 		activeBuildConfigurationName = Release;
 		activeExecutable = 838B993E0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool */;
+		activeSDKPreference = macosx10.4;
 		activeTarget = BF9257E70C039F6200D7A82A /* Build All */;
 		addToTargets = (
 			BF9257E70C039F6200D7A82A /* Build All */,
 		);
-		breakpointsGroup = 83B62FE60D3556D800971329 /* XCBreakpointsBucket */;
 		codeSenseManager = 838B994E0D34A549002B2A7B /* Code sense */;
 		executables = (
 			838B993E0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool */,
@@ -53,8 +53,8 @@
 				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
 				PBXFileTableDataSourceColumnWidthsKey = (
 					20,
-					281,
-					294,
+					686,
+					60,
 					20,
 					48,
 					43,
@@ -70,8 +70,8 @@
 					PBXFileDataSource_Warnings_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 270332844;
-			PBXWorkspaceStateSaveDate = 270332844;
+			PBXPerProjectTemplateStateSaveDate = 369368649;
+			PBXWorkspaceStateSaveDate = 369368649;
 		};
 		sourceControlManager = 838B994D0D34A549002B2A7B /* Source Control */;
 		userBuildSettings = {
@@ -98,12 +98,12 @@
 	};
 	838B993E0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool */ = {
 		isa = PBXExecutable;
-		activeArgIndex = 2147483647;
 		activeArgIndices = (
 		);
 		argumentStrings = (
 		);
 		autoAttachOnCrash = 1;
+		breakpointsEnabled = 1;
 		configStateDict = {
 		};
 		customDataFormattersEnabled = 1;
@@ -121,12 +121,12 @@
 	};
 	838B993F0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool_ppc */ = {
 		isa = PBXExecutable;
-		activeArgIndex = 2147483647;
 		activeArgIndices = (
 		);
 		argumentStrings = (
 		);
 		autoAttachOnCrash = 1;
+		breakpointsEnabled = 1;
 		configStateDict = {
 		};
 		customDataFormattersEnabled = 1;
@@ -153,12 +153,6 @@
 	838B994E0D34A549002B2A7B /* Code sense */ = {
 		isa = PBXCodeSenseManager;
 		indexTemplatePath = "";
-	};
-	83B62FE60D3556D800971329 /* XCBreakpointsBucket */ = {
-		isa = XCBreakpointsBucket;
-		name = "Project Breakpoints";
-		objects = (
-		);
 	};
 	BF9257DF0C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */ = {
 		activeExec = 0;

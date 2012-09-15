@@ -9,11 +9,9 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % program, checking for all required resources and privileges before it
 % starts.
 %
-% CAUTION: Psychtoolbox *will not work* yet with 64 bit versions of Octave
-% on Microsoft Windows. It will work with 64 bit Matlab and Octave on Linux
-% and OSX, and 64-Bit Matlab on Windows. 64-Bit support for Octave on
-% Windows will only be considered if many more people show interest in
-% Octave on Windows, than now.
+% CAUTION: Psychtoolbox *will not work* with GNU/Octave on Microsoft, or
+% with 32-Bit Octave on OSX, as support for these setups has been cancelled
+% for the 3.0.10 series.
 %
 % If you want to download older versions of Psychtoolbox than 3.0.10, use
 % the DownloadLegacyPsychtoolbox() function instead of this function.

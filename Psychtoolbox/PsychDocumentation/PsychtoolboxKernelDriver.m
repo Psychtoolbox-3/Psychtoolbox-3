@@ -4,8 +4,8 @@
 % kext). It currently should fully work with AMD/ATI Radeon graphics cards
 % of the X1000, HD2000, HD3000 and HD4000 series. It works with the most
 % recent HD-5000 series chips and later, although some functionality (10
-% Bit native framebuffer support) is not yet available. On NVidia cards,
-% beamposition queries are supported.
+% Bit native framebuffer support) is not yet available. On NVidia and Intel
+% cards, beamposition queries are supported.
 %
 % The driver needs to be manually loaded by a user with administrator
 % privileges and provides a few special services to PTB-3, ie., PTB's
@@ -15,8 +15,8 @@
 % * Beamposition queries (See help BeampositionQueries) allow for
 % especially robust and accurate stimulus onset timestamping. They are
 % supported by OS-X on all PowerPC systems and on Intel based systems with
-% NVidia graphics cards, but not on Intel systems with AMD/ATI graphics. The
-% driver restores this functionality.
+% NVidia graphics cards, but not on Intel systems with AMD/ATI graphics or
+% Intel graphics. The driver restores this functionality.
 %
 % * Multihead display sync: The driver allows to synchronize the display
 % refresh cycles of the displays connected to a multihead graphics card

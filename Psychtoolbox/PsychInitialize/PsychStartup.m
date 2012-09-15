@@ -25,14 +25,31 @@ try
         % link dependencies:
         
         % Find path to SDK-Root folder:
-        sdkroot = [getenv('GSTREAMER_SDK_ROOT_X86_64') 'bin'];
+        sdkroot = getenv('GSTREAMER_SDK_ROOT_X86_64');
+        if isempty(sdkroot) && exist('C:\gstreamer-sdk\2012.5\', 'dir')
+            sdkroot = 'C:\gstreamer-sdk\2012.5\x86_64\';
+        end
+        
+        if isempty(sdkroot) && exist('C:\gstreamer-sdk\2012.7\', 'dir')
+            sdkroot = 'C:\gstreamer-sdk\2012.7\x86_64\';
+        end
+        
+        if isempty(sdkroot) && exist('D:\gstreamer-sdk\2012.5\', 'dir')
+            sdkroot = 'D:\gstreamer-sdk\2012.5\x86_64\';
+        end
+        
+        if isempty(sdkroot) && exist('D:\gstreamer-sdk\2012.7\', 'dir')
+            sdkroot = 'D:\gstreamer-sdk\2012.7\x86_64\';
+        end
         
         if isempty(sdkroot)
             fprintf('\nPsychStartup: Path to GStreamer runtime is undefined! This probably means that\n');
             fprintf('PsychStartup: the 64-Bit GStreamer SDK from www.gstreamer.com is not installed.\n');
-            fprintf('PsychStartup: The Psychtoolbox Screen() mex file will fail to work until you fix this!\n');
-            fprintf('PsychStartup:  Read ''help GStreamer'' for instructions.\n\n');
+            fprintf('PsychStartup: The Psychtoolbox Screen() mex file will fail to work until you fix\n');
+            fprintf('PsychStartup: this! Read ''help GStreamer'' for instructions.\n\n');
         else
+            sdkroot = [sdkroot 'bin'];
+            
             fprintf('\nPsychStartup: Adding path of installed GStreamer runtime to library path. [%s]\n', sdkroot);
             
             % Get current path:
