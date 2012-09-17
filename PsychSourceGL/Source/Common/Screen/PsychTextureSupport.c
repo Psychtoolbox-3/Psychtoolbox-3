@@ -841,8 +841,10 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // This makes even sense for negative filterMode arguments, because the filterMode
         // parameter is passed as an attribute to the filtershader, so the shader itself can
         // decide how to implement a specific blur level on its own, unrestricted by us:
-        glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
-        glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);	
+        if (texturetarget == GL_TEXTURE_2D) {
+            glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+        }
     }
 	else {
         // Standard hardware texture sampling/filtering: Select filter-mode for texturing:
@@ -881,8 +883,10 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             }
 
             // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
-            glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
-            glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+            if (texturetarget == GL_TEXTURE_2D) {
+                glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+                glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+            }
         }
         else {
             // Negative filterMode: This is mostly meant for fast drawing of blurred (low-pass filtered) textures
@@ -894,8 +898,10 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             // mipmap pyramid, according to the filterMode, starting with mip level 0, i.e,
             // full resolution for a value of -1, then level 1 aka half-resolution for a value
             // of -2 etc.:
-            glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, (-1 * filterMode) - 1);
-            glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  (-1 * filterMode) - 1);
+            if (texturetarget == GL_TEXTURE_2D) {
+                glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, (-1 * filterMode) - 1);
+                glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  (-1 * filterMode) - 1);
+            }
         }
 		
 		// Optional texture lookup shader set up (in Screen('MakeTexture') or due to disabled color clamping...)
@@ -1116,8 +1122,10 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
-        glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
-        glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+        if (texturetarget == GL_TEXTURE_2D) {
+            glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+        }
         
         // Unbind texture:
 		glBindTexture(texturetarget, 0);
