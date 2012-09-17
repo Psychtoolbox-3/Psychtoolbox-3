@@ -18,7 +18,6 @@
 % clear
 clear all;
 
-% Set some photoreceptor properties
 % Set some photoreceptor properties.
 photoreceptors = DefaultPhotoreceptors('GuineaPig');
 photoreceptors = FillInPhotoreceptors(photoreceptors);
@@ -37,7 +36,7 @@ S = photoreceptors.nomogram.S;
 % Routine WattsToRetIrradiance does the conversion, taking into account
 % instrument calibration information as well as the relative spectrum,
 % which here we just load.
-load spd_apparatusrel													% Relative spectrum measured in apparatus
+load spd_apparatusrel										% Relative spectrum measured in apparatus
 readingInWatts = 0.0128e-6 ;  								% Watts (0.0128 uWatts)
 [irradianceWatts,irradianceS] = WattsToRetIrradiance( ...
 	spd_apparatusrel,S_apparatusrel,readingInWatts);

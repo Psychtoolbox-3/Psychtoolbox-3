@@ -31,6 +31,7 @@ function [lensTransmit,lensDensity] = LensTransmittance(S,species,source,ageInYe
 % 8/12/11 dhb  Start to write CIE version.  Return lensDensity too.
 %         dhb  Finish. Add pupil size.
 % 8/13/11 dhb  Linearly extrapolate read functions outside of range.
+% 9/17/12 dhb  Return density for 'None' case as well.
 
 % Default
 if (nargin < 2 || isempty(species))
@@ -105,6 +106,7 @@ switch (species)
 		switch (source)
 			case ('None'),
 				lensTransmit = ones(S(3),1)';
+                lensDensity = zeros(S(3),1)';
 			otherwise,
 				error('Unsupported species specified');
 		end

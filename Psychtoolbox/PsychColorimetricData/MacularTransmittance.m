@@ -39,6 +39,8 @@ function [macTransmit,macDensity] = MacularTransmittance(S,species,source,fieldS
 %              of the correction factor.
 % 5/8/12  dhb  Removed comment that we can't reproduce CIE tabular 10 deg
 %              values.
+% 9/17/12 dhb  Return density for 'None' case as well.
+
 
 % Default
 if (nargin < 2 || isempty(species))
@@ -95,6 +97,7 @@ switch (species)
 		switch (source)
 			case ('None'),
 				macTransmit = ones(S(3),1)';
+                macDensity = zeros(S(3),1)';
 			otherwise,
 				error('Unsupported species specified');
         end
