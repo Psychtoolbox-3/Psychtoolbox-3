@@ -4,7 +4,8 @@
 % 64 bit versions of Mac OS/X uses the GStreamer multi-media framework for
 % all multi-media related operations. For 32 bit versions of Matlab on
 % OS/X, use of GStreamer is still optional, Apple Quicktime is the default
-% on such setups.
+% on such setups, but Quicktime is a deprecated technology in Psychtoolbox,
+% so we encourage you to use GStreamer on all system configurations.
 %
 % All movie playback, movie creation, video capture and video recording
 % operations are based on GStreamer. These functions won't work without a
@@ -144,9 +145,4 @@
 % After a couple minutes of download and compile time, you'll have a fully
 % functional GStreamer compiled from source - assuming everything goes
 % well, that is.
-%
-% Yet another alternative download location for older versions of GStreamer
-% can be found here:
-%
-% <http://itee.uq.edu.au/~davel/gstreamer/>
 %

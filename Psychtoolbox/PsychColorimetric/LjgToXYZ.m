@@ -8,16 +8,19 @@ function XYZ = LjgToXYZ(Ljg)
 % This can return imaginary values if you pass XYZ values
 % that are outside reasonable physical gamut limits.
 %
-% 3/27/01  dhb  Wrote it.
-% 3/4/05	 dhb	Handle new version of optimization toolbox, too.
+% 3/27/01  dhb      Wrote it.
+% 3/4/05   dhb	    Handle new version of optimization toolbox, too.
+% 9/23/12  dhb, ms  Update options for current Matlab versions.
 
 % Check for needed optimization toolbox, and version.
 if (exist('fmincon') == 2)
-	% Search options
-	options = optimset;
-	options = optimset(options,'Diagnostics','off','Display','off');
-	options = optimset(options,'LargeScale','off');
-	
+    % Search options
+    if (verLessThan('optim','4.1'))
+        error('Your version of the optimization toolbox is too old.  Update it.');
+    end
+    options = optimset('fmincon');
+    options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','active-set');
+    
 	% Search bounds -- XYZ must be positive.
 	vlb = zeros(3,1);
 	vub = [200 100 200]';

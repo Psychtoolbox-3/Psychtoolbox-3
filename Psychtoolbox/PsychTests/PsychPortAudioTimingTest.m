@@ -105,7 +105,7 @@ end
 % Request latency mode 2, which used to be the best one in our measurement:
 % classes 3 and 4 didn't yield any improvements, sometimes they even caused
 % problems.
-reqlatencyclass = 2; % class 2 empirically the best, 3 & 4 == 2
+reqlatencyclass = 2;
 
 % Requested output frequency, may need adaptation on some audio-hw:
 freq = 44100;       % Must set this. 96khz, 48khz, 44.1khz.
@@ -113,9 +113,12 @@ buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 suggestedLatencySecs = [];
 
 if IsWin
-	 suggestedLatencySecs = 0.015 %#ok<NOPRT>
+    % Hack to accomodate bad Windows systems or sound cards. By default,
+    % the more aggressive default setting of something like 5 msecs can
+    % cause sound artifacts on cheaper / less pro sound cards:
+    suggestedLatencySecs = 0.015 %#ok<NOPRT>
 end
- 
+
 % Needs to determined via measurement once for each piece of audio
 % hardware:
 if nargin < 3 
@@ -155,8 +158,7 @@ pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffer
 prelat = PsychPortAudio('LatencyBias', pahandle, latbias) %#ok<NOPRT,NASGU>
 postlat = PsychPortAudio('LatencyBias', pahandle) %#ok<NOPRT,NASGU>
 
-%mynoise = randn(2,freq * 0.1);
-% Generate some beep sound 1000 Hz, 0.1 secs, 90% amplitude:
+% Generate some beep sound 1000 Hz, 0.1 secs, 50% amplitude:
 mynoise(1,:) = 0.5 * MakeBeep(1000, 0.1, freq);
 mynoise(2,:) = mynoise(1,:);
 
@@ -178,7 +180,7 @@ if useDPixx
     % Check settings by printing them:
     dpixstatus = Datapixx('GetMicrophoneStatus') %#ok<NOPRT,NASGU>
 
-    % Triggerlevel shall be 10% aka 0.1:
+    % Triggerlevel shall be 10% aka 0.1: Will need tweaking in practice...
     DatapixxAudioKey('TriggerLevel', 0.1);
 
     % DataPixx: Setup Screen imagingpipeline to support measurement:
@@ -190,13 +192,13 @@ else
     % Default: No need for imaging pipeline:
     win = Screen('OpenWindow', screenid, 0);
 end
+
 ifi = Screen('GetFlipInterval', win);
 
 % Wait for keypress.
-while KbCheck; end;
-KbWait;
+KbStrokeWait;
 
-% Realtime scheduling:
+% Realtime scheduling: Can be used if otherwise timing is not good enough.
 % Priority(MaxPriority(win));
 
 % Ten measurement trials:
@@ -207,6 +209,7 @@ for i=1:10
     PsychPortAudio('Start', pahandle, 1, inf, 0);
 
     % Wait a bit, say 100 msecs, so hardware is certainly running and settled:
+    % Technically only needed for a first warmup trial...
     WaitSecs(0.1);
 
     if useDPixx
@@ -225,6 +228,12 @@ for i=1:10
     if exactstart
         % Schedule start of audio at exactly the predicted visual
         % stimulus onset caused by the next flip command:
+        % With the current driver, this is not strictly needed if one has
+        % performed one "warmup trial", maybe outside the trial loop, ie.,
+        % 'Start'ed and stopped playback once. In such a scenario, one
+        % could just move the 'Start' call from above in place of the
+        % 'RescheduleStart' calls, as regular 'Start' latency will be very
+        % short, so no need to "pre-start" playback with such trickery...
         PsychPortAudio('RescheduleStart', pahandle, visonset1 + waitframes * ifi, 0);
     end
 

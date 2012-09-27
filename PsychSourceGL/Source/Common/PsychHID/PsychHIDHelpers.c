@@ -407,7 +407,33 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
 */
 void PsychHIDVerifyInit(void)
 {
-    if(!HIDHaveDeviceList()) HIDBuildDeviceList( 0, 0);
+    psych_bool success = TRUE;
+    
+    // Build HID device list if it doesn't already exist:
+    if (!HIDHaveDeviceList()) success = (psych_bool) HIDBuildDeviceList(0, 0);
+    
+    // This check can only be made against the 64-Bit HID Utilities, as the older 32-Bit
+    // version is even more crappy and can't report meaningful error status:
+    #if defined(__LP64__)
+    if (!success) {
+        printf("PsychHID-ERROR: Could not enumerate HID devices (HIDBuildDeviceList() failed)! There can be various reasons,\n");
+        printf("PsychHID-ERROR: ranging from bugs in Apples HID software to a buggy HID device driver for some connected device,\n");
+        printf("PsychHID-ERROR: to general operating system malfunction. A reboot or device driver update for 3rd party HID devices\n");
+        printf("PsychHID-ERROR: maybe could help. Check the OSX system log for possible HID related error messages or hints. Aborting...\n");
+        PsychErrorExitMsg(PsychError_system, "HID device enumeration failed due to malfunction in the OSX 64 Bit Apple HID Utilities framework.");
+    }
+    #endif
+    
+    // Double-Check to protect against pathetic Apple software:
+    if (!HIDHaveDeviceList()) {
+        printf("PsychHID-ERROR: Could not enumerate HID devices (HIDBuildDeviceList() success, but HIDHaveDeviceList() still failed)!\n");
+        printf("PsychHID-ERROR: Reasons can be ranging from bugs in Apples HID software to a buggy HID device driver for some connected device,\n");
+        printf("PsychHID-ERROR: to general operating system malfunction. A reboot or device driver update for 3rd party HID devices\n");
+        printf("PsychHID-ERROR: maybe could help. Check the OSX system log for possible HID related error messages or hints. Aborting...\n");
+        PsychErrorExitMsg(PsychError_system, "HID device enumeration failed due to malfunction in the OSX Apple HID Utilities framework (II).");
+    }
+    
+    // Verify no security sensitive application is blocking our low-level access to HID devices:
 	PsychHIDWarnInputDisabled(NULL);
 }
 
