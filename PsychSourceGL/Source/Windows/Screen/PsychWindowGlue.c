@@ -1007,7 +1007,7 @@ dwmdontcare:
 		 wc.cbWndExtra    = 0;
 		 wc.hInstance     = hInstance;
 		 wc.hIcon         = LoadIcon(hInstance, IDI_WINLOGO);
-		 wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+		 wc.hCursor       = NULL; // Set window class cursor to NULL. LoadCursor(NULL, IDC_ARROW);
 		 wc.hbrBackground = NULL;
 		 wc.lpszMenuName  = NULL;
 		 wc.lpszClassName = "PTB-OpenGL";
@@ -1030,6 +1030,15 @@ dwmdontcare:
 		 for (i = 1; (hostwinHandle == NULL) && (i <= 2); i++) EnumWindows(PsychHostWindowEnumFunc, i);
 		 if (hostwinHandle) {
 			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Window enumeration done. Our hostwindow is HWND=%p, Name: '%s'\n\n", hostwinHandle, hostwinName);
+            
+            // Find thread that created GUI windows aka hostwinHandle, then attach our own
+            // input queues etc. to it, so they share their event processing. This may help
+            // with GetChar() et al. functionality on Win-Vista and later, and may help making
+            // HideCursor et al. working again. Or at least, it is my last hope before i'm out
+            // of ideas...
+            if (!AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(hostwinHandle, NULL), TRUE) && (PsychPrefStateGet_Verbosity() > 1)) {
+                printf("PTB-WARNING: Attaching our thread input to Matlab thread input failed. Expect GetChar() and Show/HideCursor() trouble.\n");
+            }
 		}
 		else {
 			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-WARNING: Host application window enumeration failed! This may cause trouble with CharAvail() and GetChar() :-(\n\n");
