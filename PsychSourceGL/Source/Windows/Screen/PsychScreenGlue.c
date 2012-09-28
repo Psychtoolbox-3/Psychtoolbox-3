@@ -82,6 +82,8 @@ static int					displayDeviceGUIDValid[kPsychMaxPossibleDisplays];		// GUID for D
 static int					ddrawnumDisplays;
 
 static psych_bool enableVBLBeamposWorkaround = FALSE;	// Is the special workaround for beamposition queries needed?
+static HCURSOR oldCursor = NULL; // Backup copy of current cursor shape, while cursor is "hidden" and NULL-Shape assigned.
+static HCURSOR invisibleCursor = NULL;
 
 //file local functions
 void InitCGDisplayIDList(void);
@@ -97,6 +99,8 @@ extern psych_bool ChangeScreenResolution (int screenNumber, int width, int heigh
 //Initialization functions
 void InitializePsychDisplayGlue(void)
 {
+    BYTE andMask[32][32];
+    BYTE xorMask[32][32];    
     int i;
     
     //init the display settings flags.
@@ -114,6 +118,14 @@ void InitializePsychDisplayGlue(void)
 	
     //init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
+    
+    // No cursor shape for backup/restore in Show/HideCursor() yet:
+    oldCursor = NULL;
+    
+    // Create our own "invisible Cursor":
+    memset(andMask, 0xff, sizeof(andMask));
+    memset(xorMask, 0x00, sizeof(xorMask));
+    invisibleCursor = CreateCursor(NULL, 0, 0, 32, 32, andMask, xorMask);
 }
 
 // This callback function is called by Windows EnumDisplayMonitors() function for each
@@ -835,14 +847,26 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
 
 void PsychHideCursor(int screenNumber, int deviceIdx)
 {
+  // Store backup copy of cursor shape for later restore, assign invisible
+  // cursor, in case ShowCursor() doesn't do its job right, which is sadly
+  // the case on many modern Matlab + MS-Windows combos :-( :
+  oldCursor = SetCursor(invisibleCursor);
+
   // Hide the mouse cursor: We ignore the screenNumber as Windows
-  // doesn't allow to set the cursor per screen anyway.
-  while(ShowCursor(FALSE)>=0);
+  // doesn't allow to set the cursor per screen anyway. We decrement to -1000
+  // instead of -1 as needed, so other apps (Matlab) will have a harder time
+  // unhiding the cursor, unless they are as cunning as us.
+  while(ShowCursor(FALSE) >= -1000);
+  
   return;
 }
 
 void PsychShowCursor(int screenNumber, int deviceIdx)
 {
+  // Restore old cursor shape:
+  if (oldCursor) SetCursor(oldCursor);
+  oldCursor = NULL;
+  
   // Show the mouse cursor: We ignore the screenNumber as Windows
   // doesn't allow to set the cursor per screen anyway.
   while(ShowCursor(TRUE)<0);
