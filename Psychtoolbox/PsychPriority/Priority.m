@@ -173,6 +173,13 @@ function oldPriority=Priority(newPriority)
 persistent killUpdateNotNeeded;
 persistent didPriorityKillUpdate;
 
+if ~isempty(getenv('PSYCH_IN_VM'))
+   % Running inside Virtual machine. We no-op. Everything else has potential
+   % for bogging the VM down to a standstill:
+   oldPriority = 0; % Dummy return - No realtime sched active.
+   return;
+end
+
 if IsLinux
    % Linux: We do not use a separate MEX file anymore. Instead we use a
    % built-in helper subroutine of Screen(), accessed via the special code -5

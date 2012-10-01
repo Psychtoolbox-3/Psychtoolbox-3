@@ -1180,7 +1180,12 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 double PsychOSVRefreshFromMode(XRRModeInfo *mode)
 {
   double dot_clock = (double) mode->dotClock / 1000.0;
-  double vrefresh = (((dot_clock * 1000.0) / mode->hTotal) * 1000.0) / mode->vTotal;
+  double vrefresh;
+
+  // Sanity check:
+  if ((dot_clock <= 0) || (mode->hTotal < 1) || (mode->vTotal < 1)) return(0);
+ 
+  vrefresh = (((dot_clock * 1000.0) / mode->hTotal) * 1000.0) / mode->vTotal;
 
   // Divide vrefresh by 1000 to get real Hz - value:
   vrefresh = vrefresh / 1000.0;
@@ -1388,7 +1393,7 @@ float PsychGetNominalFramerate(int screenNumber)
   XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, 0, NULL);
 
   // Modeline with plausible values returned by RandR?
-  if (mode && (mode->hTotal >= mode->width) && (mode->vTotal >= mode->height)) {
+  if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
     if (PsychPrefStateGet_Verbosity() > 4) {
       printf ("RandR: %s (0x%x) %6.1fMHz\n",
       mode->name, (int)mode->id,
@@ -1409,7 +1414,7 @@ float PsychGetNominalFramerate(int screenNumber)
   }
   else {
     // No modeline from RandR or invalid modeline. Retry with vidmode extensions:
-    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychGetNominalFramerate: Using XF86VidModeExt fallback path...\n");
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychGetNominalFramerate: No mode or invalid mode from RandR. Using XF86VidModeExt fallback path...\n");
 
     if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
       // Failed to use VidMode-Extension. We just return a vrefresh of zero.
@@ -1426,7 +1431,7 @@ float PsychGetNominalFramerate(int screenNumber)
 
   // More child-protection: (utterly needed!)
   if ((dot_clock <= 0) || (mode_line.htotal < 1) || (mode_line.vtotal < 1)) {
-      if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychGetNominalFramerate: Invalid modeline retrieved.\n");
+      if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychGetNominalFramerate: Invalid modeline retrieved from RandR/VidModeExt. Giving up!\n");
       return(0);
   }
   

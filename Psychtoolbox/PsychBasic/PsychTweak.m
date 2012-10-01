@@ -37,6 +37,17 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % Warnings and some Info output.
 %
 %
+% PsychTweak('UseGPUIndex', gpuidx);
+% -- Use GPU with index 'gpuidx' for low-level access on Linux and OSX,
+% instead of the automatically chosen GPU. This only works on multi-gpu
+% systems. Hybrid-Graphics MacBookPro laptops are automatically handled,
+% so there shouldn't be any need for this manual selection. The manual
+% selection is needed in classic multi-gpu systems, e.g., MacPros or
+% PC workstations with multiple powerful GPUs installed. On such systems,
+% normally the first GPU (index 0) would always be used. This command
+% allows to override that choice.
+%
+%
 % Debugging of GStreamer based functions:
 % ---------------------------------------
 %
@@ -180,7 +191,15 @@ if strcmpi(cmd, 'PrepareForVirtualMachine')
         % to be able to test that config at all inside a VM:
         Screen('Preference', 'ConserveVRAM', bitor(Screen('Preference', 'ConserveVRAM'), 64));
     end
+
+    % Disable all sync tests and video refresh calibrations:
+    Screen('Preference', 'SkipSyncTests', 2);
     
+    % Signal we're inside a VM via environment variable:
+    % This is, e.g., used to prevent use of Priority() scheduling,
+    % Which can have bad effects on a running Virtual machine.
+    setenv('PSYCH_IN_VM', '1');
+
     return;
 end
 
@@ -227,6 +246,21 @@ if strcmpi(cmd, 'GStreamerDumpFilterGraph')
     end
     
     setenv('GST_DEBUG_DUMP_DOT_DIR', val);
+    return;
+end
+
+if strcmpi(cmd, 'UseGPUIndex')
+    if length(varargin) < 1
+        error('Must provide a gpu index to use..');
+    end
+
+    val = varargin{1};
+    if ~isnumeric(val) || ~isscalar(val) || min(val) < 0
+        error('%s: Parameter must be an integer index greater or equal to zero.', cmd);
+    end
+    val = round(val);
+
+    setenv('PSYCH_USE_GPUIDX', sprintf('%i', val));
     return;
 end
 
