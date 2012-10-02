@@ -103,8 +103,8 @@ if isempty(codec)
     codec = '';
 else
     % This list of codec's - as specified by numeric FOURCC codes -
-    % is specific to OS/X with the Quicktime video recording engine:
-    if IsOSX
+    % is specific to 32-Bit Matlab on OS/X with the Quicktime video recording engine:
+    if isnumeric(codec) && IsOSX && ~Is64Bit && Screen('Preference', 'DefaultVideocaptureEngine') == 0
         switch(codec)
             case 0,
                 codec = '';
@@ -134,33 +134,37 @@ else
     end
 end
 
-% If no user specified codec, then choose one of the
-% following on Linux and Windows -- These are for the
-% GStreamer based capture engine:
-if IsLinux || IsWin
+% If no user specified codec, then choose one of the following if the
+% GStreamer based video capture engine is used:
+if Screen('Preference', 'DefaultVideocaptureEngine') > 0
     if isempty(codec)
-	% These do not work yet:
-	%codec = ':CodecType=huffyuv'  % Huffmann encoded YUV + MPEG-4 audio: FAIL!
-	%codec = ':CodecType=ffenc_h263p'  % H263 video + MPEG-4 audio: FAIL!
-	%codec = ':CodecType=yuvraw' % Raw YUV + MPEG-4 audio: FAIL!
-
-	% These are so slow, they are basically useless for live recording:
-	%codec = ':CodecType=theoraenc'% Theoravideo + Ogg vorbis audio: Gut @ 320 x 240
-	%codec = ':CodecType=vp8enc_webm'   % VP-8/WebM  + Ogg vorbis audio: Ok @ 320 x 240, miserabel higher.
-	%codec = ':CodecType=vp8enc_matroska'   % VP-8/Matroska  + Ogg vorbis audio: Gut @ 320 x 240
-
-	% The good ones...
-	%codec = ':CodecType=ffenc_mpeg4' % % MPEG-4 video + audio: Tut ok @ 640 x 480.
-	%codec = ':CodecType=xvidenc'  % MPEG-4 video + audio: Tut sehr gut @ 640 x 480 Very good a-v sync! Works well in all conditions. -> Champion.
-	%codec = ':CodecType=x264enc Keyframe=1 Videobitrate=8192 AudioCodec=alawenc ::: AudioSource=pulsesrc ::: Muxer=qtmux'  % H264 video + MPEG-4 audio: Tut seshr gut @ 640 x 480 
-	%codec = ':CodecType=VideoCodec=x264enc speed-preset=1 noise-reduction=100000 ::: AudioCodec=faac ::: Muxer=avimux'
-	%codec = ':CodecSettings=Keyframe=60 Videobitrate=8192 '
-	%codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 '
-	codec = ''
+        % These do not work yet:
+        %codec = ':CodecType=huffyuv'  % Huffmann encoded YUV + MPEG-4 audio: FAIL!
+        %codec = ':CodecType=ffenc_h263p'  % H263 video + MPEG-4 audio: FAIL!
+        %codec = ':CodecType=yuvraw' % Raw YUV + MPEG-4 audio: FAIL!
+        
+        % These are so slow, they are basically useless for live recording:
+        %codec = ':CodecType=theoraenc'% Theoravideo + Ogg vorbis audio: Gut @ 320 x 240
+        %codec = ':CodecType=vp8enc_webm'   % VP-8/WebM  + Ogg vorbis audio: Ok @ 320 x 240, miserabel higher.
+        %codec = ':CodecType=vp8enc_matroska'   % VP-8/Matroska  + Ogg vorbis audio: Gut @ 320 x 240
+        
+        % The good ones...
+        %codec = ':CodecType=ffenc_mpeg4' % % MPEG-4 video + audio: Tut ok @ 640 x 480.
+        %codec = ':CodecType=xvidenc'  % MPEG-4 video + audio: Tut sehr gut @ 640 x 480 Very good a-v sync! Works well in all conditions. -> Champion.
+        %codec = ':CodecType=x264enc Keyframe=1 Videobitrate=8192 AudioCodec=alawenc ::: AudioSource=pulsesrc ::: Muxer=qtmux'  % H264 video + MPEG-4 audio: Tut seshr gut @ 640 x 480
+        %codec = ':CodecType=VideoCodec=x264enc speed-preset=1 noise-reduction=100000 ::: AudioCodec=faac ::: Muxer=avimux'
+        %codec = ':CodecSettings=Keyframe=60 Videobitrate=8192 '
+        %codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 '
+        
+        % Assign default auto-selected codec:
+        codec = ':CodecType=DEFAULTencoder';
     else
+        % Assign specific user-selected codec:
         codec = [':CodecType=' codec];
     end
 end
+
+fprintf('Using codec: %s\n', codec);
 
 if nargin < 3
    withsound = [];
@@ -240,7 +244,7 @@ try
         % Windows often has unreliable camera video resolution detection.
         % Therefore we hard-code the resolution to 640x480, the most common
         % case, to make it work "most of the time(tm)":
-        grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480],[] ,[], [] , codec, withsound);
+        grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480], [], [], [], codec, withsound);
     else
         % Is this the legacy Quicktime videocapture engine?
         if Screen('Preference', 'DefaultVideocaptureEngine') == 0
@@ -250,9 +254,17 @@ try
         end
         
         % No need for Windows-style workarounds:
-        grabber = Screen('OpenVideoCapture', win, [], [],[] ,[], [] , codec, withsound);
+        grabber = Screen('OpenVideoCapture', win, [0], [], [], [], [], codec, withsound);
     end
 
+for nreps = 1:1
+    % Non-legacy engine? GStreamer allows more convenient spec of moviename:
+    if Screen('Preference', 'DefaultVideocaptureEngine') > 0
+        % Select a moviename for the recorded movie file:
+        mname = sprintf('SetNewMoviename=%s_%i.mov', moviename, nreps);
+        Screen('SetVideoCaptureParameter', grabber, mname);
+    end
+    
     % Start capture, request 30 fps. Capture hardware will fall back to
     % fastest supported framerate if it is not supported (i think).
     % Some hardware disregards the framerate parameter. Especially the
@@ -261,16 +273,6 @@ try
     % framerate by itself, based on lighting conditions. With bright scenes
     % it can run at 30 fps, at lower light conditions it reduces the
     % framerate to 15 fps, then to 7.5 fps.
-for nreps = 1:1
-
-    % Non-legacy engine? GStreamer allows more convenient spec of
-    % moviename:
-    if Screen('Preference', 'DefaultVideocaptureEngine') > 0
-        % Select a moviename for the recorded movie file:
-        mname = sprintf('SetNewMoviename=%s_%i.mov', moviename, nreps);
-        Screen('SetVideoCaptureParameter', grabber, mname);
-    end
-    
     Screen('StartVideoCapture', grabber, 30, 1)
 
     oldtex = 0;

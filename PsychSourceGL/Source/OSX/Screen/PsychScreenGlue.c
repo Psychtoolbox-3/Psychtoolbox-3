@@ -1132,6 +1132,15 @@ void InitPsychtoolboxKernelDriverInterface(void)
         // but MacBookPro's with hybrid graphics have a decent chance of working.
     }
     
+    // A bit of a hack for now: Allow usercode to select which gpu in a multi-gpu
+    // system should be used for low-level mmio based features. If the environment
+    // variable PSYCH_USE_GPUIDX is set to a number, it will try to use that GPU:
+    // TODO: Replace this by true multi-gpu support and - far in the future? -
+    // automatic mapping of screens to gpu's:
+    if (getenv("PSYCH_USE_GPUIDX")) {
+      activeGPU = atoi(getenv("PSYCH_USE_GPUIDX"));
+      if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to use GPU number %i for low-level access during this session, as requested by usercode.\n", activeGPU);
+    }
     
 error_abort:
     
