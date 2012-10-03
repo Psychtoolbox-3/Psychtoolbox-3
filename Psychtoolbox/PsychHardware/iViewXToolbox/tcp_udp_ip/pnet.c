@@ -37,11 +37,11 @@
   Notes for Unix implementation
   Compile this with:
   
-  mex -g -v pnet.c
+  mex -g -v -largeArrayDims pnet.c
   
   On Linux + gcc 4.6+ + Matlab use:
  
-  mex -O -g -v CFLAGS='$CFLAGS -fPIC -fexceptions' pnet.c
+  mex -O -g -v CFLAGS='$CFLAGS -fPIC -fexceptions' -largeArrayDims pnet.c
  
   Notes for Windows implementation
  
@@ -49,7 +49,7 @@
   mex -O pnet.c {MATLAB_INSTALL_DIR}\sys\lcc\lib\wsock32.lib -DWIN32
 
   When using Visual C++, compile this with:
-  mex -O pnet.c ws2_32.lib winmm.lib -DWIN32
+  mex -O pnet.c ws2_32.lib winmm.lib -DWIN32 -largeArrayDims
   
   
   == Main Authour ==           == Windows support ==      == Earlie/Basic UDP support ==
@@ -285,6 +285,7 @@ mxClassID classid2size(const mxClassID id)
 /* Windows implementation of perror() function */
 #ifdef WIN32
 /********************************************************************/
+/*
 void perror(const char *context )
 {
     int wsa_err;
@@ -322,6 +323,7 @@ void perror(const char *context )
     }
     return;
 }
+ **/
 #endif
 
 /********************************************************************/
@@ -668,7 +670,7 @@ void my_mexReturnArrayFromBuff(const int argno,io_buff *buff,const int line)
 {
     const int maxelements=my_mexInputSize(argno);
     const mxClassID id=str2classid(my_mexInputOptionString(argno+1));
-    size_t dims[20]={0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0 };
+    mwSize dims[20]={0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0 };
     const int si=classid2size(id);
     int returnelements= ( (buff->pos/si)< maxelements )?(buff->pos/si):maxelements;
     int deleteelements=returnelements;
@@ -703,11 +705,11 @@ void my_mexReturnArrayFromBuff(const int argno,io_buff *buff,const int line)
 	if(returnelements==maxelements){        // ...then only accept correct shape.
 	    int n;
 	    for(n=0;n<return_no_dims;n++)
-		dims[n]=(int)my_mexInputCell(argno,n);
+		dims[n]=(mwSize) my_mexInputCell(argno,n);
 	}
     }else if(returnelements>0){           // else... Just return row of available elements
-	dims[0]=1;
-	dims[1]=returnelements;
+	dims[0] = 1;
+	dims[1] = (mwSize) returnelements;
 	return_no_dims=2;
     }
     if(! (gret_args>gnlhs && gret_args>1) ){
