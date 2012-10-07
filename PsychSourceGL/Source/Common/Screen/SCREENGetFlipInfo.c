@@ -98,7 +98,7 @@ PsychError SCREENGetFlipInfo(void)
 
 	// Type 3: Fetch logged swap completion events:
 	if (infoType == 3) {
-		PsychOSSwapCompletionLogging(windowRecord, 2, 1);
+		PsychOSSwapCompletionLogging(windowRecord, 3, 1);
 		return(PsychError_none);
 	}
 #else

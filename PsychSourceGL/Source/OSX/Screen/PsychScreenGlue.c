@@ -430,28 +430,30 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
 	
 	// Allocate output arrays: These will get auto-released at exit
 	// from Screen():
-	*widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
-	*heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
-	*hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
-	*bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	*widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+	*heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+	*hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+	*bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
 	
 	// Fetch modes and store into arrays:
     for(i=0; i<numPossibleModes; i++) {
+        tempWidth = tempHeight = tempFrequency = tempDepth = 0;
+        
         tempMode = CFArrayGetValueAtIndex(modeList,i);
         n=CFDictionaryGetValue(tempMode, kCGDisplayWidth);
-        CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
+        if (n) CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
 		(*widths)[i] = tempWidth;
 		
         n=CFDictionaryGetValue(tempMode, kCGDisplayHeight);
-        CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
+        if (n) CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
 		(*heights)[i] = tempHeight;
 
         n=CFDictionaryGetValue(tempMode, kCGDisplayRefreshRate);
-        CFNumberGetValue(n, kCFNumberLongType, &tempFrequency) ;
+        if (n) CFNumberGetValue(n, kCFNumberLongType, &tempFrequency) ;
 		(*hz)[i] = tempFrequency;
 
 		n=CFDictionaryGetValue(tempMode, kCGDisplayBitsPerPixel);
-		CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
+		if (n) CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
 		(*bpp)[i] = tempDepth;
     }
 

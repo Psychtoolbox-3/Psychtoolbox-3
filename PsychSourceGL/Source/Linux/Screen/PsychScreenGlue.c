@@ -1299,12 +1299,20 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
  */
 psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
 {
-    int i, j, nsizes, nrates;
+    int i, j, nsizes = 0, nrates = 0;
 
     // No op on system without RandR:
     if (!has_xrandr_1_2) {
         // Dummy assignment:
-        *cgMode = 1;
+        *cgMode = -1;
+        
+        // Also cannot restore display settings at Window / Screen / Runtime close time, so disable it:
+        displayOriginalCGSettingsValid[setting->screenNumber] = FALSE;
+        
+        // Some info for the reader:
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Getting or setting display video modes unsupported on this graphics driver due to lack of RandR v1.2 support.\n");
+        
+        // Return success in good faith that its ok.
         return(TRUE);
     }
 
@@ -1314,21 +1322,28 @@ psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSe
     int height = (int) PsychGetHeightFromRect(setting->rect);
     int fps    = (int) (setting->nominalFrameRate + 0.5);
 
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to validate/find closest video mode for requested spec: width = %i x height = %i, rate %i Hz.\n", width, height, fps);
     // Find matching mode:
     int size_index = -1;
     XRRScreenSize *scs = XRRSizes(dpy, PsychGetXScreenIdForScreen(setting->screenNumber), &nsizes);
     for (i = 0; i < nsizes; i++) {
-      if ((width == scs[i].width) && (height == scs[i].height)) {
-        short *rates = XRRRates(dpy, PsychGetXScreenIdForScreen(setting->screenNumber), i, &nrates);
-	for (j = 0; j < nrates; j++) {
-	  if (rates[j] == (short) fps) {
-	    // Our requested size x fps combo is supported:
-	    size_index = i;
-	  }
-	}
-      }
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Testing against mode of resolution w x h = %i x %i with refresh rates: ", scs[i].width, scs[i].height);
+        if ((width == scs[i].width) && (height == scs[i].height)) {
+            short *rates = XRRRates(dpy, PsychGetXScreenIdForScreen(setting->screenNumber), i, &nrates);
+            for (j = 0; j < nrates; j++) {
+                if (PsychPrefStateGet_Verbosity() > 3) printf("%i ", (int) rates[j]);
+                if (rates[j] == (short) fps) {
+                    // Our requested size x fps combo is supported:
+                    size_index = i;
+                    if (PsychPrefStateGet_Verbosity() > 3) printf("--> Got it! Mode id %i. ", size_index);
+                }
+            }
+        }
+        if (PsychPrefStateGet_Verbosity() > 3) printf("\n");
     }
 
+    if ((nsizes == 0 || nrates == 0) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Getting or setting display video modes unsupported on this graphics driver despite advertised RandR v1.2 support.\n");
+        
     // Found valid settings?
     if (size_index == -1) return(FALSE);
 
@@ -1819,9 +1834,9 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 
     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
-    if(!isValid){
+    if (!isValid || cgMode < 0){
         // This is an internal error because the caller is expected to check first. 
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set invalid video settings"); 
+        PsychErrorExitMsg(PsychError_user, "Attempt to set invalid video settings or function unsupported with this graphics-driver.");
     }
 
     // Change the display mode.
@@ -1889,9 +1904,9 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
 
     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
-    if(!isValid) {
-        // This is an internal error because the caller is expected to check first.
-        PsychErrorExitMsg(PsychError_internal, "Attempt to restore now invalid video settings"); 
+    if (!isValid || cgMode < 0){
+        // This is an internal error because the caller is expected to check first. 
+        PsychErrorExitMsg(PsychError_user, "Attempt to restore invalid video settings or function unsupported with this graphics-driver.");
     }
 
     //Change the display mode.
