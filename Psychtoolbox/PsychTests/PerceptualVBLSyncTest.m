@@ -142,7 +142,7 @@ if isempty(testdualheadsync)
     testdualheadsync = 0;
 end
 
-thickness = (1-vblSync) * 5 + 1;
+thickness = (1-vblSync) * 4 + 1;
 
 try
     if fullscreen

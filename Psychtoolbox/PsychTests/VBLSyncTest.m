@@ -512,6 +512,8 @@ try
     
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;
+    numberearly=0;
+    
     if numifis > 0
         if (stereo == 11) && (numifis == 1)
             % Special case: Stereomode 11 can't do better than one swap
@@ -522,8 +524,12 @@ try
         for i=2:n
             if (ts(i)-ts(i-1) > ifi*(numifis+0.5))
                 numbermisses=numbermisses+1;
-            end;
-        end;
+            end
+            
+            if (ts(i)-ts(i-1) < ifi*(numifis-0.5))
+                numberearly=numberearly+1;
+            end
+        end
     else
         if stereo == 11
             % Special case: Stereomode 11 can't do better than one swap
@@ -534,17 +540,27 @@ try
         for i=2:n
             if (ts(i)-ts(i-1) > ifi*1.5)
                 numbermisses=numbermisses+1;
-            end;
-        end;
-    end;
+            end
+                        
+            if (ts(i)-ts(i-1) < ifi*(numifis-0.5))
+                numberearly=numberearly+1;
+            end
+        end
+    end
 
     % Output some summary and say goodbye...
     fprintf('PTB missed %i out of %i stimulus presentation deadlines.\n', numbermisses, n);
     fprintf('One missed deadline is ok and an artifact of the measurement.\n');
+    
+    fprintf('PTB completed %i stimulus presentations before the requested target time.\n', numberearly);
+    if numberearly > 0
+        fprintf('CAUTION: Completing flips too early should *never ever happen*! Your system has\n');
+        fprintf('CAUTION: a serious bug or misconfiguration in its graphics driver!!!\n');
+    end
     fprintf('Have a look at the plots for more details...\n');
     
     % Done.
-catch
+catch %#ok<*CTCH>
     % This "catch" section executes in case of an error in the "try" section
     % above. Importantly, it closes the onscreen window if its open and
     % shuts down realtime-scheduling of Matlab:

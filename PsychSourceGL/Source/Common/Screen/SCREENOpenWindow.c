@@ -466,7 +466,7 @@ PsychError SCREENOpenWindow(void)
     PsychSetupClientRect(windowRecord);
 
 	// Initialize internal image processing pipeline if requested:
-	PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
+	if (numWindowBuffers > 0) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
 	
 	// On OS-X, if we are in quad-buffered frame sequential stereo mode, we automatically generate
 	// blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this
@@ -501,9 +501,11 @@ PsychError SCREENOpenWindow(void)
     // the user selected background color instead of staying at the blue screen or
     // logo display until the Matlab script first calls 'Flip'.
     if (((PsychPrefStateGet_VisualDebugLevel()>=4) || (windowRecord->stereomode > 0)) && numWindowBuffers>=2) {
-      // Do immediate bufferswap by an internal call to Screen('Flip'). This will also
+      // Do three immediate bufferswaps by an internal call to Screen('Flip'). This will also
       // take care of clearing the backbuffer in preparation of first userspace drawing
-      // commands and such...
+      // commands and such. We need up-to 3 calls to clear triple-buffered setups from framebuffer junk.
+      PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+      PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
       PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
       // Display now shows background color, so user knows that PTB's 'OpenWindow'
       // procedure is successfully finished.
