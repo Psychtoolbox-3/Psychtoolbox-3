@@ -1,8 +1,8 @@
 % SyncTrouble -- Causes and solutions for synchronization problems.
 %
 % You most probably arrived at this help page because Psychtoolbox
-% aborted with "SYNCHRONIZATION FAILURE" and asked you to read this
-% page.
+% aborted with "SYNCHRONIZATION FAILURE" or a similar error message and
+% asked you to read this page.
 %
 % BACKGROUND: Why proper synchronization to retrace is important.
 %
@@ -192,51 +192,64 @@
 %
 % Further examples:
 %
-% On Microsoft Windows, some ATI graphics adapters are only
-% capable of syncing to retrace, if the onscreen window is a full-screen window. Synchronization
-% fails if the onscreen window only covers part of the screen (i.e., when providing a 'rect'
-% argument to Screen('OpenWindow') other than the default full-screen rect). Solution is to
-% only use fullscreen windows for stimulus presentation. On Windows, Linux and MacOS-X, some
-% graphics cards (e.g., many - if not all - mobile graphics cards built into Laptops) are only
-% capable of synchronizing to the retrace of one display. On a single display setup, this will
-% simply work. On a dual display setup, e.g., Laptop connected to external video beamer or CRT,
-% the driver/hardware can sync to the wrong output device. A simple, although
-% inconvenient solution is to disable the internal flat panel of a Laptop while running your
-% study, so the hardware is guaranteed to sync to the external display. Depending on the hardware
-% it may also help to try dual display output with either: Non-mirror mode, running both displays
-% at different refresh rates, mirror mode running both displays at different rates, mirror mode
-% running both displays at exactly the same resolution, color depth and refresh rate. You'll
-% have to try, as it has been found to be highly dependent on hardware, driver and operating system,
-% which combinations work and which don't.
+% On most systems, graphics adapters are only capable of properly timed
+% bufferswaps and proper visual stimulus onset timestamps syncing to
+% retrace if the onscreen window is a full-screen window. Synchronization
+% fails if the onscreen window only covers part of the screen (i.e., when
+% providing a 'rect' argument to Screen('OpenWindow') other than the
+% default full-screen rect). Solution is to only use fullscreen windows for
+% stimulus presentation. On Windows, Linux and MacOS-X, some graphics cards
+% (e.g., many - if not all - mobile graphics cards built into Laptops) are
+% only capable of synchronizing to the retrace of one display. On a single
+% display setup, this will simply work. On a dual display setup, e.g.,
+% Laptop connected to external video beamer or CRT, the driver/hardware can
+% sync to the wrong output device. A simple, although inconvenient solution
+% is to disable the internal flat panel of a Laptop while running your
+% study, so the hardware is guaranteed to sync to the external display.
+% Depending on the hardware it may also help to try dual display output
+% with either: Non-mirror mode, running both displays at different refresh
+% rates, mirror mode running both displays at different rates, mirror mode
+% running both displays at exactly the same resolution, color depth and
+% refresh rate. You'll have to try, as it has been found to be highly
+% dependent on hardware, driver and operating system, which combinations
+% work and which don't.
 %
-% 5. Graphics system overload: If you ask too much from your poor graphics hardware, the system
-% may enter a state where the electronics is not capable of performing drawing operations in
-% hardware, either because it runs out of video memory ressources, or because it is lacking the
-% neccessary features. In that case, some drivers (e.g., on Microsoft Windows or MacOS-X) may
-% activate a software rendering fallback-path: The graphics engine is switched off, all rendering
-% is performed by slow software in system memory on the cpu and the final image is copied to
-% the onscreen framebuffer. While this produces visually correct stimuli, presentation timing
-% is completely screwed and not synchronized to the monitors refresh at all. On Microsoft Windows,
-% Psychtoolbox will detect this case and output some warnings to the Matlab window.
+% 5. Graphics system overload: If you ask too much from your poor graphics
+% hardware, the system may enter a state where the electronics is not
+% capable of performing drawing operations in hardware, either because it
+% runs out of video memory ressources, or because it is lacking the
+% neccessary features. In that case, some drivers (e.g., on Microsoft
+% Windows or MacOS-X) may activate a software rendering fallback-path: The
+% graphics engine is switched off, all rendering is performed by slow
+% software in system memory on the cpu and the final image is copied to the
+% onscreen framebuffer. While this produces visually correct stimuli,
+% presentation timing is completely screwed and not synchronized to the
+% monitors refresh at all. On Microsoft Windows, Psychtoolbox will detect
+% this case and output some warnings to the Matlab window.
 %
-% Possible causes of such an overload: Running with Anti-Aliasing enabled at a setting that is
-% too high for the given screen resolution (see 'help AntiAliasing'), or running at a display
-% resolution that is too high, given the amount of video memory installed on your graphics
-% adapter. There may be other cases, although we didn't encounter any of them up to now. The same
-% could happen if you run a dual display setup that is not switched to mirror-mode (or clone mode),
-% so you take up twice the amount of video memory for two separate framebuffers.
+% Possible causes of such an overload: Running with Anti-Aliasing enabled
+% at a setting that is too high for the given screen resolution (see 'help
+% AntiAliasing'), or running at a display resolution that is too high,
+% given the amount of video memory installed on your graphics adapter.
+% There may be other cases, although we didn't encounter any of them up to
+% now. The same could happen if you run a dual display setup that is not
+% switched to mirror-mode (or clone mode), so you take up twice the amount
+% of video memory for two separate framebuffers.
 %
-% Troubleshooting: Try lower display resolutions and multisampling levels, switch dual display
-% setups into mirror-mode if possible, or buy a graphics adapter with more onboard memory.
+% Troubleshooting: Try lower display resolutions and multisampling levels,
+% switch dual display setups into mirror-mode if possible, or buy a
+% graphics adapter with more onboard memory.
 %
-% 6. General system overload: If you run too many applications on your system in parallel to
-% your Psychtoolbox+Matlab/Octave session, then these applications may cause significant timing
-% jitter in your system, so the execution of Psychtoolbox - and its measurement loops - becomes
+% 6. General system overload: If you run too many applications on your
+% system in parallel to your Psychtoolbox+Matlab/Octave session, then these
+% applications may cause significant timing jitter in your system, so the
+% execution of Psychtoolbox - and its measurement loops - becomes
 % non-deterministic up to the point of being unuseable.
 %
-% Troubleshooting: Quit and disable all applications and services not needed for your study,
-% then retry. The usual suspects are: Virus scanners, applications accessing the network or
-% the harddiscs, applications like iTunes, system software update...
+% Troubleshooting: Quit and disable all applications and services not
+% needed for your study, then retry. The usual suspects are: Virus
+% scanners, applications accessing the network or the harddiscs,
+% applications like iTunes, system software update...
 %
 % 7. Bad drivers or hardware in your system that interferes with general
 % system timing: This is difficult to diagnose. At least on MS-Windows, you
@@ -257,22 +270,26 @@
 %
 % HOW TO OVERRIDE THE SYNC TESTS:
 %
-% That all said, there may be occassions where you do not care about perfect sync to retrace or
-% millisecond accurate stimulus presentation timing, but you do care about listening to iTunes
-% or getting your stimulus running quickly, e.g., during development and debugging of your
-% experiment or when showing a quick & dirty online demo of your stimulus during a presentation.
-% In these situations you can add the command Screen('Preference','SkipSyncTests', 1); at the
-% top of your script, before the first call to Screen('OpenWindow'). This will shorten the
-% maximum duration of the sync tests to 3 seconds worst case and it will force Psychtoolbox
-% to continue with execution of your script, even if the sync tests failed completely.
-% Psychtoolbox will still print error messages to the Matlab/Octave command window and it will
-% nag about the issue by showing the red flashing warning sign for one second.
-% You can disable all visual alerts via Screen('Preference','VisualDebugLevel', 0);
-% You can disable all output to the command window via Screen('Preference', 'SuppressAllWarnings', 1);
+% That all said, there may be occassions where you do not care about
+% perfect sync to retrace or millisecond accurate stimulus presentation
+% timing, but you do care about listening to iTunes or getting your
+% stimulus running quickly, e.g., during development and debugging of your
+% experiment or when showing a quick & dirty online demo of your stimulus
+% during a presentation. In these situations you can add the command
+% Screen('Preference','SkipSyncTests', 1); at the top of your script,
+% before the first call to Screen('OpenWindow'). This will shorten the
+% maximum duration of the sync tests to 3 seconds worst case and it will
+% force Psychtoolbox to continue with execution of your script, even if the
+% sync tests failed completely. Psychtoolbox will still print error
+% messages to the Matlab/Octave command window and it will nag about the
+% issue by showing the red flashing warning sign for one second. You can
+% disable all visual alerts via Screen('Preference','VisualDebugLevel', 0);
+% You can disable all output to the command window via Screen('Preference',
+% 'SuppressAllWarnings', 1);
 %
 % If your graphics system basically works, but your computer has just very
-% noisy timing you can adjust the threshold settings we use for our tests via the
-% setting:
+% noisy timing you can adjust the threshold settings we use for our tests
+% via the setting:
 %
 % Screen('Preference','SyncTestSettings' [, maxStddev=0.001 secs][, minSamples=50][, maxDeviation=0.1][, maxDuration=5 secs]);
 %
@@ -303,20 +320,86 @@
 %
 % MORE WAYS TO TEST:
 %
-% The script VBLSyncTest() allows you to assess the timing of Psychtoolbox on your specific setup
-% in a variety of conditions. It expects many parameters and displays a couple of plots at the
-% end, so there is no way around reading the 'help VBLSyncTest' if you want to use it.
+% The script VBLSyncTest() allows you to assess the timing of Psychtoolbox
+% on your specific setup in a variety of conditions. It expects many
+% parameters and displays a couple of plots at the end, so there is no way
+% around reading the 'help VBLSyncTest' if you want to use it.
 %
-% The script PerceptualVBLSyncTest() shows some flickering stimulus on the screen and allows you
-% to assess visually, if synchronization works properly.
+% The script PerceptualVBLSyncTest() shows some flickering stimulus on the
+% screen and allows you to assess visually, if synchronization works
+% properly.
 %
-% Both tests are for the really cautious: The built-in test of Screen('OpenWindow') should be
-% able to catch about 99% of all conceivable synchronization problems.
+% Both tests are for the really cautious: The built-in test of
+% Screen('OpenWindow') should be able to catch about 99% of all conceivable
+% synchronization problems.
 %
-% MORE READING:
-% See the help for 'help MirrorMode' and 'help BeampositionQueries' for more info about display issues.
+% MORE READING: See the help for 'help MirrorMode' and 'help
+% BeampositionQueries' for more info about display issues.
+%
+%
+% LINUX specific tips:
+%
+% 1. Just as on all other operating systems, timed visual stimulus onset
+% and stimulus onset timestamping is not reliable on regular (non
+% fullscreen) windows, windows that don't cover the complete desktop of a
+% Psychtoolbox screen (also known as X-Screen) or transparent windows,
+% e.g., when the PsychDebugWindowConfiguration() command was used. Use of
+% rotated display output (90, 180, 270 degrees etc.) will also prevent
+% proper timing.
+%
+% Your windows must be non-transparent, decoration/borderless, fullscreen
+% and cover a complete X-Window system screen. On a multi-display setup
+% that means that either your window must cover all connected displays, or
+% you need to setup separate X-Screens in the graphics driver control panel
+% GUI or the /etc/X11/xorg.conf file for different displays, so that all
+% stimulus displays are grouped in one (or multiple) X-Screen which are
+% fully covered by your PTB onscreen window, and other displays, e.g.,
+% operator GUI displays, are grouped into a different X-Screen.
+%
+% 2. A major source of timing trouble can be 3D desktop compositors. Either
+% use a user interface that doesn't employ a desktop compositor, or
+% configure your desktop compositor of choice to
+% "unredirect_fullscreen_windows", which will disable the compositor for
+% Psychtoolbox fullscreen windows. With most versions of compiz, the
+% command PsychGPUControl('FullScreenWindowDisablesCompositor', 1); can do
+% this setup step for you. If you use a different desktop compositor, and
+% on a few versions of compiz, the command doesn't yet work, so you need to
+% check the manuals/help of your system on how to enable the option
+% "unredirect_fullscreen_windows" manually. If in doubt, just use a desktop
+% session without 3D compositor for running the actual data collection of
+% your studies. Examples of desktops which use a compositor: Ubuntu Unity,
+% GNOME-3, GNOME-2, KWin. Examples which don't use a compositor: GNOME-2
+% classic, Mate desktop, XFCE.
+%
+% If you use the NVidia or AMD proprietary graphics drivers, frequent
+% synchronization failures, or other sync related warnings, or unsteady,
+% irregularly timed flicker during PerceptualVBLSyncTest indicate that a
+% desktop compositor is in use. On Linux with the free and open-source
+% graphics drivers radeon, nouveau or intel, PTB will output warnings about
+% non-pageflipped flips in such a case.
+%
+% 3. Another reason for timestamping problems can be the use of
+% triple-buffering if your system has an X-Server older than version 1.12,
+% or if you have an old system with an outdated graphics driver.
+% Psychtoolbox would warn you at least when the free graphics drivers are
+% in use, about some error in "PsychOSGetSwapCompletionTimestamp" and some
+% system configuration problems.
+% On such setups, triple-buffering can be disabled with driver specific
+% options in xorg.conf:
+%
+% On Intel graphics drivers, add the options:
+%
+% Option "TripleBuffer"    "off"
+% Option "SwapbuffersWait"  "on"
+%
+% On the nouveau driver for NVidia cards, add:
+% Option "SwapLimit" "1"
+% Option "GLXVBlank" "on"
+%
+% On Linux with the open-source intel, nouveau and radeon graphics drivers,
+% the script OMLBasicTest allows some additional correctness checks.
 %
 
 % History:
 % 17.06.2006 written (MK).
-
+% 09.10.2012 Add Linux-specific section (MK).

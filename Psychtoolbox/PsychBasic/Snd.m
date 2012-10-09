@@ -166,7 +166,15 @@ if isempty(ptb_snd_oldstyle)
         InitializePsychSound(1);        
     end
 end
-    
+
+% Don't use PsychPortAudio backend if already a PPA device open on Linux or
+% Windows, as that device will often have exclusive access, so we would
+% fail here:
+if isempty(pahandle) && ~ptb_snd_oldstyle && ~IsOSX && (PsychPortAudio('GetOpenDeviceCount') > 0)
+    fprintf('Snd(): PsychPortAudio already in use. Using old sound() fallback instead...\n');
+    ptb_snd_oldstyle = 1;
+end
+
 err=0;
 
 if nargin == 0
@@ -270,7 +278,11 @@ if streq(command,'Play')
             pahandle = PsychPortAudio('Open', [], 1, 0, rate, 2);
             
             % Restore standard level of verbosity:
-            PsychPortAudio('Verbosity', oldverbosity);            
+            PsychPortAudio('Verbosity', oldverbosity);
+            
+            if ~IsOSX
+                fprintf('Snd(): PsychPortAudio will be blocked for use by your own code until you call Snd(''Close'');\n');
+            end
         end
 
         % Make signal stereo if it isn't already:

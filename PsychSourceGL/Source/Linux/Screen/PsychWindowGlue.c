@@ -1268,8 +1268,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         if ((windowRecord->vSynced) && (windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_SkipSyncTests() < 2) && (windowRecord->swapcompletiontype > 1)) {
             // Ohoh: Non-pageflipped fullscreen window swap:
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: Flip for window %i didn't use pageflipping for flip. Presentation timing and timestamps are likely unreliable!\n", windowRecord->windowIndex);
+                printf("\nPTB-WARNING: Flip for window %i didn't use pageflipping for flip. Visual presentation timing and timestamps are likely unreliable!\n", windowRecord->windowIndex);
                 printf("PTB-WARNING: Something is misconfigured on your system, otherwise pageflipping would have been used by the graphics driver for reliable timing.\n");
+                printf("PTB-WARNING: Read the Linux specific section of 'help SyncTrouble' for some common causes and fixes for this problem.\n");
             }
         }
     }

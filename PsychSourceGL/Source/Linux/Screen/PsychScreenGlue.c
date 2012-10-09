@@ -726,7 +726,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 
   // Select screen configuration notify events to get delivered to us:
   Window root = RootWindow(dpy, displayX11Screens[idx]);
-  XRRSelectInput(dpy, root, xr_event + RRScreenChangeNotify);
+  XRRSelectInput(dpy, root, RRScreenChangeNotifyMask);
 
   // Fetch current screen configuration info for this screen and display:
   XRRScreenResources* res = XRRGetScreenResourcesCurrent(dpy, root);
