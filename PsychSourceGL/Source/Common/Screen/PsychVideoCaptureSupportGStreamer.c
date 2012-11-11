@@ -884,10 +884,13 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 		// Try OSX Quicktime sequence grabber video source for 32-Bit systems with Quicktime-7:
 		PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", 0);
 
-        // Try OSX MIO video source:
+		// Try OSX MIO video source: Unless we're under Octave, where some weird bug/interaction
+		// would cause a crash in the miovideosrc plugin if we tried, so we don't try on Octave.
+		#ifndef PTBOCTAVE3MEX
 		PsychGSEnumerateVideoSourceType("miovideosrc", 3, "OSXMIOVideoSource", "device-name", 0);
-        
-        // Try OSX QTKit video source for 64-Bit systems with Quicktime-X aka QTKit:
+		#endif
+
+		// Try OSX QTKit video source for 64-Bit systems with Quicktime-X aka QTKit:
 		PsychGSEnumerateVideoSourceType("qtkitvideosrc", 2, "OSXQuicktimeKitVideoSource", "device-index", 1);        
 	}
 	

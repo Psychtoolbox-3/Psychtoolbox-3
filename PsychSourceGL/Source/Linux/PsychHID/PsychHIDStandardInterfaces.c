@@ -577,6 +577,20 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 							// Not mappable:
 							evt.cookedEventCode = 0;
 						}
+                        
+						// Was this a CTRL + C interrupt request? This is mapped to ASCII control character 3 "ETX".
+						if (evt.cookedEventCode == 3) {
+							// Yes: Tell ConsoleInputHelper() about it, to reenable keystroke
+							// character dispatch in the terminal. This will undo a potential ListenChar(2)
+							// op if GetChar() et al. are used with the help of this keyboard queue from
+							// within Octave or Matlab in -nojvm mode.
+							ConsoleInputHelper(-1);
+						}
+                        
+                        if (evt.cookedEventCode >= 0) {
+                            // Tell ConsoleInputHelper() about the character:
+                            ConsoleInputHelper(evt.cookedEventCode);
+                        }
 					}
 
 					// Need the lock from here on:

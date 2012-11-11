@@ -108,6 +108,7 @@ PsychError PSYCHHIDKbQueueStart(void)
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychHIDKbQueue.h"
 
+extern UInt32 modifierKeyState;
 extern AbsoluteTime *psychHIDKbQueueFirstPress;
 extern AbsoluteTime *psychHIDKbQueueFirstRelease;
 extern AbsoluteTime *psychHIDKbQueueLastPress;
@@ -138,6 +139,8 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 				psychHIDKbQueueLastRelease[i].hi=0;
 				psychHIDKbQueueLastRelease[i].lo=0;
 			}
+
+            modifierKeyState = 0;
 		}
 		pthread_mutex_unlock(&psychHIDKbQueueMutex);
 		{

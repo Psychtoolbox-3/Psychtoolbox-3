@@ -132,7 +132,7 @@ while (fCurrTime < fEndTime)
         % 250ms.  This allows someone to hold down the mouse button and
         % cycle through items at a reasonable pace
         if fSecs - gTimeOfPrevKeyEvent > fBufferWindow
-            if IsWin
+            if IsWin || IsLinux
                 if buttons(1)
                     strInputName = 'LeftMouse';
                 elseif buttons(2)
@@ -142,7 +142,7 @@ while (fCurrTime < fEndTime)
                 end
             end
             
-            if IsOSX | IsLinux
+            if IsOSX
                 if buttons(1)
                     strInputName = 'LeftMouse';
                 elseif buttons(3)
@@ -159,6 +159,6 @@ while (fCurrTime < fEndTime)
     end
 
     % No need to check more then every 5 millisecond
-    WaitSecs(0.005);
+    WaitSecs('YieldSecs', 0.005);
     fCurrTime = GetSecs;
 end

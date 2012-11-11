@@ -178,6 +178,134 @@ WindowGroupRef GetWindowGroup(WindowRef inWindow)
     return((WindowGroupRef) inWindow);
 }
 
+pid_t GetHostingWindowsPID(void)
+{
+    pid_t pid = (pid_t) 0;
+    CFIndex i;
+    CFNumberRef numRef;
+    char winName[256];
+    psych_bool found = FALSE;
+    psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
+
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    
+    CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+    if (!windowList) goto hwinpidout;	
+    
+    const CFIndex kSize = CFArrayGetCount(windowList);
+    
+    for (i = 0; i < kSize; ++i) {
+        CFDictionaryRef d = (CFDictionaryRef) CFArrayGetValueAtIndex(windowList, i);
+
+        // Get process id pid of window owner:
+        numRef = (CFNumberRef) CFDictionaryGetValue(d, kCGWindowOwnerPID);
+        if (numRef) {
+            int val;
+            CFNumberGetValue(numRef, kCFNumberIntType, &val);
+            pid = (pid_t) val;
+            if (verbose) printf("OwnerPID: %i\n", val);
+        }
+        
+        numRef = (CFNumberRef) CFDictionaryGetValue(d, kCGWindowLayer);
+        if (numRef) {
+            int val;
+            CFNumberGetValue(numRef, kCFNumberIntType, &val);
+            if (verbose) printf("WindowLevel: %i  (ShieldingWindow %i)\n", val, CGShieldingWindowLevel());
+        }
+
+        // Get window name of specific window. Rarely set by apps:
+        winName[0] = 0;
+        CFStringRef nameRef = (CFStringRef) CFDictionaryGetValue(d, kCGWindowName);
+        if (nameRef) {
+            const char* name = CFStringGetCStringPtr(nameRef, kCFStringEncodingMacRoman);
+            if (name && verbose) printf("WindowName: %s\n", name);
+            if (name) snprintf(winName, sizeof(winName), "%s", name);
+        }
+
+        // Get name of owner process/app:
+        CFStringRef nameOwnerRef = (CFStringRef) CFDictionaryGetValue(d, kCGWindowOwnerName);
+        if (nameOwnerRef) {
+            const char* name = CFStringGetCStringPtr(nameOwnerRef, kCFStringEncodingMacRoman);
+            if (name && verbose) printf("WindowOwnerName: %s\n", name);
+            if (name && ((strstr(name, "X11") && strstr(winName, "xterm")) || strstr(name, "Terminal") || strstr(name, "MATLAB"))) {
+                // Matched either X11 xterm, or a OSX native Terminal or MATLAB GUI. These are candidates for the
+                // hosting windows of our matlab, matlab -nojvm or octave console session. As windows are returned
+                // in front-to-back order, the first match here is a candidate window that is on top of
+                // the visible window stack. This is our best candidate for the command window, assuming
+                // it is frontmost as the user just interacted with it. Therefore, aborting the search
+                // on the first match is the most robust heuristic i can think of, given that the name
+                // strings do not contain any info if a specific window hosts our session.
+                found = TRUE;
+                
+                // pid contains the pid of the owning process.
+                break;
+            }
+        }        
+    }
+    
+    CFRelease(windowList);
+    
+hwinpidout:
+    
+    // Drain the pool:
+    [pool drain];
+
+    if (found) {
+        if (verbose) printf("TARGETWINDOWNAME: '%s' with pid %i.\n", winName, pid);
+    }
+    else pid = 0;
+    
+    return(pid);
+}
+
+// SetUserFocusWindow() is a drop-in replacement for Carbon's function.
+// TODO FIXME: This doesn't work on the windows we are interested to
+// control focus, ie., the host windows of octave/matlab etc. Probably
+// only works on self-created Cocoa window, if any?
+OSStatus SetUserFocusWindow(WindowRef inWindow)
+{
+    NSWindow* focusWindow = (NSWindow*) inWindow;
+    
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Special flag: Try to restore main apps focus:
+    if (inWindow == kUserFocusAuto) {
+        focusWindow = [[NSApplication sharedApplication] mainWindow];
+    }
+
+    // Direct keyboard input focus to window 'inWindow':
+    [focusWindow makeKeyAndOrderFront: nil];
+
+    // Special handle NULL provided? Try to regain keyboard focus rambo-style for
+    // our hosting window for octave / matlab -nojvm in terminal window:
+    if (inWindow == NULL) {
+        // This works to give keyboard focus to a process other than our (Matlab/Octave) runtime, if
+        // the process id (pid_t) of the process is known and valid for a GUI app. E.g., passing in
+        // the pid of the XServer process X11.app or the Konsole.app will restore the xterm'inal windows
+        // or Terminal windows keyboard focus after a CGDisplayRelease() call, and thereby to the
+        // octave / matlab -nojvm process which is hosted by those windows.
+        //
+        // Problem: Finding the pid requires iterating and filtering over all windows and name matching for
+        // all possible candidates, and a shielding window from CGDisplayCapture() will still prevent keyboard
+        // input, even if the window has input focus...
+        pid_t pid = GetHostingWindowsPID();
+        if (pid) {
+            NSRunningApplication* motherapp = [NSRunningApplication runningApplicationWithProcessIdentifier: pid];    
+            [motherapp activateWithOptions: NSApplicationActivateIgnoringOtherApps];
+        }
+    }
+
+    // Drain the pool:
+    [pool drain];
+    
+    return((OSStatus) 0);
+}
+
+// GetUserFocusWindow() is a drop-in replacement for Carbon's function.
+// TODO FIXME: This totally doesn't work for some reason. It always
+// returns a focusWindow of NULL.
 WindowRef GetUserFocusWindow(void)
 {
     NSWindow* focusWindow = NULL;

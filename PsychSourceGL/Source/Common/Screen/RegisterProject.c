@@ -91,17 +91,79 @@
 
 #include "RegisterProject.h"
 
+// This special sauce only on the Unices:
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+    // Note: On Linux, _GNU_SOURCE must be defined at the compiler command line, so we
+    // can use GNU specific extensions to dlopen(), as well as the dladdr()
+    // function below. On OSX, that #define is not needed, as it is part of standard BSD.
+    #include <dlfcn.h>
+#endif
 
 // PsychModuleInit is in Screen.cpp
 // PsychProjectExit is in Screen.cpp
 // PsychProjectSelectFunction is in Screen.cpp
 
-
 PsychError PsychModuleInit(void)
 {
-	// Initialize all Screen('Preference', ...); settings to startup defaults:
+    
+    // Initialize all Screen('Preference', ...); settings to startup defaults:
+    // This will also set an override level of verbosity if the relevant environment
+    // variable has been set for low-level debugging purposes.
 	PrepareScreenPreferences();
 
+    #if PSYCH_SYSTEM != PSYCH_WINDOWS
+        // Try to reopen ourselves, ie. the currently used Screen() MEX file, in "noload" mode,
+        // aka RTLD_NOLOAD.
+        //
+        // We are not really reloaded, as we are obviously already present, but our symbols are
+        // made available globally in the process due to reopening with RTLD_GLOBAL, therefore
+        // other PTB mex file modules have some access to our functions, allowing cross-module
+        // C-Function calls. PsychHID needs this to call our ConsoleInputHelper() function inside
+        // SCREENGetMouseHelper.c to reenable keystroke dispatch to octave or matlab -nojvm from
+        // their controlling tty's -- To undo a ListenChar(2) issued in such a setup when CTRL+C
+        // is detected. There may be future other uses, e.g., with IOPort et al. to trigger or wait
+        // completion of actions in Screen() in response to I/O trigger reception, or before emission
+        // of I/O trigger/control events.
+        //
+        // This functionality is Unix specifc, as it is only supported by GLibc with the
+        // _GNU_SOURCE flag defined, or on BSD systems like OSX:
+        Dl_info screen_info;
+        void* screenHandle = NULL;
+    
+        // Retrieve the full path and filename of the shared library which contains
+        // the C-Function "ScreenExitFunction". As Screen() is the only mex file which
+        // defines this function, ie., ourselves, this will hopefully retrieve info
+        // about our running loaded instance of Screen():
+        if (dladdr((void*) ScreenExitFunction, &screen_info)) {
+            // Yes, got the info.
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Screen() plugin path as detected by dladdr(): %s\n", screen_info.dli_fname);
+            
+            // Try to re-open us and get a handle to ourselves. This will not really
+            // reload us due to RTLD_NOLOAD, just return the handle, increment our
+            // refcount and most importantly, make all our public symbols available
+            // globally to the whole address space of the runtime process, so other
+            // modules can access our non-private symbols and call our non-private
+            // functions (aka RTLD_GLOBAL):
+            dlerror();
+            screenHandle = dlopen(screen_info.dli_fname, RTLD_NOW | RTLD_NOLOAD | RTLD_GLOBAL);
+            if (screenHandle) {
+                // Worked! Close us again, so the refcount drops back to the old value
+                // and the runtime isn't prevented from clear'ing us if needed:
+                dlclose(screenHandle);
+                
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Reopened Screen() mex plugin with global symbol scope!\n");
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-WARNING: Could not re-dlopen() Screen() from file %s! [%s]\n", screen_info.dli_fname, dlerror());
+            }
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-WARNING: Could not get module info for Screen() from dladd()!\n");
+        }
+    
+        if (!screenHandle && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-WARNING: Other PTB modules can't cross-call Screen's internal functions.\n");
+    #endif
+    
 	// Register the project exit function
 	PsychErrorExitMsg(PsychRegisterExit(&ScreenExitFunction), "Failed to register the Screen exit function.");
 	

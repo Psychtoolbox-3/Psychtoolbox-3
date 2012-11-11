@@ -69,6 +69,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("OpenUSBDevice", &PSYCHHIDOpenUSBDevice));
 	PsychErrorExit(PsychRegister("CloseUSBDevice", &PSYCHHIDCloseUSBDevice));
 	PsychErrorExit(PsychRegister("USBControlTransfer", &PSYCHHIDUSBControlTransfer));
+    PsychErrorExit(PsychRegister("KeyboardHelper", &PSYCHHIDKeyboardHelper));
 
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dgp");

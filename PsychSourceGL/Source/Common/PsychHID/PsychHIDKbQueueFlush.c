@@ -84,6 +84,7 @@ static char synopsisString[] =
 		"If 'flushType' is 1, only events returned by KbQueueCheck will be flushed. This is the default.\n"
 		"If 'flushType' is 2, only events returned by KbQueueGetEvent will be flushed.\n"
 		"If 'flushType' is 3, events returned by both KbQueueCheck and KbQueueGetEvent will be flushed.\n"
+        "If 'flushType' & 4, only the number of key-press events with valid, mapped ASCII CookedKey field will be returned.\n"
         "PsychHID('KbQueueCreate') must be called before this routine.\n"
         "On Linux, the optional 'deviceIndex' is the index of the device whose queue should be flushed. "
         "If omitted, the default devices queue will be flushed. On other systems, the last queue will be flushed.\n";
@@ -107,7 +108,7 @@ PsychError PSYCHHIDKbQueueFlush(void)
     PsychCopyInIntegerArg(2, kPsychArgOptional, &flushType);
 	
 	// Return current count of contained events pre-flush:
-	PsychCopyOutDoubleArg(1, FALSE, (double) PsychHIDAvailEventBuffer((PSYCH_SYSTEM != PSYCH_OSX) ? deviceIndex : 0));
+	PsychCopyOutDoubleArg(1, FALSE, (double) PsychHIDAvailEventBuffer((PSYCH_SYSTEM != PSYCH_OSX) ? deviceIndex : 0, (flushType & 4) ? 1 : 0));
 
     if (flushType & 1) PsychHIDOSKbQueueFlush(deviceIndex);
     if (flushType & 2) PsychHIDFlushEventBuffer((PSYCH_SYSTEM != PSYCH_OSX) ? deviceIndex : 0);
@@ -118,6 +119,7 @@ PsychError PSYCHHIDKbQueueFlush(void)
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychHIDKbQueue.h"
 
+extern UInt32 modifierKeyState;
 extern AbsoluteTime *psychHIDKbQueueFirstPress;
 extern AbsoluteTime *psychHIDKbQueueFirstRelease;
 extern AbsoluteTime *psychHIDKbQueueLastPress;
@@ -161,6 +163,8 @@ void PsychHIDOSKbQueueFlush(int deviceIndex)
 			psychHIDKbQueueLastRelease[i].hi=0;
 			psychHIDKbQueueLastRelease[i].lo=0;
 		}
+        
+        modifierKeyState = 0;        
 	}
 	pthread_mutex_unlock(&psychHIDKbQueueMutex);
 }

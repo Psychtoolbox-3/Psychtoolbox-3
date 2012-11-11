@@ -850,7 +850,7 @@ void PsychHideCursor(int screenNumber, int deviceIdx)
   // Store backup copy of cursor shape for later restore, assign invisible
   // cursor, in case ShowCursor() doesn't do its job right, which is sadly
   // the case on many modern Matlab + MS-Windows combos :-( :
-  oldCursor = SetCursor(invisibleCursor);
+  if (!oldCursor) oldCursor = SetCursor(invisibleCursor);
 
   // Hide the mouse cursor: We ignore the screenNumber as Windows
   // doesn't allow to set the cursor per screen anyway. We decrement to -1000

@@ -136,18 +136,19 @@ function KbQueueCreate(deviceNumber, keyList)
 % and then store the result in macosrecent for subsequent calls
 
 persistent macosxrecent;
+
+if nargin < 1
+    deviceNumber = [];
+end
+
+% Try to reserve keyboard queue for 'deviceNumber' for our exclusive use:
+if ~KbQueueReserve(1, 2, deviceNumber)
+    error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
+end
+
 if isempty(macosxrecent)
     macosxrecent = IsOSX;
     LoadPsychHID;
-
-    % Little hack for Octave + OS/X: For some reason the first KbQueueCreate
-    % fails to work properly within PsychHID - something related to Carbon
-    % event queues. Creating and releasing on first invocation makes it work
-    % for the rest of the session...
-    if macosxrecent && IsOctave
-        KbQueueCreate;
-        KbQueueRelease;
-    end
 end
 
 if nargin == 2

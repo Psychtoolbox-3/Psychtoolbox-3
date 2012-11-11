@@ -68,7 +68,7 @@ if isempty(wavfilename)
     load handel;
     nrchannels = 1; % One channel only -> Mono sound.
     freq = Fs;      % Fs is the correct playback frequency for handel.
-    wavedata = y';  % Need sound vector as row vector, one row per channel.
+    wavedata = y';  %#ok<NODEF> % Need sound vector as row vector, one row per channel.
 else
     % Read WAV file from filesystem:
     [y, freq] = wavread(wavfilename);
@@ -118,6 +118,7 @@ while ~KbCheck
     
     % Query current playback status and print it to the Matlab window:
     s = PsychPortAudio('GetStatus', pahandle);
+    % tHost = GetSecs;
     
     % Print it:
     fprintf('\n\nAudio playback started, press any key for about 1 second to quit.\n');
@@ -125,8 +126,12 @@ while ~KbCheck
     disp(s);
     
     realSampleRate = (s.ElapsedOutSamples - lastSample) / (s.CurrentStreamTime - lastTime);
-    % lastSample = s.ElapsedOutSamples; lastTime = s.CurrentStreamTime;
     fprintf('Measured average samplerate Hz: %f\n', realSampleRate);
+    
+    tHost = s.CurrentStreamTime;
+    clockDelta = (s.ElapsedOutSamples / s.SampleRate) - (tHost - t1);
+    clockRatio = (s.ElapsedOutSamples / s.SampleRate) / (tHost - t1);
+    fprintf('Delta between audio hw clock and host clock: %f msecs. Ratio %f.\n', 1000 * clockDelta, clockRatio);
 end
 
 % Stop playback:

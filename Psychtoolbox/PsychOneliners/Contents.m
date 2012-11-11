@@ -43,6 +43,7 @@
 %   Ind2Str                 - Converts numbers to characters (decimal to base 26 conversion). Useful for character indices.
 %   Interleave              - Interleaves any number of arrays. Can handle different data types.
 %   IsACell                 - Tests (recursively--cells in cells) if a cell satisfies a user-supplied condition.
+%   IsGUI                   - Is the Matlab or Octave GUI enabled in this session?
 %   IsLinux                 - Shorthand for testing whether running under Linux.
 %   IsMinimumOSXVersion     - Query if this is a specific OS/X version or higher.
 %   IsOctave                - Shortand for testing whether running under Octave.

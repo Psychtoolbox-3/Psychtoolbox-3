@@ -86,12 +86,12 @@ if strcmpi(cmd, 'SetGPUPerformance')
 	end
 
 	% Map range 1 to 5 to "minimum performance" on ATI GPU's:
-	if gpuperf > 0 & gpuperf <= 5 %#ok<AND2>
+	if gpuperf > 0 && gpuperf <= 5
 		perfflag = 2;
 	end
 
 	% Map range 6 to 10 to "maximum performance" on ATI GPU's:
-	if gpuperf > 5 & gpuperf <= 10 %#ok<AND2>
+	if gpuperf > 5 && gpuperf <= 10
 		perfflag = 1;
 	end
 
@@ -136,14 +136,25 @@ if strcmpi(cmd, 'FullScreenWindowDisablesCompositor')
 		if compositorOff
 			% Enable un-redirection: Fullscreen windows aren't subject to treatment by compositor,
 			% but can do (e.g. page-flipping) whatever they want:
+			newstate = 'dis';
 			rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz/general/screen%i/options/unredirect_fullscreen_windows true', screenId));
 			rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz-1/plugins/composite/screen%i/options/unredirect_fullscreen_windows true', screenId));
-			fprintf('PsychGPUControl:FullScreenWindowDisablesCompositor: Desktop composition for fullscreen windows on screen %i disabled.\n', screenId)
+			rc(end+1) = system(sprintf('dconf write /org/compiz/profiles/unity/plugins/composite/unredirect-fullscreen-windows true'));
 		else
 			% Disable un-redirection: Fullscreen windows get composited as all other windows:
+			newstate = 'en';
 			rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz/general/screen%i/options/unredirect_fullscreen_windows false', screenId));
 			rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz-1/plugins/composite/screen%i/options/unredirect_fullscreen_windows false', screenId));
-			fprintf('PsychGPUControl:FullScreenWindowDisablesCompositor: Desktop composition for fullscreen windows on screen %i enabled.\n', screenId);
+			rc(end+1) = system(sprintf('dconf write /org/compiz/profiles/unity/plugins/composite/unredirect-fullscreen-windows false'));
+		end
+
+		if ~all(rc)
+			rc = 0;
+			fprintf('PsychGPUControl:FullScreenWindowDisablesCompositor: Desktop composition for fullscreen windows on screen %i %sabled.\n', screenId, newstate);
+		else
+			rc = 1;
+			fprintf('PsychGPUControl:FullScreenWindowDisablesCompositor: FAILED to %sable desktop composition for fullscreen windows on screen %i!\n', newstate, screenId);
+			fprintf('This can cause visual onset timing problems! See ''help SyncTrouble'' - the Linux specific subsection for tips.\n');
 		end
 	end
 	return;

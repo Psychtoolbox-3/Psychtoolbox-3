@@ -945,6 +945,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// sound content (ie., not simply zero silence padding frames):
 	committedFrames = 0;
 
+    // Reset number of silence frames so far:
+    silenceframes = 0;
+    
 	// NULL-out pointer to buffer with sound data to play. It will get initialized later on
 	// in PsychPAProcessSchedule():
 	playoutbuffer = NULL;
@@ -1363,8 +1366,18 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// This code only executes on non-masters in live monitoring mode - a mode where all
 	// sound data is fed back immediately with shortest possible latency
 	// from input to output, without any involvement of Matlab/Octave code:
+	// Note: "Non-master" also means: A standard sound device without any slaves!
 	if (!isMaster && (dev->opmode & kPortAudioMonitoring)) {
 		// Copy input buffer to output buffer:
+		// We need to offset our copy by committedFrames into the "in"putbuffer.
+		// Reason: committedFrames output buffer frames have been filled with
+		// silence already, and framesPerBuffer has been decremented by these
+		// committedFrames - We can only copy this reduced amount from the input
+		// buffer to the output buffer. We choose the most recent 'framesPerBuffer'
+		// frames from the inputbuffer, ie., at offset committedFrames, because the
+		// freshest frames are towards the end of the buffer, not at the beginning.
+		// (Yes this may twist your mind, but it makes sense, given the way the buffers
+		// are filled during capture and emptied during playback, believe me!)
 		memcpy(out, &(in[committedFrames * inchannels]), (size_t) (framesPerBuffer * outchannels * sizeof(float)));
 
 		// Store updated positions in device structure:
@@ -1490,14 +1503,14 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// Store updated playposition in device structure:
 		dev->playposition = playposition;
 
-		// Update total count of emitted valid non-silence sample frames:
+		// Update total count of emitted sample frames during this callback by number of non-silence frames:
 		committedFrames += i / outchannels;
 
 		// Compute output time of last outputted sample from this iteration:
 		dev->currentTime = firstsampleonset + ((double) committedFrames / (double) dev->streaminfo->sampleRate);
 
 		// Update total count of emitted samples since start of playback:
-		dev->totalplaycount+= committedFrames * outchannels;
+		dev->totalplaycount+= (committedFrames - silenceframes) * outchannels;
 		
 		// Another end-of-playback check:
 		if (parc > 0) {

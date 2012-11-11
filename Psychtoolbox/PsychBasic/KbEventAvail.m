@@ -25,6 +25,11 @@ if nargin < 1
     deviceIndex = [];
 end
 
+% Try to check if keyboard queue for 'deviceIndex' is reserved for our exclusive use:
+if ~KbQueueReserve(3, 2, deviceIndex) && KbQueueReserve(3, 1, deviceIndex)
+    error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceIndex);
+end
+
 navail = PsychHID('KbQueueFlush', deviceIndex, 0);
 
 return;

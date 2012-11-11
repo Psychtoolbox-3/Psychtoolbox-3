@@ -44,7 +44,7 @@
  *
  * Building for Linux:
  * 
- * g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -L/usr/lib -l GL -l GLU -l fontconfig -l freetype -pie -shared -o libptbdrawtext_ftgl.so.1 libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp
+ * g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -L/usr/lib -l GL -l GLU -l fontconfig -l freetype -pie -shared -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -Wl,--version-script=linuxexportlist.txt -o libptbdrawtext_ftgl.so.1 libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp
  *
  * libptbdrawtext_ftgl is copyright (c) 2010 by Mario Kleiner.
  * It is licensed to you under the LGPL license as follows:

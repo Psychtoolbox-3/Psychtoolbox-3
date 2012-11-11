@@ -44,6 +44,9 @@ PsychError SCREENCloseAll(void)
     return(PsychError_none);	
 }
 
+// Define function prototype of void ConsoleInputHelper(int ccode) in SCREENGetMouseHelper():
+void ConsoleInputHelper(int ccode);
+
 // Implement closing of all onscreen- and offscreen windows, release of all captured displays,
 // releasing of all internal textures and memory buffers, stopping of internal helper threads,
 // etc....
