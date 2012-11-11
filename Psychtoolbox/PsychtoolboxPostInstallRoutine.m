@@ -49,6 +49,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 09/13/2012 Add startup.m setup for 64-Bit Matlab + 64-Bit Windows. (MK)
 % 09/14/2012 Cancel support for Octave on MS-Windows. (MK)
 % 09/14/2012 Cancel support for 32-Bit Octave on OSX. (MK)
+% 11/11/2012 More cleanup. E.g., don't warn about Octave > 3.2 anymore. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -148,7 +149,7 @@ end
 % Check if our own startup function is part of the startup file and add it,
 % if it isn't already part of it. Currently we only need this for 64-Bit
 % Matlab on Windows.
-if IsWin(1) && ~IsOctave
+if IsWin(1)
     % Is it already implanted? Then we ain't nothing to do:
     if ~IsPsychStartupImplantedInStartup
         % Nope. Does a proper file already exist?
@@ -296,7 +297,7 @@ if ~IsOctave
     v = ver('matlab');
     if ~isempty(v)
         v = v(1).Version; v = sscanf(v, '%i.%i.%i');
-        if (v(1) < 7) | ((v(1) == 7) & (v(2) < 4)) %#ok<AND2,OR2>
+        if (v(1) < 7) || ((v(1) == 7) && (v(2) < 4))
             % Matlab version < 7.4 detected. This is no longer
             % supported.
             fprintf('\n\nYou are using a Matlab version older than Version 7.4.\n');
@@ -386,7 +387,7 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
     
-    if octavemajorv < 3 | octaveminorv < 2 %#ok<OR2>
+    if (octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 2)
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is obsolete. We strongly recommend\n', version);
         if IsLinux
@@ -399,17 +400,6 @@ if IsOctave
         fprintf('WARNING: using the latest stable version of the Octave 3.2.x series for use with Psychtoolbox.\n');
         fprintf('WARNING: Stuff may not work at all or only suboptimal with earlier versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
-        fprintf('\nPress any key to continue with setup.\n');
-        fprintf('=================================================================================\n\n');
-        pause;
-    end
-    
-    if octavemajorv > 3 | (octavemajorv == 3 & octaveminorv > 2) %#ok<AND2,OR2>
-        fprintf('\n\n=================================================================================\n');
-        fprintf('INFO: Your version %s of Octave is more recent than version 3.2.\n', version);
-        fprintf('INFO: Psychtoolbox seems to work correctly on Octave 3.4 - 3.6, but no extensive\n');
-        fprintf('INFO: systematic testing has been performed yet by the core developers on anything\n');
-        fprintf('INFO: but Octave 3.2.\n');
         fprintf('\nPress any key to continue with setup.\n');
         fprintf('=================================================================================\n\n');
         pause;
@@ -433,7 +423,7 @@ if IsOctave
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
         fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);        
-        fprintf('ERROR: use of the latest stable version of Octave-3.2.x as announced on www.octave.org website.\n');
+        fprintf('ERROR: use of the latest stable version of Octave-3 as announced on the www.octave.org website.\n');
         fprintf('ERROR: Another conceivable reason would be missing or incompatible required system libraries on your system.\n\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
@@ -444,7 +434,7 @@ if IsOctave
 end
 
 % Special case handling for different Matlab releases on MS-Windoze:
-if IsWin & ~IsOctave %#ok<AND2>
+if IsWin
     rc = 0; %#ok<NASGU>
     
     if strfind(cd,'system32')
@@ -559,7 +549,7 @@ if ~IsOctave
             if isempty(strfind(fileContents{i}, 'PsychJava'))
                 newFileContents{j, 1} = fileContents{i}; %#ok<AGROW>
                 j = j + 1;
-            elseif ~isempty(strfind(fileContents{i}, 'PsychJava')) & ~pathInserted %#ok<AND2>
+            elseif ~isempty(strfind(fileContents{i}, 'PsychJava')) && ~pathInserted
                 newFileContents{j, 1} = path_PsychJava; %#ok<AGROW>
                 pathInserted = 1;
                 j = j + 1;
@@ -693,20 +683,9 @@ try
     
 catch
     fprintf('\n\n');
-    if IsOctave & IsWin %#ok<AND2>
-        % Probably GStreamer runtime dll's missing:
-        fprintf('Screen() or online registration failed to work under MS-Windows with GNU/Octave-3:\n\n');
-        fprintf('Probably the required GStreamer multimedia framework is not yet installed on your system.\n\n');
-        fprintf('Please type ''help GStreamer'' and follow the displayed installation instructions carefully.\n');
-        fprintf('After this one-time setup, the Screen command should work properly.\n\n');
-        fprintf('If this has been ruled out as a reason for failure, check the troubleshooting instructions on\n');
-        fprintf('our Wiki (Download section and FAQ section, maybe also the Bugs section).\n\n');
-    else
-        fprintf('Screen() or online registration failed to work for some reason:\n\n');
-        fprintf('Check the troubleshooting instructions on our Wiki (Download section \n');
-        fprintf('and FAQ section, maybe also the Bugs section).\n\n');
-    end
-    
+    fprintf('Screen() or online registration failed to work for some reason:\n\n');
+    fprintf('Check the troubleshooting instructions on our Wiki (Download section \n');
+    fprintf('and FAQ section, maybe also the Bugs section).\n\n');
     fprintf('Once you manage to fix the problem (simply type ''AssertOpenGL'' to verify\n');
     fprintf('that stuff works now), you do not need to run the installation routine again,\n');
     fprintf('but can start working immediately.\n\n');
@@ -778,7 +757,7 @@ fprintf('well documented.\n');
 fprintf('\nEnjoy!\n\n');
 
 % Clear out everything:
-if ~IsOctave & IsWin %#ok<AND2>
+if IsWin
     clear all;
 end
 

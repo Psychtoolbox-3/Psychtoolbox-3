@@ -921,7 +921,7 @@ end
 % are not yet supported by the Datapixx driver on 64-Bit Octave,
 % Matlab on Linux and 64-Bit Matlab on Windows:
 if (IsOctave && Is64Bit) || (IsLinux && ~IsOctave) || (IsWin(1) && ~IsOctave)
-    return;
+    % Skip the else branch with the new unsupported commands.
 else
     % New Datapixx driver: Expose new functions...
     

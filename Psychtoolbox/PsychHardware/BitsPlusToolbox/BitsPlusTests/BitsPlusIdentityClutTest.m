@@ -1,4 +1,8 @@
 function BitsPlusIdentityClutTest(whichScreen, dpixx)
+% Test signal transmission from the framebuffer to your CRS Bits+/Bits#
+% device or VPixx Inc. DataPixx/ViewPixx device and similar CRS and VPixx
+% products.
+%
 % Test proper function of the T-Lock mechanism, proper loading of identity
 % gamma tables into the GPU, and for bad interference of dithering hardware
 % with the DVI stream. This test is meant for Mono++ mode of Bits+, it
@@ -10,8 +14,8 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx)
 % defects in the Bits+ device or similar devices, nor Psychtoolbox bugs. As
 % such, sadly they are mostly out of our control and there is only a
 % limited number of ways we can try to help you to workaround the problems
-% caused by miserable workmanship and insufficient quality control at those big
-% companies.
+% caused by miserable workmanship and insufficient quality control at those
+% big companies.
 %
 % Usage:
 %
@@ -20,15 +24,17 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx)
 % How to test:
 %
 % 1. Make sure your Bits+ box is switched to Mono++ mode by uploading the
-%    proper firmware.
+%    proper firmware. Or make sure your DataPixx is connected, both DVI
+%    cable and USB cable.
 %
 % 2. Run the BitsPlusImagingPipelineTest script to validate that your
 %    graphics card can create properly formatted images in the framebuffer
-%    for Bits+.
+%    for Bits+ or DataPixx.
 %
 % 3. Run this script, optionally passing a screenid. It will test the
 %    secondary display on a multi-display setup by default, or the external
-%    display on a laptop.
+%    display on a laptop. For a DataPixx device or similar, set the
+%    optional 'usedpixx' flag to 1.
 %
 % If everything works, what you see onscreen should match the description
 % in the blue text that is displayed.
@@ -102,6 +108,11 @@ try
         % a 100 Hz display:
         oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);
         
+        fprintf('\n\nYou can run extended diagnostics and fixes if you answer the following question\n');
+        fprintf('with yes. However, we recommend first running this script once, answering no. Then\n');
+        fprintf('if that at least somewhat succeeds, rerun the script and answer yes, to either fix\n');
+        fprintf('remaining errors and glitches, or verify perfect function of your setup. If you don''t\n');
+        fprintf('do it in this order, the test may hang on some setups.\n\n');
         answer = input('Run DataPixx based diagnostics as well [Time consuming]? [y/n] ', 's');
         if answer == 'y'
             % Enable one-shot diagnostic of GPU encoders via DataPixx:

@@ -100,7 +100,7 @@ $matv711count = 0;
 $matv712count = 0;
 $matv713count = 0;
 $matv714count = 0;
-$matv715count = 0;
+$matv80count = 0;
 
 $octavelinuxcount = 0;
 $octaveosxcount   = 0;
@@ -237,7 +237,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '<ENVVERSION>7.12')) { $matv712count++; }
     if (strpos($ofl, '<ENVVERSION>7.13')) { $matv713count++; }
     if (strpos($ofl, '<ENVVERSION>7.14')) { $matv714count++; }
-    if (strpos($ofl, '<ENVVERSION>7.15')) { $matv715count++; }
+    if (strpos($ofl, '<ENVVERSION>8.0')) { $matv80count++; }
   }
 
   if (strpos($ofl, '<ENVIRONMENT>Octave')) {
@@ -260,12 +260,12 @@ foreach($uniqueptbs as $ofl) {
     $wincount++;
     $iswin = 1;
 
-    if (strpos($ofl, 'Windows-Unknown') || strpos($ofl, 'Windows Server') || strpos($ofl, 'Windows NT Version') || strpos($ofl, 'Windows 95 Version') || strpos($ofl, 'Windows 98 Version') || strpos($ofl, 'Windows Me Version')) { $winunknowncount++; $iswin = 2; }
-    if (strpos($ofl, 'Windows 2000 Version 5') || strpos($ofl, 'NT-5.0')) { $win2kcount++; $iswin = 2; }
-    if (strpos($ofl, 'Windows XP') || strpos($ofl, 'Windows-XP') || strpos($ofl, 'NT-5.1') || strpos($ofl, 'NT-5.2')) { $winxpcount++; $iswin = 2; }
-    if (strpos($ofl, 'Windows Vista Version 6.0') || strpos($ofl, 'Windows 2000 Version 6.0') || strpos($ofl, 'NT-6.0')) { $winvistacount++; $iswin = 2; }
-    if (strpos($ofl, 'Windows Vista Version 6.1') || strpos($ofl, 'Windows 7 Version') || strpos($ofl, 'NT-6.1')) { $win7count++; $iswin = 2; }
-    if (strpos($ofl, 'Windows Vista Version 6.2') || strpos($ofl, 'Windows 8 Version') || strpos($ofl, 'NT-6.2')) { $win8count++; $iswin = 2; }
+    if (strpos($ofl, 'Windows-Unknown') || strpos($ofl, 'Version 4.')) { $winunknowncount++; $iswin = 2; }
+    if (strpos($ofl, 'Version 5.0 (Build') || strpos($ofl, 'NT-5.0')) { $win2kcount++; $iswin = 2; }
+    if (strpos($ofl, 'Version 5.1 (Build') || strpos($ofl, 'Version 5.2 (Build') || strpos($ofl, 'NT-5.1') || strpos($ofl, 'NT-5.2') || strpos($ofl, '<OS>Windows-XP</OS>')) { $winxpcount++; $iswin = 2; }
+    if (strpos($ofl, 'Version 6.0 (Build') || strpos($ofl, 'NT-6.0')) { $winvistacount++; $iswin = 2; }
+    if (strpos($ofl, 'Version 6.1 (Build') || strpos($ofl, 'NT-6.1')) { $win7count++; $iswin = 2; }
+    if (strpos($ofl, 'Version 6.2 (Build') || strpos($ofl, 'NT-6.2')) { $win8count++; $iswin = 2; }
 
     if (($iswin < 2) && ($debugmode > 0)) print "LOGPARSER-WARNING: UNASSIGNED WINDOWS - MACID: $ofl <br />";
 
@@ -432,7 +432,7 @@ print "Matlab 7.11  (R2010b)        : $matv711count<br />";
 print "Matlab 7.12  (R2011a)        : $matv712count<br />";
 print "Matlab 7.13  (R2011b)        : $matv713count<br />";
 print "Matlab 7.14  (R2012a)        : $matv714count<br />";
-print "Matlab 7.15  (R2012b)        : $matv715count<br />";
+print "Matlab 8.0   (R2012b)        : $matv80count<br />";
 
 print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
 printf('Octave on OS/X               : %8d (%7.3f%% of all OS/X installs) <br />', $octaveosxcount, 100 * $octaveosxcount / $osxcount);

@@ -109,6 +109,19 @@ function varargout = DatapixxAudioKey(cmd, varargin)
 % of max signal intensity as trigger level.
 %
 %
+% DatapixxAudioKey('AutoTriggerLevel', silenceSecs);
+% - Auto-Select trigger threshold level for audio onset timestamping. After
+% start of audio capture, there must be a period of silence, where the only
+% signal recorded is due to noise in the microphone/amplifiers etc, not due
+% to actual signal. You must provide the minimum duration of this time
+% period of silence as 'silenceSecs' parameter, e.g., 1.5 for 1.5 seconds
+% of guaranteed silence at start of recording. During recording, the
+% function will use this chunk of silence to compute an optimal trigger
+% level, which is 10% louder than the loudest sample in the silence block
+% and then use that triggerlevel as if DatapixxAudioKey('TriggerLevel') had
+% been called with that auto-selected level.
+%
+%
 % DatapixxAudioKey('StopCapture');
 % - Stop audio capture as soon as possible.
 %
@@ -386,6 +399,12 @@ if strcmpi(cmd, 'TriggerLevel')
     return;
 end
 
+if strcmpi(cmd, 'AutoTriggerLevel')
+    % Assign value in seconds as negative number:
+    dpixaudioin.triggerLevel = -1 * varargin{1};
+    return;
+end
+
 if strcmpi(cmd, 'GetResponse')
     if dpixaudioin.pendingForFlip < 0
         error('GetResponse: Tried to get response from audiokey, but audiokey not active or engaged!');
@@ -394,8 +413,7 @@ if strcmpi(cmd, 'GetResponse')
     % If audio recording was scheduled to start in sync with a certain
     % Screen flip, check if that specific target flip count has been
     % reached:
-%    if (dpixaudioin.pendingForFlip > 0) && (PsychDataPixx('FlipCount') < dpixaudioin.pendingForFlip)
-    if (dpixaudioin.pendingForFlip > 0) & (PsychDataPixx('FlipCount') < dpixaudioin.pendingForFlip)
+    if (dpixaudioin.pendingForFlip > 0) && (PsychDataPixx('FlipCount') < dpixaudioin.pendingForFlip)
         % Audio key shall start recording at a certain flipcount which
         % likely hasn't been reached yet (according to PsychDataPixx('FlipCount')).
         %
@@ -494,7 +512,7 @@ if strcmpi(cmd, 'GetResponse')
         numFrames = micstatus.newBufferFrames;
     end
 
-    % TODO FIXME: Does this make sense to use here?
+    % Retrieve Datapixx internal delay, so we can correct for it:
     inDelaySecs = Datapixx('GetMicrophoneGroupDelay', dpixaudioin.samplerate);
 
     % Retrieve recorded data:
@@ -502,7 +520,26 @@ if strcmpi(cmd, 'GetResponse')
     
     % Compute timestamp in seconds since start of capture of when the
     % triggerLevel was exceeded the first time:
-    triggerTime = (dpixaudioin.readOffset + min(find(abs(audiodata(1,:)) > dpixaudioin.triggerLevel))) / dpixaudioin.samplerate; %#ok<MXFND>
+    if dpixaudioin.triggerLevel >= 0
+        % Specific triggerLevel given. Use "as is":
+        triggerTime = (dpixaudioin.readOffset + min(find(abs(audiodata(1,:)) > dpixaudioin.triggerLevel))) / dpixaudioin.samplerate; %#ok<MXFND>
+    else
+        % Auto-Trigger mode. Leadtime of silence in seconds given. We can
+        % use that many seconds of signal at the beginning, knowing it
+        % represents silence, to determine an optimal triggerLevel. We set
+        % a level that is 10% more than the "loudest" signal sample in the
+        % "silence" lead-in block of samples:
+        triggerLevel = 1.1 * max(abs(audiodata(1, 1:floor(dpixaudioin.samplerate * abs(dpixaudioin.triggerLevel)))));
+        
+        if triggerLevel > 0.9
+            warning('Psychtoolbox:DatapixxAudioKey:AutoTriggerHigh', 'Auto-Selected triggerLevel %f exceeds 90% of max possible signal amplitude. Strong noise or something wrong with your setup?!?', triggerLevel);
+        end
+        
+        % Do trigger threshold seeking like above:
+        triggerTime = (dpixaudioin.readOffset + min(find(abs(audiodata(1,:)) > triggerLevel))) / dpixaudioin.samplerate; %#ok<MXFND>        
+    end
+    
+    % Compensate for Datapix hw delays:
     triggerTime = triggerTime - inDelaySecs;
     
     % Increment readOffset into audio capture buffer:

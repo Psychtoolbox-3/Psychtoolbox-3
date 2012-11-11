@@ -2,23 +2,24 @@ function [avail, numChars] = CharAvail
 % [avail, numChars] = CharAvail
 %
 % CharAvail returns the availability of characters in the keyboard event
-% queue and sometimes the queue's current size. "avail" will be 1 if characters are
-% available, 0 otherwise.  "numChars" may hold the current number of
-% characters in the event queue, but in some system configurations it is
-% just empty, so do not rely on numChars providing meaningful results,
-% unless you've tested it on your specific setup.
+% queue and sometimes the queue's current size. "avail" will be 1 if
+% characters are available, 0 otherwise.  "numChars" may hold the current
+% number of characters in the event queue, but in some system
+% configurations it is just empty, so do not rely on numChars providing
+% meaningful results, unless you've tested it on your specific setup.
+%
+% Please read the 'help ListenChar' carefully to understand various
+% limitations and caveats of this function, and to learn about - often
+% better - alternatives.
 %
 % Note that this routine does not actually remove characters from the event
-% queue.  Call GetChar to remove characters from the queue.
+% queue. Call GetChar to remove characters from the queue.
 %
-% CharAvail works on all platforms with Matlab and Java enabled. It works
-% also on M$-Windows under matlab -nojvm mode. It does not work on OS-X or
-% Linux in Matlab -nojvm mode and it also doesn't work under GNU/Octave.
-% 
 % GetChar and CharAvail are character-oriented (and slow), whereas KbCheck
 % and KbWait are keypress-oriented (and fast). See KbCheck.
 % 
-% See also: GetChar, ListenChar, FlushEvents, KbCheck, KbWait, KbDemo, Screen Preference Backgrounding.
+% See also: GetChar, ListenChar, FlushEvents, KbCheck, KbWait, KbDemo,
+% KbQueueDemo.
 
 % 11/5/94   dhb Added caveat about delay.
 % 1/22/97   dhb Added comment and pointer to TIMER routines.
@@ -44,6 +45,7 @@ function [avail, numChars] = CharAvail
 %               Windows DLL ...
 %
 % 05/31/09 mk   Add support for Octave and Matlab in noJVM mode.
+% 10/22/12 mk   Remove support for legacy Matlab R11 GetCharNoJVM.dll.
 
 global OSX_JAVA_GETCHAR;
 persistent isjavadesktop;
@@ -53,13 +55,14 @@ if isempty(isjavadesktop)
     isjavadesktop = psychusejava('desktop');
 end
 
-if isjavadesktop
+% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
+if psychusejava('desktop') && ~IsWinVista
     % Make sure that the GetCharJava class is loaded and registered with
     % the java focus manager.
     if isempty(OSX_JAVA_GETCHAR)
         try
             OSX_JAVA_GETCHAR = AssignGetCharJava;
-        catch
+        catch %#ok<*CTCH>
             error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
         end
         OSX_JAVA_GETCHAR.register;
@@ -77,26 +80,76 @@ if isjavadesktop
     avail = avail > 0;
 
     return;
-else
-    % Java VM unavailable, i.e., running in -nojvm mode.
-    % On Windows, we can fall back to the old CharAvail.dll.
-    if IsWin & ~IsOctave %#ok<AND2>
-        % CharAvail.dll has been renamed to CharAvailNoJVM.dll. Call it.
-        avail = CharAvailNoJVM;
-        numChars = [];
-        return;
-    end
 end
 
-% Running either on Octave or on OS/X or Linux with Matlab in No JVM mode:
+% Running either on Octave, or on Matlab in No JVM mode or on MS-Vista+:
 drawnow;
-if exist('fflush')
+if exist('fflush') %#ok<EXIST>
     builtin('fflush', 1);
 end
 
-% Screen's GetMouseHelper with command code 14 delivers
-% count of currently pending characters on stdin:
-avail = Screen('GetMouseHelper', -14);
+% If we are on Linux and the keyboard queue is already in use by usercode,
+% we can fall back to 'GetMouseHelper' low-level terminal tty magic. The
+% only downside is that typed characters will spill into the console, ie.,
+% ListenChar(2) suppression is unsupported:
+if IsLinux && KbQueueReserve(3, 2, [])
+    % KeyboardHelper with command code 14 delivers
+    % count of currently pending characters on stdin:
+    avail = PsychHID('KeyboardHelper', -14);
+else
+    % Use keyboard queue:
+    
+    % Only need to reserve/create/start queue if we don't have it
+    % already:
+    if ~KbQueueReserve(3, 1, [])
+        % LoadPsychHID is needed on MS-Windows. It no-ops if called redundantly:
+        LoadPsychHID;
+        
+        % Try to reserve default keyboard queue for our exclusive use:
+        alwayszero = 0;
+        if ~KbQueueReserve(1, 1, [])
+            % Failed, because usercode already uses it. This is
+            % non-fatal, so just issue a warning.
+            if IsOSX(1)
+                % OSX:
+                warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar(2) may work for keystroke suppression, but GetChar() etc. will not work.\n');
+            else
+                % 32-Bit OSX, or MS-Windows:
+                warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+            end
+            
+            % We fall through to KeyboardHelper to enable input
+            % redirection on 64-Bit OSX. While our CharAvail() and
+            % GetChar() are lost causes, input redirection and CTRL+C
+            % can work if usercode has called KbQueueStart, as the
+            % users kbqueue-thread gives us a free-ride for our
+            % purpose.
+            alwayszero = 1;
+        else
+            % Got it. Allocate and start it:
+            PsychHID('KbQueueCreate');
+            PsychHID('KbQueueStart');
+        end
+        
+        if (IsOSX(1) || (IsOctave && IsGUI))
+            % Enable keystroke redirection via kbqueue and pty to bypass
+            % blockade of onscreen windows:
+            PsychHID('KeyboardHelper', -14);
+        end
+        
+        % Always return zero pending chars if we cannot really use kbqueue:
+        if alwayszero
+            % We hit this on OSX or Windows:
+            avail = 0;
+            numChars = 0;
+            return;
+        end
+    end
+    
+    % Queue is running: Check number of pending key presses:
+    avail = PsychHID('KbQueueFlush', [], 4);
+end
+
 numChars = avail;
 avail = avail > 0;
 

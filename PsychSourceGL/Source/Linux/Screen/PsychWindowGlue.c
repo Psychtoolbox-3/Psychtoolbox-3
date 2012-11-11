@@ -51,7 +51,8 @@ static int x11_windowcount = 0;
 
 // Typedef and fcn-pointer for optional Mesa get swap interval call:
 typedef int (*PFNGLXGETSWAPINTERVALMESAPROC)(void);
-PFNGLXGETSWAPINTERVALMESAPROC glXGetSwapIntervalMESA = NULL;
+PFNGLXGETSWAPINTERVALMESAPROC __glXGetSwapIntervalMESA = NULL;
+#define glXGetSwapIntervalMESA __glXGetSwapIntervalMESA
 
 #ifndef GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK
 #define GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK	0x04000000
@@ -806,14 +807,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   fflush(NULL);
 
   // Check for availability of VSYNC extension:
-  // Rebinding functions pointers for the VSYNC extension is incompatible with use of apitrace, so
-  // if apitrace support is enabled, we refrain from (re-)binding VSYNC related extensions and disable
-  // parts of the PsychOSSetVBLSyncLevel() function.
   
   // First we try if the MESA variant of the swap control extensions is available. It has two advantages:
   // First, it also provides a function to query the current swap interval. Second it allows to set a
   // zero swap interval to dynamically disable sync to retrace, just as on OS/X and Windows:
-  if (strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control") && !getenv("PSYCH_ALLOW_APITRACE")) {
+  if (strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")) {
 	// Bingo! Bind Mesa variant of setup call to sgi setup call, just to simplify the code
 	// that actually uses the setup call -- no special cases or extra code needed there :-)
 	// This special glXSwapIntervalSGI() call will simply accept an input value of zero for
@@ -826,13 +824,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   }
   else {
 	// Unsupported. Disable the get call:
-	if (!getenv("PSYCH_ALLOW_APITRACE")) glXGetSwapIntervalMESA = NULL;
+	glXGetSwapIntervalMESA = NULL;
   }
 
   // Special case: Buggy ATI driver: Supports the VSync extension and glXSwapIntervalSGI, but provides the
   // wrong extension namestring "WGL_EXT_swap_control" (from MS-Windows!), so GLEW doesn't auto-detect and
   // bind the extension. If this special case is present, we do it here manually ourselves:
-  if ((glXSwapIntervalSGI == NULL) && (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control") != NULL) && !getenv("PSYCH_ALLOW_APITRACE")) {
+  if ((glXSwapIntervalSGI == NULL) && (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control") != NULL)) {
 	// Looks so: Bind manually...
 	glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB("glXSwapIntervalSGI");
   }
@@ -841,7 +839,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   if (glXSwapIntervalSGI==NULL || ( strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL &&
 	  strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")==NULL )) {
 	  // No, total failure to bind extension:
-	  if (!getenv("PSYCH_ALLOW_APITRACE")) glXSwapIntervalSGI = NULL;
+	  glXSwapIntervalSGI = NULL;
 	  if (PsychPrefStateGet_Verbosity() > 1) { 
 		  printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
 		  printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this.\n");
@@ -1569,9 +1567,6 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 	  }
   }
 
-  // We must not call glXGetSwapIntervalMESA when apitrace'ing, or segfault will happen:
-  if (getenv("PSYCH_ALLOW_APITRACE")) return;
-    
   // If Mesa query is supported, double-check if the system accepted our settings:
   if (glXGetSwapIntervalMESA) {
 	  myinterval = glXGetSwapIntervalMESA();

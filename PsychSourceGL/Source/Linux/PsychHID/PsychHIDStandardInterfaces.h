@@ -18,6 +18,9 @@
 #ifndef PSYCH_IS_INCLUDED_PsychHIDStandardIntefaces
 #define PSYCH_IS_INCLUDED_PsychHIDStandardIntefaces
 
+// Needed for dlsym() RTLD_DEFAULT definition in PsychHIDStandardInterfaces.c
+#define _GNU_SOURCE
+
 #include "PsychHID.h"
 
 #include <X11/Xlib.h>

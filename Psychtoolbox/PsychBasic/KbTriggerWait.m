@@ -93,6 +93,15 @@ if macosxrecent
     return;
 end
 
+if nargin < 2
+    deviceNumber = [];
+end
+
+% Try to reserve keyboard queue for 'deviceNumber' for our exclusive use:
+if ~KbQueueReserve(1, 2, deviceNumber)
+    error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
+end
+
 if nargin==2
     [secs]= PsychHID('KbTriggerWait', keyCode, deviceNumber);
 elseif nargin == 1
@@ -102,3 +111,6 @@ elseif nargin == 0
 elseif nargin > 2
     error('Too many arguments supplied to KbTriggerWait');
 end
+
+% Try to release keyboard queue for 'deviceIndex' from our exclusive use:
+KbQueueReserve(2, 2, deviceNumber);

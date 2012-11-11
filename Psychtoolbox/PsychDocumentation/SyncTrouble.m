@@ -257,10 +257,15 @@
 % find it). If you run it, it will tell you if there are potential problems
 % with your systems timing and give hints on how to resolve them.
 %
-% 8. Other: Search the FAQ pages on the www.psychtoolbox.org Wiki and (via
+% 8. Running inside a Virtual Machine: This almost always causes extremely
+% bad timing. The command PsychTweak('PrepareForVirtualmachine') may help by
+% disabling most timing tests. This is only useful for demos, not for real
+% data collection, of course!
+%
+% 9. Other: Search the FAQ pages on the www.psychtoolbox.org Wiki and (via
 % Google search) the Psychtoolbox forum for other problems and solutions.
 %
-% 9. If everything else fails, post on the forum for help, but read our
+% 10. If everything else fails, post on the forum for help, but read our
 % instructions on how to ask questions on the forum properly. You can find
 % these instructions on the "Forum" and "Bugs" pages of our Wiki. If we
 % find that you didn't read the instructions and you're basically wasting
@@ -360,12 +365,17 @@
 % use a user interface that doesn't employ a desktop compositor, or
 % configure your desktop compositor of choice to
 % "unredirect_fullscreen_windows", which will disable the compositor for
-% Psychtoolbox fullscreen windows. With most versions of compiz, the
+% Psychtoolbox fullscreen windows. With most versions of the Compiz compositor, the
 % command PsychGPUControl('FullScreenWindowDisablesCompositor', 1); can do
 % this setup step for you. If you use a different desktop compositor, and
 % on a few versions of compiz, the command doesn't yet work, so you need to
 % check the manuals/help of your system on how to enable the option
-% "unredirect_fullscreen_windows" manually. If in doubt, just use a desktop
+% "unredirect_fullscreen_windows" manually. E.g., on Ubuntu systems you can
+% install the "CompizConfig settings manager" GUI tool (CCSM), which allows
+% to change many GUI settings manually. After starting that tool, you'd go to
+% the setup panel for the "Composite" plugin, and there check the checkbox
+% named "Unredirect Fullscreen Windows", to make sure that Compiz won't interfere
+% with visual timing on fullscreen windows. If in doubt, just use a desktop
 % session without 3D compositor for running the actual data collection of
 % your studies. Examples of desktops which use a compositor: Ubuntu Unity,
 % GNOME-3, GNOME-2, KWin. Examples which don't use a compositor: GNOME-2
@@ -379,11 +389,12 @@
 % non-pageflipped flips in such a case.
 %
 % 3. Another reason for timestamping problems can be the use of
-% triple-buffering if your system has an X-Server older than version 1.12,
-% or if you have an old system with an outdated graphics driver.
+% triple-buffering.
+%
 % Psychtoolbox would warn you at least when the free graphics drivers are
 % in use, about some error in "PsychOSGetSwapCompletionTimestamp" and some
 % system configuration problems.
+%
 % On such setups, triple-buffering can be disabled with driver specific
 % options in xorg.conf:
 %
@@ -403,3 +414,4 @@
 % History:
 % 17.06.2006 written (MK).
 % 09.10.2012 Add Linux-specific section (MK).
+

@@ -133,13 +133,20 @@ pthread_mutex_t psychHIDKbQueueMutex;
 CFRunLoopRef psychHIDKbQueueCFRunLoopRef=NULL;
 pthread_t psychHIDKbQueueThread = NULL;
 psych_bool queueIsAKeyboard;
+UInt32 modifierKeyState = 0;
 
 static void *PsychHIDKbQueueNewThread(void *value){
 	// The new thread is started after the global variables are initialized
 	SInt32 rc;
 
-	// Get and retain the run loop associated with this thread
-	psychHIDKbQueueCFRunLoopRef=(CFRunLoopRef) GetCFRunLoopFromEventLoop(GetCurrentEventLoop());
+    pthread_mutex_lock(&psychHIDKbQueueMutex);    
+    
+    // Get and retain the run loop associated with this thread. We have to use
+    // CFRunLoopGetCurrent() instead of GetCFRunLoopFromEventLoop(GetCurrentEventLoop()),
+    // so it works reliably with Octave. The old GetCFRunLoopFromEventLoop(GetCurrentEventLoop())
+    // for some weird reason only worked reliably with Matlab. On Octave it was a hit and miss thing,
+    // sometimes working, sometimes not -- a race condition somewhere?!?
+	psychHIDKbQueueCFRunLoopRef=(CFRunLoopRef) CFRunLoopGetCurrent(); // Old: Only reliable on Matlab: GetCFRunLoopFromEventLoop(GetCurrentEventLoop());
 	CFRetain(psychHIDKbQueueCFRunLoopRef);
 
 	// Put the event source into the run loop
@@ -152,12 +159,11 @@ static void *PsychHIDKbQueueNewThread(void *value){
 	// input devices with at least 4+/-4 msecs jitter at 8 msec USB polling frequency.
 	PsychSetThreadPriority(NULL, 2, 0);
 
+	pthread_mutex_unlock(&psychHIDKbQueueMutex);	
+    
 	// Start the run loop, code execution will block here until run loop is stopped again by PsychHIDKbQueueRelease
 	// Meanwhile, the run loop of this thread will be responsible for executing code below in PsychHIDKbQueueCalbackFunction
 	while ((rc = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false)) == kCFRunLoopRunTimedOut);
-		
-	// In case the CFRunLoop was interrupted while the mutex was locked, unlock it
-	pthread_mutex_unlock(&psychHIDKbQueueMutex);	
 }
 
 static double convertTime(AbsoluteTime at){
@@ -171,9 +177,9 @@ static double convertTime(AbsoluteTime at){
 	Names given for keys refer to US layout.
 	May be copied freely.
 */
+
 // Taken from this MIT licensed software: <https://github.com/Ahruman/KeyNaming> according
-// to above permission note. So far not effectively used. Probably need to pull in the
-// whole project...
+// to above permission note.
 /*  KeyNaming.cp
 	Keynaming 2.2 implementation
 	© 2001-2008 Jens Ayton <jens@ayton.se>, except where otherwise noted.
@@ -584,7 +590,6 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 				keysUsage=tempHIDElement->usage;
 			}
 		}
-		// if(keysUsage<1 || keysUsage>255) continue;	// This is redundant since usage is checked when elements are added
 
 		// Don't bother with keysUsage of 0 (meaningless) or 1 (ErrorRollOver) for keyboards:
 		if ((queueIsAKeyboard) && (keysUsage <= 1)) continue;
@@ -595,29 +600,94 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 		// Cooked key code defaults to "unhandled", and stays that way for anything but keyboards:
 		evt.cookedEventCode = -1;
 		
+        // We only support .cookedEventCode mapping for the 64-Bit OSX Psychtoolbox, ie., for
+        // 64-Bit Octave and 64-Bit Matlab. Why? Because this code requires OSX version 10.5 or
+        // later and our 64-Bit PTB requires the same. The 32-Bit Matlab PTB still supports 10.4,
+        // on which this code would not work. But 32-Bit OSX is legacy and the only affected mode
+        // would be 32-Bit matlab -nojvm mode, so who cares?
+        #ifdef __LP64__
+
 		// For real keyboards we can compute cooked key codes:
 		if (queueIsAKeyboard) {
 			// Keyboard(ish) device. We can handle this under some conditions.
 			// Init to a default of handled, but unmappable/ignored keycode:
 			evt.cookedEventCode = 0;
 
-			// Keypress event? And available in mapping table?
-			if ((event.value != 0) && (keysUsage < kHID2VKCSize)) {
+			// Keypress event code available in mapping table?
+			if (keysUsage < kHID2VKCSize) {
 				// Yes: We try to map this to a character code:
 				
 				// Step 1: Map HID usage value to virtual keycode via LUT:
 				uint16_t vcKey = kHID2VKC[keysUsage];
 				
-				// Step 2: Translate virtual key code into unicode char:
-				// Ok, this is the usual horrifying complexity of Apple's system.
-				// If we want this implemented, our best shot is using/including a modified
-				// version of this MIT licensed software: <https://github.com/Ahruman/KeyNaming>
-				//
-				// For now, i just need a break - doing some enjoyable work on a less disgusting os...
-				evt.cookedEventCode = (int) vcKey;
+                // Keep track of SHIFT keys as modifier keys: Bits 0 == Command, 1 == Shift, 2 == CapsLock, 3 == Alt/Option, 4 == CTRL
+                if ((vcKey == kVKC_Shift || vcKey == kVKC_rShift) && (event.value != 0)) modifierKeyState |=  (1 << 1);
+                if ((vcKey == kVKC_Shift || vcKey == kVKC_rShift) && (event.value == 0)) modifierKeyState &= ~(1 << 1);
+
+                // Keep track of ALT keys as modifier keys:
+                if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (event.value != 0)) modifierKeyState |=  (1 << 3);
+                if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (event.value == 0)) modifierKeyState &= ~(1 << 3);
+                
+                // Keep track of CTRL keys as modifier keys:
+                if ((vcKey == kVKC_Control || vcKey == kVKC_rControl) && (event.value != 0)) modifierKeyState |=  (1 << 4);
+                if ((vcKey == kVKC_Control || vcKey == kVKC_rControl) && (event.value == 0)) modifierKeyState &= ~(1 << 4);
+
+                // Was this a CTRL + C interrupt request?
+                if ((event.value != 0) && (vcKey == 0x08) && (modifierKeyState & (1 << 4))) {
+                    // Yes: Tell the console input helper about it, so it can send interrupt
+                    // signals to the runtime and reenable keyboard input if appropriate:
+                    ConsoleInputHelper(-1);                    
+                }
+                
+                // Key press?
+                if (event.value != 0) {
+                    // Step 2: Translate virtual key code into unicode char:
+                    // Ok, this is the usual horrifying complexity of Apple's system. We use code
+                    // snippets found on StackOverflow, modified to suit our needs, e.g., we track
+                    // modifier keys manually, at least left and right ALT and SHIFT keys. We don't
+                    // care about other modifiers.
+                    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+                    CFDataRef uchr = (CFDataRef) ((currentKeyboard) ? TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData) : NULL);
+                    const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout*) ((uchr) ? CFDataGetBytePtr(uchr) : NULL);
+                    
+                    if (keyboardLayout) {
+                        UInt32 deadKeyState = 0;
+                        UniCharCount maxStringLength = 255;
+                        UniCharCount actualStringLength = 0;
+                        UniChar unicodeString[maxStringLength];
+                        
+                        OSStatus status = UCKeyTranslate(keyboardLayout,
+                                                         vcKey, kUCKeyActionDown, modifierKeyState,
+                                                         LMGetKbdType(), 0,
+                                                         &deadKeyState,
+                                                         maxStringLength,
+                                                         &actualStringLength, unicodeString);
+                        
+                        if ((actualStringLength == 0) && deadKeyState) {
+                            status = UCKeyTranslate(keyboardLayout,
+                                                    kVK_Space, kUCKeyActionDown, 0,
+                                                    LMGetKbdType(), 0,
+                                                    &deadKeyState,
+                                                    maxStringLength,
+                                                    &actualStringLength, unicodeString);
+                        }
+                        
+                        if((actualStringLength > 0) && (status == noErr)) {
+                            // Assign final cooked / mapped keycode:
+                            evt.cookedEventCode = (int) unicodeString[0];
+                            
+                            // Send same keystroke character to console input helper.
+                            // In kbqueue-based ListenChar(1) mode, the helper will
+                            // inject/forward the character into the runtime:
+                            ConsoleInputHelper(evt.cookedEventCode);                            
+                        }
+                    }
+                }
 			}
 		}
-		
+
+        #endif
+        
 		pthread_mutex_lock(&psychHIDKbQueueMutex);
 
 		// Update records of first and latest key presses and releases
@@ -900,8 +970,8 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 	}
 
 	{
-		IOHIDCallbackFunction function=PsychHIDKbQueueCallbackFunction;
-		result= (*hidDataRef->hidQueueInterface)->setEventCallout(hidDataRef->hidQueueInterface, function, NULL, hidDataRef);
+		//IOHIDCallbackFunction function=PsychHIDKbQueueCallbackFunction;
+		result= (*hidDataRef->hidQueueInterface)->setEventCallout(hidDataRef->hidQueueInterface, PsychHIDKbQueueCallbackFunction, NULL, hidDataRef);
 		if (kIOReturnSuccess!=result)
 		{
 			free(psychHIDKbQueueFirstPress);
@@ -993,7 +1063,10 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 
 int PsychHIDGetDefaultKbQueueDevice(void)
 {
-	return(0);
+    // Always 0 on OSX, because we only have one kb queue with index zero.
+    // There ain't a one-to-one mapping of HID 'deviceIndex'es and keyboard queue
+    // slots:
+    return(0);
 }
 
 #endif

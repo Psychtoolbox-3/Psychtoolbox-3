@@ -604,6 +604,10 @@ static mxArray *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int64
 EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[]);
 #endif
 
+// firstTime: This flag defines if this is the first invocation of the module
+// since it was (re-)loaded:
+static psych_bool firstTime = TRUE;
+
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 PsychError PsychExitOctaveGlue(void);
 static psych_bool jettisoned = FALSE;
@@ -650,7 +654,6 @@ EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
 EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 #endif
 {
-	static psych_bool firstTime = TRUE;
 	psych_bool errorcondition = FALSE;
 	psych_bool isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
 	PsychFunctionPtr fArg[2], baseFunction;
@@ -1104,8 +1107,19 @@ PsychError PsychExitOctaveGlue(void)
 */
 void PsychExitGlue(void)
 {
+    // Reset firstTime flag, so reloading the module leads to a full init cycle.
+    // This is especially important on Octave, as it doesn't fully unload/reload
+    // mex file modules at "clear" time, so the static firstTime variable won't
+    // get automatically reset to its inital load default of TRUE:
+    // firstTime = TRUE;
+    
+    // Perform platform independent shutdown:
 	PsychErrorExitMsg(PsychExit(),NULL);
-}	
+    
+    // And we are dead! Now the runtime will flush us from process memory,
+    // at least on Matlab. In any case no further invocation will happen
+    // until reload.
+}
 
 
 /*

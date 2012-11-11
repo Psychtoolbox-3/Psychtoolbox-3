@@ -1,0 +1,27 @@
+# This file is passed to the linker. It defines that
+# only functions which start with prefix "Psych", e.g.,
+# PsychDrawText, PsychMeasureText, ... have global
+# scope in the process which loads the ptbdrawtext_ftgl.so
+# DrawText text rendering plugin.
+#
+# All other functions only have local scope - they are
+# invisible to the hosting process.
+#
+# We add this to avoid polluting the host process with
+# definitions of our own QT-Toolkit "lookalike" implementations
+# of a few internally used QT classes. Our lookalikes are
+# very thin emulations of the real QT classes, stripped to
+# the bare essentials needed for the OGLFT code to by happy.
+# They are incomplete, but API compatible bits, which are
+# entirely ABI incompatible.
+#
+# This is important because Octave's native GUI uses the QT
+# toolkit for its GUI code and we want to avoid any kind of
+# possible interference between our plugin and the QT-GUI.
+#
+{
+	global:
+		Psych*;
+	local:
+		*;
+};

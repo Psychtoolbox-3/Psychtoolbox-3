@@ -204,13 +204,25 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 			
 			// Sufficient amount read?
 			if (nread != naccumread) {
-				// Should not happen, unless device is in cooked (canonical) input processing mode, where any read() will
-				// at most return the content of a single line of buffered input, regardless of requested amount. In this
-				// case it is not only a perfectly valid and expected result, but also safe, becuse our memset() above will
-				// zero-fill the remainder of the buffer with a defined value. For this reason we only output an error
-				// if high verbosity level is selected for debug output:
-				if (verbosity > 5) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Failed to read %i bytes of data for unknown reason (Got only %i bytes)! Padding...\n", naccumread, nread);
-			}
+                // Should not happen, unless device is in cooked (canonical) input processing mode, where any read() will
+                // at most return the content of a single line of buffered input, regardless of requested amount. In this
+                // case it is not only a perfectly valid and expected result, but also safe, because our memset() above will
+                // zero-fill the remainder of the buffer with a defined value. For this reason we only output an error
+                // if high verbosity level is selected for debug output.
+
+                // One special case: Zero bytes read due to read timeout exceeded. In this case we just skip and retry,
+                // instead of storing a complete zero-filled block of readGranularity bytes. Padding is nice, but returning
+                // completely empty data, which is indistinguishable from a sequence of zeros is not good. This caused serious
+                // pain when trying to receive one-byte scanner triggers, and it timed out due to scan not yet started and the
+                // valid scanner trigger bytes are value==zero bytes, indistinguishable by usercode from timeout. This injected
+                // "ghost triggers" from the usercodes perspective, very bad! Note that the actual timeout case is handled by
+                // the high level read code by independent checking for timeout. The high level code will hit timeout if we
+                // hit this "continue" too often, and will return a empty [] variable, reliably signalling to calling code that
+                // timeout occured - something that can be cleanly handled by caller.
+                if (nread == 0) continue;
+
+                if (verbosity > 5) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Failed to read %i bytes of data for unknown reason (Got only %i bytes)! Padding...\n", naccumread, nread);
+            }
 			
 			// Take read completion timestamp:
 			PsychGetAdjustedPrecisionTimerSeconds(&t);

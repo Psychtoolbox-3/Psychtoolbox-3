@@ -134,6 +134,11 @@ if nargin < 1
 	deviceIndex = [];
 end
 
+% Try to check if keyboard queue for 'deviceIndex' is reserved for our exclusive use:
+if ~KbQueueReserve(3, 2, deviceIndex) && KbQueueReserve(3, 1, deviceIndex)
+    error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceIndex);
+end
+
 % It is implicit in invoking this function that the queue should be running
 % and it is potentially problematic if it is not since the function will
 % never return, therefore, go ahead and start the queue if it isn't running

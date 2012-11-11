@@ -660,6 +660,8 @@
 		8306696D0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */; };
 		830982E00DB2DF4100E7D371 /* IOPort.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B16C307788CC100359736 /* IOPort.c */; };
 		830982E10DB2DF4500E7D371 /* IOPort.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B16C307788CC100359736 /* IOPort.c */; };
+		830C8DA4163BA879009B354B /* PsychHIDKeyboardHelper.c in Sources */ = {isa = PBXBuildFile; fileRef = 830C8DA3163BA879009B354B /* PsychHIDKeyboardHelper.c */; };
+		830C8DA5163BA879009B354B /* PsychHIDKeyboardHelper.c in Sources */ = {isa = PBXBuildFile; fileRef = 830C8DA3163BA879009B354B /* PsychHIDKeyboardHelper.c */; };
 		8310AC490F87C222004AAE79 /* PsychHIDCloseUSBDevice.c in Sources */ = {isa = PBXBuildFile; fileRef = F16C715D0F86999500A8BE72 /* PsychHIDCloseUSBDevice.c */; };
 		8310AC4A0F87C237004AAE79 /* PsychHIDOpenUSBDevice.c in Sources */ = {isa = PBXBuildFile; fileRef = F16C715E0F86999500A8BE72 /* PsychHIDOpenUSBDevice.c */; };
 		8310AC4B0F87C24C004AAE79 /* PsychHIDUSBControlTransfer.c in Sources */ = {isa = PBXBuildFile; fileRef = F1BCA5ED0F8676BD00EABA6F /* PsychHIDUSBControlTransfer.c */; };
@@ -2176,6 +2178,7 @@
 		830669BD0D3954B10009C12B /* PsychUserKernelShared.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychUserKernelShared.h; path = ../../../Source/OSX/Screen/PsychUserKernelShared.h; sourceTree = SOURCE_ROOT; };
 		83066A8A0D39AEAF0009C12B /* PsychGraphicsCardRegisterSpecs.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychGraphicsCardRegisterSpecs.h; path = ../../../Source/Common/Screen/PsychGraphicsCardRegisterSpecs.h; sourceTree = SOURCE_ROOT; };
 		83097FD70DB18BAF00E7D371 /* PsychSerialUnixGlue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychSerialUnixGlue.h; path = ../../../Source/Common/IOPort/PsychSerialUnixGlue.h; sourceTree = SOURCE_ROOT; };
+		830C8DA3163BA879009B354B /* PsychHIDKeyboardHelper.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDKeyboardHelper.c; path = ../../../Source/Common/PsychHID/PsychHIDKeyboardHelper.c; sourceTree = "<group>"; };
 		831A455F12A6EB5400FFF235 /* PsychMovieSupportQuickTime.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupportQuickTime.h; path = ../../../Source/Common/Screen/PsychMovieSupportQuickTime.h; sourceTree = SOURCE_ROOT; };
 		831A456212A6EE1000FFF235 /* PsychMovieSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupport.h; path = ../../../Source/Common/Screen/PsychMovieSupport.h; sourceTree = SOURCE_ROOT; };
 		831A458412A6EEC500FFF235 /* PsychMovieSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupport.c; path = ../../../Source/Common/Screen/PsychMovieSupport.c; sourceTree = SOURCE_ROOT; };
@@ -3601,6 +3604,7 @@
 				8325CED10CAF15DC00B498CD /* PsychHIDKbQueueStop.c */,
 				8325CED40CAF15E900B498CD /* PsychHIDKbTriggerWait.c */,
 				CF566E6D07F7D2FC00D4957A /* PsychHIDKbWait.c */,
+				830C8DA3163BA879009B354B /* PsychHIDKeyboardHelper.c */,
 				2F5434E40904C61F0051D6CC /* PsychHIDReceiveReports.c */,
 				2F5434E60904C6A40051D6CC /* PsychHIDReceiveReportsStop.c */,
 				CF566E6B07F7D2FC00D4957A /* PsychHIDSetReport.c */,
@@ -6894,6 +6898,7 @@
 				F16C715F0F86999500A8BE72 /* PsychHIDCloseUSBDevice.c in Sources */,
 				F16C71600F86999500A8BE72 /* PsychHIDOpenUSBDevice.c in Sources */,
 				833A17A013DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c in Sources */,
+				830C8DA4163BA879009B354B /* PsychHIDKeyboardHelper.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -7609,6 +7614,7 @@
 				8310AC4A0F87C237004AAE79 /* PsychHIDOpenUSBDevice.c in Sources */,
 				8310AC4B0F87C24C004AAE79 /* PsychHIDUSBControlTransfer.c in Sources */,
 				833A17A113DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c in Sources */,
+				830C8DA5163BA879009B354B /* PsychHIDKeyboardHelper.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

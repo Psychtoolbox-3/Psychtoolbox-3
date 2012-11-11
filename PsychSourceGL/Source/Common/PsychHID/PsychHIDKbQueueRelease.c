@@ -114,6 +114,8 @@ extern pthread_t psychHIDKbQueueThread;
 
 void PsychHIDOSKbQueueRelease(int deviceIndex)
 {
+    pthread_mutex_lock(&psychHIDKbQueueMutex);    
+    
 	// Remove the source from the CFRunLoop so queue transitions from empty
 	// to non-empty cannot trigger a new callout on the CFRunLoop thread
 	if(psychHIDKbQueueCFRunLoopRef){
@@ -140,7 +142,9 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
 		free(hidDataRef);
 		hidDataRef=NULL;
 	}
-		
+
+    pthread_mutex_unlock(&psychHIDKbQueueMutex);    
+    
 	// Stop the CFRunLoop, which will allow its thread to exit
 	// The mutex will be automatically unlocked and destroyed by the CFRunLoop thread
 	// so it isn't even declared in this routine

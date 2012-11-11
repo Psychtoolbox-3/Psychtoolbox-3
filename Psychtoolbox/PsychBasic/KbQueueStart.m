@@ -129,8 +129,14 @@ function KbQueueStart(deviceIndex)
 % 8/19/07    rpw  Wrote it.
 % 8/23/07    rpw  Modifications to add KbQueueFlush
 
-% Requires Mac OS X 10.3 or later. We sort this out on the first call 
-% and then store the result in macosrecent for subsequent calls
+if nargin < 1
+    deviceIndex = [];
+end
+
+% Try to check if keyboard queue for 'deviceIndex' is reserved for our exclusive use:
+if ~KbQueueReserve(3, 2, deviceIndex) && KbQueueReserve(3, 1, deviceIndex)
+    error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceIndex);
+end
 
 if nargin == 0
   PsychHID('KbQueueStart');

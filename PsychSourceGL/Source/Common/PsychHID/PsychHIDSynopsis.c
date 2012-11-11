@@ -31,6 +31,9 @@ void InitializeSynopsis(void)
 
 	synopsis[i++] = "Usage:";
 
+	synopsis[i++] = "\n\nGeneral commands:\n\n";
+    synopsis[i++] = "rc = PsychHID('KeyboardHelper', commandCode)";
+    
 	synopsis[i++] = "\n\nSupport for generic USB-HID devices:\n\n";
 	synopsis[i++] = "numberOfDevices=PsychHID('NumDevices')";
 	synopsis[i++] = "numberOfElements=PsychHID('NumElements',deviceNumber)";

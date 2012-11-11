@@ -1,5 +1,5 @@
-function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, useDPixx)
-% PsychPortAudioTimingTest([exactstart=1] [, deviceid=-1] [, latbias=0] [, waitframes=1] [,useDPixx=0])
+function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, useDPixx, triggerLevel)
+% PsychPortAudioTimingTest([exactstart=1][, deviceid=-1][, latbias=0][, waitframes=1][, useDPixx=0][, triggerLevel=0.01])
 %
 % Test script for sound onset timing reliability and sound onset
 % latency of the PsychPortAudio sound driver.
@@ -13,10 +13,8 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 % speakers, some oszillograph to record and measure the signals from the
 % diode and microphone.
 %
-% Some parameters may need tweaking. Make sure you got the special driver
-% plugin as described in 'help InitializePsychSound' for best results.
-%
-% This is early alpha code, expect some rough edges...
+% Some parameters may need tweaking. Make sure you got a setup as described
+% in 'help InitializePsychSound' for best results.
 %
 % Optional parameters:
 %
@@ -39,6 +37,21 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 % 'useDPixx'   = 1 -- Use DataPixx device to automatically measure the true
 %                     audio onset time wrt. to visual stimulus onset.
 %                0 -- Don't use DataPixx. This is the default.
+%
+% 'triggerLevel' = Sound signal amplitude for DataPixx to detect sound
+%                  onset. Defaults to 0.01 = 1% of max amplitude if
+%                  exactstart == 0, otherwise it is auto-detected by
+%                  calibration. This will likely need tweaking on your
+%                  setup. If the measured audio onset delta by DataPixx is
+%                  much lower (or almost zero) than the expected delta
+%                  reported by PsychPortAudio, then the triggerLevel may be
+%                  too low and you should try if slightly higher thresholds
+%                  help to discriminate signal from noise. Too high values
+%                  may cause a hang of the script. In practice, levels
+%                  between 0.01 and 0.1 should yield good results. Setting
+%                  the 'useDPixx' flag to 2 also plots the waveforms
+%                  captured by DataPixx, which may help in selection of the
+%                  optimal triggerLevel.
 %
 
 % Initialize driver, request low-latency preinit:
@@ -117,6 +130,8 @@ if IsWin
     % the more aggressive default setting of something like 5 msecs can
     % cause sound artifacts on cheaper / less pro sound cards:
     suggestedLatencySecs = 0.015 %#ok<NOPRT>
+    fprintf('Choosing a high suggestedLatencySecs setting of 15 msecs to account for shoddy Windows operating system.\n');
+    fprintf('For low-latency applications, you may want to tweak this to lower values if your system works better than average timing-wise.\n');
 end
 
 % Needs to determined via measurement once for each piece of audio
@@ -136,18 +151,17 @@ if nargin < 4
     waitframes = [];
 end
 
-if isempty(waitframes)
-    waitframes = 1;
-end
-
-waitframes %#ok<NOPRT>
-
 if nargin < 5
     useDPixx = [];
 end
 
 if isempty(useDPixx)
     useDPixx = 0;
+end
+
+if nargin < 6
+    % Default triggerLevel is "auto-trigger":
+    triggerLevel = [];
 end
 
 % Open audio device for low-latency output:
@@ -180,10 +194,17 @@ if useDPixx
     % Check settings by printing them:
     dpixstatus = Datapixx('GetMicrophoneStatus') %#ok<NOPRT,NASGU>
 
-    % Triggerlevel shall be 10% aka 0.1: Will need tweaking in practice...
-    DatapixxAudioKey('TriggerLevel', 0.1);
-
-    % DataPixx: Setup Screen imagingpipeline to support measurement:
+    if ~(exactstart && isempty(triggerLevel))
+        if isempty(triggerLevel)
+            % Choose a default of 1% of max. signal amplitude:
+            triggerLevel = 0.01;
+        end
+        fprintf('Using a trigger level for DataPixx of %f. This may need tweaking by you...\n', triggerLevel);
+        DatapixxAudioKey('TriggerLevel', triggerLevel);
+    end
+    
+    % DataPixx: Setup Screen imagingpipeline to support measurement via the PSYNC
+    % video synchronization mode of DataPixx and Screen():
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'UseDataPixx');
     win = PsychImaging('OpenWindow', screenid, 0);
@@ -195,6 +216,44 @@ end
 
 ifi = Screen('GetFlipInterval', win);
 
+% Set waitframes to a good default, if none is provided by user:
+if isempty(waitframes)
+    % We try to choose a waitframes that maximizes the chance of hitting
+    % the onset deadline. We are conservative in our estimate, because a
+    % few video refresh cycles hardly matter for this test, but increase
+    % our chance of success without need for manual tuning by user:
+    if isempty(suggestedLatencySecs)
+        % Let's assume 12 msecs on Linux and OSX as a achievable latency by
+        % default, then double it:
+        waitframes = ceil((2 * 0.012) / ifi) + 1;        
+    else
+        % Whatever was provided, then double it:
+        waitframes = ceil((2 * suggestedLatencySecs) / ifi) + 1;
+    end
+end
+
+fprintf('\n\nWaiting %i video refresh cycles before white-flash.\n', waitframes);
+
+% Auto-Selection of triggerLevel for Datapixx timestamping requested?
+if useDPixx && exactstart && isempty(triggerLevel)
+    % Use auto-trigger mode. Tell the function how long the silence
+    % interval at start of each trial is expected to be. This will be
+    % used for calibration: We set it to 75% of the duration of the pause
+    % between start of Datapixx recording and scheduled sound onset time:
+    DatapixxAudioKey('AutoTriggerLevel', ifi * waitframes * 0.75);
+    fprintf('Setting lead time of silence in Datapixx auto-trigger mode to %f msecs.\n', ifi * waitframes * 0.75 * 1000);
+end
+
+% Perform one warmup trial, to get the sound hardware fully up and running,
+% performing whatever lazy initialization only happens at real first use.
+% This "useless" warmup will allow for lower latency for start of playback
+% during actual use of the audio driver in the real trials:
+PsychPortAudio('Start', pahandle, 1, 0, 1);
+PsychPortAudio('Stop', pahandle, 1);
+
+% Ok, now the audio hardware is fully initialized and our driver is on
+% hot-standby, ready to start playback of any sound with minimal latency.
+
 % Wait for keypress.
 KbStrokeWait;
 
@@ -203,22 +262,14 @@ KbStrokeWait;
 
 % Ten measurement trials:
 for i=1:10
-
-    % Start the playback engine with an infinite start deadline, ie.,
-    % start hardware, but don't play sound:
-    PsychPortAudio('Start', pahandle, 1, inf, 0);
-
-    % Wait a bit, say 100 msecs, so hardware is certainly running and settled:
-    % Technically only needed for a first warmup trial...
-    WaitSecs(0.1);
-
     if useDPixx
         % Schedule start of audio capture on DataPixx at next Screen('Flip'):
         DatapixxAudioKey('CaptureAtFlip');
     end
     
-    % This flip clears the display to black and returns timestamp of black
-    % onset:
+    % This flip clears the display to black and returns timestamp of black onset:
+    % It also triggers start of audio recording by the DataPixx, if it is
+    % used, so the DataPixx gets some lead-time before actual audio onset.
     [vbl1 visonset1]= Screen('Flip', win);
 
     % Prepare black white transition:
@@ -226,15 +277,9 @@ for i=1:10
     Screen('DrawingFinished', win);
 
     if exactstart
-        % Schedule start of audio at exactly the predicted visual
-        % stimulus onset caused by the next flip command:
-        % With the current driver, this is not strictly needed if one has
-        % performed one "warmup trial", maybe outside the trial loop, ie.,
-        % 'Start'ed and stopped playback once. In such a scenario, one
-        % could just move the 'Start' call from above in place of the
-        % 'RescheduleStart' calls, as regular 'Start' latency will be very
-        % short, so no need to "pre-start" playback with such trickery...
-        PsychPortAudio('RescheduleStart', pahandle, visonset1 + waitframes * ifi, 0);
+        % Schedule start of audio at exactly the predicted visual stimulus
+        % onset caused by the next flip command.
+        PsychPortAudio('Start', pahandle, 1, visonset1 + waitframes * ifi, 0);
     end
 
     % Ok, the next flip will do a black-white transition...
@@ -243,7 +288,7 @@ for i=1:10
     if ~exactstart
         % No test of scheduling, but of absolute latency: Start audio
         % playback immediately:
-        PsychPortAudio('RescheduleStart', pahandle, 0, 0);
+        PsychPortAudio('Start', pahandle, 1, 0, 0);
     end
 
     t2 = GetSecs;
@@ -261,9 +306,7 @@ for i=1:10
         end
         WaitSecs('YieldSecs', 0.001);
     end
-
     audio_onset = status.StartTime;
-    status.TotalCalls
 
     %fprintf('Expected visual onset at %6.6f secs.\n', visual_onset);
     %fprintf('Sound started between %6.6f and  %6.6f\n', t1, t2);
@@ -278,8 +321,9 @@ for i=1:10
     fprintf('Expected audio-visual delay    is %6.6f msecs.\n', (audio_onset - visual_onset)*1000.0);
 
     if useDPixx
-        % 'visonset1' is the GetSecs() time of start of capture on DataPixx.
-        % 'audio_onset' is reported GetSecs() onset time according to PsychPortAudio.
+        % 'visonset1' is the GetSecs() time of start of capture on
+        % DataPixx. 'audio_onset' is reported GetSecs() audio onset time
+        % according to PsychPortAudio.
         %
         % 'expectedAudioDelta' is therefore the expected delay for the
         % measured audio onset by DataPixx:
@@ -300,12 +344,12 @@ for i=1:10
     % Stop playback:
     PsychPortAudio('Stop', pahandle, 1);
 
+    % Wait a bit...
     WaitSecs(0.3);
 
     Screen('FillRect', win, 0);
     telapsed = Screen('Flip', win) - visual_onset; %#ok<NASGU>
     WaitSecs(0.6);
-
 end
 
 % Done, close driver and display:

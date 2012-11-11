@@ -16,11 +16,11 @@ function varargout = PsychPortAudio(varargin)
 %   Scheduled start of playback can be accurate to the sub-millisecond level
 %   on some system setups.
 %
-% - Wait for sound onset, or continue with execution of Matlab code
+% - Wait for sound onset, or continue with execution of your code
 %   immediately.
 %
 % - Asynchronous operation: Sound playback works in the background while
-%   your Matlab code continues to do other things.
+%   your code continues to do other things.
 %
 % - Infinitely repeating playback, or playback of a sound for 'n' times.
 %
