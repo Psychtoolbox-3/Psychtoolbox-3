@@ -61,6 +61,9 @@
 % SetAnaglyphStereoParameters   - Function for runtime tuning of Anaglyph stereo parameters,
 %                                    see ImagingStereoDemo for example of use.
 % SetStereoBlueLineSyncParameters - Change settings for drawing of stereo sync lines in frame-sequential stereo mode.
+% SetStereoSideBySideParameters   - Change parameters for side-by-side stereo display modes (4 and 5).
+% SetCompressedStereoSideBySideParameters - Change parameters for compressed side-by-side stereo display modes.
+%
 % VignetCalibration               - Vignetted luminance calibration procedure for undistortion of distorted display luminance.
 %
 % Constants for imagingmode flag of Screen('OpenWindow', ...., imagingmode);

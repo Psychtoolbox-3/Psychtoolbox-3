@@ -289,12 +289,14 @@ typedef HRESULT (APIENTRY *DwmEnableCompositionPROC)(UINT enable);
 typedef HRESULT (APIENTRY *DwmEnableMMCSSPROC)(BOOL fEnableMMCSS);
 typedef HRESULT (APIENTRY *DwmGetCompositionTimingInfoPROC)(HWND hwnd, DWM_TIMING_INFO* pTimingInfo);
 typedef HRESULT (APIENTRY *DwmSetPresentParametersPROC)(HWND hwnd, DWM_PRESENT_PARAMETERS *pPresentParams);
+typedef HRESULT (APIENTRY *DwmFlushPROC)(void);
 
 DwmIsCompositionEnabledPROC			PsychDwmIsCompositionEnabled = NULL;
 DwmEnableCompositionPROC			PsychDwmEnableComposition = NULL;
 DwmEnableMMCSSPROC					PsychDwmEnableMMCSS = NULL;
 DwmGetCompositionTimingInfoPROC		PsychDwmGetCompositionTimingInfo = NULL;
 DwmSetPresentParametersPROC			PsychDwmSetPresentParameters = NULL;
+DwmFlushPROC						PsychDwmFlush = NULL;
 
 char hostwinName[512];
 HWND hostwinHandle = 0;	
@@ -436,7 +438,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 }
 
 // Callback handler for Window manager: Handles some events
-LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	static PAINTSTRUCT ps;
 	PsychWindowRecordType	**windowRecordArray;
@@ -689,6 +691,51 @@ psych_bool ChangeScreenResolution (int screenNumber, int width, int height, int 
 	return(TRUE);
 }
 
+/* Internal method, called by PsychOSOpenOnscreenWindow(): Optimize present parameters
+ * for Windows DWM compositor, to minimize its interference with our presentation timing
+ * in the cases where we can't avoid DWM compositing completely.
+ *
+ * All we do is disable queued presentation mode, as this is deprecated and didn't ever
+ * work well at all in the first place. Also we set the number of buffers in the buffer
+ * queue to the absolute allowable minimum of 2 buffers, trying to force the DWM to not
+ * queue up anything.
+ *
+ * This optimization is inspired by the one used by Google's ANGLE project for
+ * OpenGL rendering over DirectX-10. ANGLE is used for the WebGL implementation of
+ * the Chromium and Firefox web browsers on Windows, so we assume they know what they're
+ * doing. See the setup code for the Surface::initialize() method in ANGLE's libEGL
+ * implementation: <code.google.com/p/angleproject/source/browse/trunk/src/libEGL/Surface.cpp>
+ *
+ * In any case, this is just band-aid, as the only decent way to get good performance
+ * and timing is to not have the DWM active on the stimulus presentation display. We
+ * achieve this by actively disabling the DWM on Windows Vista and Windows-7. On Windows-8
+ * we can't do that, but apparently the DWM auto-disables at least for fullscreen onscreen
+ * stimulus displays, similar to what Linux compositors do when unredirect_fullscreen_windows
+ * mode is requested. This optimization only applies to half-transparent "debug windows" or
+ * non fullscreen windows, or when running on a Windows-8 + setup with broken DWM switching.
+ */
+static void OptimizeDWMParameters(PsychWindowRecordType *windowRecord)
+{
+    DWM_PRESENT_PARAMETERS dwmPresentParams;
+
+    if (!PsychOSIsDWMEnabled(0)) return;
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Optimizing windows DWM present parameters. Using minimum queue length of 2 buffers.\n");
+
+    memset(&dwmPresentParams, 0, sizeof(dwmPresentParams));
+    dwmPresentParams.cbSize = sizeof(dwmPresentParams);
+    dwmPresentParams.cBuffer = 2;
+
+    // Call function if DWM is supported and enabled: We don't check its return code, as this
+    // function is only really implemented on Windows-Vista, Windows-7 and Windows-8. It is
+    // deprecated as of Windows-8 and support for it will be removed in Windows-9, ie., the
+    // function will turn into a no-op and always return error code E_NOTSUP -- "Not supported".
+    // See: http://msdn.microsoft.com/en-us/library/windows/desktop/hh994465%28v=vs.85%29.aspx
+    // "Queued present model is being deprecated" on MSDN.
+    PsychDwmSetPresentParameters(windowRecord->targetSpecific.windowHandle, &dwmPresentParams);
+
+    return;
+}
+
 /*
     PsychOSOpenOnscreenWindow()
     
@@ -770,20 +817,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // the whole dynamic library detection code once for performance reasons:
     if (!hInstance) {
         // First time. Check if we can load the dwmapi.dll:
-		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Checking for DWM Aero desktop compositor support... "); 
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Checking for DWM desktop compositor support... "); 
 		
         dwmSupported = FALSE;
         dwmlibrary = LoadLibrary("dwmapi.dll");
         if (dwmlibrary) {
             // Load success. Dynamically bind the relevant functions:
-			if (PsychPrefStateGet_Verbosity() > 5) printf(" ...Aero desktop compositing window manager available on this Vista (or later) system. Binding controls ..."); 
+			if (PsychPrefStateGet_Verbosity() > 5) printf(" ... DWM available on this Vista (or later) system. Binding controls ..."); 
             PsychDwmIsCompositionEnabled = (DwmIsCompositionEnabledPROC) GetProcAddress(dwmlibrary, "DwmIsCompositionEnabled");
             PsychDwmEnableComposition    = (DwmEnableCompositionPROC) GetProcAddress(dwmlibrary, "DwmEnableComposition");
             PsychDwmEnableMMCSS          = (DwmEnableMMCSSPROC) GetProcAddress(dwmlibrary, "DwmEnableMMCSS");
             PsychDwmGetCompositionTimingInfo = (DwmGetCompositionTimingInfoPROC) GetProcAddress(dwmlibrary, "DwmGetCompositionTimingInfo");
             PsychDwmSetPresentParameters = (DwmSetPresentParametersPROC) GetProcAddress(dwmlibrary, "DwmSetPresentParameters");
+            PsychDwmFlush                = (DwmFlushPROC) GetProcAddress(dwmlibrary, "DwmFlush");
 			
-            if (PsychDwmIsCompositionEnabled && PsychDwmEnableComposition && PsychDwmEnableMMCSS && PsychDwmGetCompositionTimingInfo && PsychDwmSetPresentParameters) {
+            if (PsychDwmIsCompositionEnabled && PsychDwmEnableComposition && PsychDwmEnableMMCSS && PsychDwmGetCompositionTimingInfo && PsychDwmSetPresentParameters && PsychDwmFlush) {
                 // Mark dwm as supported:
                 dwmSupported = TRUE;
 				if (PsychPrefStateGet_Verbosity() > 5) printf(" ...done\n"); 
@@ -796,7 +844,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			}
         }
 		else {
-			if (PsychPrefStateGet_Verbosity() > 5) printf(" ... DWM Aero desktop compositing window manager unsupported. Running on a Pre-Vista system.\n"); 
+			if (PsychPrefStateGet_Verbosity() > 5) printf(" ... DWM desktop compositing window manager unsupported. Running on a Pre-Vista system.\n"); 
 		}
     }
     
@@ -822,12 +870,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             // Failed to query state: Assume the worst, i.e., compositor on:
             compositorEnabled = TRUE;
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to query state of Windows desktop compositor! Assuming it is ON!\n");
+                printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to query state of DWM Windows desktop compositor! Assuming it is ON!\n");
             }
         }
         else {
             if (PsychPrefStateGet_Verbosity() > 3) {
-                printf("PTB-INFO: Aero desktop compositor is currently %s.\n", (compositorEnabled) ? "enabled" : "disabled");
+                printf("PTB-INFO: DWM desktop compositor is currently %s.\n", (compositorEnabled) ? "enabled" : "disabled");
             }
         }
 		
@@ -898,14 +946,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
         else {
             if (PsychPrefStateGet_Verbosity() > 3) {
-                printf("PTB-INFO: Aero DWM desktop compositor is now %s.\n", (compositorPostEnabled) ? "enabled" : "disabled");
+                printf("PTB-INFO: DWM desktop compositor is now %s.\n", (compositorPostEnabled) ? "enabled" : "disabled");
             }
         }
 		
+        // On Windows-8 and later, disabling the DWM is no longer possible, so we need to treat such
+        // a failure to switch state as a benign problem and leave it to later code to decide if the
+        // user should be notified of potential serious problems or not. Therefore we use relatively
+        // modest language here for warnings:
 		if (compositorPostEnabled != compositorEnabled) {
-            if (PsychPrefStateGet_Verbosity() > 0) {
-                printf("PTB-ERROR: PsychOSOpenOnscreenWindow: Windows desktop compositor is not %s as requested!\n", (compositorEnabled) ? "enabled" : "disabled");
-                if (compositorPostEnabled) printf("PTB-ERROR: PsychOSOpenOnscreenWindow: EXPECT SERIOUS PROBLEMS WITH VISUAL STIMULUS ONSET TIMING AND TIMESTAMPING!!\n");
+            if (PsychPrefStateGet_Verbosity() > 3) {
+                printf("PTB-INFO: PsychOSOpenOnscreenWindow: Windows desktop compositor is not %s as requested!\n", (compositorEnabled) ? "enabled" : "disabled");
+                if (compositorPostEnabled) printf("PTB-WARNING: PsychOSOpenOnscreenWindow: This may cause reduced or wrong stimulus onset timing and timestamping precision\n");
             }
 		}
         
@@ -938,45 +990,54 @@ dwmdontcare:
 		}
     }
 
-	 // Special case for explicit multi-display setup under Windows when opening a window on
-	 // screen zero. We enforce the fullscreen - flag, aka a borderless top level window. This way,
+    // Special case for explicit multi-display setup under Windows when opening a window on
+    // screen zero. We enforce the fullscreen - flag, aka a borderless top level window. This way,
     // if anything of our automatic full-desktop window emulation code goes wrong on exotic setups,
     // the user can still enforce a suitably positioned and sized borderless toplevel window.
     if (PsychGetNumDisplays()>2 && screenSettings->screenNumber == 0) fullscreen = TRUE;
 
     if (fullscreen) {
-      windowStyle |= WS_POPUP;					// Set The WindowStyle To WS_POPUP (Popup Window without borders)
-      windowExtendedStyle |= WS_EX_TOPMOST;		// Set The Extended Window Style To WS_EX_TOPMOST
-	  
-	  // Copy absolute screen location and area of window to 'globalrect',
-	  // so functions like Screen('GlobalRect') can still query the real
-	  // bounding gox of a window onscreen:
-	  PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
-	  
-	  // Mark this window as fullscreen window:
-	  windowRecord->specialflags |= kPsychIsFullscreenWindow;
+        windowStyle |= WS_POPUP;					// Set The WindowStyle To WS_POPUP (Popup Window without borders)
+        windowExtendedStyle |= WS_EX_TOPMOST;		// Set The Extended Window Style To WS_EX_TOPMOST
+
+        // Copy absolute screen location and area of window to 'globalrect',
+        // so functions like Screen('GlobalRect') can still query the real
+        // bounding gox of a window onscreen:
+        PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
+
+        // Mark this window as fullscreen window:
+        windowRecord->specialflags |= kPsychIsFullscreenWindow;
     }
     else {
-      windowStyle |= WS_OVERLAPPEDWINDOW;
-	  // Set The Extended Window Style To WS_EX_TOPMOST, ie., this window is in front of all other
-	  // windows all the time, unless windowLevel is smaller than 1000:
-	  if (windowLevel >= 1000) windowExtendedStyle |= WS_EX_TOPMOST;
-	  
-	  // If windowLevel is that of a transparent window, then try to enable support for transparent
-	  // windows:
-	  // Could also define _WIN32_WINNT >= 0x0500
-	  #ifndef WS_EX_LAYERED
-	  #define WS_EX_LAYERED           0x00080000
-	  #endif
-	  #ifndef LWA_ALPHA
-	  #define LWA_ALPHA               2
-	  #endif
-	  if ((windowLevel >= 1000) && (windowLevel <  2000)) windowExtendedStyle |= WS_EX_LAYERED;
+        // Only GUI windows have decorations. Non-GUI windows are border/decorationless:
+        if (!windowRecord->specialflags & kPsychGUIWindow) {
+            // Decorationless, borderless window:
+            windowStyle |= WS_POPUP;
+        }
+        else {
+            // GUI window: Needs title-bar, borders, resize handles, the whole bling:
+            windowStyle |= WS_OVERLAPPEDWINDOW;
+        }
 
-	  // Copy absolute screen location and area of window to 'globalrect',
-	  // so functions like Screen('GlobalRect') can still query the real
-	  // bounding gox of a window onscreen:
-	  PsychCopyRect(windowRecord->globalrect, windowRecord->rect);	  
+        // Set The Extended Window Style To WS_EX_TOPMOST, ie., this window is in front of all other
+        // windows all the time, unless windowLevel is smaller than 1000:
+        if (windowLevel >= 1000) windowExtendedStyle |= WS_EX_TOPMOST;
+
+        // If windowLevel is that of a transparent window, then try to enable support for transparent
+        // windows:
+        // Could also define _WIN32_WINNT >= 0x0500
+        #ifndef WS_EX_LAYERED
+        #define WS_EX_LAYERED           0x00080000
+        #endif
+        #ifndef LWA_ALPHA
+        #define LWA_ALPHA               2
+        #endif
+        if ((windowLevel >= 1000) && (windowLevel <  2000)) windowExtendedStyle |= WS_EX_LAYERED;
+
+        // Copy absolute screen location and area of window to 'globalrect',
+        // so functions like Screen('GlobalRect') can still query the real
+        // bounding gox of a window onscreen:
+        PsychCopyRect(windowRecord->globalrect, windowRecord->rect);	  
     }
 
     // Define final position and size of window:
@@ -1490,10 +1551,13 @@ dwmdontcare:
 
 		windowRecord->targetSpecific.glusercontextObject = wglCreateContext(hDC);
 		if (windowRecord->targetSpecific.glusercontextObject == NULL) {
-         ReleaseDC(hWnd, hDC);
-         DestroyWindow(hWnd);
-			printf("\nPTB-ERROR[UserContextCreation failed]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
-			return(FALSE);
+            ReleaseDC(hWnd, hDC);
+            DestroyWindow(hWnd);
+            windowRecord->targetSpecific.windowHandle = NULL;
+            windowRecord->targetSpecific.deviceContext = NULL;
+
+            printf("\nPTB-ERROR[UserContextCreation failed]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
+            return(FALSE);
 		}
 
 		if (PsychPrefStateGet_Verbosity()>4) {
@@ -1609,6 +1673,9 @@ dwmdontcare:
      if (windowRecord->targetSpecific.glswapcontextObject == NULL) {
          ReleaseDC(hWnd, hDC);
          DestroyWindow(hWnd);
+         windowRecord->targetSpecific.windowHandle = NULL;
+         windowRecord->targetSpecific.deviceContext = NULL;
+         
          printf("\nPTB-ERROR[SwapContextCreation failed]: Creating a private OpenGL context for async flips failed for unknown reasons.\n\n");
          return(FALSE);
      }
@@ -1728,11 +1795,11 @@ dwmdontcare:
     // Increase our own open window counter:
     win32_windowcount++;
 
-    // Some info for the user regarding non-fullscreen and ATI hw:
-    if (!PsychOSIsDWMEnabled() && (glGetString(GL_VENDOR)) && !fullscreen && (strstr(glGetString(GL_VENDOR), "ATI"))) {
-      printf("PTB-INFO: Some ATI graphics cards may not support proper syncing to vertical retrace when\n");
+    // Some info for the user regarding non-fullscreen windows:
+    if (!fullscreen) {
+      printf("PTB-INFO: Most graphics cards will not support proper syncing to vertical retrace when\n");
       printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
-      printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 1); .\n");
+      printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
       printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
     }
 
@@ -1749,6 +1816,9 @@ dwmdontcare:
 		}
     }
 
+    // If the DWM is enabled, try to optimize its presentation parameters for our purpose:
+    OptimizeDWMParameters(windowRecord);
+    
 	// Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
 	// make windows GUI event processing happy:
 	PsychGetMouseButtonState(NULL);
@@ -1872,7 +1942,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
       // Detach from and release dwmapi.dll if loaded and attached:
       if (dwmSupported && dwmlibrary) {
 		  // Reenable DWM if it was disabled (by us or others):
-		  if (!PsychOSIsDWMEnabled()) {
+		  if (!PsychOSIsDWMEnabled(0)) {
 	          // Enable compositor:
 			  if (PsychDwmEnableComposition(1)) {
 				  if (PsychPrefStateGet_Verbosity() > 1) {
@@ -1905,8 +1975,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 	DWM_TIMING_INFO	dwmtiming;	
 	psych_uint64 ust, msc, sbc;
 	CGDirectDisplayID displayID;
-	HRESULT rc1 = 0;
-	HRESULT rc2 = 0;
+	HRESULT rc = 0xdeadbeef;
 	unsigned int screenid = windowRecord->screenNumber;
 
 	// Retrieve displayID, aka HDC for this screenid:
@@ -1915,28 +1984,26 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 	// Windows Vista DWM available, supported and enabled?
 	dwmtiming.cbSize = sizeof(dwmtiming);
 	
-	if ( PsychOSIsDWMEnabled() && (NULL != PsychDwmGetCompositionTimingInfo) && (
-		((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ||
-		((rc2 = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0)
-		)) {
+	if (PsychOSIsDWMEnabled(0) && (NULL != PsychDwmGetCompositionTimingInfo) &&
+		((rc = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0)) {
 		// Yes. Supported, enabled, and we got timing info from it. Extract:
 		
 		// VBLCount of last VBL:
-		*vblCount = (psych_uint64) dwmtiming.cRefresh;
+		*vblCount = (psych_uint64) dwmtiming.cDXRefresh;
 		
 		// VBLTime of last VBL in QPC, ie., as query performance counter 64-bit psych_uint64 value:
 		ust = (psych_uint64) dwmtiming.qpcVBlank;
 
 		if (PsychPrefStateGet_Verbosity() > 15) {
-			 printf("PTB-DEBUG: VBLCount = %i  :  VBLTime = %d ticks. ClockHz = %f\n", (int) *vblCount, ust, PsychGetKernelTimebaseFrequencyHz());
+			 printf("PTB-DEBUG: VBLCount = %i : VBLTime = %f secs. ClockHz = %f. rc=%x\n", (int) *vblCount, PsychMapPrecisionTimerTicksToSeconds(ust), PsychGetKernelTimebaseFrequencyHz(), rc);
 		}
 
 		// Convert ust into regular GetSecs timestamp:
 		return(PsychMapPrecisionTimerTicksToSeconds(ust));
 	}
 	else {
-		 if (PsychOSIsDWMEnabled() && PsychPrefStateGet_Verbosity()>6) {
-			 printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo(%i) failed with rc1 = %x, rc2 = %x, GetLastError() = %i\n", dwmtiming.cbSize, rc1, rc2, GetLastError());
+		 if (PsychOSIsDWMEnabled(0) && PsychPrefStateGet_Verbosity()>6) {
+			 printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo(%i) failed with rc = %x, GetLastError() = %i\n", dwmtiming.cbSize, rc, GetLastError());
 		}
 	}
 
@@ -2000,7 +2067,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 
 	// Windows Vista DWM available, supported and enabled?
 	dwmtiming.cbSize = sizeof(dwmtiming);
-	if ( PsychOSIsDWMEnabled() && ((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ) {
+	if ( PsychOSIsDWMEnabled(0) && ((rc1 = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0) ) {
 		// Yes. Supported, enabled, and we got valid timing info from it. Extract:
 
 		// Only qpcRefreshPeriod requested?
@@ -2106,7 +2173,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 		return(TRUE);
 	}
 	else {
-		if (PsychOSIsDWMEnabled() && PsychPrefStateGet_Verbosity() > 6) {
+		if (PsychOSIsDWMEnabled(0) && PsychPrefStateGet_Verbosity() > 6) {
 			printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo() failed with rc1 = %x, GetLastError() = %i\n", rc1, GetLastError());			
 		}
 	}
@@ -2119,22 +2186,25 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
  *
  * Return current Desktop Window Manager (DWM) status. Zero for disabled, Non-Zero for enabled.
  */
-int	PsychOSIsDWMEnabled(void)
+int	PsychOSIsDWMEnabled(int screenNumber)
 {
-	psych_bool IsDWMEnabled;
-	BOOL compositorEnabled;
+    DWM_TIMING_INFO	dwmtiming;
+    BOOL compositorEnabled;
+    psych_bool IsDWMEnabled;
 
-	// If DWM is supported, query and assign its effective enable state:
-	if (dwmSupported && (0 == PsychDwmIsCompositionEnabled(&compositorEnabled))) {
-		// DWM and query success:
-		IsDWMEnabled = (psych_bool) compositorEnabled;
-	}
-	else {
-		// No DWM, so naturally it is "disabled":
-		IsDWMEnabled = FALSE;
-	}
+    // screenNumber unused on MS-Windows:
+    (void) screenNumber;
+    
+    // Need to init dwmtiming for our dummy-call to get composition timing info:
+    dwmtiming.cbSize = sizeof(dwmtiming);
 
-	return(IsDWMEnabled);
+    // If DWM is nominally supported, query and assign its effective enable state. If the OS reports it is enabled,
+    // check if it is really active, ie., compositing instead of just on standby. The PsychDwmIsCompositionEnabled()
+    // reports nominal enable state, but an enabled compositor still (should) get out of our way and therefore be
+    // effectively disabled if a fullscreen window is displayed. A query to PsychDwmGetCompositionTimingInfo() will
+    // succeed if the DWM is really active, but fail if the DWM is on standby.
+    IsDWMEnabled = (dwmSupported && (0 == PsychDwmIsCompositionEnabled(&compositorEnabled)) && compositorEnabled && (0 == PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)));
+    return(IsDWMEnabled);
 }
 
 /* PsychOSSetPresentParameters()
@@ -2186,7 +2256,7 @@ psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psyc
 	dwmPresentParams.eSampling = DWM_SOURCE_FRAME_SAMPLING_POINT;
 	
 	// Call function if DWM is supported and enabled:
-	if (PsychOSIsDWMEnabled() && ((rc = PsychDwmSetPresentParameters(windowRecord->targetSpecific.windowHandle, &dwmPresentParams)) == 0)) return(TRUE);
+	if (PsychOSIsDWMEnabled(0) && ((rc = PsychDwmSetPresentParameters(windowRecord->targetSpecific.windowHandle, &dwmPresentParams)) == 0)) return(TRUE);
 	
 	// DWM unsupported, disabled, or call failed:
 	return(FALSE);
@@ -2196,7 +2266,7 @@ psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psyc
  *
  * Retrieve a very precise timestamp of doublebuffer swap completion by means
  * of OS specific facilities. This function is optional. If the underlying
- * OS/drier/GPU combo doesn't support a high-precision, high-reliability method
+ * OS/driver/GPU combo doesn't support a high-precision, high-reliability method
  * to query such timestamps, the function should return -1 as a signal that it
  * is unsupported or (temporarily) unavailable. Higher level timestamping code
  * should use/prefer timestamps returned by this function over other timestamps
@@ -2218,8 +2288,69 @@ psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psyc
  */
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap)
 {
-	// Unsupported on Windows:
-	return(-1);
+    DWM_TIMING_INFO	dwmtiming;
+    HRESULT rc;
+    psych_uint64 msc, ust;
+
+    // We only support (or need) Windows-OS specific swap timestamping if the DWM
+    // is active for our onscreen windows display. Fallback to default timestamping
+    // if DWM is inactive:
+    if (!PsychOSIsDWMEnabled(0)) return(-1);
+
+    // DWM active on at least one display. Check if this is a single-display setup,
+    // in which case we can try to wait for and timestamp swap completion. On a
+    // multi-display setup we can't do that 
+    if (PsychGetNumDisplays() > 1) return(-1);
+
+    // Flush the DWM queue for our applications outstanding DirectX rendering requests:
+    PsychDwmFlush();
+
+    // DWM active on a single-display setup. This means that our onscreen window(s)
+    // will be affected by compositing. Let's be optimistic and assume that the
+    // timing info provided by the DWM is relevant to our onscreen window and not
+    // polluted / confounded by display updates of potential other unrelated windows
+    // on the composited desktop. Worst case, the confounding Present() requests
+    // should cause us to return a too late timestamp, ie., false detection of deadline
+    // miss, which is the more acceptable error case.
+    while (TRUE) {
+        // Yield for one msec:
+        PsychYieldIntervalSeconds(0.001);
+
+        // Get current timing state: Trigger standard fallback on failure.
+        dwmtiming.cbSize = sizeof(dwmtiming);
+        if ((rc = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) != 0) {
+        if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: PsychOSGetSwapCompletionTimestamp failed: Call to PsychDwmGetCompositionTimingInfo() failed with rc = %x, GetLastError() = %i\n", rc, GetLastError());
+            return(-1);
+        }
+
+        // Default targetSBC is Present request number of most recently submitted
+        // DirectX Present() request. This assumes the latest Present() request was
+        // triggered by the DWM in response to the composition pass which was triggered
+        // by our OpenGL SwapBuffers() call for our onscreen window:
+        if (targetSBC == 0) targetSBC = dwmtiming.cDXPresentSubmitted;
+
+        // Do have all outstanding DirectX Present() requests up to our targetSBC
+        // have completed, ie., their corresponding buffers were flipped onscreen?
+        // This would signal effective swap completion for the target composition pass
+        // which involves our onscreen windows bufferswap. If not, we repeat the polling
+        // loop for another wait-iteration:
+        if (targetSBC == dwmtiming.cDXPresentConfirmed) break;
+    }
+
+    // Present confirmed completed. To the best of our limited knowledge, the
+    // DirectX refresh count of present confirmation should be the vblank count
+    // of the vblank in which the swap completed, ie., the msc. Calculate the
+    // difference between current vblank count and count of swap completion,
+    // translate it into a time delta from the most recent vblank and subtract that
+    // delte from the QPC timestamp of the most recent vblank. This should yield
+    // our best estimate of swap completion time:
+    msc = dwmtiming.cDXRefreshConfirmed;
+    ust = dwmtiming.qpcVBlank - ((dwmtiming.cDXRefresh - dwmtiming.cDXRefreshConfirmed) * dwmtiming.qpcRefreshPeriod);
+
+    // Translate to GetSecs time:
+    if (tSwap) *tSwap = PsychMapPrecisionTimerTicksToSeconds(ust);
+
+    return((psych_int64) msc);
 }
 
 /*

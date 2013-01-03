@@ -126,7 +126,7 @@ static void InitErrorStrings(void)
 	errorStringsERROR[PsychError_invalidScumber]= 				"Invalid Screen Number";
 	errorStringsERROR[PsychError_invalidNumdex]= 				"Invalid or missing Screen Number or Window Index";
 	errorStringsERROR[PsychError_invalidColorArg]= 				"Invalid Color Argument";
-	errorStringsERROR[PsychError_invalidDepthArg]= 				"Invalide pixel size argument";
+	errorStringsERROR[PsychError_invalidDepthArg]= 				"Invalid pixel size argument";
 	errorStringsERROR[PsychError_invalidRectArg]= 				"Invalid Rect Argument";
 	errorStringsERROR[PsychError_invalidNumberBuffersArg]=		"Invalid number of buffers specified";
 	errorStringsERROR[PsychError_nullWinRecPntr]= 				"Window Record Pointer is NULL";

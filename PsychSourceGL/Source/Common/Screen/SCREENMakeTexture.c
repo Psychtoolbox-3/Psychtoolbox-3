@@ -149,12 +149,12 @@ PsychError SCREENMakeTexture(void)
     //get the argument and sanity check it.
     isImageMatrixBytes=PsychAllocInUnsignedByteMatArg(2, kPsychArgAnything, &ySize, &xSize, &numMatrixPlanes, &byteMatrix);
     isImageMatrixDoubles=PsychAllocInDoubleMatArg(2, kPsychArgAnything, &ySize, &xSize, &numMatrixPlanes, &doubleMatrix);
+    if(!(isImageMatrixBytes || isImageMatrixDoubles))
+        PsychErrorExitMsg(PsychError_user, "Illegal argument type. Image matrices must be uint8 or double data type.");
     if(numMatrixPlanes > 4)
         PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Specified image matrix exceeds maximum depth of 4 layers");
     if(ySize<1 || xSize <1)
         PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Specified image matrix must be at least 1 x 1 pixels in size");
-    if(! (isImageMatrixBytes || isImageMatrixDoubles))
-        PsychErrorExitMsg(PsychError_user, "Illegal argument type");  //not  likely. 
 
 	// Is this a special image matrix which is already pre-transposed to fit our optimal format?
 	if (assume_texorientation == 2) {

@@ -98,28 +98,6 @@ PsychError PSYCHHIDGetDevices(void)
         #endif
     }
 
-#if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
-    // Try to load all bundles from Psychtoolbox/PsychHardware/
-    // This loads the HID_Utilities.framework bundle if it is present. The whole point of it is
-    // to allow our statically compiled-in version of the library to find the location of
-    // the XML file with the database of (vendorId, productId) -> (VendorName, ProductName) and
-    // (usagePage, usage) -> (usageName) mappings.
-    //
-    // In practice, the XML file only serves as a fallback, and one that doesn't contain much
-    // useful info for mainstream products, only for a few niche products. Given its limited
-    // value, i think we can refrain from shipping the framework as part of Psychtoolbox and
-    // just provide the option to use it (== its XML file) if users decide to install it themselves.
-    char tmpString[1024];
-    
-    sprintf(tmpString, "%sPsychHardware/", PsychRuntimeGetPsychtoolboxRoot(FALSE));
-    CFStringRef urlString = CFStringCreateWithCString(kCFAllocatorDefault, tmpString, kCFStringEncodingASCII);
-    CFURLRef directoryURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, urlString, kCFURLPOSIXPathStyle, false);
-    CFRelease(urlString);
-    CFArrayRef bundleArray = CFBundleCreateBundlesFromDirectory(kCFAllocatorDefault, directoryURL, NULL);
-    CFRelease(directoryURL);
-    CFRelease(bundleArray);    
-#endif
-
     PsychHIDVerifyInit();
     numDeviceStructElements=(int)HIDCountDevices();
     PsychAllocOutStructArray(1, FALSE, numDeviceStructElements, numDeviceStructFieldNames, deviceFieldNames, &deviceStruct);
@@ -157,11 +135,18 @@ PsychError PSYCHHIDGetDevices(void)
         #if PSYCH_SYSTEM == PSYCH_OSX
             // OSX 64-Bit specific: OSX 10.5 and later:
             #ifdef __LP64__
+                char tmpString[1024];
+                CFStringRef cfusageName = NULL;
+        
                 PsychSetStructArrayDoubleElement("usagePageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsagePage(currentDevice), deviceStruct);
                 PsychSetStructArrayDoubleElement("usageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsage(currentDevice), deviceStruct);
 
                 sprintf(usageName, "");
-                CFStringRef cfusageName = HIDCopyUsageName(IOHIDDevice_GetPrimaryUsagePage(currentDevice), IOHIDDevice_GetPrimaryUsage(currentDevice));
+                // HIDCopyUsageName() is slow: It takes about 22 msecs to map one HID device on a modern machine!
+                // However, the functions below are also rather slow, taking another ~ 8 msecs for a total of ~30 msecs
+                // on a mid-2010 MacBookPro with quad-core cpu.
+                cfusageName = HIDCopyUsageName(IOHIDDevice_GetPrimaryUsagePage(currentDevice), IOHIDDevice_GetPrimaryUsage(currentDevice));
+
                 if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
                     CFStringGetCString(cfusageName, usageName, sizeof(usageName), kCFStringEncodingASCII);
                     CFRelease(cfusageName);

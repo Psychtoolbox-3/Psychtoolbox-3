@@ -67,7 +67,6 @@ if ~isempty(enableCallbacks)
         % Nope. Enable argument 1?
         if enableCallbacks > 0
             % Assign our default callback function:
-            enableCallbacks = 'EyelinkDispatchCallback';
             enableCallbacks = 'PsychEyelinkDispatchCallback';
         else
             % Callbacks disabled on request:

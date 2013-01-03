@@ -93,8 +93,6 @@ static int                              screenConserveVRAM;
 static psych_bool                       EmulateOldPTB;
 // Support for real 3D rendering enabled? Any non-zero value enables 3D rendering, a setting of 1 with defaults, values > 1 enable additional features. Disabled by default.
 static int								Enable_3d_gfx;
-// Default mode for flip and vbl timestamping: Beampos vs. kernel-level irqs: Defaults to 1, i.e.,
-// use beampos if available, fall back to kernel-level otherwise:
 static int                              screenVBLTimestampingMode;
 static int								screenVBLEndlineOverride;		// Manual override for VTOTAL - Endline of VBL. -1 means "auto-detect" this is the default.
 static int								videoCaptureEngineId;			// Default video capture engine: 0 = Quicktime, 1 = LibDC1394 Firewire, 2 = ARVideo.
@@ -143,7 +141,7 @@ void PrepareScreenPreferences(void)
 	screenConserveVRAM=0;
 	EmulateOldPTB=FALSE;
 	Enable_3d_gfx=0;
-	screenVBLTimestampingMode = (PSYCH_SYSTEM == PSYCH_LINUX) ? 4 : 1;
+	screenVBLTimestampingMode = ((PSYCH_SYSTEM == PSYCH_LINUX) || (PSYCH_SYSTEM == PSYCH_WINDOWS)) ? 4 : 1;
 	screenVBLEndlineOverride=-1;
 	videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;
 	windowShieldingLevel=2000;
@@ -319,23 +317,13 @@ void PsychPrefStateSet_VisualDebugLevel(int level)
 // at default setting by most users. Useful for debugging/testing
 // and in special cases. Currently meaningless on Linux
 // and therefore silently ignored.
-// Meaning on OS-X:
+//
 // -1= Always use uncorrected timestamps.
 // 0 = low-level, kernel-based timestamping always off: Use beampos method if available, otherwise use uncorrected timestamps.
 // 1 = Automatic, on demand: Use beampos method if available, use the kernel-level method if beampos method unsupported, e.g., IntelMacs.
 // 2 = Always use kernel-level method, but only as a consistency check for beampos method -- For the super-paranoid and for testing.
 // 3 = Always use kernel-level method, this method overrides everything else. This is the opposite of 1.
-//
-// OS-X: 
-// We default to 1 -- Use old beamposition query method normally, but use new kernel-level method as fallback.
-//
-// Windows:
-// We default to 1 on single display setups or multi-display setups with only one primary display device attached,
-// i.e., use beamposition queries if supported. On multi-display setups in explicit multi-display mode, we default
-// to -1, i.e., use uncorrected timestamps. Proper multi-display support is not yet implemented and tested.
-//
-// Linux:
-// Not yet implemented, therefore silently ignored. Will add support for SGI-GLX Video sync extensions soon.
+// 4 = Use operating system specific timestamping method: On Linux this is OpenML OML_sync_control, on Windows this is DwmGetCompositionTimingInfo().
 //
 int PsychPrefStateGet_VBLTimestampingMode(void)
 {

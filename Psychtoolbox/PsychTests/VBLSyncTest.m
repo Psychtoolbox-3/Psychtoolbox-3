@@ -1,5 +1,5 @@
-function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous)
-% VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous)
+function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx)
+% VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx)
 %
 % Tests syncing of PTB-OSX to the vertical retrace (VBL) and demonstrates
 % how to implement the old Screen('WaitBlanking') behaviour with
@@ -90,7 +90,6 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 % compatible stereo display hardware, e.g., CrystalEyes shutter glasses.
 %
 %
-%
 % flushpipe = Mark end of drawing commands to improve presentation timing.
 % PTB knows a new command Screen('DrawingFinished') which, when properly used,
 % will give PTB hints on how to optimize drawing of stimuli: This allows to draw
@@ -104,6 +103,11 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 % synchronous = 0 Don't wait for drawing completion in Screen('DrawingFinished')
 % synchronous = 1 Wait for completion - Useful for benchmarking and debugging,
 % but degrades performance significantly in real experiments.
+%
+%
+% usedpixx = 1 Use a DataPixx/ViewPixx/ProPixx device for external
+% timestamping of stimulus onset, as a correctness test for Screen('Flip')
+% timestamping. Disabled (0) by default.
 %
 %
 % EXAMPLES:
@@ -199,32 +203,36 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 
 %%% VBLSyncTest(1000, 0, 0.6, 0, 0, 1, 0)
 
-if nargin < 1
+if nargin < 1 || isempty(n)
     n = 600;
 end
 
-if nargin < 2
+if nargin < 2 || isempty(numifis)
     numifis = 1;
 end
 
-if nargin < 3
+if nargin < 3 || isempty(loadjitter)
     loadjitter = 0;
 end
 
-if nargin < 4
+if nargin < 4 || isempty(clearmode)
     clearmode = 0;
 end
 
-if nargin < 5
+if nargin < 5 || isempty(stereo)
     stereo = 0;
 end
 
-if nargin < 6
+if nargin < 6 || isempty(flushpipe)
     flushpipe = 0;
 end
 
-if nargin < 7
+if nargin < 7 || isempty(synchronous)
     synchronous = 0;
+end
+
+if nargin < 8 || isempty(usedpixx)
+    usedpixx = 0;
 end
 
 try
@@ -234,11 +242,17 @@ try
 	% an error message if someone tries to execute this script on a computer without
 	% an OpenGL Psychtoolbox
 	AssertOpenGL;
-	
+    
+    if IsWin && 0
+        % Enforce use of DWM on Windows-Vista and later: This simulates the
+        % situation of Windows-8 or later on Windows-Vista and Windows-7:
+        Screen('Preference','ConserveVRAM', 16384); % Force use of DWM.
+    end
+    
 	% Get the list of Screens and choose the one with the highest screen number.
 	% Screen 0 is, by definition, the display with the menu bar. Often when 
 	% two monitors are connected the one without the menu bar is used as 
-	% the stimulus display.  Chosing the display with the highest dislay number is 
+	% the stimulus display.  Chosing the display with the highest display number is 
 	% a best guess about where you want the stimulus displayed.  
 	screens=Screen('Screens');
 	screenNumber=max(screens);
@@ -249,7 +263,13 @@ try
 
     % Open double-buffered window: Optionally enable stereo output if
     % stereo == 1.
-    w=Screen('OpenWindow',screenNumber, 0,[],32,2, stereo);
+    PsychImaging('PrepareConfiguration')
+    if usedpixx
+        % Use DataPixx for external timestamping for quick basic correctness
+        % tests.
+        PsychImaging('AddTask', 'General', 'UseDataPixx');
+    end
+    w=PsychImaging('OpenWindow',screenNumber, 0,[],[],[], stereo);
     
     % Query effective stereo mode, as Screen() could have changed it behind our
     % back, e.g., if we asked for mode 1 but Screen() had to fallback to
@@ -307,6 +327,7 @@ try
     td=ts;
     so=ts;
     tSecondary = ts;
+    sodpixx = ts;
     
     % Compute random load distribution for provided loadjitter value:
     wt=rand(1,n)*(loadjitter*ifi);
@@ -346,6 +367,11 @@ try
             tdeadline=0;
         end;
         
+        if usedpixx
+            % Ask for a Datapixx onset timestamp for next 'Flip':
+            PsychDataPixx('LogOnsetTimestamps', 1);
+        end
+        
         % Flip: The clearmode argument specifies if flip should clear the
         % drawing buffer after flip (=0 - default), keep it "as is"
         % for incremental drawing/updating of stims (=1) or don't do
@@ -363,35 +389,38 @@ try
         % beampos > screen height means that flip returned during the VBL
         % interval. Small values << screen height are also ok,
         % they just indicate either a slower machine or some types of flat-panels...
-        [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
+	if usedpixx && IsOctave
+	    % Workaround for Datapixx + Octave bug in January 2013 ptb:
+	    tvbl = Screen('Flip', w, tdeadline, clearmode);
+	    so(i) = tvbl;
+	else
+            [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
+        end
 
-        % Special code for debugging: Disabled by default - Not for pure
+        if usedpixx
+            % Ask for a Datapixx onset timestamp from last 'Flip':
+            [boxTime, sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
+        end
+        
+        % Special code for DWM debugging: Disabled by default - Not for pure
         % mortals!
-        if IsWin & 0 %#ok<AND2>
+        tSecondary(i) = 0;
+        if IsWin && 0
 			while 1
-				winfo = Screen('GetWindowInfo', w); %#ok<NASGU>
-                %				fprintf('QUERY %i : t = %0.10f  : LastVBL = %0.10f  : VBLCount = %i\n', i, GetSecs, winfo.LastVBLTime, winfo.VBLCount);
-				wdminfo = Screen('GetWindowInfo', w, 2) %#ok<NOPRT>
-				
+                WaitSecs('YieldSecs', 0.001);
+				wdminfo = Screen('GetWindowInfo', w, 2);
 
-				if isstruct(wdminfo)
-					if (i > 1) && (tSecondary(i-1) == wdminfo.OnsetVBLTime)
-                        %						fprintf('DELAYED: %i %0.10f \n', i, wdminfo.OnsetVBLTime);
-						continue;
-					else
-						if (i>1)
-							%fprintf('---> tnew - told = %0.10f \n', wdminfo.OnsetVBLTime - tSecondary(i-1));
-						end
-					end
-					tSecondary(i) = wdminfo.OnsetVBLTime;					
-					break;
-				else
-					tSecondary(i) = 0;
-					break;
-				end
+                if ~isstruct(wdminfo)
+                    break;
+                end
+                
+                if wdminfo.cDXPresentConfirmed == wdminfo.cDXPresentSubmitted
+                    tSecondary(i) = wdminfo.qpcVBlank - ((wdminfo.cDXRefresh - wdminfo.cDXRefreshConfirmed) * wdminfo.qpcRefreshPeriod);
+                    tvbl = tSecondary(i);
+                    so(i) = tSecondary(i);
+                    break;
+                end
 			end
-        else
-            tSecondary(i) = 0;            
         end
         
         % Record timestamp for later use:
@@ -445,7 +474,7 @@ try
     % Close display: If we skipped/missed any presentation deadline during
     % Flip, Psychtoolbox will automatically display some warning message on the Matlab
     % console:
-    Screen('CloseAll');
+    sca;
     
     % Plot all our measurement results:
 
@@ -510,6 +539,13 @@ try
 		fprintf('Average discrepancy between DWM and beamposition timestamping is %f msecs, stddev = %f msecs.\n', mean((tSecondary - so) * 1000), std((tSecondary - so) * 1000));
     end
     
+    if usedpixx
+        figure;
+        plot((so - sodpixx) * 1000);
+        title('Time delta in msecs onset according to Flip - onset according to DataPixx:');
+		fprintf('Average discrepancy between Flip timestamping and DataPixx is %f msecs, stddev = %f msecs.\n', mean((so - sodpixx) * 1000), std((so - sodpixx) * 1000));        
+    end
+    
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;
     numberearly=0;
@@ -564,7 +600,8 @@ catch %#ok<*CTCH>
     % This "catch" section executes in case of an error in the "try" section
     % above. Importantly, it closes the onscreen window if its open and
     % shuts down realtime-scheduling of Matlab:
-    Screen('CloseAll');
+    sca;
+    
     % Disable realtime-priority in case of errors.
     Priority(0);
     psychrethrow(psychlasterror);

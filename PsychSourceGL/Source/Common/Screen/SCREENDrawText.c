@@ -373,9 +373,25 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     glEnable(GL_TEXTURE_2D);
     glGenTextures(1, &myTexture);				//create an index "name" for our texture
     glBindTexture(GL_TEXTURE_2D, myTexture);	//instantiate a texture of type associated with the index and set it to be the target for subsequent gl texture operators.
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);		//tell gl how to unpack from our memory when creating a surface, namely don't really unpack it but use it for texture storage.
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);	//specify interpolation scaling rule for copying from texture.  
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  //specify interpolation scaling rule from copying from texture.
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);		//tell gl how to unpack from our memory when creating a surface.
+    
+    // Text(ure) filtering settings:
+    if (PsychPrefStateGet_TextAntiAliasing() > 0) {
+        // Use Bilinear filtering for nice rotated/scaled/transformed, anti-aliased text:
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+    else {
+        // Use nearest neighbour sampling for non-anti-aliased text. Text appearance is
+        // already jagged in that case, and usercode usually disables anti-aliasing only
+        // if it wants us to not mess with text appearance in any way, e.g., for proper
+        // display of text inside a clut based color-palette index display. This is important
+        // to avoid artifacts on devices with color overlay planes like the CRS Bits+ / Bits# or
+        // the ViewPixx/DataPixx/ProPixx devices from VPixx.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
     PsychTestForGLErrors();
@@ -1186,8 +1202,24 @@ PsychError	PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
 		glEnable(GL_TEXTURE_RECTANGLE_EXT);
 		glGenTextures(1, &myTexture);
 		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, myTexture);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        // Text(ure) filtering settings:
+        if (PsychPrefStateGet_TextAntiAliasing() > 0) {
+            // Use Bilinear filtering for nice rotated/scaled/transformed, anti-aliased text:
+            glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+        else {
+            // Use nearest neighbour sampling for non-anti-aliased text. Text appearance is
+            // already jagged in that case, and usercode usually disables anti-aliasing only
+            // if it wants us to not mess with text appearance in any way, e.g., for proper
+            // display of text inside a clut based color-palette index display. This is important
+            // to avoid artifacts on devices with color overlay planes like the CRS Bits+ / Bits# or
+            // the ViewPixx/DataPixx/ProPixx devices from VPixx.
+            glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        }
+
 		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
@@ -1716,7 +1748,7 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 		}
 		
 		// Get length in bytes, derived from location of null-terminator character:
-		stringLengthBytes = strlen(textCString);
+		stringLengthBytes = (int) strlen(textCString);
 		
 		// Empty string? If so, we skip processing:
 		if (stringLengthBytes < 1) goto allocintext_skipped;
@@ -1737,7 +1769,7 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 				#if defined(PTBOCTAVE3MEX)
 						*textLength = mbstowcs(NULL, textCString, 0);
 				#else
-						*textLength = mbstowcs_l(NULL, textCString, 0, drawtext_locale);
+						*textLength = (int) mbstowcs_l(NULL, textCString, 0, drawtext_locale);
 				#endif
 			}
 		#else

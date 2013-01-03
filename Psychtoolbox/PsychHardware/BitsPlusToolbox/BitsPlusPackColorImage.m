@@ -26,7 +26,7 @@ if (nargin < 3 || isempty(COLORSCALE))
 	COLORSCALE = 1;
 end
 
-if (SPACESCALE & ~COLORSCALE)
+if (SPACESCALE && ~COLORSCALE)
 	error('COLORSCALE must be set if SPACESCALE is.');
 end
 

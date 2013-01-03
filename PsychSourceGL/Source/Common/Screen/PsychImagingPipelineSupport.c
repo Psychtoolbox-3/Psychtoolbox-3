@@ -445,6 +445,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	int newimagingmode = 0;
 	int fbocount = 0;
 	int winwidth, winheight;
+    int clientwidth, clientheight;
 	psych_bool needzbuffer, needoutputconversion, needimageprocessing, needseparatestreams, needfastbackingstore, targetisfinalFB;
 	GLuint glsl;
 	GLint redbits;
@@ -468,7 +469,6 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		printf("PTB-ERROR: more recent graphics card. You'll need at minimum a NVidia GeforceFX-5000 or a ATI Radeon 9600 or Intel GMA 950 for this to work.\n");
 		printf("PTB-ERROR: See the www.psychtoolbox.org Wiki for recommendations. You can still use basic stereo support (with restricted performance and features)\n");
 		printf("PTB-ERROR: by disabling the imaging pipeline (imagingmode = 0) but still selecting a stereomode in the 'OpenWindow' subfunction.\n");
-		fflush(NULL);
 		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, your graphics card does not meet the minimum requirements for use of the imaging pipeline.");
 	}
 
@@ -496,14 +496,25 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
 	// Safe default:
 	targetisfinalFB = FALSE;
-	
+
+    // Panel fitter requested? If so, framebuffer blit extension supported?
+    if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOBlit)) {
+        // This is a no-go:
+        printf("PTB-ERROR: You requested use of the panel-fitter via the 'clientRect' parameter of Screen('OpenWindow', ...);\n");
+        printf("PTB-ERROR: but this graphics card and driver does not support the required GL_EXT_framebuffer_blit extension.\n");
+        printf("PTB-ERROR: Please upgrade your system or remove the 'clientRect' parameter from Screen('OpenWindow', ...); so\n");
+        printf("PTB-ERROR: we can resolve this issue.\n\n");
+        PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, panel-fitter not supported on your graphics hardware.");
+    }
+
 	// Multisampled anti-aliasing requested?
 	if (multiSample > 0) {
 		// Yep. Supported by GPU?
 		if (!(windowRecord->gfxcaps & kPsychGfxCapFBOMultisample)) {
 			// No. We fall back to non-multisampled mode:
 			multiSample = 0;
-			
+			windowRecord->multiSample = 0;
+            
 			// Tell user if warnings enabled:
 			if (PsychPrefStateGet_Verbosity() > 1) {
 				printf("PTB-WARNING: You requested stimulus anti-aliasing by multisampling by setting the multiSample parameter of Screen('OpenWindow', ...) to a non-zero value.\n");
@@ -512,7 +523,25 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				printf("PTB-WARNING: Will therefore continue without anti-aliasing...\n\n");
 				printf("PTB-WARNING: A driver upgrade may resolve this issue. Users of MacOS-X need at least OS/X 10.5.2 Leopard for support on recent ATI hardware.\n\n");
 			}
-		}
+		}    // Panel scaling requested? If so we need support for scaled multisample resolve blits to satisfy needs of multisampling and scaling:
+        else if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit)) {
+            // Not supported by GPU. Disable multisampling to satisfy at least the requirement for panelscaling,
+            // which is probably more important, as usercode usually only uses panel scaling to workaround serious
+            // trouble with experimental setups, ie., it is more urgent:
+			multiSample = 0;
+			windowRecord->multiSample = 0;
+			
+			// Tell user if warnings enabled:
+			if (PsychPrefStateGet_Verbosity() > 1) {
+				printf("PTB-WARNING: You requested stimulus anti-aliasing by multisampling by setting the multiSample parameter of Screen('OpenWindow', ...) to a non-zero value.\n");
+				printf("PTB-WARNING: You also requested use of the imaging pipeline and of the GPU panel-fitter / rescaler via the 'clientRect' argument.\n");
+                printf("PTB-WARNING: Unfortunately, your combination of operating system, graphics hardware and driver does not support simultaneous\n");
+				printf("PTB-WARNING: use of multisampled anti-aliasing and the panel-fitter. I assume your request for panel fitting is more important.\n");
+				printf("PTB-WARNING: Will therefore continue without anti-aliasing to make the panel-fitter work.\n");
+                printf("PTB-WARNING: You would need a graphics card, os or graphics driver that supports the GL_EXT_framebuffer_multisample_blit_scaled\n");
+                printf("PTB-WARNING: extension to avoid this degradation of functionality.\n\n");
+			}
+        }
 	}
 
 	// Determine required precision for our framebuffer objects:
@@ -714,9 +743,25 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			winheight = winheight / 2;
 		}
 
+        // Special setup of FBO size for use with panel-fitter needed?
+        if (imagingmode & kPsychNeedGPUPanelFitter) {
+            // Panel-fitter: Use override values from windows clientrectangle:            
+            clientwidth  = (int) PsychGetWidthFromRect(windowRecord->clientrect);
+            clientheight = (int) PsychGetHeightFromRect(windowRecord->clientrect);
+            
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Enabling panel fitter. Rescaling from %i x %i pixels virtual size to real framebuffer resolution.\n", clientwidth, clientheight);
+            }
+        }
+        else {
+            // No panel-fitter, use calculated winwidth x winheight for 1st level drawBufferFBO's:
+            clientwidth  = winwidth;
+            clientheight = winheight;
+        }
+
 		// These FBO's may need a z-buffer or stencil buffer as well if 3D rendering is
 		// enabled:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample, 0)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 		}
@@ -731,7 +776,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		
 		// If we are in stereo mode, we'll need a 2nd buffer for the right-eye channel:
 		if (windowRecord->stereomode > 0) {
-			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample, 0)) {
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 			}
@@ -774,10 +819,10 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		}
 	}
 
-	// Multisampling requested?
-	if (multiSample > 0) {
-		// Multisampling requested. Need to find out if we are a intermediate multisample resolve buffer
-		// or if this is already the final destination and we can resolve directly into system framebuffer/
+	// Multisampling requested? Or panel-fitter active?
+	if ((multiSample > 0) || (imagingmode & kPsychNeedGPUPanelFitter)) {
+		// Multisampling or panel-fitting requested. Need to find out if we are an intermediate multisample-resolve / rescaler buffer
+		// or if this is already the final destination and we can resolve and/or scale-blit directly into system framebuffer/
 		// into finalizedFBO's:
 	
 		// The target of the drawBufferFBO's is already the final FB if not processing is needed. This is the case
@@ -788,7 +833,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		targetisfinalFB = ( !needimageprocessing && (windowRecord->stereomode == kPsychMonoscopic) && !needoutputconversion ) ? TRUE : FALSE;
 	
 		if (!targetisfinalFB) {
-			// Yes. Setup real inputBuffers as multisample-resolve targets:
+			// Yes. Setup real inputBuffers as multisample-resolve / scaler targets:
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 inputBufferFBO of imaging pipeline.");
@@ -1044,6 +1089,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		newimagingmode |= kPsychNeed16BPCFixed;
 	}
 	if (imagingmode & kPsychNeedDualWindowOutput) newimagingmode |= kPsychNeedDualWindowOutput;
+    if (imagingmode & kPsychNeedGPUPanelFitter) newimagingmode |= kPsychNeedGPUPanelFitter;
 	
 	// Set new final imaging mode and fbocount:
 	windowRecord->imagingMode = newimagingmode;
@@ -1239,6 +1285,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Multisampling requested? If so, we need to enable it:
 	if (multiSample > 0) {
 		glEnable(GL_MULTISAMPLE);
+        windowRecord->multiSample = multiSample;
 	}
 
 	// Perform a safe reset of current drawing target. This is a warm-start of PTB's drawing
@@ -1383,10 +1430,12 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 {
     GLenum texturetarget;
 	GLenum fborc;
-	GLint bpc;
+	GLint bpc, maxSamples;
 	GLboolean isFloatBuffer;
 	char fbodiag[1024];
-    
+    GLenum glerr;
+    psych_bool multisampled_cb = FALSE;
+
 	// Eat all GL errors:
 	PsychTestForGLErrors();
 	
@@ -1450,6 +1499,9 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		
 		// Texture ready, unbind it.
 		glBindTexture(texturetarget, 0);
+        
+        // Mark use of standard path:
+        multisampled_cb = FALSE;
 	}
 	else {
 		// Multisampled FBO: Setup a multisampled renderbuffer as color attachment;
@@ -1458,53 +1510,75 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->coltexid));
 		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->coltexid);
 
+        // Query maximum supported number of samples for multi-sampling:
+        glGetIntegerv(GL_MAX_SAMPLES_EXT, &maxSamples);
+        
+        // Clamp multisample level to maximum, warn user if she aimed to high:
+        if (multisample > maxSamples) {
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Your graphics hardware does not support anti-aliasing with the requested minimum number of %i samples.\n", multisample);
+                printf("PTB-WARNING: Will try requesting the theoretical maximum supported value of %i samples instead and see what i can get.\n", maxSamples);
+            }
+            
+            multisample = maxSamples;
+        }
+        
+        // Try creating multisampled renderbuffers. On failure, decrease requested sample count.
+        // Hardware may deny requests if insufficient memory is available.
 		do {
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychCreateFBO(): Trying to alloc multisample renderbuffer with %i samples.\n", multisample);
 			glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample--, fboInternalFormat, width, height);
-		} while ((glGetError() == GL_OUT_OF_MEMORY) && (multisample >= 0));
-
-		if (multisample < 0) {
-			// Restore original multisample level:
-			multisample = (*fbo)->multisample;
-			printf("PTB-WARNING: Failed to setup framebuffer for anti-aliasing with %i samples for use with imaging pipeline.\n", multisample);
-			printf("PTB-WARNING: Will try to continue without anti-aliasing. Reason for failure is insufficient amount of graphics memory.\n");
-		}
-		else {
-			// Got what we wanted?
-			multisample++;
-			if (multisample < (*fbo)->multisample) {
-				printf("PTB-WARNING: Failed to setup framebuffer for anti-aliasing with at least requested %i samples for use with imaging pipeline.\n", (*fbo)->multisample);
-				printf("PTB-WARNING: This might be due to insufficient graphics memory, or due to limitations of your graphics hardware.\n");
-			}
-		}
+		} while (((glerr = glGetError()) != GL_NO_ERROR) && (multisample >= 0));
 		
-		if (glGetError()!=GL_NO_ERROR) {
-			printf("PTB-ERROR: Failed to setup internal framebuffer objects color buffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
-			printf("PTB-ERROR: Most likely the requested size, depth and multisampling level of the window or texture is not supported by your graphics hardware.\n");
+        // Worked? Worst case we should have gotten at least a renderbuffer with multisample == 0,
+        // ie., a non-multisampled buffer. If even that failed, then something's screwed, e.g.,
+        // totally out of memory and we have to give up:
+		if (glerr != GL_NO_ERROR) {
+            if (PsychPrefStateGet_Verbosity() > 0) {
+                printf("PTB-ERROR: Failed to setup internal framebuffer objects color buffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                if (glerr == GL_OUT_OF_MEMORY) {
+                    printf("PTB-ERROR: Reason seems to be an out of graphics memory condition.\n");
+                }
+                else {
+                    printf("PTB-ERROR: Reason for failure is unknown [OpenGL error: %s]\n", gluErrorString(glerr));
+                }
+            }
+            
+            glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
 			return(FALSE);
 		}
 
-		// Query real number of samples for renderbuffer:
+		// Got some renderbuffer. Query real number of samples for renderbuffer:
 		glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
-		(*fbo)->multisample = multisample;
-		
+        
 		// Unbind, we're done with setup:
 		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
-		
+
+        if ((multisample < (*fbo)->multisample) && (PsychPrefStateGet_Verbosity() > 1)) {
+            printf("PTB-WARNING: Could only get %i samples instead of requested %i samples for multi-sampling from hardware.\n", multisample, (*fbo)->multisample);
+        }
+        
+        // Assign effective multisample count:
+		(*fbo)->multisample = multisample;
+
 		if (PsychPrefStateGet_Verbosity() > 5) {
 			printf("PTB-DEBUG: Created framebuffer object for anti-aliasing with %i samples per pixel for use with imaging pipeline.\n", (*fbo)->multisample);
 		}
+        
+        // Mark use of multi-sampled renderbuffer path:
+        multisampled_cb = TRUE;
 	}
 	
 	// Create a new framebuffer object and bind it:
 	glGenFramebuffersEXT(1, (GLuint*) &((*fbo)->fboid));
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, (*fbo)->fboid);
 	
-	if (multisample == 0) {
+	if (!multisampled_cb) {
 		// Attach the texture as color buffer zero:
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, texturetarget, (*fbo)->coltexid, 0);
 	}
 	else {
-		// Attach the renderbuffer as color buffer zero:
+		// Attach the multi-sampled renderbuffer as color buffer zero:
 		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER_EXT, (*fbo)->coltexid);
 	}
 
@@ -1534,7 +1608,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			printf("PTB-ERROR: Retry with the lowest acceptable (for your study) size and depth of the onscreen window or offscreen window.\n");
 		}
 		else {
-			printf("PTB-ERROR: Exact reason for failure is unknown, most likely a Psychtoolbox bug, GL-driver bug or unintented use. glCheckFramebufferStatus() returns code %i\n", fborc);
+			printf("PTB-ERROR: Exact reason for failure is unknown, most likely a Psychtoolbox bug, OpenGL-driver bug or unintented use. glCheckFramebufferStatus() returns code %i\n", fborc);
 		}
 		return(FALSE);
 	}
@@ -1690,8 +1764,19 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->ztexid));
 			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
 		
-			glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, width, height);
-						
+            
+            // Use of depth+stencil requested and packed depth+stencil possible?
+            if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO) && glewIsSupported("GL_EXT_packed_depth_stencil")) {
+                // Try a packed depth + stencil buffer:
+                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH24_STENCIL8_EXT, width, height);
+                (*fbo)->stexid = (*fbo)->ztexid;
+            }
+            else {
+                // Depth buffer only:
+                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, width, height);
+                (*fbo)->stexid = 0;
+            }
+            
 			if (glGetError()!=GL_NO_ERROR) {
 				printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
 				printf("PTB-ERROR: Most likely the requested size, depth and multisampling level of the window or texture is not supported by your graphics hardware.\n");
@@ -1709,67 +1794,92 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			// Unbind, we're done with setup:
 			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
 			
-			// Attach z-buffer:
-			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
-			
+            // Non-zero stexid marks that we've created a packed depth+stencil renderbuffer above:
+            if ((*fbo)->stexid) {
+                // Attach combined z + stencil buffer:
+                glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);                
+            }
+            else {
+                // Attach z-buffer only:
+                glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
+			}
+            
 			// Now try to attach stencil buffer:
-			if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
+			if (!((*fbo)->stexid) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
 				// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
 				glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
 				glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->stexid);
 
+                // Try to get stencil buffer with matching sample count to depth and color buffers:
 				glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_STENCIL_INDEX8_EXT, width, height);
 
 				if (glGetError()!=GL_NO_ERROR) {
-					printf("PTB-ERROR: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
-					printf("PTB-ERROR: Most likely the requested size, depth and multisampling level of the window or texture is not supported by your graphics hardware.\n");
-					return(FALSE);
+					if (PsychPrefStateGet_Verbosity() > 2) {
+                        printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                    }
+                    
+                    // Clean up:
+                    glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+					glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
+					(*fbo)->stexid = 0;
 				}
 				
 				// Query real number of samples for renderbuffer:
 				glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
 				if ((*fbo)->multisample != multisample) {
-					printf("PTB-ERROR: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
-					printf("PTB-ERROR: Could not get the same number of samples for stencil renderbuffer as for color buffer, which is a requirement.\n");
-					return(FALSE);
-				}
-				
-				glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
-				
-				glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->stexid);
-				
-				// See if we are framebuffer complete:
-				fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-				if (GL_FRAMEBUFFER_COMPLETE_EXT != fborc && 0 != fborc) {
-					// Nope. Our trick doesn't work, this hardware won't let us attach a stencil buffer at all. Remove it
-					// and live with a depth-buffer only setup.
-					if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil multisampled renderbuffer attachment failed! Detaching multisampled stencil buffer...\n"); 
-					if (PsychPrefStateGet_Verbosity()>1) {
-						printf("PTB-WARNING: OpenGL multisampled stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n");
-						printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
-						printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
-						printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers.\n\n"); 
-					}
-					
-					glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, 0);
+					if (PsychPrefStateGet_Verbosity() > 2) {
+                        printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                        printf("PTB-WARNING: Could not get the same number of samples for stencil renderbuffer as for color buffer, which is a requirement.\n");
+                    }
+
+                    // Clean up:
+                    glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
 					glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
 					(*fbo)->stexid = 0;
 				}
-				else if (fborc == 0) {
-					// Checking command itself failed?!?
-					if (PsychPrefStateGet_Verbosity() > 2) {
-						// Warn the user:
-						printf("PTB-WARNING: In setup of framebuffer object multisampled stencil attachment: glCheckFramebufferStatusEXT() malfunctioned. (glGetError reports: %s)\n", gluErrorString(glGetError()));
-						printf("PTB-WARNING: Therefore can't determine if FBO setup worked or not. Will continue and hope for the best :(\n");
-						printf("PTB-WARNING: This is most likely a graphics driver bug. You may want to update your graphics drivers, maybe it helps.\n");
-					}
-					while(glGetError());
-				}
+				
+                if ((*fbo)->stexid > 0) {
+                    glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+                    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->stexid);
+                    
+                    // See if we are framebuffer complete:
+                    fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+                    if (GL_FRAMEBUFFER_COMPLETE_EXT != fborc && 0 != fborc) {
+                        // Nope. Our trick doesn't work, this hardware won't let us attach a stencil buffer at all. Remove it
+                        // and live with a depth-buffer only setup.
+                        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil multisampled renderbuffer attachment failed! Detaching multisampled stencil buffer...\n");                        
+                        glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, 0);
+                        glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
+                        (*fbo)->stexid = 0;
+                    }
+                    else if (fborc == 0) {
+                        // Checking command itself failed?!?
+                        if (PsychPrefStateGet_Verbosity() > 1) {
+                            // Warn the user:
+                            printf("PTB-WARNING: In setup of framebuffer object multisampled stencil attachment: glCheckFramebufferStatusEXT() malfunctioned. (glGetError reports: %s)\n", gluErrorString(glGetError()));
+                            printf("PTB-WARNING: Therefore can't determine if FBO setup worked or not. Will continue and hope for the best :(\n");
+                            printf("PTB-WARNING: This is most likely a graphics driver bug. You may want to update your graphics drivers, maybe it helps.\n");
+                        }
+                        while(glGetError());
+                    }
+                }
+                
+                if (((*fbo)->stexid == 0) && (PsychPrefStateGet_Verbosity() > 1)) {
+                    printf("PTB-WARNING: OpenGL multisampled stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n");
+                    printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
+                    printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
+                    printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers.\n\n");
+                }
 			}
 			else {
-				// Override: Do not attach stencil attachment!
-				(*fbo)->stexid = 0;
-				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychCreateFBO(): Pathway-3: Won't attach a stencil buffer to FBO due to user override...\n"); 
+				// Override: Do not attach stencil attachment, or combined depth+stencil attached?
+                if ((*fbo)->stexid) {
+                    // Non-Zero stexid indicates we use a combined depth+stencil renderbuffer. Its handle
+                    // is already stored in ztexid, so zero-out stexid to avoid redundant destruction on
+                    // framebuffer cleanup later on:
+                    (*fbo)->stexid = 0;
+                } // Zero stexid indicates that no stencil buffer shall be used, according to usercode's preferences:
+                else if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychCreateFBO(): Pathway-3: Won't attach a stencil buffer to FBO due to user override...\n"); 
 			}
 			
 			// Ok, all depths- and stencil- renderbuffers with same number of multisamples as color renderbuffer attached. Check for completeness will
@@ -1802,7 +1912,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 sprintf(fbodiag, "Framebuffer attachment incomplete.");
             break;
             
-            case 0x8D56: // GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT
+            case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
                 sprintf(fbodiag, "Framebuffer attachment multisample-incomplete.");
             break;
 
@@ -3400,8 +3510,8 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	h = (*srcfbo1)->height;
     
     // Same for texture coordinate space, depending on type of texture in use:
-    wt = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1.0 : (float) w;
-    ht = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1.0 : (float) h;
+    wt = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1 : (float) w;
+    ht = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1 : (float) h;
 
 	// Check for override width x height parameter in the blitterString: An integral (w,h)
 	// size the blit. This allows to blit a target quad with a size different from srcfbo1, without
@@ -3735,7 +3845,7 @@ psych_bool PsychPipelineBuiltinRenderClutViaRuntime(PsychWindowRecordType *windo
 		PsychGetAdjustedPrecisionTimerSeconds(&t1);
 	}
 
-	cmdlen = strlen(hookfunc->pString1);
+	cmdlen = (int) strlen(hookfunc->pString1);
 	outcmd = (char*) calloc(cmdlen + 10 + (windowRecord->inTableSize * 3 * 10), sizeof(char));
 	sprintf(outcmd, "%s [", hookfunc->pString1);
 	strp = &outcmd[strlen(outcmd)];

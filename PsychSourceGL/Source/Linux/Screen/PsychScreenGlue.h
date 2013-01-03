@@ -46,9 +46,9 @@
 
 //functions from PsychScreenGlue
 void						InitializePsychDisplayGlue(void);
-void                                            PsychCleanupDisplayGlue(void);
+void						PsychCleanupDisplayGlue(void);
 void						PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber);
-XIDeviceInfo*                                   PsychGetInputDevicesForScreen(int screenNumber, int* nDevices);
+XIDeviceInfo*				PsychGetInputDevicesForScreen(int screenNumber, int* nDevices);
 void						PsychCaptureScreen(int screenNumber);
 void						PsychReleaseScreen(int screenNumber);
 psych_bool					PsychIsScreenCaptured(int screenNumber);
@@ -73,7 +73,7 @@ psych_bool					PsychRestoreScreenSettings(int screenNumber);
 void						PsychHideCursor(int screenNumber, int deviceIdx);
 void						PsychShowCursor(int screenNumber, int deviceIdx);
 void						PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx);
-void			    PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable);
+void						PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable);
 unsigned int                PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable);
 int                         PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber);
 PsychError					PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual);
@@ -85,6 +85,7 @@ psych_bool					PsychOSIsKernelDriverAvailable(int screenId);
 void                        PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn);
 unsigned int                PsychOSKDLoadIdentityLUT(int screenId, unsigned int headId);
 unsigned int                PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned int debug);
+int                         PsychOSIsDWMEnabled(int screenNumber);
 
 // Internal helper routines for memory mapped gfx-hardware register low level access: Called
 // from PsychWindowGlue.c PsychOSOpenOnscreenWindow() and PsychOSCloseOnscreenWindow() routines

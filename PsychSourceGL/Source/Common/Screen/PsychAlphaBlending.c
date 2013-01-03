@@ -162,7 +162,7 @@ int PsychGetAlphaBlendingFactorStringFromConstant(GLenum blendConstant, char *bl
 		if(blendConstant==blendingModeConstants[i]){
 			if(blendString!=NULL)
 				strcpy(blendString, blendingModeStrings[i]);
-			return(strlen(blendingModeStrings[i]) + 1);
+			return((int) strlen(blendingModeStrings[i]) + 1);
 		}
 	}
 	return(0);

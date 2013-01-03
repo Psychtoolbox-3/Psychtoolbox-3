@@ -3,50 +3,54 @@
   
   AUTHORS:
   
-		Allen.Ingling@nyu.edu		awi 
-  
+		Allen.Ingling@nyu.edu           awi
+        mario.kleiner@tuebingen.mpg.de  mk
+
   PLATFORMS:
   
-		Only OS X for now.    
+		All
 
   HISTORY:
   
 		2/26/05  awi		Created.  Inspired by Frans Cornelissen's script "WindowSize".   
- 
-  
-  TO DO:
-  
 
 */
 
-
 #include "Screen.h"
 
-
-
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";
-//                                             1
+static char useString[] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber [, realFBSize=0]);";
+//                                                              1                              2
 static char synopsisString[] = 
-	"Return the width and height of a window or screen in units of pixels.";
+	"Return the width and height of a window or screen in units of pixels.\n"
+    "By default, the useable size in pixels is returned, ie., the size of the "
+    "area usercode can draw to. If the optional 'realFBSize' flag is set to 1, "
+    "the real size of the windows framebuffer is returned. Those sizes can differ, "
+    "e.g., because certain stereo display modes or high color precision display "
+    "modes require adjustments. The 'realFBSize' 1 setting is mostly for Psychtoolbox "
+    "internal use, not for regular user-code.\n";
+
 static char seeAlsoString[] = "Screen('Rect')";	
 
 PsychError SCREENWindowSize(void)  
 {
-	
 	PsychWindowRecordType *windowRecord;
 	int screenNumber;
 	PsychRectType rect;
 	double	rectWidth, rectHeight;
+    int realFBSize = 0;
     
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
 	//check for superfluous arguments
-	PsychErrorExit(PsychCapNumInputArgs(1));		//The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(2));		//The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1));	//Insist that the argument be present.   
 	PsychErrorExit(PsychCapNumOutputArgs(2));		//The maximum number of outputs
+
+    // Get optional 'realFBSize' flag: Defaults to zero.
+    PsychCopyInIntegerArg(2, FALSE, &realFBSize);
 
 	if(PsychIsScreenNumberArg(1)){
 		PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
@@ -59,8 +63,8 @@ PsychError SCREENWindowSize(void)
 		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
 		PsychOSProcessEvents(windowRecord, 0);
 
-		rectWidth=PsychGetWidthFromRect(windowRecord->clientrect);
-		rectHeight=PsychGetHeightFromRect(windowRecord->clientrect);
+		rectWidth=PsychGetWidthFromRect((realFBSize) ? windowRecord->rect : windowRecord->clientrect);
+		rectHeight=PsychGetHeightFromRect((realFBSize) ? windowRecord->rect : windowRecord->clientrect);
 
 		PsychCopyOutDoubleArg(1, kPsychArgOptional, rectWidth);
 		PsychCopyOutDoubleArg(2, kPsychArgOptional, rectHeight);
@@ -106,5 +110,3 @@ PsychError SCREENDisplaySize(void)
     
     return(PsychError_none);
 }
-
-

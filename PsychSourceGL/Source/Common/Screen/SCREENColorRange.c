@@ -58,7 +58,7 @@ char vertexTunnelSrc[] =
 "}\n\0";
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[oldmaximumvalue oldclampcolors] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors=1]);";
+static char useString[] = "[oldmaximumvalue oldclampcolors] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors]);";
 static char synopsisString[] = 
 	"Set or return the maximum color component value that PTB should allow for provided color "
 	"values when drawing into a window 'windowPtr' or its associated Offscreen windows. "
@@ -127,8 +127,7 @@ PsychError SCREENColorRange(void)
 	PsychCopyOutDoubleArg(1, FALSE, maxvalue);
 	PsychCopyOutDoubleArg(2, FALSE, clampcolors);
 	
-	// Get the optional new values: We default to clamping on.
-	clampcolors = 1;
+	// Get the optional new values:
 	PsychCopyInDoubleArg(2, FALSE, &maxvalue);
 	PsychCopyInDoubleArg(3, FALSE, &clampcolors);
 

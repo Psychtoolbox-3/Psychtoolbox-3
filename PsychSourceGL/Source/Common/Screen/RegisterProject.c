@@ -286,7 +286,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("AddFrameToMovie", &SCREENGetImage));
 	PsychErrorExit(PsychRegister("AddAudioBufferToMovie", &SCREENAddAudioBufferToMovie));
 	PsychErrorExit(PsychRegister("GetFlipInfo", &SCREENGetFlipInfo));
-    
+    PsychErrorExit(PsychRegister("PanelFitter", &SCREENPanelFitter));
+
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dhb");
 	PsychSetModuleAuthorByInitials("dgp");

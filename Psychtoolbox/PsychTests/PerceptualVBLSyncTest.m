@@ -163,17 +163,17 @@ try
    
    if stereomode~=10
        % Standard case:
-       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, 32, doublebuffer, stereomode);
+       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);
        if length(screen)>1
-           win2 = Screen('OpenWindow', screen(2), 0, rect2, 32, doublebuffer, stereomode);
+           win2 = Screen('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);
        end
    else
        % Special case for dual-window stereo:
 
        % Setup master window:
-       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, 32, doublebuffer, stereomode);
+       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);
        % Setup slave window:
-       Screen('OpenWindow', screen(2), 0, rect2, 32, doublebuffer, stereomode);       
+       Screen('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);       
    end
    
    flickerRect = InsetRect(winRect, 100, 0);
@@ -185,7 +185,7 @@ try
    
    VBLTimestamp = Screen('Flip', win, 0, 2);
    
-   while (~KbCheck) & (GetSecs < deadline)
+   while (~KbCheck) && (GetSecs < deadline)
       % Draw left eye view (if stereo enabled):
       Screen('SelectStereoDrawBuffer', win, 0);
       % Draw alternating black/white rectangle:
@@ -197,7 +197,7 @@ try
       Screen('FillRect', win, color, flickerRect);
       if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
       
-      if stereomode == 0 & length(screen)>1
+      if stereomode == 0 && length(screen)>1
           Screen('FillRect', win2, color, flickerRect);
           Screen('DrawingFinished', win2, 0, 2);
           Screen('DrawingFinished', win, 0, 2);

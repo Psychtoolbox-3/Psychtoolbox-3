@@ -54,19 +54,14 @@ end
 if IsOSX
     % Disable high precision timestamping:
     Screen('Preference', 'VBLTimestampingMode', -1);
-
-    % Skip sync tests:
-    Screen('Preference', 'SkipSyncTests', 2);
-
+    
     % Use AGL + Carbon, even for fullscreen windows:
     oldconserve = Screen('Preference', 'ConserveVRAM');
     Screen('Preference', 'ConserveVRAM', bitor(oldconserve, 16384));
 end
 
-if IsLinux | IsWin
-    % Skip sync tests:
-    Screen('Preference', 'SkipSyncTests', 2);
-end
+% Skip sync tests:
+Screen('Preference', 'SkipSyncTests', 2);
 
 % Map range 0.0 - 1.0 to 0 - 499:
 opacity = floor(opacity * 499);

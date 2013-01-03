@@ -33,7 +33,7 @@ end
 
 try
     % Disable automatic text anti-aliasing by operating system:
-    Screen('Preference', 'TextAntiAliasing', 0);
+    oldSetting = Screen('Preference', 'TextAntiAliasing', 0);
 
     % Choosing the display with the highest display number is
     % a best guess about where you want the stimulus displayed.
@@ -93,9 +93,17 @@ try
     
     % Done.
     Screen('CloseAll');
-catch
+    
+    % Restore anti-aliasing setting:
+    Screen('Preference', 'TextAntiAliasing', oldSetting);
+
+catch %#ok<CTCH>
     % This "catch" section executes in case of an error in the "try" section
     % above.  Importantly, it closes the onscreen window if it's open.
     Screen('CloseAll');
+
+    % Restore anti-aliasing setting:
+    Screen('Preference', 'TextAntiAliasing', oldSetting);
+
     psychrethrow(psychlasterror);
 end

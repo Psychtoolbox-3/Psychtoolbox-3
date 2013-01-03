@@ -139,7 +139,7 @@ else
         else
             % Full blown LUT given:
             lut = lutconfig;
-            if ~isnumeric(lut) | size(lut,1) < 1 | size(lut,2) ~= 3 %#ok<OR2>
+            if ~isnumeric(lut) || size(lut,1) < 1 || size(lut,2) ~= 3 %#ok<OR2>
                 sca;
                 error('LoadIdentityClut: Loaded data from config file is not a valid LUT! Not a numeric matrix or less than 1 row, or not 3 columns!');
             end
@@ -161,7 +161,7 @@ else
         % We derive type of hardware and thereby our strategy from the vendor name:
         gfxhwtype = winfo.GLVendor;
 
-        if ~isempty(strfind(gfxhwtype, 'NVIDIA')) | ~isempty(strfind(gfxhwtype, 'nouveau'))
+        if ~isempty(strfind(gfxhwtype, 'NVIDIA')) || ~isempty(strfind(gfxhwtype, 'nouveau'))
             % NVidia card:
 
             % We start with assumption that it is a "normal" one:
@@ -174,9 +174,9 @@ else
             end
             
             % Is it a Geforce-8000 or later (G80 core or later) and is this OS/X?
-            if ~isempty(strfind(winfo.GPUCoreId, 'G80')) & IsOSX %#ok<AND2>
+            if ~isempty(strfind(winfo.GPUCoreId, 'G80')) && IsOSX %#ok<AND2>
                 % 10.5.x Leopard?
-                if (osxversion(1) == 10) & (osxversion(2) == 5) & (osxversion(3) >=0) %#ok<AND2>
+                if (osxversion(1) == 10) && (osxversion(2) == 5) && (osxversion(3) >=0) %#ok<AND2>
                     % Yes. One of the releases with an embarassing amount of bugs,
                     % brought to you by Apple. Need to apply an especially ugly
                     % clut to force these cards into an identity mapping:
@@ -185,7 +185,7 @@ else
                 end
 
                 % 10.6.x Snow Leopard or later?
-                if (osxversion(1) == 10) & (osxversion(2) >= 6) & (osxversion(3) >=0) %#ok<AND2>
+                if (osxversion(1) == 10) && (osxversion(2) >= 6) && (osxversion(3) >=0) %#ok<AND2>
                     % Yes. One of the releases with an embarassing amount of bugs,
                     % brought to you by Apple. Need to apply an especially ugly
                     % clut to force these cards into an identity mapping:
@@ -211,20 +211,20 @@ else
                 fprintf('LoadIdentityClut: NVidia Quadro or later on Linux with binary Blob detected. Enabling special type-III LUT.\n');
             end
         else
-            if ~isempty(strfind(gfxhwtype, 'ATI')) | ~isempty(strfind(gfxhwtype, 'AMD')) | ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) | ...
-                    ~isempty(strfind(winfo.GLRenderer, 'DRI R')) | ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) %#ok<OR2>
+            if ~isempty(strfind(gfxhwtype, 'ATI')) || ~isempty(strfind(gfxhwtype, 'AMD')) || ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) || ...
+                    ~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) %#ok<OR2>
                 % ATI card:
 
                 % A good default at least on OS/X is type 1:
                 gfxhwtype = 1;
 
-                if (IsWin | IsLinux) & ~isempty(strfind(winfo.GPUCoreId, 'R600')) %#ok<OR2,AND2>
+                if (IsWin || IsLinux) && ~isempty(strfind(winfo.GPUCoreId, 'R600')) %#ok<OR2,AND2>
                     % At least the Radeon HD 3470 under Windows Vista and Linux needs type 0
                     % LUT's. Let's assume for the moment this is true for all R600
                     % cores, ie., all Radeon HD series cards.
                     fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Enabling special type-0 LUT hacks for totally broken drivers.\n');
                     gfxhwtype = 0;
-                elseif (IsLinux) & (~isempty(strfind(winfo.GLRenderer, 'DRI R')) | ~isempty(strfind(winfo.GLRenderer, 'on ATI R'))) %#ok<OR2,AND2>
+                elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R'))) %#ok<OR2,AND2>
                     % At least the Radeon R3xx/4xx/5xx under Linux with DRI2 Mesa needs type 0
                     % LUT's. Let's assume for the moment this is true for all R600
                     % cores, ie., all Radeon HD series cards.
@@ -271,7 +271,7 @@ else
         oldClut = Screen('LoadNormalizedGammaTable', windowPtr, ((1/256:1/256:1)' * ones(1, 3)), loadOnNextFlip);
     end
 
-    if gfxhwtype == 2 & IsOSX %#ok<AND2>
+    if gfxhwtype == 2 && IsOSX %#ok<AND2>
         % This works on OS/X 10.5 with NVidia GeForce 8800. It is an ugly hack
         % to compensate for the absolutely horrible, embarassing bugs in Apple's NVidia
         % graphics drivers and their clut handling. Does this company still
@@ -285,7 +285,7 @@ else
         oldClut = Screen('LoadNormalizedGammaTable', windowPtr, loadlut, loadOnNextFlip);
     end
 
-    if gfxhwtype == 3 & IsOSX %#ok<AND2>
+    if gfxhwtype == 3 && IsOSX %#ok<AND2>
         % This works on OS/X 10.6.0 with NVidia Geforce-9200M according to CRS
         % and with 10.6.0 with Geforce-8800  in the MacPro according to
         % me. We assume this works on all G80 et al. GPU's:
@@ -300,7 +300,7 @@ else
         oldClut = Screen('LoadNormalizedGammaTable', windowPtr, loadlut, loadOnNextFlip);
     end
 
-    if gfxhwtype == 3 & IsWin %#ok<AND2>
+    if gfxhwtype == 3 && IsWin %#ok<AND2>
         % This is an experimental variant of the OS/X type 3 lut, but with 256
         % slots. It is supposed for WindowsXP, assuming some NVidia GPU's,
         % e.g., some QuadroFX 3700 GPU's have similar problems:
@@ -315,7 +315,7 @@ else
         oldClut = Screen('LoadNormalizedGammaTable', windowPtr, loadlut, loadOnNextFlip);
     end
 
-    if gfxhwtype == 3 & IsLinux %#ok<AND2>
+    if gfxhwtype == 3 && IsLinux %#ok<AND2>
         % NVidia QuadroFX cards with binary blob and lut's with more than
         % 256 slots. Upload a standard linear lut with matching number of
         % slots:

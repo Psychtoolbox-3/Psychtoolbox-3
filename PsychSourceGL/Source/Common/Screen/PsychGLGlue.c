@@ -313,7 +313,7 @@ psych_bool PsychGetGLErrorListString(const char **errorListStr)
 	currentIndex=0;
     for(glError=glGetError(); glError!=GL_NO_ERROR; glError=glGetError()){
 		errorNameStr=PsychGetGLErrorNameString(glError);
-		deltaStrLen=strlen(errorNameStr)+2;  //2 chars: comma and space
+		deltaStrLen = (int) strlen(errorNameStr)+2;  //2 chars: comma and space
 		nextCurrentIndex=currentIndex+deltaStrLen;
 		if(nextCurrentIndex >= MAX_GL_ERROR_LIST_LEN)
 			PsychErrorExitMsg(PsychError_internal,"string memory overflow");

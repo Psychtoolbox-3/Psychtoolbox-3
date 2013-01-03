@@ -77,9 +77,10 @@ void InitializeSynopsis()
 
 	// Open or close a window or texture:
 	synopsis[i++] = "\n% Open or close a window or texture:";
-	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode][,specialFlags]);";	
+	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode][,specialFlags][,clientRect]);";	
 	synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,specialFlags] [,multiSample]);";
-	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";	
+	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";
+	synopsis[i++] = "oldParams = Screen('PanelFitter', windowPtr [, newParams]);";
 	synopsis[i++] = "Screen('Close', [windowOrTextureIndex or list of textureIndices/offscreenWindowIndices]);";
 	synopsis[i++] = "Screen('CloseAll');";
 	
@@ -156,12 +157,12 @@ void InitializeSynopsis()
 	synopsis[i++] = "hz=Screen('NominalFrameRate', windowPtrOrScreenNumber [, mode] [, reqFrameRate]);";	
 	synopsis[i++] = "[ monitorFlipInterval nrValidSamples stddev ]=Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
 	synopsis[i++] = "screenNumber=Screen('WindowScreenNumber', windowPtr);";
-	synopsis[i++] = "rect=Screen('Rect', windowPtrOrScreenNumber);";
+	synopsis[i++] = "rect=Screen('Rect', windowPtrOrScreenNumber [, realFBSize=0]);";
 	synopsis[i++] = "pixelSize=Screen('PixelSize', windowPtrOrScreenNumber);";
 	synopsis[i++] = "pixelSizes=Screen('PixelSizes', windowPtrOrScreenNumber);";
-	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";
+	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber [, realFBSize=0]);";
 	synopsis[i++] = "[width, height]=Screen('DisplaySize', ScreenNumber);";
-	synopsis[i++] = "[oldmaximumvalue oldclampcolors] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors=1]);";
+	synopsis[i++] = "[oldmaximumvalue oldclampcolors] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors]);";
 	synopsis[i++] = "info = Screen('GetWindowInfo', windowPtr [, infoType=0] [, auxArg1]);";
 	synopsis[i++] = "resolutions=Screen('Resolutions', screenNumber);";
 	synopsis[i++] = "oldResolution=Screen('Resolution', screenNumber [, newwidth] [, newheight] [, newHz] [, newPixelSize] [, specialMode]);";

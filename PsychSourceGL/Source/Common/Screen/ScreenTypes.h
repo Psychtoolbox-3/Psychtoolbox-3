@@ -247,6 +247,9 @@ typedef struct {
 // by default on GPU's which support it:
 #define kPsychDontAutoEnableImagingPipeline (1 << 24)
 
+// Use old-style setup of the override_redirect flag for Linux X11 windows, as it was done until end of 2012?
+#define kPsychOldStyleOverrideRedirect (1 << 25)
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

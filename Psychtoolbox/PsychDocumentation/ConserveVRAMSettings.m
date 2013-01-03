@@ -273,6 +273,13 @@
 % just as on pre 2012 PTB's.
 %
 %
+% 2^25 == kPsychOldStyleOverrideRedirect
+% Use the old-school method of setting the override_redirect property
+% of X11 Windows on Linux, as it was done until end 2012. This just as
+% a safe-guard in case somebody runs a very exotic or old Linux setup,
+% where the new method doesn't work.
+%
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly
