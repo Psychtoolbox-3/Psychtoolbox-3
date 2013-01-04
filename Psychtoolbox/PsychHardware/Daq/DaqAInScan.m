@@ -23,7 +23,7 @@ function [data,params]=DaqAInScan(daq,options)
 % the whole operation in one call, tying up the computer until the sampling
 % is done. Use DaqAInScanBegin, DaqAInScanContinue, and DaqAInScanEnd,
 % instead, when you want to use the computer during sampling.
-% 
+%
 % USE CHANNEL AND RANGE: You can specify the channels to be scanned in two
 % different ways, "FirstChannel" and "LastChannel", or as an arbitrary
 % "channel" list. We recommend the latter because it's much more general.
@@ -34,7 +34,7 @@ function [data,params]=DaqAInScan(daq,options)
 % so it arbitrarily assumes a gain range of 3 in computing the scale factor
 % to convert your readings into voltages. Thus every reason recommends that
 % you supply channel and range when you call DaqAInScan.
-% 
+%
 % "data" is an NxM matrix, with one column per channel. Each reading is a
 %     double, based on a 16-bit value in the report. In the USB-1208FS
 %     only the upper 12 of those 16 bits are significant.
@@ -46,7 +46,7 @@ function [data,params]=DaqAInScan(daq,options)
 % "DeviceIndex" is a small integer, the array index specifying which HID
 %     device in the array returned by PsychHID('Devices') is interface 0
 %     of the desired USB-1208FS box.
-% "options.channel" is a vector of length 1 to 8. Each value (0 to 15)  
+% "options.channel" is a vector of length 1 to 8. Each value (0 to 15)
 %     selects any of various single-ended or differential measurements
 %     using the eight digitizers. By default, DaqAInScan sends this for you
 %     to the device by calling DaqALoadQueue before issuing the AInScan
@@ -69,7 +69,7 @@ function [data,params]=DaqAInScan(daq,options)
 %     14          6 (single-ended)
 %     15          7 (single-ended)
 %
-% "options.range" is a vector of the same length as options.channel, with  
+% "options.range" is a vector of the same length as options.channel, with
 %     values of 0 to 7, specifying the desired gain (and voltage range) for
 %     the corresponding channel. By default, DaqAInScan sends this for you
 %     to the device by calling DaqALoadQueue before issuing the AInScan
@@ -85,11 +85,11 @@ function [data,params]=DaqAInScan(daq,options)
 %     4 for Gain 8x (+-2.5 V),    5 for Gain 10x (+-2 V),
 %     6 for Gain 16x (+-1.25 V),  7 for Gain 20x (+-1 V).
 %
-% "options.FirstChannel" (0 to 15) is the first channel of the scan. NOT 
+% "options.FirstChannel" (0 to 15) is the first channel of the scan. NOT
 %     RECOMMENDED; use options.channel instead. If you specify FirstChannel
 %     and LastChannel then don't specify channel and range, above.  (formerly
 %     "options.lowChannel" -- that terminology is deprecated.)
-% "options.LastChannel" (0 to 15) is the last channel of the scan. The 
+% "options.LastChannel" (0 to 15) is the last channel of the scan. The
 %     values FirstChannel and LastChannel specify the channel range for the
 %     scan. If FirstChannel is greater than LastChannel, the scan will wrap
 %     (i.e. if FirstChannel is 14 and LastChannel is 1, the scan will include
@@ -100,7 +100,7 @@ function [data,params]=DaqAInScan(daq,options)
 % "options.count" is the desired number of samples per channel, either in
 %     the 32-bit range 1 to 4e+09, or INF. The value INF invokes the
 %     USB-1208FS's continuous data collection mode, which runs indefinitely.
-% "options.ReleaseTime" effective only when options.continue (see below) is set 
+% "options.ReleaseTime" effective only when options.continue (see below) is set
 %     to 1 and options.count is Inf.  Setting options.ReleaseTime to some
 %     reasonable time in the future and then calling DaqAInScanContinue will
 %     allow data to be offloaded from the device's FIFO.  If you select the
@@ -110,7 +110,7 @@ function [data,params]=DaqAInScan(daq,options)
 % "options.f" is desired sampling frequency, sample/channel/s, in the range
 %     0.596/c to 10e6/c Hz, where c is the number of channels being
 %     scanned.
-% "options.immediate" is 1 = immediate-transfer mode, 0 (default) = 
+% "options.immediate" is 1 = immediate-transfer mode, 0 (default) =
 %     block-transfer mode. At low sampling rates, immediate-transfer mode
 %     will reduce the delay in receiving the sampled data. In
 %     immediate-transfer mode, each 16-bit sample is sent immediately (a
@@ -120,7 +120,7 @@ function [data,params]=DaqAInScan(daq,options)
 %     The difference between the two modes will be more apparent if you
 %     enable options.print, allowing you to see that you get one-sample
 %     reports (2 bytes) in immediate mode, and less-frequent 31-sample
-%     reports (62 bytes) in block-transfer mode. 
+%     reports (62 bytes) in block-transfer mode.
 % "options.trigger" is 1 = use external trigger; 0 (default).
 %     The external trigger may be used to start data collection
 %     synchronously. If the bit is set, the device will wait until the
@@ -131,7 +131,7 @@ function [data,params]=DaqAInScan(daq,options)
 %     The retrigger mode option is only used if trigger is used.  This
 %     option will cause the trigger to be rearmed after options.count
 %     samples are acquired if in continuous mode.
-% "options.sendChannelRange is 1 (default) to ask that the options.channel  
+% "options.sendChannelRange is 1 (default) to ask that the options.channel
 %     and options.range lists (if provided) be sent to the device by
 %     calling DaqALoadQueue before the sending the AInScan command, or 0 to
 %     not send them. Since those lists persist in the device you can save
@@ -147,18 +147,18 @@ function [data,params]=DaqAInScan(daq,options)
 %     "range"), 0 = use options.FirstChannel and options.LastChannel
 %     arguments. Don't bother setting this. It will be set for you, based
 %     on which parameters you provide.
-% "options.print" is 1 = enable diagnostic printing of the reports; 0 
+% "options.print" is 1 = enable diagnostic printing of the reports; 0
 %     (default) no diagnostics.
 % "options.begin" is 1 (default) to begin a new scan.
-% "options.continue" is 1 (default) to receive reports (inside PsychHID). 
+% "options.continue" is 1 (default) to receive reports (inside PsychHID).
 % "options.end" is 1 (default) to wait until done and return the result.
-% 
-% LIMITATION: The literature from Measurement Computing mentions a speed of
-% 50 kHz, but that's a theoretical limit. As of 17 April 2005, DaqAInScan 
-% achieves 2000/c sample/channel/s, where c is the number of channels being
-% sampled. 
 %
-% See also Daq, DaqFunctions, DaqPins, DaqTest, PsychHIDTest, 
+% LIMITATION: The literature from Measurement Computing mentions a speed of
+% 50 kHz, but that's a theoretical limit. As of 17 April 2005, DaqAInScan
+% achieves 2000/c sample/channel/s, where c is the number of channels being
+% sampled.
+%
+% See also Daq, DaqFunctions, DaqPins, DaqTest, PsychHIDTest,
 % DaqAInScanBegin, DaqAInScanContinue, DaqAInScanEnd,
 % DaqDeviceIndex, DaqDIn, DaqDOut, DaqAIn, DaqAOut, DaqAInScan,DaqAOutScan.
 %
@@ -178,10 +178,10 @@ function [data,params]=DaqAInScan(daq,options)
 %     to try to set this up... you could not poll an arbitrary sequence, and if
 %     you want non-consecutive channels... see previous paragraph.
 %
-% "options.range" if specified, is either a scalar or a vector that must be of 
-%     the same length as the vector: options.FirstChannel:options.LastChannel.  
-%     Values must be in the set 0:7, specifying the desired gain (and hence 
-%     voltage range) for the corresponding channel as in the 1208FS except that 
+% "options.range" if specified, is either a scalar or a vector that must be of
+%     the same length as the vector: options.FirstChannel:options.LastChannel.
+%     Values must be in the set 0:7, specifying the desired gain (and hence
+%     voltage range) for the corresponding channel as in the 1208FS except that
 %     the mapping differs.  For the USB-1608FS, the values mean:
 %
 %     0 for Gain 1x (+/- 10 V),     1 for Gain 2x (+/- 5 V),
@@ -196,7 +196,7 @@ function [data,params]=DaqAInScan(daq,options)
 %
 % "options.FirstChannel" (0 to 7) is the first channel of the scan.  If you do not
 %     pass this option, it is assumed to be 0.
-% "options.LastChannel" (options.Firstchannel to 7) is the last channel of the 
+% "options.LastChannel" (options.Firstchannel to 7) is the last channel of the
 %     scan.  If you do not specify this option, it is assumed you want only to
 %     sample from options.Firstchannel.
 % "options.retrigger" is apparently not an option for the 1608FS.  I could be
@@ -204,8 +204,8 @@ function [data,params]=DaqAInScan(daq,options)
 %     called "external sync", and that might be the same as retrigger.  However,
 %     even if that is correct, I have not implemented it.  (see note below on
 %     numerical definitions of options)
-% "options.sendChannelRange" has no meaning here.  I will use preference file 
-%     instead.  
+% "options.sendChannelRange" has no meaning here.  I will use preference file
+%     instead.
 % "options.queue" again, not an option.  Don't try to use it.
 %
 % These options do not exist (as such) for the 1208FS.  They all default to 0.
@@ -236,7 +236,7 @@ function [data,params]=DaqAInScan(daq,options)
 %
 % and for the 1608FS:
 %    1 (0x1) Execution Mode (1=counted, 0=continuous)
-%    2 (0x2) Burst Mode (1=burst I/O, 0=normal I/O) 
+%    2 (0x2) Burst Mode (1=burst I/O, 0=normal I/O)
 %    3 (0x4) Transfer mode (1=immediate, 0=blocked)
 %    4 (0x8) Trigger mode (1=external, 0=internal)
 %    5 (0x10) External sync (1=use external, 0=don't); as noted above, this may
@@ -248,9 +248,9 @@ function [data,params]=DaqAInScan(daq,options)
 % 4/25/05 dgp Added options.channel, options.range, and options.sendChannelRange.
 % 4/27/05 dgp Fixed immediate-transfer mode once I realized that the report
 %             contains only one sample, not one sample per channel.
-% 8/26/05 dgp Fixed bug in extraction of serial number, as suggested by Steve 
+% 8/26/05 dgp Fixed bug in extraction of serial number, as suggested by Steve
 %             Van Hooser, vanhooser@neuro.duke.edu
-% 8/26/05 dgp Incorporated bug fix for compatibility with Mac OS X Tiger 
+% 8/26/05 dgp Incorporated bug fix for compatibility with Mac OS X Tiger
 %             suggested by Maria Mckinley <parody@u.washington.edu>. The reported
 %             number of outputs of the USB-1208FS has changed in Tiger.
 %             http://groups.yahoo.com/group/psychtoolbox/message/3614
@@ -297,270 +297,273 @@ function [data,params]=DaqAInScan(daq,options)
 % with the value specified in timer_preload, and counts down.  This allows
 % for a lowest rate of 0.596 Hz (1:256 prescale, preload = 65535).  It is
 % preferable to keep the prescaler to the lowest value that will achieve
-% the desired rate. 
+% the desired rate.
 
 % MPR changed number of outputs so that this function would work with a
 % USB-1608FS under Leopard.
 
-AllHIDDevices = PsychHID('devices');
-if strcmp(AllHIDDevices(daq).product(5:6),'16')
-  Is1608 = 1;
+% Perform internal caching of list of HID devices to speedup call:
+persistent AllHIDDevices;
+if isempty(AllHIDDevices)
+    AllHIDDevices = PsychHID('Devices');
+end
 
-  % These options differ from those of 1208
-  if ~isfield(options,'burst')
-    options.burst = 0;
-  end
-  if ~isfield(options,'ExternSync')
-    options.ExternSync = 0;
-  end
-  if ~isfield(options,'debug')
-    options.debug = 0;
-  end
+if strcmp(AllHIDDevices(daq).product(5:6),'16')
+    Is1608 = 1;
+    
+    % These options differ from those of 1208
+    if ~isfield(options,'burst')
+        options.burst = 0;
+    end
+    if ~isfield(options,'ExternSync')
+        options.ExternSync = 0;
+    end
+    if ~isfield(options,'debug')
+        options.debug = 0;
+    end
 else
-  Is1608 = 0;
+    Is1608 = 0;
 end
 
 if isfield(options,'lowChannel')
-  if isfield(options,'FirstChannel')
-    if length(options.FirstChannel) ~= length(options.lowChannel) || ~all(options.FirstChannel == options.lowChannel)
-      error('"options.lowChannel" is deprecated; new name is options.FirstChannel.  Do not try to use both inconsistently!');
+    if isfield(options,'FirstChannel')
+        if length(options.FirstChannel) ~= length(options.lowChannel) || ~all(options.FirstChannel == options.lowChannel)
+            error('"options.lowChannel" is deprecated; new name is options.FirstChannel.  Do not try to use both inconsistently!');
+        end
+    else
+        options.FirstChannel = options.lowChannel;
     end
-  else
-    options.FirstChannel = options.lowChannel;
-  end
 end
 
 if isfield(options,'highChannel')
-  if isfield(options,'LastChannel')
-    if length(options.LastChannel) ~= length(options.highChannel) || ~all(options.LastChannel == options.highChannel)
-      error('"options.highChannel" is deprecated; new name is options.LastChannel.  Do not try to use both inconsistently!');
+    if isfield(options,'LastChannel')
+        if length(options.LastChannel) ~= length(options.highChannel) || ~all(options.LastChannel == options.highChannel)
+            error('"options.highChannel" is deprecated; new name is options.LastChannel.  Do not try to use both inconsistently!');
+        end
+    else
+        options.LastChannel = options.highChannel;
     end
-  else
-    options.LastChannel = options.highChannel;
-  end
 end
-  
+
 
 % Fill in defaults for any unspecified options.
 % Parameters of the AInScan command sent to the USB-1x08FS.
 if ~isfield(options,'channel')
-  options.channel=[];
+    options.channel=[];
 elseif Is1608
-  warning('"channel" is not a useable option for USB-1608FS and will be ignored.');
+    warning('Psych:Daq:UnusedOption', '"channel" is not a useable option for USB-1608FS and will be ignored.');
 end
 if ~isfield(options,'range')
-  options.range=[];
+    options.range=[];
 end
-if ~Is1608 & length(options.channel)~=length(options.range)
-  error('"options.channel" and "options.range" vectors must be of the same length.');
+if ~Is1608 && length(options.channel)~=length(options.range)
+    error('"options.channel" and "options.range" vectors must be of the same length.');
 end
 if Is1608
-  channelRangeOk = 0;
+    channelRangeOk = 0;
 else
-  channelRangeOk=~isempty(options.channel) & ~isempty(options.range);
+    channelRangeOk=~isempty(options.channel) & ~isempty(options.range);
 end
 if ~isfield(options,'FirstChannel')
-  if Is1608
-    options.FirstChannel = 0;
-  else
-    options.FirstChannel=[];
-  end
+    if Is1608
+        options.FirstChannel = 0;
+    else
+        options.FirstChannel=[];
+    end
 end
 if ~isfield(options,'LastChannel')
-  if Is1608
-    options.LastChannel = options.FirstChannel;
-  else
-    options.LastChannel=[];
-  end
+    if Is1608
+        options.LastChannel = options.FirstChannel;
+    else
+        options.LastChannel=[];
+    end
 end
 FirstLastOk=~isempty(options.FirstChannel) & ~isempty(options.LastChannel);
 if FirstLastOk==channelRangeOk
-  error('Please specify either options.channel and options.range OR options.FirstChannel and options.LastChannel.');
+    error('Please specify either options.channel and options.range OR options.FirstChannel and options.LastChannel.');
 end
 if length(options.FirstChannel)>1 || length(options.LastChannel)>1
-  error('options.FirstChannel and options.LastChannel, if specified, must be scalars.');
+    error('options.FirstChannel and options.LastChannel, if specified, must be scalars.');
 end
 if ~isfield(options,'count')
-  options.count=1000;
+    options.count=1000;
 end
 options.count=round(options.count); % make it an integer.
 if ~isfield(options,'f')
-  options.f=1000;
+    options.f=1000;
 end
 if ~isfield(options,'immediate')
-  options.immediate=0;
+    options.immediate=0;
 end
 if ~isfield(options,'trigger')
-  options.trigger=0;
+    options.trigger=0;
 end
 if ~isfield(options,'queue')
-  options.queue=channelRangeOk;
+    options.queue=channelRangeOk;
 elseif Is1608
-  options.queue = 0;
-  warning('"queue" option has no meaning for USB-1608FS, so will be ignored');
+    options.queue = 0;
+    warning('Psych:Daq:UnusedOption', '"queue" option has no meaning for USB-1608FS, so will be ignored');
 end
 if options.queue~=channelRangeOk
-  error('options.queue setting inconsistent with other parameters. Let us set it for you.');
+    error('options.queue setting inconsistent with other parameters. Let us set it for you.');
 end
 if ~isfield(options,'retrigger')
-  options.retrigger=0;
+    options.retrigger=0;
 end
 % User options.
 if ~isfield(options,'sendChannelRange')
-  if ~Is1608
-    options.sendChannelRange=channelRangeOk;
-  end
+    if ~Is1608
+        options.sendChannelRange=channelRangeOk;
+    end
 elseif Is1608
-  warning('"sendChannelRange" has no meaning for USB-1608FS, so will be ignored.');
+    warning('Psych:Daq:UnusedOption', '"sendChannelRange" has no meaning for USB-1608FS, so will be ignored.');
 end
 if ~Is1608 && (options.sendChannelRange && ~channelRangeOk)
-  error('You are not supplying channel and range, so you can''t send them. Omit options.sendChannelRange.');
+    error('You are not supplying channel and range, so you can''t send them. Omit options.sendChannelRange.');
 end
 if ~isfield(options,'print')
-  options.print=0;
+    options.print=0;
 end
 if ~isfield(options,'begin')
-  options.begin=1;
+    options.begin=1;
 end
 if ~isfield(options,'continue')
-  options.continue=1;
+    options.continue=1;
 end
 if ~isfield(options,'end')
-  options.end=1;
+    options.end=1;
 end
 
 % This function may be called from any of DaqAInScanBegin, DaqAInScanContinue,
 % or DaqAInScanEnd.  Keeping these persistent means they will remain even when
 % options.begin = 0
 persistent start;
-persistent dinc;
 persistent IndexRange;
 
 if options.begin
-  % It might be running, so stop it.
-  % hex2dec('12') is 18.
-  err=PsychHID('SetReport',daq,2,18,uint8(0)); % AInStop
-  if err.n
-    fprintf('AInStop SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
-  end
-  % The user supplies us only the device index "daq" corresponding to
-  % interface 0. The reports containing the samples arrive on interfaces
-  % 1,2,3. As returned by PsychHID('Devices'), interface "i" is at
-  % daq-i, and we proceed on that basis after doing a quick check to
-  % confirm our assumption. However, to be platform-independent, it would
-  % be better to actually find all four device interfaces and confirm
-  % their interface numbers. USB Probe reports interface numbers, but, as
-  % far as I can tell, Apple's HID Explorer and our PsychHID do not
-  % return this information. However, PsychHID('Devices') does report the
-  % number of outputs: the USB-1208FS interface 0 has 229 (pre-Tiger) 70 (Tiger)
-  % outputs, interface 1 has 65 (pre-Tiger) 1 (Tiger) outputs, and interfaces 2 
-  % and 3 have zero outputs.  I have no idea why the number of outputs changed 
-  % with the arrival of Mac OS X Tiger. -- author unknown
-  %
-  % The USB-1608FS interface 0 has only 66 outputs under Leopard.  It should
-  % have seven interfaces.  I have frequently found that PsychHID finds only six
-  % or (rarely) five interfaces.  I have not figured out why, but usually
-  % subsequent enumerations find all seven.  I have tried to take care of this 
-  % in DaqFind.  Nevertheless, to be safe I will add a check here to make 
-  % certain the interfaces are consecutive, and that there are seven of them.
-  % -- mpr
-  
-  if Is1608
-    SN = AllHIDDevices(daq).serialNumber;
-    AllSNs = strvcat(AllHIDDevices.serialNumber);
-    InterfaceInds = strmatch(SN,AllSNs);
-    if length(InterfaceInds) ~= 7 || ~all(InterfaceInds' == (daq-6):daq)    
-      ConfirmInfo('Not all interfaces found.  Run "help DaqReset" for suggestions.');
-      data = [];
-      params = [];
-      return;
+    % It might be running, so stop it.
+    % hex2dec('12') is 18.
+    err=PsychHID('SetReport',daq,2,18,uint8(0)); % AInStop
+    if err.n
+        fprintf('AInStop SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
     end
-    IndexRange = -1:-1:-6;
-  else
-    for dinc=[-1 1]
-      if daq+dinc>=1 && daq+dinc<=length(AllHIDDevices) && (AllHIDDevices(daq+dinc).outputs==65 || AllHIDDevices(daq+dinc).outputs==1)
-        break
-      else
-        dinc=[];
-      end
+    % The user supplies us only the device index "daq" corresponding to
+    % interface 0. The reports containing the samples arrive on interfaces
+    % 1,2,3. As returned by PsychHID('Devices'), interface "i" is at
+    % daq-i, and we proceed on that basis after doing a quick check to
+    % confirm our assumption. However, to be platform-independent, it would
+    % be better to actually find all four device interfaces and confirm
+    % their interface numbers. USB Probe reports interface numbers, but, as
+    % far as I can tell, Apple's HID Explorer and our PsychHID do not
+    % return this information. However, PsychHID('Devices') does report the
+    % number of outputs: the USB-1208FS interface 0 has 229 (pre-Tiger) 70 (Tiger)
+    % outputs, interface 1 has 65 (pre-Tiger) 1 (Tiger) outputs, and interfaces 2
+    % and 3 have zero outputs.  I have no idea why the number of outputs changed
+    % with the arrival of Mac OS X Tiger. -- author unknown
+    %
+    % The USB-1608FS interface 0 has only 66 outputs under Leopard.  It should
+    % have seven interfaces.  I have frequently found that PsychHID finds only six
+    % or (rarely) five interfaces.  I have not figured out why, but usually
+    % subsequent enumerations find all seven.  I have tried to take care of this
+    % in DaqFind.  Nevertheless, to be safe I will add a check here to make
+    % certain the interfaces are consecutive, and that there are seven of them.
+    % -- mpr
+    
+    if Is1608
+        SN = AllHIDDevices(daq).product;
+        AllSNs = strvcat(AllHIDDevices.product);
+        InterfaceInds = strmatch(SN,AllSNs);
+        if length(InterfaceInds) ~= 7 || ~all(InterfaceInds' == (daq-6):daq)
+            error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+        end
+        IndexRange = -1:-1:-6;
+    else
+        % Find all other interfaces of device 'daq', by looking for devices
+        % with the same serial number:
+        SN = AllHIDDevices(daq).product;
+        AllSNs = strvcat(AllHIDDevices.product);
+        InterfaceInds = transpose(strmatch(SN,AllSNs));
+        if length(InterfaceInds) ~= 4
+            error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+        end
+        
+        % Throw out the primary interface with index 'daq':
+        InterfaceInds = InterfaceInds(find(InterfaceInds ~= daq)); 
+        
+        % Convert to indices/range relative to 'daq', as needed later on:
+        IndexRange = InterfaceInds - daq;
     end
-
-    if AllHIDDevices(daq).outputs<70 || isempty(dinc) || ~streq(AllHIDDevices(daq).serialNumber,AllHIDDevices(daq+dinc).serialNumber)
-      error(sprintf('Invalid device, not the original USB-1208FS.'));
+    
+    % Flush any stale reports.
+    for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
+        err=PsychHID('ReceiveReports',daq+d);
     end
-
-    IndexRange = (1:3)*dinc;
-  end
-  % Flush any stale reports.
-  for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
-    err=PsychHID('ReceiveReports',daq+d);
-  end
-  for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
-    [reports,err]=PsychHID('GiveMeReports',daq+d);
-    if ~isempty(reports) && options.print
-      fprintf('Flushing %d stale reports from DeviceIndex %d.\n',length(reports),daq+d);
+    for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
+        [reports,err]=PsychHID('GiveMeReports',daq+d);
+        if ~isempty(reports) && options.print
+            fprintf('Flushing %d stale reports from DeviceIndex %d.\n',length(reports),daq+d);
+        end
     end
-  end
 end
 err.n = 0;
 if Is1608
-  % How many channels?
-  c = options.LastChannel-options.FirstChannel+1;
-  if length(options.range) ~= c && ~ismember(numel(options.range),0:1) 
-    error(sprintf('Specified length of range is %d and number of channels is %d',length(options.range),options.LastChannel-options.FirstChannel+1));
-  end
-  if isempty(options.range)
-    PrefsNotFound = 1;
-    DaqPrefsDir = DaqtoolboxConfigDir;
-    if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
-      DaqVars = load([DaqPrefsDir filesep 'DaqPrefs']);
-      if isfield(DaqVars,'OldGains')
-        options.range = DaqVars.OldGains((options.FirstChannel:options.LastChannel)+1);
-      	PrefsNotFound = 0;
-      end
+    % How many channels?
+    c = options.LastChannel-options.FirstChannel+1;
+    if length(options.range) ~= c && ~ismember(numel(options.range),0:1)
+        error('Specified length of range is %d and number of channels is %d',length(options.range),options.LastChannel-options.FirstChannel+1);
     end
-    if PrefsNotFound
-      fprintf(['\n\nDanger, Will Robinson!!  Danger!!\n\n' ...
-               'Input options did not specify the ranges, and I could not find the values in a\n' ...
-               'Preference file.  I will assume that gains are all 1 (range +/- 10 V), but if that\n' ...
-               'is not what your daq thinks the gains are, then your data will be off by a scale\n' ...
-               'factor or worse because calibration may be quite off too.\n\n' ...
-               'I strongly recommend that you run DaqALoadQueue or use options.range in your next\n' ...
-               'call to DaqAInScan.\n\n']);
-      options.range = zeros(1,c);
-    end
-  else % if isempty(options.range)
-    if numel(options.range) == 1
-      options.range = options.range*ones(1,c);
-    end
-    err=DaqALoadQueue(daq,options.FirstChannel:options.LastChannel,options.range);
-  end % if isempty(otptions.range); else
+    if isempty(options.range)
+        PrefsNotFound = 1;
+        DaqPrefsDir = DaqtoolboxConfigDir;
+        if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
+            DaqVars = load([DaqPrefsDir filesep 'DaqPrefs']);
+            if isfield(DaqVars,'OldGains')
+                options.range = DaqVars.OldGains((options.FirstChannel:options.LastChannel)+1);
+                PrefsNotFound = 0;
+            end
+        end
+        if PrefsNotFound
+            fprintf(['\n\nDanger, Will Robinson!!  Danger!!\n\n' ...
+                'Input options did not specify the ranges, and I could not find the values in a\n' ...
+                'Preference file.  I will assume that gains are all 1 (range +/- 10 V), but if that\n' ...
+                'is not what your daq thinks the gains are, then your data will be off by a scale\n' ...
+                'factor or worse because calibration may be quite off too.\n\n' ...
+                'I strongly recommend that you run DaqALoadQueue or use options.range in your next\n' ...
+                'call to DaqAInScan.\n\n']);
+            options.range = zeros(1,c);
+        end
+    else % if isempty(options.range)
+        if numel(options.range) == 1
+            options.range = options.range*ones(1,c);
+        end
+        err=DaqALoadQueue(daq,options.FirstChannel:options.LastChannel,options.range);
+    end % if isempty(otptions.range); else
 else % if Is1608
-  if options.sendChannelRange
-    % for single-ended measurements, there is only one value for range
-    options.range(find(options.channel > 7)) = zeros(size(find(options.channel > 7)));
-    err=DaqALoadQueue(daq,options.channel,options.range);
-  end
-  % How many channels?
-  if channelRangeOk
-    c=length(options.channel);
-    % will need channel to be defined to check for single-ended measurements
-    % below in order to ge scale correct.
-    channel=options.channel;
-  else
-    if ~ismember(options.LastChannel,0:15) || ~ismember(options.FirstChannel,0:15)
-      error('options.FirstChannel and options.LastChannel must each be in the range 0:15.');
+    if options.sendChannelRange
+        % for single-ended measurements, there is only one value for range
+        options.range(find(options.channel > 7)) = zeros(size(find(options.channel > 7)));
+        err=DaqALoadQueue(daq,options.channel,options.range);
     end
-    if options.FirstChannel<=options.LastChannel
-      channel=options.FirstChannel:options.LastChannel;
+    % How many channels?
+    if channelRangeOk
+        c=length(options.channel);
+        % will need channel to be defined to check for single-ended measurements
+        % below in order to ge scale correct.
+        channel=options.channel;
     else
-      channel=[options.FirstChannel:15 0:options.LastChannel]; % wrap around.
-    end
-    c=length(channel);
-  end % if channelRangeOk; else
+        if ~ismember(options.LastChannel,0:15) || ~ismember(options.FirstChannel,0:15)
+            error('options.FirstChannel and options.LastChannel must each be in the range 0:15.');
+        end
+        if options.FirstChannel<=options.LastChannel
+            channel=options.FirstChannel:options.LastChannel;
+        else
+            channel=[options.FirstChannel:15 0:options.LastChannel]; % wrap around.
+        end
+        c=length(channel);
+    end % if channelRangeOk; else
 end % if Is1608; else
 if err.n
-  fprintf('DaqALoadQueue error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+    fprintf('DaqALoadQueue error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
 end
 % Convert from user to USB-1208FS usage. "options.f" and "options.count" refer to
 % samples per channel.
@@ -569,12 +572,12 @@ end
 pmd.f=c*options.f;
 pmd.count=c*options.count;
 if isinf(pmd.count)
-  options.counted=0;
+    options.counted=0;
 else
-  if pmd.count<0 || pmd.count>intmax('uint32');
-    error('pmd.count is out of 32-bit range, yet not INF.');
-  end
-  options.counted=1;
+    if pmd.count<0 || pmd.count>intmax('uint32');
+        error('pmd.count is out of 32-bit range, yet not INF.');
+    end
+    options.counted=1;
 end
 
 timer_prescale=ceil(log2(10e6/65535/pmd.f)); % Use smallest integer timer_prescale consistent with pmd.f.
@@ -592,333 +595,337 @@ pmd.fActual=10e6/2^timer_prescale/(timer_preload+1);
 % samples/channel.
 params.fActual=pmd.fActual/c;
 if options.begin
-  if abs(log10(params.fActual/options.f))>log10(1.1)
-    error('Nearest attainable sampling frequency %.4f kHz is too far from requested %.4f kHz.',params.fActual/1000,options.f/1000);
-  end
-  report=uint8(zeros(1,11));
-  report(1)=17;
-  if Is1608 | ~options.queue
-    report(2) = options.FirstChannel;
-    report(3) = options.LastChannel;
-  end
-  if isfinite(pmd.count)
-    countsave=pmd.count;
-    report(4)=bitand(pmd.count,255); % count
-    pmd.count=bitshift(pmd.count,-8);
-    report(5)=bitand(pmd.count,255);
-    pmd.count=bitshift(pmd.count,-8);
-    report(6)=bitand(pmd.count,255);
-    pmd.count=bitshift(pmd.count,-8);
-    report(7)=bitand(pmd.count,255);
-    pmd.count=countsave;
-  end
-  report(8)=timer_prescale; % timer_prescale
-  report(9)=bitand(timer_preload,255); % timer_preload
-  report(10)=bitshift(timer_preload,-8);
-  if Is1608
-    report(11) = options.counted+2*options.burst+4*options.immediate+8*options.trigger+16*options.ExternSync+32*options.debug;
-  else
-    report(11)=options.counted+2*options.immediate+4*options.trigger+16*options.queue+32*options.retrigger;
-  end
-  % Tell the USB1208FS to start sampling and sending reports.
-  % hex2dec('11') is 17.
-  err=PsychHID('SetReport',daq,2,17,report); % AInScan
-  start=GetSecs;
-  if err.n
-    fprintf('AInScan SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
-  end
+    if abs(log10(params.fActual/options.f))>log10(1.1)
+        error('Nearest attainable sampling frequency %.4f kHz is too far from requested %.4f kHz.',params.fActual/1000,options.f/1000);
+    end
+    report=uint8(zeros(1,11));
+    report(1)=17;
+    if Is1608 || ~options.queue
+        report(2) = options.FirstChannel;
+        report(3) = options.LastChannel;
+    end
+    if isfinite(pmd.count)
+        countsave=pmd.count;
+        report(4)=bitand(pmd.count,255); % count
+        pmd.count=bitshift(pmd.count,-8);
+        report(5)=bitand(pmd.count,255);
+        pmd.count=bitshift(pmd.count,-8);
+        report(6)=bitand(pmd.count,255);
+        pmd.count=bitshift(pmd.count,-8);
+        report(7)=bitand(pmd.count,255);
+        pmd.count=countsave;
+    end
+    report(8)=timer_prescale; % timer_prescale
+    report(9)=bitand(timer_preload,255); % timer_preload
+    report(10)=bitshift(timer_preload,-8);
+    if Is1608
+        report(11) = options.counted+2*options.burst+4*options.immediate+8*options.trigger+16*options.ExternSync+32*options.debug;
+    else
+        report(11)=options.counted+2*options.immediate+4*options.trigger+16*options.queue+32*options.retrigger;
+    end
+    % Tell the USB1208FS to start sampling and sending reports.
+    % hex2dec('11') is 17.
+    err=PsychHID('SetReport',daq,2,17,report); % AInScan
+    start=GetSecs;
+    if err.n
+        fprintf('AInScan SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+    end
 end
 
 if options.continue
-  % AInScan responses from the USB-1208FS will be sent sequentially from
-  % interrupt IN endpoints in interfaces 1-3 as input reports with a
-  % report ID of 0. The last two bytes are a sequential index,
-  % "reports.serial".
-  data=[];
-  if isfinite(options.count)
-    while GetSecs<start+options.count/options.f+0.02;
-      for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
-        % Tell PsychHID to receive reports, storing them internally.
-        err=PsychHID('ReceiveReports',daq+d,options);
-        if err.n
-          fprintf('AInScan DeviceIndex %d, ReceiveReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+    % AInScan responses from the USB-1208FS will be sent sequentially from
+    % interrupt IN endpoints in interfaces 1-3 as input reports with a
+    % report ID of 0. The last two bytes are a sequential index,
+    % "reports.serial".
+    if isfinite(options.count)
+        % Perform exactly one pass per interface:
+        for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
+            % Tell PsychHID to receive reports, storing them internally.
+            err=PsychHID('ReceiveReports',daq+d,options);
+            if err.n
+                fprintf('AInScan DeviceIndex %d, ReceiveReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+            end
         end
-      end
+    else % isfinite(options.count)
+        if isfield(options,'ReleaseTime')
+            while GetSecs < options.ReleaseTime
+                for d=IndexRange
+                    err=PsychHID('ReceiveReports',daq+d,options);
+                    if err.n
+                        fprintf('AInScan DeviceIndex %d, ReceiveReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+                    end
+                end
+            end
+        end
     end
-  else % isfinite(options.count)
-    if isfield(options,'ReleaseTime')
-      while GetSecs < options.ReleaseTime
-        for d=IndexRange
-          err=PsychHID('ReceiveReports',daq+d,options);
-          if err.n
-            fprintf('AInScan DeviceIndex %d, ReceiveReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
-          end
-        end
-      end
-    end 
-  end
 end
 
 % Large parts of code are shared between end of aquisition with return of
 % all captured data, and retrieval of livedata without stop of aquisition:
 if options.end || (isfield(options, 'livedata') && options.livedata)
-  % Get and combine reports from all interfaces.
-  r=[];
-  params.times=[];
-  for d=IndexRange
-    [reports,err]=PsychHID('GiveMeReports',daq+d);
-    if err.n
-      fprintf('AInScan DeviceIndex %d, GiveMeReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
-    end
-    r=[r reports];
-    
-    % Only stop reception if this is really end of aquisition:
-    if options.end
-        err=PsychHID('ReceiveReportsStop',daq+d);
+    % Get and combine reports from all interfaces.
+    r=[];
+    params.times=[];
+    for d=IndexRange
+        [reports,err]=PsychHID('GiveMeReports',daq+d);
         if err.n
-            fprintf('AInScan DeviceIndex %d, ReceiveReportsStop error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+            fprintf('AInScan DeviceIndex %d, GiveMeReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
         end
-    end
-  end
-  
-  % Stop DAQ and flush receive buffers if this is really end of aquisition:
-  if options.end
-      % hex2dec('12') is 18.
-      err=PsychHID('SetReport',daq,2,18,uint8(0)); % AInStop
-      if err.n
-          fprintf('AInStop SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
-      end
-      for d=IndexRange
-          err=PsychHID('ReceiveReports',daq+d);
-          [reports,err]=PsychHID('GiveMeReports',daq+d);
-          if isfinite(options.count)
-              if ~isempty(reports)
-                  fprintf('WARNING: received %d post-deadline reports from DeviceIndex %d.\n',length(reports),daq+d);
-              end
-          else
-              r=[r reports];
-          end
-          err=PsychHID('ReceiveReportsStop',daq+d);
-          if err.n
-              fprintf('AInScan DeviceIndex %d, ReceiveReportsStop error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
-          end
-      end
-  end
-  
-  % Post processing of raw report data:
-  reports=r;
-  if isempty(reports)
-    data=[];
-    fprintf('Nothing received.\n');
-    return
-  end
-  % Extract the report serial number provided by the USB-1208FS
-  for k=1:length(reports)
-    reports(k).serial=double(reports(k).report(63))+double(reports(k).report(64))*256;
-  end
-  
-  % Sort by serial number.
-  [r,ri]=sort([reports.serial]);
-  reports=reports(ri);
- 
-  InitReports = reports;
-  
-  % Keep only the consecutively numbered reports, from 0 on. Discard
-  % everything after a gap.  -- author presumably dgp...
-  %
-  % This turned out to be a real problem for me; not sure why, but for some
-  % reason a report or two can get lost even though the FIFO buffer is not full
-  % and you have not reached the limit on the number of reports.  I was losing
-  % data hand over fist with my USB-1608; not sure what conditions cause it, but
-  % here's some of what I can say: I found I cannot use DaqAInScanContinue,
-  % because it takes too long to send "ReceiveReports" for every interface, so
-  % when timing is an issue, I try to send just enough calls to
-  % "PsychHID('ReceiveReports',daq+k);" to prevent the FIFO from overflowing.
-  % For "k" I use an index of the form k=rem(k,NumberOfInterfaces)+1; so that
-  % each successive call asks for the next interface in order.  But for some
-  % reason -- I think particularly if the computer spends a bit too much time
-  % doing other things -- a report or two gets dropped.  I've added a check for
-  % that.  Previously data were discarded here without warning!
-  ri=[reports.serial]==0:length(reports)-1;
-  reports=reports(ri);
-  
-  if length(InitReports) ~= length(reports)
-    if length(InitReports)-length(reports) == 1
-      diffindex = diff(r);
-      % I think the index math is such that this will always be
-      % length(reports)-1, but to be safe:
-      BadOne = r(find(diffindex > 1));
-      fprintf('\n1 report discarded (%d reports received, but report(s) missed after report %d).\n', ...
-              length(InitReports),BadOne);
-    else
-      % This warns user if reports are thrown away; if you get this warning
-      % unacceptably often, I suggest you first try to modify your code to put
-      % in more frequent calls to PsychHID('ReceiveReports, ...)  If you can't
-      % do that or you can and it doesn't work, then you may be faced with the
-      % hard choice of deciding how to handle the problem...  One thing you
-      % might do is modify this code so that it doesn't just throw away the
-      % reports obtained after a miss.  In my case, I frequently found that I'd
-      % lose more than 9000 reports just because 1 report was missed after the
-      % 500th (or so) report.  I got the problem to go away by reducing the time
-      % the computer spent doing other things between ReceiveReports calls, but
-      % I can imagine wanting to make due with all the data I managed to get
-      % from the device rather than just the first sequential reports.  So you
-      % could rewrite the above code so that instead of throwing away data
-      % acquired after a missed report, the function returns all the data it
-      % gets back along with a vector specifying the indices.  Difficulties
-      % you'll face: meaning of sequence numbers differ according to value of
-      % options.immediate, fact that params.times isn't helpful (time that
-      % reports are received from device not monotonically related to time that
-      % data within said reports are acquired).
-      fprintf('\n%d reports discarded! (out of %d reports received; %d reports missed)\n', ...
-              length(InitReports)-length(reports),length(InitReports),InitReports(end).serial+1-length(reports));
-    end
-    %% For Diagnostic purposes:
-    % 
-    % [ErrMsg,HomeDir] = unix('echo $HOME');
-    %% trim trailing carriage return
-    % HomeDir(end) = [];
-    % FileNo = 0;
-    % while exist([HomeDir 'Desktop/DiscardedReports' int2str(FileNo) '.mat'],'file')
-    %   FileNo = FileNo+1;
-    % end
-    % save([HomeDir 'Desktop/DiscardedReports' int2str(FileNo)]);
-  end
-  % Diagnostic print of the raw reports
-  if options.immediate
-    % report length
-    bytes=2;
-  else
-    bytes=62;
-  end
-  if options.print
-    fprintf('Got %d reports.\n',length(reports));
-    fprintf('Serial number, Device, Time received (since AInScan command), Report rate, Report as 16-bit words.\n');
-    for k=1:length(reports)
-      fprintf('Report %3d, DeviceIndex %d, %4.0f ms, %4.0f report/s.',...
-          reports(k).serial,reports(k).device,1000*(reports(k).time-start),reports(k).serial/(reports(k).time-start));
-      r=double(reports(k).report);
-      r=r(1:bytes);
-      fprintf(' %5d',r(1:2:end)+256*r(2:2:end));
-      fprintf('\n');
-    end
-  end
-  % Return times.
-  params.times=[reports.time];
-  % Extract the data from the reports.
-  data=[];
-  for k=1:length(reports)
-    data=[data reports(k).report(1:bytes)];
-  end
-  
-  % Combine two bytes for each reading.
-  data = double(data(1:2:end))+double(data(2:2:end))*256;  
-  % Discard any extra 16-bit words at the end of the last report.
-  if length(data)>c*options.count
-    if 2*(length(data)-options.count*c)>60
-        fprintf('Trimming off an extra %.1f sample/channel, %.0f bytes.\n',length(data)/c-options.count,2*(length(data)-options.count*c));
-    end
-    data=data(1:c*options.count);
-  end
-  if c*options.count>length(data)
-    if isfinite(options.count)
-      fprintf('Missing %.1f sample/channel, %.0f bytes.\n',options.count-length(data)/c,2*(options.count*c-length(data)));
-    end
-    options.count=floor(length(data)/c);
-    data=data(1:c*options.count);
-  end
-  data=reshape(data,c,options.count)';
-  
-  range=ones([1 size(data,2)]);
-  if length(options.range)>0
-    if length(options.range)~=size(data,2)
-      error('Wrong length of "options.range" vector.');
-    end
-    range(:)=options.range(:);
-  else
-    range=3*range;
-  end
-  
-  if Is1608
-    vmax=[10 5 2.5 2 1.25 1 0.625 0.3125];    
-    data = data/32768-1;
-  else
-    vmax=[20 10 5 4 2.5 2 1.25 1];
-    
-    DiffChannels = find(channel < 8);
-    SE_Channels = find(channel > 7);
-    
-    data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
-    [NegativeDiffs,DCs] = find(data(:,DiffChannels) > 2048);
-    data(NegativeDiffs,DiffChannels(DCs)) = -bitcmp(data(NegativeDiffs,DiffChannels(DCs)),12)-1;
-    SE_Data = data(:,SE_Channels);
-    
-    OverflowInds = find(SE_Data > 32752);
-    UnderflowInds = find(SE_Data > 32736);
-    OKInds = find(SE_Data < 32737);
-    
-    SE_Data(OverflowInds) = -2048*ones(size(OverflowInds));
-    SE_Data(UnderflowInds) = 2047*ones(size(UnderflowInds));
-    SE_Data(OKInds) = bitand(4095,bitshift(SE_Data(OKInds),-3))-2048;
-    
-    data(:,SE_Channels) = SE_Data;
+        r=[r reports];
         
-    data=data/2047;
-    
-    % for PsychHID calls, single-ended measurements must have range set to 0,
-    % but
-    % for vmax determination range must be 1 because scale is +/- 10 V
-    range(SE_Channels) = ones(length(SE_Channels),1);
-  end
-  
-  range=vmax(range+1);
-  data=repmat(range,size(data,1),1).*data;
-  
-  if Is1608
-    TheChannels = options.FirstChannel:options.LastChannel;
-    DataUncalibrated = ones(1,c);
-    DaqPrefsDir = DaqtoolboxConfigDir;
-    if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
-      DaqVars = load([DaqPrefsDir filesep 'DaqPrefs']);
-      if isfield(DaqVars,'CalData')
-        CalData = DaqVars.CalData;
-        for k=1:length(TheChannels)
-          GoodIndices = find(CalData(:,1) == TheChannels(k) & CalData(:,2) == options.range(k));
-          if ~isempty(GoodIndices)
-            TheDays = CalData(GoodIndices,end);
-            ThisDay = datenum(date);
-            [DaysSinceLast,BestIndex] = min(ThisDay-TheDays);
-            AllThatDay = find(TheDays == TheDays(BestIndex));
-            MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
-
-            if DaysSinceLast > 30
-              warning('Calibration of channel %d has not been performed since %s!!',TheChannels(k),datestr(TheDays(BestIndex)));
+        % Only stop reception if this is really end of aquisition:
+        if options.end
+            err=PsychHID('ReceiveReportsStop',daq+d);
+            if err.n
+                fprintf('AInScan DeviceIndex %d, ReceiveReportsStop error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
             end
-            
-            data(:,k) = polyval(MostRecentPolyFit,data(:,k));
-            DataUncalibrated(k) = 0;
-          end
         end
-      end % if isfield(DaqVars,'CalData')
-    end % if exist([Preferences file])
-    if any(DataUncalibrated)
-      warning('It looks like some of your channels have not been calibrated.');
-      TheIndices = find(DataUncalibrated);
-      if length(TheIndices) == 1
-        fprintf('I did not find calibration data for channel %d.\n\n',TheChannels(find(DataUncalibrated)));
-      else
-        fprintf('I did not find calibration data for channels ');
-        for k=1:(length(TheIndices)-1)
-          fprintf('%d, ',TheIndices(k));
-        end
-        fprintf('and %d.\n\n',TheIndices(end));
-      end
-      fprintf('In my tests, uncalibrated values could be off by as much as 15%%!\n\n');
     end
-  end % if Is1608
+    
+    % Stop DAQ and flush receive buffers if this is really end of aquisition:
+    if options.end
+        % hex2dec('12') is 18.
+        err=PsychHID('SetReport',daq,2,18,uint8(0)); % AInStop
+        if err.n
+            fprintf('AInStop SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+        end
+        for d=IndexRange
+            err=PsychHID('ReceiveReports',daq+d);
+            if err.n
+                fprintf('AInScan DeviceIndex %d, ReceiveReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+            end
+            [reports,err]=PsychHID('GiveMeReports',daq+d);
+            if err.n
+                fprintf('AInScan DeviceIndex %d, GiveMeReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+            end
+            if isfinite(options.count)
+                if ~isempty(reports)
+                    fprintf('WARNING: received %d post-deadline reports from DeviceIndex %d.\n',length(reports),daq+d);
+                end
+            else
+                r=[r reports]; %#ok<*AGROW>
+            end
+            err=PsychHID('ReceiveReportsStop',daq+d);
+            if err.n
+                fprintf('AInScan DeviceIndex %d, ReceiveReportsStop error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+            end
+        end
+    end
+    
+    % Post processing of raw report data:
+    reports=r;
+    if isempty(reports)
+        data=[];
+        fprintf('Nothing received.\n');
+        return
+    end
+    % Extract the report serial number provided by the USB-1208FS
+    for k=1:length(reports)
+        reports(k).serial=double(reports(k).report(63))+double(reports(k).report(64))*256;
+    end
+    
+    % Sort by serial number.
+    [r,ri]=sort([reports.serial]);
+    reports=reports(ri);
+    
+    InitReports = reports;
+    
+    % Keep only the consecutively numbered reports, from 0 on. Discard
+    % everything after a gap.  -- author presumably dgp...
+    %
+    % This turned out to be a real problem for me; not sure why, but for some
+    % reason a report or two can get lost even though the FIFO buffer is not full
+    % and you have not reached the limit on the number of reports.  I was losing
+    % data hand over fist with my USB-1608; not sure what conditions cause it, but
+    % here's some of what I can say: I found I cannot use DaqAInScanContinue,
+    % because it takes too long to send "ReceiveReports" for every interface, so
+    % when timing is an issue, I try to send just enough calls to
+    % "PsychHID('ReceiveReports',daq+k);" to prevent the FIFO from overflowing.
+    % For "k" I use an index of the form k=rem(k,NumberOfInterfaces)+1; so that
+    % each successive call asks for the next interface in order.  But for some
+    % reason -- I think particularly if the computer spends a bit too much time
+    % doing other things -- a report or two gets dropped.  I've added a check for
+    % that.  Previously data were discarded here without warning!
+    ri=[reports.serial]==0:length(reports)-1;
+    reports=reports(ri);
+    
+    if length(InitReports) ~= length(reports)
+        if length(InitReports)-length(reports) == 1
+            diffindex = diff(r);
+            % I think the index math is such that this will always be
+            % length(reports)-1, but to be safe:
+            BadOne = r(find(diffindex > 1)); %#ok<*FNDSB>
+            fprintf('\n1 report discarded (%d reports received, but report(s) missed after report %d).\n', ...
+                length(InitReports),BadOne);
+        else
+            % This warns user if reports are thrown away; if you get this warning
+            % unacceptably often, I suggest you first try to modify your code to put
+            % in more frequent calls to PsychHID('ReceiveReports, ...)  If you can't
+            % do that or you can and it doesn't work, then you may be faced with the
+            % hard choice of deciding how to handle the problem...  One thing you
+            % might do is modify this code so that it doesn't just throw away the
+            % reports obtained after a miss.  In my case, I frequently found that I'd
+            % lose more than 9000 reports just because 1 report was missed after the
+            % 500th (or so) report.  I got the problem to go away by reducing the time
+            % the computer spent doing other things between ReceiveReports calls, but
+            % I can imagine wanting to make due with all the data I managed to get
+            % from the device rather than just the first sequential reports.  So you
+            % could rewrite the above code so that instead of throwing away data
+            % acquired after a missed report, the function returns all the data it
+            % gets back along with a vector specifying the indices.  Difficulties
+            % you'll face: meaning of sequence numbers differ according to value of
+            % options.immediate, fact that params.times isn't helpful (time that
+            % reports are received from device not monotonically related to time that
+            % data within said reports are acquired).
+            fprintf('\n%d reports discarded! (out of %d reports received; %d reports missed)\n', ...
+                length(InitReports)-length(reports),length(InitReports),InitReports(end).serial+1-length(reports));
+        end
+        %% For Diagnostic purposes:
+        %
+        % [ErrMsg,HomeDir] = unix('echo $HOME');
+        %% trim trailing carriage return
+        % HomeDir(end) = [];
+        % FileNo = 0;
+        % while exist([HomeDir 'Desktop/DiscardedReports' int2str(FileNo) '.mat'],'file')
+        %   FileNo = FileNo+1;
+        % end
+        % save([HomeDir 'Desktop/DiscardedReports' int2str(FileNo)]);
+    end
+    % Diagnostic print of the raw reports
+    if options.immediate
+        % report length
+        bytes=2;
+    else
+        bytes=62;
+    end
+    if options.print
+        fprintf('Got %d reports.\n',length(reports));
+        fprintf('Serial number, Device, Time received (since AInScan command), Report rate, Report as 16-bit words.\n');
+        for k=1:length(reports)
+            fprintf('Report %3d, DeviceIndex %d, %4.0f ms, %4.0f report/s.',...
+                reports(k).serial,reports(k).device,1000*(reports(k).time-start),reports(k).serial/(reports(k).time-start));
+            r=double(reports(k).report);
+            r=r(1:bytes);
+            fprintf(' %5d',r(1:2:end)+256*r(2:2:end));
+            fprintf('\n');
+        end
+    end
+    % Return times.
+    params.times=[reports.time];
+    % Extract the data from the reports.
+    data=[];
+    for k=1:length(reports)
+        data=[data reports(k).report(1:bytes)];
+    end
+    
+    % Combine two bytes for each reading.
+    data = double(data(1:2:end))+double(data(2:2:end))*256;
+    % Discard any extra 16-bit words at the end of the last report.
+    if length(data)>c*options.count
+        if 2*(length(data)-options.count*c)>60
+            fprintf('Trimming off an extra %.1f sample/channel, %.0f bytes.\n',length(data)/c-options.count,2*(length(data)-options.count*c));
+        end
+        data=data(1:c*options.count);
+    end
+    if c*options.count>length(data)
+        if isfinite(options.count)
+            fprintf('Missing %.1f sample/channel, %.0f bytes.\n',options.count-length(data)/c,2*(options.count*c-length(data)));
+        end
+        options.count=floor(length(data)/c);
+        data=data(1:c*options.count);
+    end
+    data=reshape(data,c,options.count)';
+    
+    range=ones([1 size(data,2)]);
+    if ~isempty(options.range)
+        if length(options.range)~=size(data,2)
+            error('Wrong length of "options.range" vector.');
+        end
+        range(:)=options.range(:);
+    else
+        range=3*range;
+    end
+    
+    if Is1608
+        vmax=[10 5 2.5 2 1.25 1 0.625 0.3125];
+        data = data/32768-1;
+    else
+        vmax=[20 10 5 4 2.5 2 1.25 1];
+        
+        DiffChannels = find(channel < 8);
+        SE_Channels = find(channel > 7);
+        
+        data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
+        [NegativeDiffs,DCs] = find(data(:,DiffChannels) > 2048);
+        data(NegativeDiffs,DiffChannels(DCs)) = -bitcmp(data(NegativeDiffs,DiffChannels(DCs)),12)-1;
+        SE_Data = data(:,SE_Channels);
+        
+        OverflowInds = find(SE_Data > 32752);
+        UnderflowInds = find(SE_Data > 32736);
+        OKInds = find(SE_Data < 32737);
+        
+        SE_Data(OverflowInds) = -2048*ones(size(OverflowInds));
+        SE_Data(UnderflowInds) = 2047*ones(size(UnderflowInds));
+        SE_Data(OKInds) = bitand(4095,bitshift(SE_Data(OKInds),-3))-2048;
+        
+        data(:,SE_Channels) = SE_Data;
+        
+        data=data/2047;
+        
+        % for PsychHID calls, single-ended measurements must have range set to 0,
+        % but
+        % for vmax determination range must be 1 because scale is +/- 10 V
+        range(SE_Channels) = ones(length(SE_Channels),1);
+    end
+    
+    range=vmax(range+1);
+    data=repmat(range,size(data,1),1).*data;
+    
+    if Is1608
+        TheChannels = options.FirstChannel:options.LastChannel;
+        DataUncalibrated = ones(1,c);
+        DaqPrefsDir = DaqtoolboxConfigDir;
+        if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
+            DaqVars = load([DaqPrefsDir filesep 'DaqPrefs']);
+            if isfield(DaqVars,'CalData')
+                CalData = DaqVars.CalData;
+                for k=1:length(TheChannels)
+                    GoodIndices = find(CalData(:,1) == TheChannels(k) & CalData(:,2) == options.range(k));
+                    if ~isempty(GoodIndices)
+                        TheDays = CalData(GoodIndices,end);
+                        ThisDay = datenum(date);
+                        [DaysSinceLast,BestIndex] = min(ThisDay-TheDays);
+                        AllThatDay = find(TheDays == TheDays(BestIndex));
+                        MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
+                        
+                        if DaysSinceLast > 30
+                            warning('Psych:Daq:CalibOutdated', 'Calibration of channel %d has not been performed since %s!!',TheChannels(k),datestr(TheDays(BestIndex)));
+                        end
+                        
+                        data(:,k) = polyval(MostRecentPolyFit,data(:,k));
+                        DataUncalibrated(k) = 0;
+                    end
+                end
+            end % if isfield(DaqVars,'CalData')
+        end % if exist([Preferences file])
+        if any(DataUncalibrated)
+            warning('Psych:Daq:CalibMissing', 'It looks like some of your channels have not been calibrated.');
+            TheIndices = find(DataUncalibrated);
+            if length(TheIndices) == 1
+                fprintf('I did not find calibration data for channel %d.\n\n',TheChannels(find(DataUncalibrated)));
+            else
+                fprintf('I did not find calibration data for channels ');
+                for k=1:(length(TheIndices)-1)
+                    fprintf('%d, ',TheIndices(k));
+                end
+                fprintf('and %d.\n\n',TheIndices(end));
+            end
+            fprintf('In my tests, uncalibrated values could be off by as much as 15%%!\n\n');
+        end
+    end % if Is1608
 else % if options.end
-  data=[];
-  params.times=[];
+    data=[];
+    params.times=[];
 end % if options.end; else
 
 return;

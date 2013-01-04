@@ -119,12 +119,13 @@ void InitializeSynopsis(void)
 	int i=0;
 	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
 	
-	synopsis[i++] = "PsychKinectCore - A Psychtoolbox driver for the Microsoft Kinect box.\n";
+	synopsis[i++] = "PsychKinectCore - A Psychtoolbox driver for the Microsoft XBOX-360 Kinect.\n";
+	synopsis[i++] = "The driver currently only supports the 'XBOX-360 Kinect', *not* 'Kinect for Windows'!\n";
 	synopsis[i++] = "This driver allows to control the box and grab color images and depth";
 	synopsis[i++] = "images from the Kinect depth camera.\n";
 	synopsis[i++] = "It uses and requires the free software drivers and libraries from the OpenKinect";
 	synopsis[i++] = "project (Thanks!): http://openkinect.org\n";
-	synopsis[i++] = "Libfreenect is Copyright (C) 2010 - 2012 individual OpenKinect contributors.";
+	synopsis[i++] = "Libfreenect is Copyright (C) 2010 - 2013 individual OpenKinect contributors.";
 	synopsis[i++] = "Libfreenect requires libusb-1.0, which is licensed under LGPL v2 or later.";
 	synopsis[i++] = "See 'help InstallKinect' for more detailed license information.\n";
 	synopsis[i++] = "The PsychKinectCore driver is licensed to you under the terms of the MIT license,";
@@ -410,7 +411,8 @@ PsychError PSYCHKINECTOpen(void)
     static char useString[] = "kinectPtr = PsychKinect('Open' [, deviceIndex=0][, numbuffers=2][, bayerFilterMode=1]);";
     //
     static char synopsisString[] = 
-		"Open connection to Kinect box, return a 'kinectPtr' handle to it.\n\n"
+		"Open connection to Microsoft XBOX-360 Kinect box, return a 'kinectPtr' handle to it.\n\n"
+        "The driver currently only supports the 'XBOX-360 Kinect', *not* 'Kinect for Windows'!\n"
 		"The call tries to open the Kinect box with index 'deviceIndex', or the "
 		"first detected box, if 'deviceIndex' is omitted. It configures the box "
 		"for video and depth capture, using a n-buffered pool for internal storage "
@@ -987,14 +989,28 @@ PsychError PSYCHKINECTGetImage(void)
     static char useString[] = "[imageOrPtr, width, height, channels, extType, extFormat] = PsychKinect('GetImage', kinectPtr [, imtype=0][, returnTexturePtr=0]);";
     //							1			2	   3	   4		 5		  6									   1			2			3
     static char synopsisString[] = 
-		"Return the color image data for the frame fetched via 'GrabFrame'.\n\n"
-		"If 'returnTexturePtr' is zero (default), a uint8 3D image matrix is returned, which could "
-		"be directly fed to image processing toolbox, imwrite() or Screen('MakeTexture').\n"
-		"'imtype' if set to 1 returns a color-coded depth image instead of the RGB camera image.\n"
-		"If 'returnTexturePtr' is one, a double-encoded memory pointer to a RGBA8 rectangle texture buffer "
-		"is returned, for use with Screen('SetOpenGLTextureFromMemPointer') for injection into "
-		"PTB's texturing system.\n";
-	
+        "Return the color image data for the frame fetched via 'GrabFrame'.\n\n"
+        "If 'returnTexturePtr' is zero (default), a uint8 3D image matrix is returned. "
+        "The matrix is usually in RGB pixel interleaved row-major format for efficiency reasons, "
+        "ie. to improve processing speed for realtime applications.\n"
+        "If the optional 'bayerFilterMode' flag in PsychKinect('Open') was set to 0, then the "
+        "image is returned as a row-major 2D matrix with the raw color sensor data instead of "
+        "post-processed RGB bayer filtered data, again for efficiency reasons. A 'bayerfilter' "
+        "setting of 2 would return a row-major 2D matrix with infrared depth sensor raw data.\n"
+        "If you want to use the image matrix with standard Matlab/Octave or PTB functions, e.g., "
+        "feed it to the image processing toolbox, imwrite(), imshow(), or Screen('MakeTexture'), "
+        "you need to convert it into the expected Matlab/Octave planar column-major format:\n\n"
+        "for i = 1:channels\n"
+        "   retpixels(:,:,i) = transpose(squeeze(imageOrPtr(i, :, :)));\n"
+        "end\n"
+        "imshow(retpixels);\n\n"
+        "'imtype' if set to 1, returns a color-coded depth image instead of the RGB camera image.\n"
+        "If 'returnTexturePtr' is one, a double-encoded memory pointer to a LUMINANCE8 or RGB8 "
+        "rectangle texture buffer is returned, for use with Screen('SetOpenGLTextureFromMemPointer') "
+        "for injection into PTB's texturing system. 'extType' and 'extFormat' encode the proper "
+        "parameters to pass for external format and type to Screen('SetOpenGLTextureFromMemPointer').\n"
+        "See for example KinectDemo.m for how this is used for fast video display.\n";
+
     static char seeAlsoString[] = "";	
 	
 	int handle;
@@ -1077,7 +1093,7 @@ PsychError PSYCHKINECTGetImage(void)
 			// Just return a memory pointer to the colorbuffer:
 			PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) gl_depth_back));
 		} else {
-			PsychAllocOutUnsignedByteMatArg(1, FALSE, 3, buffer->dheight, buffer->dwidth, &outimg);
+			PsychAllocOutUnsignedByteMatArg(1, FALSE, 3, buffer->dwidth, buffer->dheight, &outimg);
 			memcpy(outimg, gl_depth_back, buffer->dheight * buffer->dwidth * 3);
 		}
 		
@@ -1096,7 +1112,7 @@ PsychError PSYCHKINECTGetImage(void)
 			// Just return a memory pointer to the colorbuffer:
 			PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) buffer->color));
 		} else {
-			PsychAllocOutUnsignedByteMatArg(1, FALSE, channels, buffer->cheight, buffer->cwidth, &outimg);
+			PsychAllocOutUnsignedByteMatArg(1, FALSE, channels, buffer->cwidth, buffer->cheight, &outimg);
 			memcpy(outimg, buffer->color, buffer->cheight * buffer->cwidth * channels);
 		}
 		

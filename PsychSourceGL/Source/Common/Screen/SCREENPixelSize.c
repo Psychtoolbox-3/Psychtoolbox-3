@@ -13,29 +13,27 @@
   DESCRIPTION:
   
   Return the current pixel size of a screen or window.
-  
-  TO DO:
-    //[oldPixelSize,oldIsColor,pages]=Screen(windowPtrOrScreenNumber,'PixelSize',[pixelSize],[isColor])
 
-  
+  TO DO:
+
 */
-    
 
 #include "Screen.h"
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "pixelSize=Screen('PixelSize', windowPtrOrScreenNumber)";
-static char synopsisString[] = 
-	"Return the current pixel size of a screen or window";
+static char synopsisString[] =
+    "Return the current pixel size of a screen or window. "
+    "pixel size refers to the color depth of a pixel in bits - also known as bpp or bits per pixel, "
+    "not to spatial size of the pixel. ";
 static char seeAlsoString[] = "";
-	 
 
-PsychError SCREENPixelSize(void) 
+PsychError SCREENPixelSize(void)
 {
     int 			screenNumber;
     double 			depth;
-    PsychWindowRecordType	*windowRecord; 
-    
+    PsychWindowRecordType	*windowRecord;
+
     //all sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -43,9 +41,9 @@ PsychError SCREENPixelSize(void)
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(1));
-    
+
     //get specified screen number.
-    if(PsychIsScreenNumberArg(1)){    
+    if(PsychIsScreenNumberArg(1)){
         PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
         depth=(double)PsychGetScreenDepthValue(screenNumber);
     }else if(PsychIsWindowIndexArg(1)){
@@ -53,11 +51,9 @@ PsychError SCREENPixelSize(void)
         depth=(double)windowRecord->depth;
     }else
         PsychErrorExit(PsychError_invalidNumdex);
-        
-    //Allocate a return matrix and load it with the depth values.  
+
+    //Allocate a return matrix and load it with the depth values.
     PsychCopyOutDoubleArg(1, FALSE, depth);
-    
-    return(PsychError_none);	
+
+    return(PsychError_none);
 }
-
-

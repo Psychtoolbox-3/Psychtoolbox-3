@@ -45,6 +45,7 @@ function densities = PhotopigmentAxialDensity(receptorTypes,species,source,field
 % 7/11/03  dhb  Wrote it.
 % 8/12/11  dhb  Added CIE source, and allow passing of fieldSizeDegrees.
 % 4/20/12  dhb  Add Tsujimura's estimate of melanopsin optical density in human.
+% 12/16/12 dhb, ms Add Alpern's rod estimates from CVRL table.
 
 % Fill in defaults
 if (nargin < 2 || isempty(species))
@@ -87,7 +88,23 @@ for i = 1:length(densities)
 					end
 				otherwise,
 					error(sprintf('%s estimates not available for species %s',source,species));
-			end	
+            end	
+            
+        case {'Alpern'}
+            % This value from the CVRL table of receptor optical density.  There are 3 papers from
+            % Alpern's lab cited, with values of 0.342 (Alpern & Pugh, 1974), 0.342 (Zwas & Aloper, 1976), and
+            % 0.318 (Zwas & Alpern, 1976). The value of 0.333 here is roughly the mean of these.
+            switch (species)
+                case {'Human'}
+                    switch (type)
+						case 'Rod'
+							densities(i) = 0.333;
+						otherwise,
+							error(sprintf('Unsupported receptor type %s for %s estimates in %s',type,source,species));
+                    end
+                otherwise
+                    error(sprintf('%s estimates not available for species %s',source,species));
+            end
 
 		case {'StockmanSharpe'}
 			switch (species)

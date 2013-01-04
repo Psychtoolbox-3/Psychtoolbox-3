@@ -111,6 +111,7 @@ void InitializePsychDisplayGlue(void)
 		displayDeviceDDrawObject[i] = NULL;
 		displayDevicehMonitor[i] = NULL;
 		displayDeviceGUIDValid[i] = 0;
+		displayCGIDs[i] = NULL;
     }
  
 	// Disable beampos workaround by default:
@@ -126,6 +127,44 @@ void InitializePsychDisplayGlue(void)
     memset(andMask, 0xff, sizeof(andMask));
     memset(xorMask, 0x00, sizeof(xorMask));
     invisibleCursor = CreateCursor(NULL, 0, 0, 32, 32, andMask, xorMask);
+}
+
+void PsychCleanupDisplayGlue(void)
+{
+    int i;
+    unsigned long refcount;
+    
+    // Release reference to global device context of main desktop:
+    if (displayCGIDs[0]) ReleaseDC(GetDesktopWindow(), displayCGIDs[0]);
+    displayCGIDs[0] = NULL;
+    
+    for (i = 1; i < kPsychMaxPossibleDisplays; i++) {
+        // Delete the device contexts we created for additional displays, if any:
+        if (displayCGIDs[i]) DeleteDC(displayCGIDs[i]);
+        displayCGIDs[i] = NULL;
+        
+        // Release additional DirectDraw interfaces for additional displays if any, and if they
+        // are not simple copies of the primary interface in index [0]:
+        if (displayDeviceDDrawObject[i] && (displayDeviceDDrawObject[i] != displayDeviceDDrawObject[0])) {
+            refcount = IDirectDraw_Release(displayDeviceDDrawObject[i]);
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Released DDRAW interface [%i]. Refcount now %i.\n", i, (int) refcount);
+        }
+        displayDeviceDDrawObject[i] = NULL;
+    }
+    
+    // Delete primary DDRAW interface, if any:
+    if (displayDeviceDDrawObject[0]) {
+        refcount = IDirectDraw_Release(displayDeviceDDrawObject[0]);
+        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Released primary DDRAW interface. Refcount now %i.\n", (int) refcount);
+    }
+    displayDeviceDDrawObject[0] = NULL;
+    
+    // Release/Unload DirectDraw DLL library itself, if any:
+    if (ddrawlibrary) {
+        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Unloading DirectDraw DLL...\n");
+        FreeLibrary(ddrawlibrary);
+        ddrawlibrary = 0;
+    }
 }
 
 // This callback function is called by Windows EnumDisplayMonitors() function for each

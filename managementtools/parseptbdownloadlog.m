@@ -8,7 +8,7 @@ function parseptbdownloadlog(fname)
 % 16.10.2006 Written (MK).
 
 if nargin < 1
-    fname = 'ptbregistrationlog_13-10-2006.txt';
+    fname = 'ptbregistration.log';
 end
 
 fd=fopen(fname, 'rt');
@@ -17,7 +17,8 @@ if fd==-1
 end
 
 ofl = [];
-knownmacids = [];
+knownmacids = containers.Map;
+
 transactioncount = 0;
 totalcount = 0;
 betacount = 0;
@@ -27,6 +28,7 @@ unknowncount = 0;
 oldptb306count = 0;
 osxcount = 0;
 wincount = 0;
+linuxcount = 0;
 
 try
     while(1)
@@ -55,38 +57,39 @@ try
             ls = strfind(ofl, '<MACID>');
             le = strfind(ofl, '</MACID>');
             
-            macid = ofl(ls:le);
+            % Extract macid as character string:
+            macid = ofl(ls+7:le-1);
             
-            if isempty(strfind(knownmacids, macid))
+            if ~knownmacids.isKey(macid)
                 % This is a new one. Count it:
-                knownmacids = [ knownmacids macid];
+                knownmacids(macid) = 1;
                 
                 % Total unique count:
                 totalcount = totalcount + 1;
                 
-                if strfind(ofl, '<FLAVOR>beta</FLAVOR>')
-                    betacount = betacount + 1;
+                if (mod(totalcount, 1000) == 0)
+                    fprintf('Elapsed %i\n', totalcount);
                 end
                 
-                if strfind(ofl, '<FLAVOR>stable</FLAVOR>')
-                    stablecount = stablecount + 1;
-                end
-                
-                if strfind(ofl, '<FLAVOR>trunk</FLAVOR>')
-                    trunkcount = trunkcount + 1;
-                end
-                
-                if strfind(ofl, '<FLAVOR>Psychtoolbox-3.0.6</FLAVOR>')
-                    oldptb306count = oldptb306count + 1;
-                end
-                
-                if strfind(ofl, '<FLAVOR>unknown</FLAVOR>')
-                    unknowncount = unknowncount + 1;
-                end
-                
-                if strfind(ofl, '<FLAVOR>trunk</FLAVOR>')
-                    trunkcount = trunkcount + 1;
-                end
+%                 if strfind(ofl, '<FLAVOR>beta</FLAVOR>')
+%                     betacount = betacount + 1;
+%                 end
+%                 
+%                 if strfind(ofl, '<FLAVOR>stable</FLAVOR>')
+%                     stablecount = stablecount + 1;
+%                 end
+%                 
+%                 if strfind(ofl, '<FLAVOR>trunk</FLAVOR>')
+%                     trunkcount = trunkcount + 1;
+%                 end
+%                 
+%                 if strfind(ofl, '<FLAVOR>Psychtoolbox-3.0.6</FLAVOR>')
+%                     oldptb306count = oldptb306count + 1;
+%                 end
+%                 
+%                 if strfind(ofl, '<FLAVOR>unknown</FLAVOR>')
+%                     unknowncount = unknowncount + 1;
+%                 end
                 
                 if strfind(ofl, '<OS>MacOS-X')
                     osxcount = osxcount + 1;
@@ -95,6 +98,11 @@ try
                 if strfind(ofl, '<OS>Windows')
                     wincount = wincount + 1;
                 end
+                
+                if strfind(ofl, '<OS>Linux')
+                    linuxcount = linuxcount + 1;
+                end
+                
             end
             
             % Reset for next item:
@@ -115,5 +123,5 @@ oldptb306count
 unknowncount
 osxcount
 wincount
-
+linuxcount
 end

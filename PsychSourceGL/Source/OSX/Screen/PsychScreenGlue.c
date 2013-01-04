@@ -179,6 +179,15 @@ void InitializePsychDisplayGlue(void)
 	InitPsychtoolboxKernelDriverInterface();
 }
 
+void PsychCleanupDisplayGlue(void)
+{
+    // Shutdown connection to kernel level driver, if any exists:
+    PsychOSShutdownPsychtoolboxKernelDriverInterface();
+
+    // Unregister our display reconfiguration callback:
+    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);    
+}
+
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
 	(void) userInfo;
@@ -395,7 +404,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
     n=CFDictionaryGetValue(currentMode, kCGDisplayRefreshRate );
     CFNumberGetValue(n, kCFNumberLongType, &currentFrequency ) ;
 
-    //get a list of avialable modes for the specified display
+    //get a list of available modes for the specified display
     modeList = CGDisplayAvailableModes(displayCGIDs[screenNumber]);
     numPossibleModes= CFArrayGetCount(modeList);
     for(i=0;i<numPossibleModes;i++){
@@ -411,9 +420,21 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
             CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
             PsychAddValueToDepthStruct((int)tempDepth, depths);
         }
-		// printf("mode %i : w x h = %i x %i, fps = %i, depths = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychGetScreenDepths(): mode %i : w x h = %i x %i, fps = %i, depths = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
     }
 
+    // At least one match?
+    if (PsychGetNumDepthsFromStruct(depths) < 1) {
+        // Yes, this should not ever happen on a sane operating system, but this is
+        // OSX, so it does. Observed on a 2010 MacBookPro with OSX 10.7.5 on a external
+        // panel. Output a warning and fake entries for the most common pixel sizes:
+        PsychAddValueToDepthStruct(16, depths);
+        PsychAddValueToDepthStruct(32, depths);
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: Broken MacOS/X detected. It misreports (== omits some) available video modes and thereby empty display depths due to matching failure.\n");
+            printf("PTB-WARNING: Will try to workaround this by creating a fake list of available display depths of 16 bpp and 32 bpp. Expect potential trouble further on...\n");
+        }
+    }
 }
 
 /*   PsychGetAllSupportedScreenSettings()
@@ -902,6 +923,15 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
 	return(1);
 }
 
+// Return true (non-zero) if a desktop compositor is likely active on screen 'screenNumber':
+int PsychOSIsDWMEnabled(int screenNumber)
+{
+    // Only way to disable compositing on OSX is to capture the screen
+    // for exclusive fullscreen use, so composition state is the negation
+    // of capture state:
+    return(!PsychIsScreenCaptured(screenNumber));
+}
+
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
 // It requires both, a cgDisplayID handle, and a logical screenNumber and uses one of both for
 // deciding which display pipe to query, whatever of both is more efficient or suitable for the
@@ -1211,11 +1241,6 @@ void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 
     // Ok, whatever happened, we're detached (for good or bad):
     numKernelDrivers = 0;
-
-    // Unregister our display reconfiguration callback: This doesn't really belong here,
-    // but we know that PsychOSShutdownPsychtoolboxKernelDriverInterface() gets called
-    // from higher level code at shutdown time and we're lazy:
-    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
 
     return;
 }

@@ -1,29 +1,24 @@
 /*
-	PsychToolbox2/Source/Common/Screen/ScreenExit.cpp		
+    PsychToolbox3/Source/Common/Screen/ScreenExit.cpp		
 
-	AUTHORS:
-	
-		Allen.Ingling@nyu.edu		awi 
+    AUTHORS:
 
-	PLATFORMS:	
-	
-		Only OS X fow now.  
+        Allen.Ingling@nyu.edu           awi
+        mario.kleiner@tuebingen.mpg.de  mk
 
+    PLATFORMS:	
 
-	HISTORY:
-	
-		12/20/01	awi		Created.
-		1/25/04		awi		Added update provided by mk. It makes the ScreenCloseAllWindows call.  
-                7/22/05         mk              Added call to CloseWindowBank() to free dynamic window bank array.
-	DESCRIPTION:
-	
-		ScreenExitFunction is called before the Screen module is flushed.
+        All.
 
-	T0 DO:
-		
-		
+    HISTORY:
 
+        12/20/01    awi     Created.
+        1/25/04     awi     Added update provided by mk. It makes the ScreenCloseAllWindows call.  
+        7/22/05     mk      Added call to CloseWindowBank() to free dynamic window bank array.
 
+    DESCRIPTION:
+
+        ScreenExitFunction is called before the Screen module is flushed.
 */
 
 #include "Screen.h"
@@ -41,16 +36,9 @@ PsychError ScreenExitFunction(void)
 	ScreenCloseAllWindows();
 	CloseWindowBank();
 
-	#if PSYCH_SYSTEM == PSYCH_LINUX
-		// Linux specific hack. Close display connection(s) to X-Server(s). This is a bit unclean.
-		PsychCleanupDisplayGlue();
-	#endif
+    // Shutdown low-level display glue (Screens, displays, kernel-drivers et al.):
+    PsychCleanupDisplayGlue();
 
-	#if PSYCH_SYSTEM == PSYCH_OSX
-		// Shutdown connection to kernel level driver, if any exists:
-		PsychOSShutdownPsychtoolboxKernelDriverInterface();
-	#endif
-	
 	// Cleanup internal data structures of SCREEN('FillPoly');
 	// This is defined in Common/Screen/SCREENFillPoly.c
 	PsychCleanupSCREENFillPoly();

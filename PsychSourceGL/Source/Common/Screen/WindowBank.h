@@ -94,6 +94,8 @@ TO DO:
 #define kPsychGfxCapUYVYTexture 65536		// Hw supports UYVY encoded textures. Used for GStreamer video capture/playback engine optimizations.
 #define kPsychGfxCapNativeStereo (1 << 17)  // Hw supports native OpenGL quad-buffered stereo (frame-sequential etc.).
 #define kPsychGfxCapNPOTTex     (1 << 18)   // Hw supports non-power-of-twp GL_TEXTURE_2D textures.
+#define kPsychGfxCapSupportsBufferAge (1 << 19) // Hw supports EXT_buffer_age extension.
+#define kPsychGfxCapFBOScaledResolveBlit (1 << 20) // Hw supports simultaneous multisample resolve and rescaling in one framebuffer blit.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
@@ -115,6 +117,9 @@ TO DO:
 #define kPsychNeedDualWindowOutput    16384 // Apply imaging pipelines output formatting to two visual output streams and distribute result to two onscreen
 											// windows. This allows e.g., to drive two physical displays from one input stimulus image, but applying different
 											// post-processing to the two outputs. An example is display mirroring or special HDR displays.
+#define kPsychNeedGPUPanelFitter      32768 // This flag is used for imagingMode to signal need/use of the GPU based imaging pipeline panel fitter.
+
+// 'specialflags' fields, partially shared with imagingmode flags:
 #define kPsychUseTextureMatrixForRotation 1 // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
 											// rotated drawing of textures via texture matrix, not via modelview matrix. To be set as flag in 'DrawTexture(s)'
 #define kPsychDontDoRotation			  2	// Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
@@ -135,7 +140,7 @@ TO DO:
 #define kPsychDontAutoGenMipMaps        128 // 'specialflags' setting 128: This texture shall not auto-generate its mip-map chain on demand.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,S-65536. --> Flag 32768 and Flags of 2^17 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536. --> Flags of 2^17 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
 // 1,2,4,8,16,32,64,128,1024,S-2048,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 256,512,4096, 16384
@@ -404,6 +409,8 @@ typedef struct _PsychWindowRecordType_{
 	// Support for framelock / swaplock / output lock / genlock via swap groups / swap barriers extensions:
 	GLuint					swapGroup;								// Swap group handle of swap group for this window, zero if none assigned.
 	GLuint					swapBarrier;							// Swap barrier handle of swap barrier for this window, zero if none assigned.
+    
+    GLint                   panelFitterParams[8];                   // Parameters used for the glBlitFramebuffer call during panel scaling.
 	
 	// Used only when this structure holds a window:
 	// CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of

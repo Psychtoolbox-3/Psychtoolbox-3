@@ -458,6 +458,28 @@ void PsychHIDVerifyInit(void)
     
     // Verify no security sensitive application is blocking our low-level access to HID devices:
 	PsychHIDWarnInputDisabled(NULL);
+    
+    #if defined(__LP64__)
+    // Try to load all bundles from Psychtoolbox/PsychHardware/
+    // This loads the HID_Utilities.framework bundle if it is present. The whole point of it is
+    // to allow our statically compiled-in version of the library to find the location of
+    // the XML file with the database of (vendorId, productId) -> (VendorName, ProductName) and
+    // (usagePage, usage) -> (usageName) mappings.
+    //
+    // In practice, the XML file only serves as a fallback, and one that doesn't contain much
+    // useful info for mainstream products, only for a few niche products. Given its limited
+    // value, i think we can refrain from shipping the framework as part of Psychtoolbox and
+    // just provide the option to use it (== its XML file) if users decide to install it themselves.
+    char tmpString[1024];
+    
+    sprintf(tmpString, "%sPsychHardware/", PsychRuntimeGetPsychtoolboxRoot(FALSE));
+    CFStringRef urlString = CFStringCreateWithCString(kCFAllocatorDefault, tmpString, kCFStringEncodingASCII);
+    CFURLRef directoryURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, urlString, kCFURLPOSIXPathStyle, false);
+    CFRelease(urlString);
+    CFArrayRef bundleArray = CFBundleCreateBundlesFromDirectory(kCFAllocatorDefault, directoryURL, NULL);
+    CFRelease(directoryURL);
+    CFRelease(bundleArray);    
+    #endif
 }
 
 /*
@@ -849,7 +871,7 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
 */
 void PsychHIDVerifyInit(void)
 {
-    int busId, devId, intId;
+    int busId, devId;
     pRecDevice currentDevice = NULL;
     struct hid_device_info* hid_dev = NULL;
     
@@ -878,8 +900,23 @@ void PsychHIDVerifyInit(void)
             if (hid_dev->serial_number) wcstombs(&currentDevice->serial[0], hid_dev->serial_number, 256);
 
             // Convert unique device path into unique numeric location id:
-            sscanf(hid_dev->path, "%x:%x:%x", &busId, &devId, &intId);
-            currentDevice->locID = (double) ((busId << 24) + (devId << 8) + intId);
+            if (PSYCH_SYSTEM == PSYCH_LINUX) {
+                // Use USB bus-id and device-id as unique location identifier:
+                sscanf(hid_dev->path, "%x:%x", &busId, &devId);
+                currentDevice->locID = (double) ((busId << 16) + (devId << 0));
+            }
+        
+            if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+                // Use device container id as unique location identifier.
+                // This may only work on Windows-7+ and is a bit of a hack here,
+                // the id is a GUID, nothing related to busId or devId. We init
+                // devId with the hid_dev pointer value, to get a devId and thereby
+                // location id in case proper parsing of a container id doesn't work:
+                busId = 0;
+                devId = (int) hid_dev;
+                if (strstr(hid_dev->path, "{")) sscanf(strstr(hid_dev->path, "{"), "{%x-%x", &busId, &devId);
+                currentDevice->locID = (double) (((psych_uint64) busId << 32) + devId);
+            }
 
             // Interface number is great for identifying DAQ devices, but not available
             // on OS/X, so this will be a Linux/Windows only thing.

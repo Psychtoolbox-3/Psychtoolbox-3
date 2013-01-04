@@ -105,5 +105,5 @@ PsychKinect('Close', kinect);
 sca;
 
 % load /tmp/testdepths_xxx.mat
-% imagesc (transpose(double(depth)))
-% img = transpose(reshape(imbuff, size(imbuff,3), size(imbuff,2))); imshow (img)
+% imagesc(transpose(double(depth)))
+% img = transpose(imbuff); imshow(img)

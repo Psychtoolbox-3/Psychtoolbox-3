@@ -362,24 +362,29 @@
 % operator GUI displays, are grouped into a different X-Screen.
 %
 % 2. A major source of timing trouble can be 3D desktop compositors. Either
-% use a user interface that doesn't employ a desktop compositor, or
-% configure your desktop compositor of choice to
+% use a user interface that doesn't employ a desktop compositor, e.g., the
+% GNOME-2 classic 2D desktop, LXDE or XFCE desktop, or configure your
+% desktop compositor of choice to
 % "unredirect_fullscreen_windows", which will disable the compositor for
-% Psychtoolbox fullscreen windows. With most versions of the Compiz compositor, the
-% command PsychGPUControl('FullScreenWindowDisablesCompositor', 1); can do
-% this setup step for you. If you use a different desktop compositor, and
-% on a few versions of compiz, the command doesn't yet work, so you need to
-% check the manuals/help of your system on how to enable the option
-% "unredirect_fullscreen_windows" manually. E.g., on Ubuntu systems you can
-% install the "CompizConfig settings manager" GUI tool (CCSM), which allows
-% to change many GUI settings manually. After starting that tool, you'd go to
-% the setup panel for the "Composite" plugin, and there check the checkbox
-% named "Unredirect Fullscreen Windows", to make sure that Compiz won't interfere
-% with visual timing on fullscreen windows. If in doubt, just use a desktop
-% session without 3D compositor for running the actual data collection of
-% your studies. Examples of desktops which use a compositor: Ubuntu Unity,
-% GNOME-3, GNOME-2, KWin. Examples which don't use a compositor: GNOME-2
-% classic, Mate desktop, XFCE.
+% Psychtoolbox fullscreen windows. With most versions of the Compiz
+% compositor, the command ...
+%
+% PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
+%
+% ... can do this setup step for you. If you use a different desktop
+% compositor, and on a few versions of compiz, the command doesn't yet
+% work, so you need to check the manuals/help of your system on how to
+% enable the option "unredirect_fullscreen_windows" manually. E.g., on
+% Ubuntu systems you can install the "CompizConfig settings manager" GUI
+% tool (CCSM), which allows to change many GUI settings manually. After
+% starting that tool, you'd go to the setup panel for the "Composite"
+% plugin, and there check the checkbox named "Unredirect Fullscreen
+% Windows", to make sure that Compiz won't interfere with visual timing on
+% fullscreen windows. If in doubt, just use a desktop session without 3D
+% compositor for running the actual data collection of your studies.
+% Examples of desktops which use a compositor: Ubuntu Unity, GNOME-3,
+% GNOME-2, KWin. Examples which don't use a compositor: GNOME-2 classic,
+% Mate desktop, XFCE.
 %
 % If you use the NVidia or AMD proprietary graphics drivers, frequent
 % synchronization failures, or other sync related warnings, or unsteady,

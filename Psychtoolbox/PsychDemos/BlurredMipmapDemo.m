@@ -116,7 +116,7 @@ try
         grabber = Screen('OpenVideoCapture', win, deviceIndexOrMoviename);
         
         % Start video capture:
-        Screen('StartVideoCapture', grabber);
+        Screen('StartVideoCapture', grabber, realmax, 1);
     end
     
     % Change cursor to a cross-hair:

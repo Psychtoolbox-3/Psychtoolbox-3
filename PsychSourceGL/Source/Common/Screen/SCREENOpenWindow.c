@@ -15,11 +15,11 @@
 		10/18/02	awi		Added defaults to allow for optional arguments.
 		12/05/02	awi		Started over again for OS X without SDL.
 		10/12/04	awi		In useString: changed "SCREEN" to "Screen", and moved commas to inside [].
-                2/15/05         awi             Commented out glEnable(GL_BLEND) and mode settings.  
-                04/03/05        mk              Added support for selecting binocular stereo output via native OpenGL.
-		11/14/06        mk              New onscreen windows blank to their background color after successfull init.
-		                                Support for specification of pixelSize's for 10-10-10-2, 16-16-16-16 and
-						32-32-32-32 framebuffers on supported hardware.
+		2/15/05		awi		Commented out glEnable(GL_BLEND) and mode settings.  
+		04/03/05	mk		Added support for selecting binocular stereo output via native OpenGL.
+ 		11/14/06	mk		New onscreen windows blank to their background color after successfull init.
+							Support for specification of pixelSize's for 10-10-10-2, 16-16-16-16 and
+							32-32-32-32 framebuffers on supported hardware.
 	TO DO:
 
 */
@@ -30,8 +30,8 @@
 static PsychWindowRecordType* sharedContextWindow = NULL;
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode][,specialFlags]);";
-//                                                               1                         2        3      4           5                 6            7             8             9
+static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode][,specialFlags][,clientRect]);";
+//                                                               1                         2        3      4           5                 6            7             8             9              10
 static char synopsisString[] =
     "Open an onscreen window. Specify a screen by a windowPtr or a screenNumber (0 is "
     "the main screen, with menu bar). \"color\" is the clut index (scalar or [r g b] "
@@ -70,6 +70,14 @@ static char synopsisString[] =
     "\"specialFlags\" This optional parameter enables some special window behaviours if the sum of certain "
     "flags is passed. A currently supported flag is the symbolic constant kPsychGUIWindow. It enables windows "
     "to behave more like regular GUI windows on your system. See 'help kPsychGUIWindow' for more info.\n"
+    "\"clientRect\" This optional parameter allows to define a size of the onscreen windows drawing area "
+    "that is different from the actual size of the windows framebuffer. If set, then the imaging pipeline "
+    "is started and a virtual framebuffer of the size of \"clientRect\" is created. Your code will draw "
+    "into that framebuffer. At display time, the content of this virtual framebuffer will get scaled to "
+    "the size of the true onscreen window, a process known as panel-scaling or panel-fitting. This allows "
+    "to decouple the size of a stimulus as drawn by your code from the actual resolution of the display "
+    "device. The feature is mostly useful if you need to run the same presentation code on different setups "
+    "with different native resolutions. See the 'help PsychImaging' section about 'UsePanelFitter' for more info.\n"
     "\n"
     "Opening or closing a window takes about one to three seconds, depending on type of connected display. "
     "COMPATIBILITY TO OS-9 PTB: If you absolutely need to run old code for the old MacOS-9 or Windows "
@@ -79,13 +87,12 @@ static char synopsisString[] =
     "features of the OpenGL Psychtoolbox. Please do not write new experiment code in the old style! "
     "Emulation mode is pretty new and may contain significant bugs, so use with great caution!";  
 
-static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer";
+static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer, PanelFitter, Close, CloseAll";
 
-PsychError SCREENOpenWindow(void) 
-
+PsychError SCREENOpenWindow(void)
 {
     int						screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode, specialflags;
-    PsychRectType 			rect, screenrect;
+    PsychRectType 			rect, screenrect, clientRect;
     PsychColorType			color;
     psych_bool				isArgThere, didWindowOpen, useAGL;
     PsychScreenSettingsType	screenSettings;
@@ -101,7 +108,7 @@ PsychError SCREENOpenWindow(void)
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     //cap the number of inputs
-    PsychErrorExit(PsychCapNumInputArgs(9));   //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(10));   //The maximum number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(2));  //The maximum number of outputs
 
     //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
@@ -196,10 +203,6 @@ PsychError SCREENOpenWindow(void)
 	}
 	
     //find the number of specified buffers. 
-
-    //OS X:	The number of backbuffers is not a property of the display mode but an attribute of the pixel format.
-    //		Therefore the value is held by a window record and not a screen record.    
-
     numWindowBuffers=2;	
     PsychCopyInIntegerArg(5,FALSE,&numWindowBuffers);
     if(numWindowBuffers < 1 || numWindowBuffers > kPsychMaxNumberWindowBuffers) PsychErrorExit(PsychError_invalidNumberBuffersArg);
@@ -223,13 +226,42 @@ PsychError SCREENOpenWindow(void)
     PsychCopyInIntegerArg(9,FALSE,&specialflags);
     if (specialflags < 0 || (specialflags > 0 && specialflags!=kPsychGUIWindow)) PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
 
+    // Optional clientRect defined? If so, we need to enable our internal panel scaler and
+    // the imaging pipeline to actually use the scaler:
+    if (PsychCopyInRectArg(10, FALSE, clientRect)) {
+        // clientRect given. The panelscaler integrated into the imaging pipeline will
+        // scale all content from the size of the drawBufferFBO (our virtual framebuffer),
+        // which is the size of the clientRect, to the true size of the onscreen windows
+        // system framebuffer - appropriately tweaked for special display modes of course.
+        
+        // Validate clientRect:
+        if (IsPsychRectEmpty(clientRect)) PsychErrorExitMsg(PsychError_user, "OpenWindow called with invalid (empty) 'clientRect' argument.");
+        
+        // Set special imagingmode flags to signal need for full imaging pipeline
+        // and for the panel scaler. Used in PsychInitializeImagingPipeline() and
+        // to make sure PsychOpenOnscreenWindow() gets called with a multisample value
+        // of zero, so the system backbuffer isn't multisampled -- crucial for us!
+        // This will also turn PsychSetupClientRect() into a no-op:
+        imagingmode |= kPsychNeedFastBackingStore;
+        imagingmode |= kPsychNeedGPUPanelFitter;        
+    }
+    
+    
 	// We require use of the imaging pipeline if stereomode for dualwindow display is requested.
 	// This makes heavy use of FBO's and blit operations, so imaging pipeline is needed.
 	if ((stereomode==kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
 		// Dual window stereo requested, but imaging pipeline not enabled. Enable it:
-		imagingmode|= kPsychNeedFastBackingStore;
+		imagingmode |= kPsychNeedFastBackingStore;
 		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Trying to enable imaging pipeline for dual-window stereo display mode or dual-window output mode...\n");
 	}
+
+    // We also require imaging pipeline if homegrown frameseq. stereo is requested. Need to do this here,
+    // so the call below to PsychOpenOnscreenWindow() knows already about use of imaging pipe and can
+    // do the right thing wrt. to multisampling. Most of the setup code for kPsychFrameSequentialStereo
+    // follows after opening the window. Rationale: multisampling must be off on the system framebuffer,
+    // otherwise we will get into invalid operating conditions for multisample resolve ops from within
+    // imaging pipeline.
+    if (stereomode == kPsychFrameSequentialStereo) imagingmode |= kPsychNeedFastBackingStore;
 	
     //set the video mode to change the pixel size.  TO DO: Set the rect and the default color  
     PsychGetScreenSettings(screenNumber, &screenSettings);    
@@ -331,40 +363,63 @@ PsychError SCREENOpenWindow(void)
         
         // We will therefore auto-enable use of fast offscreen windows:
         imagingmode |= kPsychNeedFastOffscreenWindows;
-        
+
         // Is a stereomode requested which would benefit from enabling the full imaging pipeline?
         if (stereomode > 0) {
-	    if (((stereomode == kPsychOpenGLStereo) && !(windowRecord->gfxcaps & kPsychGfxCapNativeStereo)) || (stereomode == kPsychFrameSequentialStereo)) {
-		// Native OpenGL quad-buffered frame-sequential stereo requested, but unsupported by gpu & driver.
-		// Or use of our own method requested. We have FBO and framebuffer blit support, so we can roll our
-		// own framesequential stereo by use of the imaging pipeline. Enable basic imaging pipeline:
-		imagingmode |= kPsychNeedFastBackingStore;
-
-		// Override stereomode to our own homegrown implementation:
-		stereomode = kPsychFrameSequentialStereo;
-		windowRecord->stereomode = stereomode;
-
-		if (PsychPrefStateGet_Verbosity() > 2) {
-		    printf("\n");
-		    printf("PTB-INFO: Your script requests use of frame-sequential stereo, but your graphics card\n");
-		    printf("PTB-INFO: and driver doesn't support this. I will now fully enable the imaging pipeline\n");
-		    printf("PTB-INFO: and use my own home-grown frame-sequential stereo implementation. Note that this\n");
-		    printf("PTB-INFO: may not be as robust and high-performance as using a graphics card with native\n");
-		    printf("PTB-INFO: frame-sequential stereo support. But let's see what i can do for you...\n\n");
-		}
-	    }
-	    else {
-		// Yes: Provide the user with recommendations to enable the pipeline.
-		if (!(imagingmode & kPsychNeedFastBackingStore) && (PsychPrefStateGet_Verbosity() > 2)) {
-		    printf("\n");
-		    printf("PTB-INFO: Your script requests use of a stereoscopic display mode (stereomode = %i).\n", stereomode);
-		    printf("PTB-INFO: Stereoscopic stimulus display is usually more flexible, convenient and robust if\n");
-		    printf("PTB-INFO: the Psychtoolbox imaging pipeline is enabled. Your graphics card is capable\n");
-		    printf("PTB-INFO: of using the pipeline but your script doesn't enable use of the pipeline.\n");
-		    printf("PTB-INFO: I recommend you enable use of the pipeline for enhanced stereo stimulus display.\n");
-		    printf("PTB-INFO: Have a look at the demoscript ImagingStereoDemo.m on how to do this.\n\n");
-		}
-	    }
+            if (((stereomode == kPsychOpenGLStereo) && !(windowRecord->gfxcaps & kPsychGfxCapNativeStereo)) || (stereomode == kPsychFrameSequentialStereo)) {
+                // Native OpenGL quad-buffered frame-sequential stereo requested, but unsupported by gpu & driver.
+                // Or use of our own method requested. We have FBO and framebuffer blit support, so we can roll our
+                // own framesequential stereo by use of the imaging pipeline.
+                
+                // Sanity check: If multisampling is enabled and imaging pipeline isn't yet enabled,
+                // enabling it now will cause trouble: With pipeline enabled, we need a system framebuffer
+                // without multisampling, but the system framebuffer is multisampled, as the setup code
+                // has already executed without knowing about this constraint. We can't go on with multisampling
+                // at this point or malfunctions will happen. So if this check triggers, take the lesser of two
+                // evils and disable multisampling and tell user how to resolve the problem properly:
+                if ((imagingmode == kPsychNeedFastOffscreenWindows) && (multiSample > 0)) {
+                    // Troublesome. Disable our own multisampling, as it clashes with the fact that
+                    // the onscreen windows system framebuffer already is multisampled.
+                    multiSample = 0;
+                    windowRecord->multiSample = 0;
+                    if (PsychPrefStateGet_Verbosity() > 1) {
+                        printf("\nPTB-WARNING: You are trying to use frame-sequential stereo with multisample anti-aliasing, but you don't use\n");
+                        printf("PTB-WARNING: PsychImaging('OpenWindow', ...) to do this. This mode is unsupported by your system,\n");
+                        printf("PTB-WARNING: so i'm trying now to enable some workaround, which however is incompatible with multisample\n");
+                        printf("PTB-WARNING: anti-aliasing. Will disable anti-aliasing now. If you don't like this, please change your code\n");
+                        printf("PTB-WARNING: to use PsychImaging('OpenWindow',...) instead of Screen('OpenWindow',...); and the problem\n");
+                        printf("PTB-WARNING: will be automatically resolved, ie., you can have frame-sequential stereo and anti-aliasing!\n\n");
+                    }
+                }
+                
+                // Enable basic imaging pipeline:
+                imagingmode |= kPsychNeedFastBackingStore;
+                
+                // Override stereomode to our own homegrown implementation:
+                stereomode = kPsychFrameSequentialStereo;
+                windowRecord->stereomode = stereomode;
+                
+                if (PsychPrefStateGet_Verbosity() > 2) {
+                    printf("\n");
+                    printf("PTB-INFO: Your script requests use of frame-sequential stereo, but your graphics card\n");
+                    printf("PTB-INFO: and driver doesn't support this. I will now fully enable the imaging pipeline\n");
+                    printf("PTB-INFO: and use my own home-grown frame-sequential stereo implementation. Note that this\n");
+                    printf("PTB-INFO: may not be as robust and high-performance as using a graphics card with native\n");
+                    printf("PTB-INFO: frame-sequential stereo support. But let's see what i can do for you...\n\n");
+                }
+            }
+            else {
+                // Yes: Provide the user with recommendations to enable the pipeline.
+                if (!(imagingmode & kPsychNeedFastBackingStore) && (PsychPrefStateGet_Verbosity() > 2)) {
+                    printf("\n");
+                    printf("PTB-INFO: Your script requests use of a stereoscopic display mode (stereomode = %i).\n", stereomode);
+                    printf("PTB-INFO: Stereoscopic stimulus display is usually more flexible, convenient and robust if\n");
+                    printf("PTB-INFO: the Psychtoolbox imaging pipeline is enabled. Your graphics card is capable\n");
+                    printf("PTB-INFO: of using the pipeline but your script doesn't enable use of the pipeline.\n");
+                    printf("PTB-INFO: I recommend you enable use of the pipeline for enhanced stereo stimulus display.\n");
+                    printf("PTB-INFO: Have a look at the demoscript ImagingStereoDemo.m on how to do this.\n\n");
+                }
+            }
         }
     }
 
@@ -459,15 +514,53 @@ PsychError SCREENOpenWindow(void)
 		imagingmode = imagingmode & (~kPsychHalfHeightWindow);
 	}
 
-	// Define windows clientrect. It is a copy of windows rect, but stretched or compressed
-    // to twice or half the width or height of the windows rect, depending on the special size
-    // flags. clientrect is used as reference for all size query functions Screen('Rect'), Screen('WindowSize')
-    // and for all Screen 2D drawing functions:
-    PsychSetupClientRect(windowRecord);
+    // Optional clientRect defined? If so, we need to enable our internal panel scaler and
+    // the imaging pipeline to actually use the scaler:
+    // This is part II, after part I happened above, before opening the window. This
+    // weirdness / redundancy is needed to resolve our chicken & egg problem with
+    // multisampling...
+    if (imagingmode & kPsychNeedGPUPanelFitter) {
+        // clientRect given. The panelscaler integrated into the imaging pipeline will
+        // scale all content from the size of the drawBufferFBO (our virtual framebuffer),
+        // which is the size of the clientRect, to the true size of the onscreen windows
+        // system framebuffer - appropriately tweaked for special display modes of course.
+        
+        // Set it as "official" window client rectangle, whose size is reported
+        // by default by functions like Screen('Rect'), Screen('WindowSize') or the
+        // returned winRect of Screen('OpenWindow'):
+        PsychNormalizeRect(clientRect, windowRecord->clientrect);
+        PsychCopyRect(clientRect, windowRecord->clientrect);
 
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to enable my builtin panel-fitter on user request.\n");
+    }
+    else {
+        // No specific clientRect given - the default case.
+        
+        // Define windows clientrect. It is a copy of windows rect, but stretched or compressed
+        // to twice or half the width or height of the windows rect, depending on the special size
+        // flags. clientrect is used as reference for all size query functions Screen('Rect'), Screen('WindowSize')
+        // and for all Screen 2D drawing functions:
+        PsychSetupClientRect(windowRecord);
+    }
+    
 	// Initialize internal image processing pipeline if requested:
-	if (numWindowBuffers > 0) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
-	
+	if (numWindowBuffers > 1) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
+
+	if (imagingmode & kPsychNeedGPUPanelFitter) {
+        // Setup default panelfitter parameters: This is a scaled blit, which does not
+        // preserve the aspect-ratio of the virtual framebuffer, unless by pure chance
+        // the aspect ratios of source and target are already identical:
+        windowRecord->panelFitterParams[0] = 0; // srcX0
+        windowRecord->panelFitterParams[1] = 0; // srcY0
+        windowRecord->panelFitterParams[2] = (int) PsychGetWidthFromRect(clientRect);  // srcX1
+        windowRecord->panelFitterParams[3] = (int) PsychGetHeightFromRect(clientRect); // srcY1
+        
+        windowRecord->panelFitterParams[4] = 0; // dstX0
+        windowRecord->panelFitterParams[5] = 0; // dstY0
+        windowRecord->panelFitterParams[6] = (int) windowRecord->fboTable[windowRecord->inputBufferFBO[0]]->width;  // dstX1
+        windowRecord->panelFitterParams[7] = (int) windowRecord->fboTable[windowRecord->inputBufferFBO[0]]->height; // dstY1
+    }
+
 	// On OS-X, if we are in quad-buffered frame sequential stereo mode, we automatically generate
 	// blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this
 	// by default on Windows or Linux: These systems either don't have stereo capable hardware,
@@ -513,8 +606,9 @@ PsychError SCREENOpenWindow(void)
 
     PsychTestForGLErrors();
 
-    // Reset flipcounter to zero:
+    // Reset flipcounter and missed flip deadline counter to zero:
     windowRecord->flipCount = 0;
+    windowRecord->nr_missed_deadlines = 0;
 	
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
@@ -523,4 +617,53 @@ PsychError SCREENOpenWindow(void)
     PsychCopyOutRectArg(2, FALSE, windowRecord->clientrect);
 
     return(PsychError_none);   
+}
+
+PsychError SCREENPanelFitter(void)
+{
+    static char useString1[] = "oldParams = Screen('PanelFitter', windowPtr [, newParams]);";
+    static char synopsisString1[] =
+        "Change operating parameters of builtin panel fitter.\n\n"
+        "The size of the source framebuffer is given by the 'clientRect' parameter in Screen('OpenWindow'), "
+        "the size of the destination framebuffer is given by the 'rect' parameter in that function. "
+        "Default panel fitter behaviour is to rescale the source content to completely fit into the "
+        "destination buffer, something that may not preserve aspect-ratio unless care is taken by the "
+        "user to make sure source and destination framebuffer have already the same aspect ratio.\n"
+        "This function allows to define new src and dst rectangles, thereby implicitely defining scaling "
+        "and filtering properties. It optionally takes new settings in 'newParams' and returns old settings "
+        "in 'oldParams'. The parameters are 8-element vectors of format\n"
+        "params = [srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1];\n"
+        "These tuples define top-left and bottom-right (x,y) corners of the source and destination "
+        "rectangles for the (scaled)blit.\n"
+        "You usually won't call this function directly, but leave the job to a higher-level setup "
+        "routine, e.g., PsychImaging() and its 'UsePanelFitter' setup code.\n\n";
+    static char seeAlsoString1[] = "OpenWindow";
+
+    PsychWindowRecordType   *windowRecord;    
+    double* outParams;
+    int*    newParams;
+    int     count, i;
+    
+    // All sub functions should have these two lines
+    PsychPushHelp(useString1, synopsisString1, seeAlsoString1);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+
+    //cap the number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(2));   //The maximum number of inputs
+    PsychErrorExit(PsychCapNumOutputArgs(1));  //The maximum number of outputs
+
+    // Get window record:
+    PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
+    
+    // Return optional fitter settings:
+    PsychAllocOutDoubleMatArg(1, FALSE, 1, 8, 1, &outParams);
+    for (i = 0; i < 8; i++) outParams[i] = (double) windowRecord->panelFitterParams[i];
+    
+    // Get optional new panelFitter settings:
+    if (PsychAllocInIntegerListArg(2, FALSE, &count, &newParams)) {
+        if (count != 8) PsychErrorExitMsg(PsychError_user, "'newParams' must be a vector with 8 integer elements.");
+        for (i = 0; i < count; i++) windowRecord->panelFitterParams[i] = newParams[i];
+    }
+    
+    return(PsychError_none);
 }

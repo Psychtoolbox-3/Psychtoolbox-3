@@ -429,7 +429,7 @@ PsychError ReceiveReports(int deviceIndex)
             if(freeReportsPtr[deviceIndex] == NULL) {
                 // Darn. We're full. It might be elegant to discard oldest report, but for now, we'll just ignore the new one.
                 if (!rateLimit[deviceIndex]) printf("PsychHID: WARNING! ReportCallback warning. No more free reports for deviceIndex %i. Discarding new report.\n", deviceIndex);
-		rateLimit[deviceIndex] = 1;
+                rateLimit[deviceIndex] = 1;
                 continue;
             }
             
@@ -439,18 +439,18 @@ PsychError ReceiveReports(int deviceIndex)
             device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
             last_hid_device = (hid_device*) device->interface;
 
-	    // Get a report struct to fill in:
+            // Get a report struct to fill in:
             r = freeReportsPtr[deviceIndex];
 
             // Fetch the actual data: Bytes fetched, or zero for no reports available, or
             // -1 for error condition.
             r->error = hid_read((hid_device*) device->interface, &(r->report[0]), MaxDeviceReportSize[deviceIndex]);
 
-	    // Skip remainder if no data received:
-	    if (r->error == 0) continue;
+            // Skip remainder if no data received:
+            if (r->error == 0) continue;
 
-	    // Ok, we got something, even if it is only an error code. Need
-	    // to move the (r)eport from the free list to the received list:
+            // Ok, we got something, even if it is only an error code. Need
+            // to move the (r)eport from the free list to the received list:
             freeReportsPtr[deviceIndex] = r->next;
             r->next=NULL;
             
@@ -464,7 +464,7 @@ PsychError ReceiveReports(int deviceIndex)
             // Timestamp processing:
             PsychGetPrecisionTimerSeconds(&r->time);
 
-	    // Success or error?
+            // Success or error?
             if (r->error > 0) {
                 // Success: Reset error, assign size of retrieved report:
                 r->bytes = r->error;

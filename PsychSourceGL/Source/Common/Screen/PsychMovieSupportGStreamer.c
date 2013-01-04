@@ -1028,6 +1028,23 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                 printf("PTB-INFO: Movie playback for movie %i uses video decoder with a current auto-detected optimal number of processing threads.\n", slotid);
             }
         }
+        
+        // Explicitely request multi-threaded decoding with both slice-threading and frame-threading.
+        // Most recent GStreamer releases and the SDK disable frame-threading and only use slice-threading
+        // because frame-threading can cause decoding artifacts and higher decode latency on some formats.
+        // However, the former is a risk we're willing to take for much higher decoding performance wrt.
+        // slice threading only - and our users have to opt-in into multi-threading anyway, so they aren't
+        // taken by surprise. The latter is a non-issue for our playback app, as we're not doing some live
+        // video conferencing or similar.
+        // Check if property for threading strategy selection is supported, as we have to implement it first
+        // in upstream GStreamer project as of December 2012, ie., will only be available sometime in 2013:
+        if (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "thread-types")) {
+            // Yes. Set it up. From http://ffmpeg.org/doxygen/trunk/libavcodec_2avcodec_8h.html
+            // FF_THREAD_SLICE == 2, FF_THREAD_FRAME == 1, so select both by setting = 2 + 1
+            g_object_set(G_OBJECT(videocodec), "thread-types", 2 + 1, NULL);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use frame-threading and slice-threading for parallel decoding.\n");
+        }
+        else if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Video decoder does not support selection of parallel decoding mode via 'thread-types' property.\n");
     }
     
     // Bring codec back to paused state, so it is ready to do its job with the

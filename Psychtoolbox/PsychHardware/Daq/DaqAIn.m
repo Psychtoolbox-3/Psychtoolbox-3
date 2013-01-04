@@ -63,7 +63,11 @@ function v=DaqAIn(daq,channel,range,UnCal)
 %                           terminology; particularly did away with "sign" name
 %                           conflict ("sign" is a Matlab function)
 
-devices = PsychHID('Devices');
+% Perform internal caching of list of HID devices to speedup call:
+persistent devices;
+if isempty(devices)
+    devices = PsychHID('Devices');
+end
 
 if nargin < 4 || isempty(UnCal)
   UnCal=0;

@@ -211,20 +211,29 @@ if strcmpi(cmd, 'Open')
         error('Open: Tried to open ResponsePixx, but Datapixx is busy! Screen flip pending?');
     end
     
-    if length(varargin) >= 1
-        rpixstatus.numSamples = varargin{1};
+    if length(varargin) >= 1 && ~isempty(varargin{1})
+        if ~isscalar(varargin{1}) || ~isnumeric(varargin{1}) || varargin{1} < 1
+            error('Open: numSamples must be a positive integer value.');
+        end
+        rpixstatus.numSamples = ceil(varargin{1});
     else
         rpixstatus.numSamples = 1000;
     end
     
-    if length(varargin) >= 2
-        rpixstatus.bufferAddress = varargin{2};
+    if length(varargin) >= 2 && ~isempty(varargin{2})
+        if ~isscalar(varargin{2}) || ~isnumeric(varargin{2}) || varargin{2} < 0
+            error('Open: bufferBaseAddress must be a positive integer value.');
+        end
+        rpixstatus.bufferAddress = ceil(varargin{2});
     else
         rpixstatus.bufferAddress = 12e6;
     end
 
-    if length(varargin) >= 3
-        rpixstatus.nrButtons = varargin{3};
+    if length(varargin) >= 3 && ~isempty(varargin{3})
+        if ~isscalar(varargin{3}) || ~isnumeric(varargin{3})
+            error('Open: nrButtons must be a integer value.');
+        end
+        rpixstatus.nrButtons = ceil(varargin{3});
     else
         rpixstatus.nrButtons = 5;
     end
@@ -295,6 +304,9 @@ if strcmpi(cmd, 'StartNow') || strcmpi(cmd, 'StopNow')
     end
     
     if length(varargin) >= 1 && ~isempty(varargin{1})
+        if ~isscalar(varargin{1}) || (~isnumeric(varargin{1}) && ~islogical(varargin{1}))
+            error('%s: clearLog must be a integer or logical value.', cmd);
+        end        
         clearLog = varargin{1};
     else
         % Don't clear log by default:
@@ -302,12 +314,18 @@ if strcmpi(cmd, 'StartNow') || strcmpi(cmd, 'StopNow')
     end
 
     if length(varargin) >= 2 && ~isempty(varargin{2})
+        if ~isvector(varargin{2}) || ~isnumeric(varargin{2})
+            error('%s: buttonLightState must be a integer vector.', cmd);
+        end        
         buttonLightState = varargin{2};
     else
         buttonLightState = [];
     end
 
     if length(varargin) >= 3 && ~isempty(varargin{3})
+        if ~isscalar(varargin{3}) || ~isnumeric(varargin{3}) || varargin{3} < 0 || varargin{3} > 1
+            error('%s: buttonLightIntensity must be a value between 0.0 and 1.0.', cmd);
+        end        
         buttonLightIntensity = varargin{3};
     else
         buttonLightIntensity = [];
@@ -359,7 +377,10 @@ if strcmpi(cmd, 'StartAtFlip') || strcmpi(cmd, 'StopAtFlip')
     if length(varargin) < 1 || isempty(varargin{1}) || varargin{1} == 0
         targetFlip = [];
     else
-        targetFlip = varargin{1};
+        if ~isscalar(varargin{1}) || ~isnumeric(varargin{1}) || varargin{1} < 0
+            error('%s: flipCount must be a positive integer value.', cmd);
+        end        
+        targetFlip = ceil(varargin{1});
     end
     
     if targetFlip <= PsychDataPixx('FlipCount')
@@ -369,6 +390,9 @@ if strcmpi(cmd, 'StartAtFlip') || strcmpi(cmd, 'StopAtFlip')
     end
     
     if length(varargin) >= 2 && ~isempty(varargin{2})
+        if ~isscalar(varargin{2}) || (~isnumeric(varargin{2}) && ~islogical(varargin{2}))
+            error('%s: clearLog must be a integer or logical value.', cmd);
+        end        
         clearLog = varargin{2};
     else
         % Don't clear log by default:
@@ -376,12 +400,18 @@ if strcmpi(cmd, 'StartAtFlip') || strcmpi(cmd, 'StopAtFlip')
     end
 
     if length(varargin) >= 3 && ~isempty(varargin{3})
+        if ~isvector(varargin{3}) || ~isnumeric(varargin{3})
+            error('%s: buttonLightState must be a integer vector.', cmd);
+        end        
         buttonLightState = varargin{3};
     else
         buttonLightState = [];
     end
 
     if length(varargin) >= 4 && ~isempty(varargin{4})
+        if ~isscalar(varargin{4}) || ~isnumeric(varargin{4}) || varargin{4} < 0 || varargin{4} > 1
+            error('%s: buttonLightIntensity must be a value between 0.0 and 1.0.', cmd);
+        end
         buttonLightIntensity = varargin{4};
     else
         buttonLightIntensity = [];
@@ -407,12 +437,18 @@ if strcmpi(cmd, 'GetLoggedResponses')
     if length(varargin) < 2 || isempty(varargin{2})
         blocking = 1;
     else
+        if ~isscalar(varargin{2}) || (~isnumeric(varargin{2}) && ~islogical(varargin{2}))
+            error('%s: blocking must be a integer or logical value.', cmd);
+        end        
         blocking = varargin{2};
     end
 
     if length(varargin) < 3 || isempty(varargin{3})
         timeout = inf;
     else
+        if ~isscalar(varargin{3}) || ~isnumeric(varargin{3}) || varargin{3} < 0
+            error('%s: timeout must be a positive value.', cmd);
+        end
         timeout = varargin{3};
     end
     
@@ -428,6 +464,10 @@ if strcmpi(cmd, 'GetLoggedResponses')
     if length(varargin) >= 1 && ~isempty(varargin{1})
         % Wait or poll for requested amount of data:
         numFrames = ceil(varargin{1});
+        if ~isscalar(numFrames) || ~isnumeric(numFrames) || numFrames < 0
+            error('%s: numberResponses must be a positive value.', cmd);
+        end
+        
         timeout = GetSecs + timeout;
         
         while 1
@@ -536,7 +576,17 @@ function cmdStr = buildRPixxCommand(rpixstatus, startLogging, clearLog, buttonLi
     
     if ~isempty(buttonLightState)
         % Setup output state for button lights:
-        v = sum(buttonLightState .* [2^16, 2^17, 2^18, 2^19, 2^20]);
+        
+        % Passing a shorter state vector than the number of buttons is
+        % allowed, we will set all unspecified button lights to off. Also
+        % passing a longer vector is allowed - we clamp to actual number of
+        % buttons:
+        nrButtons = min(length(buttonLightState), rpixstatus.nrButtons);
+        
+        v = 0;
+        for j=1:nrButtons
+            v = v + (buttonLightState(j) * 2^(15+j));
+        end
         cmdStr = [ cmdStr sprintf('Datapixx(''SetDinDataOut'', %i); ', v) ];
     end
     

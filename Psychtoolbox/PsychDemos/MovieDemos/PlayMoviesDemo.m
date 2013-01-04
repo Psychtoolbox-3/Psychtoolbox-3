@@ -151,6 +151,15 @@ try
             % Promotional videos for the best OS for cognitive science, and technical/educational
             % videos some users may find of practical use:
             
+            % Make sure a cache directory for buffering exists.
+            PsychHomeDir('.cache');
+
+            % Increase buffering time for those:
+            preloadsecs = 10;
+            
+            % Elon Musk talks about electrical cars, space-flight and solar power:
+            moviefiles(end+1).name = 'http://www.oxfordmartin.ox.ac.uk/webcast/201211_musk.mp4';
+            
             % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
             moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';            
 
@@ -190,9 +199,9 @@ try
     
     % Endless loop, runs until ESC key pressed:
     while (abortit<2)
+        moviename=moviefiles(mod(iteration, moviecount)+1).name;
         iteration=iteration + 1;
         fprintf('ITER=%i::', iteration);
-        moviename=moviefiles(mod(iteration, moviecount)+1).name;
         
         % Open movie file and retrieve basic info about movie:
         % Some legacy Screen() mex files don't support the pixelFormat or

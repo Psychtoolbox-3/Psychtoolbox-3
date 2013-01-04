@@ -1,5 +1,5 @@
-function T_quantal = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight)
-% T_quantal = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight])
+function T_quantal = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight,DORODS,rodAxialDensity)
+% T_quantal = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight],[DORODS],[rodAxialDensity])
 %
 % Function to compute normalized cone quantal sensitivities
 % from underlying pieces, as specified in CIE 170-1:2006.
@@ -48,11 +48,28 @@ function T_quantal = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pu
 % particularly recommend going down this road. But if you want to, I recommend
 % you look at and play with FitConeFundametnalsTest.
 %
+% This function also has an option to compute rod spectral sensitivities, using
+% the pre-retinal values that come from the CIE standard.  Set DORODS = true on
+% call.  You then need to explicitly pass a single lambdaMax value.  You can
+% also pass an optional rodAxialDensity value.  If you don't pass that, the
+% routine uses the 'Alpern' estimate for 'Human'/'Rod' embodied in routine
+% PhotopigmentAxialDensity.  The default nomogram for the rod spectral
+% absorbance is 'StockmanSharpe', but you can override with any of the
+% others available in routine PhotopigmentNomogram.  Use of this requires
+% good choices for lambdaMax, rodAxialDensity, and the nomogram.  We are
+% working on identifying those values.
+%
 % See also: ComputeRawConeFundamentals, CIEConeFundamentalsTest, 
 % FitConeFundamentalsTest, FitConeFundamentalsWithNomogram, StockmanSharpeNomogram.
 %
 % 8/13/11  dhb  Wrote it.
 % 8/14/11  dhb  Clean up a little.
+% 12/16/12 dhb, ms  Add rod option.
+
+%% Are we doing rods rather than cones?
+if (nargin < 8 || isempty(DORODS))
+    DORODS = 0;
+end
 
 %% Get some basic parameters.  The Stockman-Sharpe data
 % are not provided below 390, and things are cleaner if we
@@ -84,6 +101,18 @@ else
     params.absorbance = photoreceptors.absorbance;
 end
 
+%% Are we doing the rods?  In that case, a little more
+% mucking is necessary.
+if (DORODS)
+    if (isempty(lambdaMax) || length(lambdaMax) ~= 1)
+        error('When computing for rods, must specify exactly one lambda max');
+    end
+    photoreceptors.types = {'Rod'};
+    photoreceptors.nomogram.lambdaMax = lambdaMax;
+    photoreceptors.axialDensity.source = 'Alpern';
+    params.DORODS = true;
+end
+
 %% Do the work.  Note that to modify this code, you'll want a good
 % understanding of the order of precedence enforced by FillInPhotoreceptors.
 % This is non-trivial, although the concept is that if a quantity that
@@ -98,12 +127,16 @@ staticParams.ageInYears = photoreceptors.ageInYears;
 staticParams.pupilDiameterMM = photoreceptors.pupilDiameter.value;
 staticParams.lensTransmittance = photoreceptors.lensDensity.transmittance;
 staticParams.macularTransmittance = photoreceptors.macularPigmentDensity.transmittance;
-if (nargin < 7 || iempty(LserWeight))
+if (nargin < 7 || isempty(LserWeight))
     staticParams.LserWeight = 0.56;
 else
     staticParams.LserWeight = LserWeight;
 end
-params.axialDensity = photoreceptors.axialDensity.value;
+if (DORODS && nargin >= 9 && ~isempty(rodAxialDensity))
+    params.axialDensity = rodAxialDensity;
+else
+    params.axialDensity = photoreceptors.axialDensity.value;
+end
 
 %% Drop into more general routine to cmopute
 T_quantal = ComputeRawConeFundamentals(params,staticParams);

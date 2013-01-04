@@ -67,6 +67,9 @@ elseif (size(absorbance,1) == 3)
     absorbtance = AbsorbanceToAbsorbtance(absorbance,staticParams.S,...
         [params.axialDensity(1) ; params.axialDensity(2) ; ...
         params.axialDensity(3)]);
+elseif (size(absorbance,1) == 1 && params.DORODS)
+    absorbtance = AbsorbanceToAbsorbtance(absorbance,staticParams.S,...
+        params.axialDensity(1));
 else
     error('Unexpected number of photopigment lambda max values passed');
 end
@@ -77,17 +80,21 @@ for i = 1:size(absorbtance,1)
 end
 
 % Put it into the right form
-T_quantal = zeros(3,staticParams.S(3));
 
 if (size(absorbtance,1) == 4)
+    T_quantal = zeros(3,staticParams.S(3));
     T_quantal(1,:) = staticParams.LserWeight*absorbtance(1,:) + ...
         (1-staticParams.LserWeight)*absorbtance(2,:);
     T_quantal(2,:) = absorbtance(3,:);
     T_quantal(3,:) = absorbtance(4,:);
 elseif (size(absorbtance,1) == 3)
+    T_quantal = zeros(3,staticParams.S(3));
     T_quantal(1,:) = absorbtance(1,:);
     T_quantal(2,:) = absorbtance(2,:);
     T_quantal(3,:) = absorbtance(3,:);
+elseif (size(absorbtance,1) == 1 && params.DORODS)
+    T_quantal = zeros(1,staticParams.S(3));
+    T_quantal(1,:) = absorbtance(1,:);
 else
     error('Unexpected number of photopigment lambda max values passed');
 end

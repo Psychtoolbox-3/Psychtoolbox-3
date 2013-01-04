@@ -548,6 +548,7 @@ static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
 static int                      displayX11Screens[kPsychMaxPossibleDisplays];
 static psych_bool               displayCursorHidden[kPsychMaxPossibleDisplays];
 static XRRScreenResources*      displayX11ScreenResources[kPsychMaxPossibleDisplays];
+static Atom                     displayX11ScreenCompositionAtom[kPsychMaxPossibleDisplays];
 
 // XInput-2 extension data per display:
 static int                      xi_opcode = 0, xi_event = 0, xi_error = 0;
@@ -624,6 +625,7 @@ void InitializePsychDisplayGlue(void)
         displayCursorHidden[i]=FALSE;
         displayBeampositionHealthy[i]=TRUE;
         displayX11ScreenResources[i] = NULL;
+        displayX11ScreenCompositionAtom[i] = None;
         xinput_ndevices[i]=0;
         xinput_info[i]=NULL;
     }
@@ -1015,6 +1017,22 @@ void InitCGDisplayIDList(void)
   // unless already setup by XRandR setup code:
   if (!has_xrandr_1_2) PsychInitScreenToHeadMappings(numDisplays);
 
+    // Prepare atoms for "Desktop composition active?" queries:
+    // Each atom corresponds to one X-Screen. It is selection-owned by the
+    // desktop compositor for that screen, if a compositor is actually active.
+    // It is not owned by anybody if desktop composition is off or suspended for
+    // that screen, so checking if such an atom has an owner allows to check if
+    // the corresponding x-screen is subject to desktop composition atm.
+    for (i = 0; i < numDisplays; i++) {
+        CGDirectDisplayID dpy;
+        char cmatomname[100];
+        
+        // Retrieve and cache an atom for this screen on this display:
+        PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
+        sprintf(cmatomname, "_NET_WM_CM_S%d", PsychGetXScreenIdForScreen(i));
+        displayX11ScreenCompositionAtom[i] = XInternAtom(dpy, cmatomname, False);
+    }
+
   return;
 }
 
@@ -1065,16 +1083,15 @@ XIDeviceInfo* PsychGetInputDevicesForScreen(int screenNumber, int* nDevices)
 
 int PsychGetXScreenIdForScreen(int screenNumber)
 {
-  if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-  return(displayX11Screens[screenNumber]);
+    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExit(PsychError_invalidScumber);
+    return(displayX11Screens[screenNumber]);
 }
 
 void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber)
 {
-    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExit(PsychError_invalidScumber);
     *displayID=displayCGIDs[screenNumber];
 }
-
 
 /*  About locking display settings:
 
@@ -2321,6 +2338,22 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
 
   // Return "success":
   return(1);
+}
+
+// Return true (non-zero) if a desktop compositor is likely active on screen 'screenNumber':
+int PsychOSIsDWMEnabled(int screenNumber)
+{
+    CGDirectDisplayID dpy;
+    PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+    
+    // According to ICCCM spec, a compositing window manager who does composition on a
+    // specific X-Screen must aquire "selection ownership" of the atom specified in our
+    // displayX11ScreenCompositionAtom[screenNumber] for the given screenNumber. Therefore,
+    // if the atom corresponding to 'screenNumber' does have a XGetSelectionOwner (!= None),
+    // then that owner is the compositor, ergo desktop composition for that screenNumber is
+    // active. Ref: http://standards.freedesktop.org/wm-spec/wm-spec-latest.html#id2579173
+    //
+    return(XGetSelectionOwner(dpy, displayX11ScreenCompositionAtom[screenNumber]) != None);
 }
 
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.

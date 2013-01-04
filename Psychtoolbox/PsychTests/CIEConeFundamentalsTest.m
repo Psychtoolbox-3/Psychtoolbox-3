@@ -15,6 +15,7 @@
 %
 % 8/11/11  dhb  Wrote it
 % 8/14/11  dhb  Clean up a little.
+% 12/16/12 dhb  Added test for rods.
 
 %% Clear
 clear; close all;
@@ -200,5 +201,29 @@ if (DUMPFIGURES)
         saveas(gcf,'EffectOfLambdaMaxCIEFundamentals','pdf');
     end
 end
+
+%% Generate a rod spectral sensitivity and compare with the CIE 1951 
+% rod spectral sensitivities
+%
+% The agreement will depend on rodLambdaMax, rodAxialDensity, and the
+% nomogram used.  We are working on using some fitting to identify
+% good values.
+rodNomogram = 'StockmanSharpe';
+rodLambdaMax = 490.3;
+rodAxialDensity = 0.4;
+targetRaw = load('T_rods');
+T_targetEnergy = SplineCmf(targetRaw.S_rods,targetRaw.T_rods,S,2);
+T_targetQuantalRods = QuantaToEnergy(S,T_targetEnergy')';
+T_targetQuantalRods = T_targetQuantalRods/max(T_targetQuantalRods(:));
+T_predictQuantalRods = ComputeCIEConeFundamentals(S,10,32,3,rodLambdaMax,rodNomogram,[],true,rodAxialDensity);
+figure; clf; hold on
+position = get(gcf,'Position');
+position(3) = 600; position(4) = 700;
+set(gcf,'Position',position);
+plot(SToWls(S),T_targetQuantalRods','k','LineWidth',3);
+plot(SToWls(S),T_predictQuantalRods','r','LineWidth',1);
+title('Rod fundamentals (blk), constructed (red)');
+ylabel('Normalized quantal sensitivity');
+xlabel('Wavelength');
 
 

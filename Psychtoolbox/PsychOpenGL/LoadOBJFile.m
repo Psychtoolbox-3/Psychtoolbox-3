@@ -92,8 +92,8 @@ function objobject=LoadOBJFile(modelname, debug, preparse)
 %           definitions and usemat selectors. (MK)
 %
 
-if nargin<1 
-  error('You did not provide any filename for the Alias-/Wavefront OBJ file!')  
+if nargin<1
+    error('You did not provide any filename for the Alias-/Wavefront OBJ file!')
 end;
 
 if nargin<2
@@ -117,7 +117,7 @@ if preparse>0
     prevtnum = length(findstr(preobj, 'vt '));
     prevnnum = length(findstr(preobj, 'vn '));
     pref3num = length(findstr(preobj, 'f '));
-
+    
     % Rewind to beginning of file in preparation of real data parse pass:
     frewind(fid);
 end;
@@ -150,7 +150,7 @@ while 1
         F4=[];
         prevtnum=1;
     end;
-
+    
     % Reset all counts for new submesh:
     vnum=1;
     f3num=1;
@@ -159,7 +159,7 @@ while 1
     vnnum=1;
     subMeshName = [];
     usemtlstack = [];
-
+    
     if isempty(Lyn)
         % Parse 1st line of file:
         Lyn=fgets(fid);
@@ -167,19 +167,19 @@ while 1
     
     % Reset last item was a face indicator for this new submesh:
     lastWasFace = 0;
-
+    
     % Line by line parsing of the obj file
     while ~(Lyn < 0)
         s=sscanf(Lyn,'%s',1);
         l=length(Lyn);
-
+        
         % Transition from face to vertex, normal or texcoord?
         if lastWasFace && (strcmp(s, 'v') || strcmp(s, 'vt') || strcmp(s, 'vn'))
             % Yes. This is the first line of a new submesh. Finalize
             % current mesh by breaking out of parse loop:
             break;
         end
-
+        
         switch s
             case 'f' % faces
                 Lyn=strtrim(Lyn(3:l));
@@ -270,7 +270,7 @@ while 1
                 if ~isempty(strtrim(sscanf(Lyn(8:end),'%s')));
                     % Assign name of 'g' submesh name definition:
                     mtllib = strtrim(sscanf(Lyn(8:end),'%s'));
-                end                
+                end
             case 'usemtl' % Material definition:
                 if (debug>1), disp(Lyn); end;
                 if ~isempty(strtrim(sscanf(Lyn(8:end),'%s')));
@@ -287,7 +287,7 @@ while 1
                     if (debug>1), disp(['OBJ entry unprocessed: ' Lyn]); end;
                 end
         end
-
+        
         if debug>0
             % Display progress output:
             totalcount = totalcount + 1;
@@ -295,11 +295,11 @@ while 1
                 disp(['LoadOBJFile: Parsing progress: At line ' num2str(totalcount)]);
             end;
         end;
-
+        
         % Parse next dataline of this submesh, if any:
         Lyn=fgets(fid);
     end;
-
+    
     % Done parsing data for this submesh. Post-Process and assign submesh:
     
     % Decrement by one: This shall be the true counts:
@@ -308,7 +308,7 @@ while 1
     f4num=f4num - 1;
     vtnum=vtnum - 1;
     vnnum=vnnum - 1;
-
+    
     if debug > 0
         fprintf('\n\nNew Submesh %i [%s] of file %s contains:\n', meshcount + 1, subMeshName, modelname);
         fprintf('Triangles: %i\n', f3num);
@@ -317,7 +317,7 @@ while 1
         fprintf('Texture coordinates: %i\n', vtnum);
         fprintf('Normal vectors: %i\n', vnnum);
     end
-
+    
     % Any quads defined?
     if f4num > 0
         % Yes. Quads defined in F4: Check if we need to remap texture and
@@ -335,14 +335,14 @@ while 1
                 % into the texture array with the same indices as the ones we
                 % use for the vertex array. This is more memory intense, but
                 % much faster for postprocessing and rendering...
-
+                
                 if debug>0
                     fprintf('Inconsistent vertex vs. texture indexing: Remapping...\n');
                 end
-
+                
                 SrcTexCoords = Texcoords;
                 Texcoords = zeros(size(SrcTexCoords, 1), vnum);
-
+                
                 % Remap/rebuild for each of the f4num faces:
                 for i=1:f4num
                     Texcoords(:, F4(1,i)) = SrcTexCoords(:, F4(5,i));
@@ -352,7 +352,7 @@ while 1
                 end
             end
         end
-
+        
         % Do normal coordinates exist?
         if vnnum > 0
             % Yes. Check if face indices for vertices and normals are
@@ -366,14 +366,14 @@ while 1
                 % into the normals array with the same indices as the ones we
                 % use for the vertex array. This is more memory intense, but
                 % much faster for postprocessing and rendering...
-
+                
                 if debug>0
                     fprintf('Inconsistent vertex vs. normals indexing: Remapping...\n');
                 end
-
+                
                 SrcNormals = Normals;
                 Normals = zeros(size(SrcNormals, 1), vnum);
-
+                
                 % Remap/rebuild for each of the f4num faces:
                 for i=1:f4num
                     Normals(:, F4(1,i)) = SrcNormals(:, F4(9,i));
@@ -383,25 +383,25 @@ while 1
                 end
             end
         end
-
+        
         % Strip (now redundant) face indices for textures and normals. Either
         % they were identical from the beginning, or they are now identical
         % after our remap operation:
         F4 = F4(1:4, :);
-
+        
         % Take difference in indexing between OpenGL and OBJ into account.
         F4 = F4 - 1;
     end
-
-
+    
+    
     if f3num <= 0
         % No triangles defined. Are there any quads defined?
         f3num = 0;
-
+        
         if f4num > 0
             % Yes. This OBJ defines quads, not triangles. Assign them:
             Faces = F4;
-
+            
             % Need this for final truncation of 'Faces' at the end before
             % output assignment:
             f3num = f4num;
@@ -412,7 +412,7 @@ while 1
         end;
     else
         % Triangles defined in Faces:
-
+        
         % Do texture coordinates exist?
         if vtnum > 0
             % Yes. Check if face indices for vertices and textures are
@@ -426,14 +426,14 @@ while 1
                 % into the texture array with the same indices as the ones we
                 % use for the vertex array. This is more memory intense, but
                 % much faster for postprocessing and rendering...
-
+                
                 if debug>0
                     fprintf('Inconsistent vertex vs. texture indexing: Remapping...\n');
                 end
-
+                
                 SrcTexCoords = Texcoords;
                 Texcoords = zeros(size(SrcTexCoords, 1), vnum);
-
+                
                 % Remap/rebuild for each of the f3num faces:
                 for i=1:f3num
                     Texcoords(:, Faces(1,i)) = SrcTexCoords(:, Faces(4,i));
@@ -442,7 +442,7 @@ while 1
                 end
             end
         end
-
+        
         % Do normal coordinates exist?
         if vnnum > 0
             % Yes. Check if face indices for vertices and normals are
@@ -456,14 +456,14 @@ while 1
                 % into the normals array with the same indices as the ones we
                 % use for the vertex array. This is more memory intense, but
                 % much faster for postprocessing and rendering...
-
+                
                 if debug>0
                     fprintf('Inconsistent vertex vs. normals indexing: Remapping...\n');
                 end
-
+                
                 SrcNormals = Normals;
                 Normals = zeros(size(SrcNormals, 1), vnum);
-
+                
                 % Remap/rebuild for each of the f3num faces:
                 for i=1:f3num
                     Normals(:, Faces(1,i)) = SrcNormals(:, Faces(7,i));
@@ -472,22 +472,22 @@ while 1
                 end
             end
         end
-
+        
         % Strip (now redundant) face indices for textures and normals. Either
         % they were identical from the beginning, or they are now identical
         % after our remap operation:
         Faces = Faces(1:3, :);
-
+        
         % Take difference in indexing between OpenGL and OBJ into account.
         Faces = Faces - 1;
-
+        
         % Array with triangle definitions exists. Check for additional quad-definitions:
         if f4num > 0
             % Return quad-face definitions in QuadFaces return argument:
             QuadFaces = F4;
         end;
     end;
-
+    
     % Assign variables to proper slot in output-cell-struct:
     meshcount = meshcount + 1;
     objobject{meshcount}.faces = Faces(:, 1:f3num); %#ok<AGROW>
