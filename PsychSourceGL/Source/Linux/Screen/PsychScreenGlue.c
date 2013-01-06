@@ -431,7 +431,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			if (PsychPrefStateGet_Verbosity() > 1) {
 				printf("PTB-INFO: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
 				printf("PTB-INFO: Beamposition timestamping and other special functions disabled.\n");
-				printf("PTB-INFO: You must run Matlab/Octave with root privileges for this to work.\n");
+				printf("PTB-INFO: You need to run Matlab/Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
 				printf("PTB-INFO: However, if you are using the free graphics drivers, there isn't any need for this.\n");
 				fflush(NULL);
 			}
