@@ -1,8 +1,8 @@
 % BeampositionQueries -- What they are used for, and what can go wrong.
 %
-% MacOS-X and M$-Windows provide a mechanism that allows to query the
-% scanline which is currently updated by the scanning beam of a CRT
-% display or by the equivalent mechanism in a video beamer or flat 
+% GNU/Linux, MacOS-X and MS-Windows provide a mechanism that allows to
+% query the scanline which is currently updated by the scanning beam of a
+% CRT display or by the equivalent mechanism in a video beamer or flat
 % panel display, the so called "beamposition".
 %
 % We use this mechanism for two purposes:
@@ -91,18 +91,28 @@
 % On Microsoft Windows, only a normal - possibly noisy - timestamp is taken.
 %
 % On MacOS-X, PTB tries to get low-level access to the kernel interrupt
-% handlers for the VBL interrupts, or CoreVideo system (depending on OSX
-% version) and uses its values for timestamping the time of buffer- swap.
-% This method is slightly less accurate and robust than the bemposition
-% method, but should be still suitable for most applications. If these
-% queries should fail as well, PTB falls back to pure timestamping without
-% any correction.
+% handlers for the VBL interrupts for OSX versions prior to 10.7 "Lion", or
+% CoreVideo CVDisplayLink timestamps on 10.7 and later and uses its values
+% for timestamping the time of buffer- swap. This method is slightly less
+% accurate and robust than the bemposition method, but should be still
+% suitable for most applications on OSX 10.6 and earlier. The robustness and
+% correctness of CVDisplayLink timestamps is not that great on 10.7 and later,
+% therefore this fallback mechanism may be removed in a future PTB release.
+% If these queries should fail as well, PTB falls back to pure timestamping
+% without any correction.
 %
-% On Linux, built-in OpenML timestamping has highest priority, available on
-% the open-source graphics drivers, followed by beamposition timestamping
-% on NVidia, AMD/ATI and (optionally) Intel with the proprietary drivers,
-% followed by the equivalent of kernel-level vbl timestamping, followed by
-% uncorrected timestamping.
+% To get best precision and reliability on OSX 10.7 and later we strongly
+% recommend you install the PsychtoolboxKernelDriver and use the
+% Screen('Preference','ConserveVRAM') setting 2^16
+% (kPsychDontUseNativeBeamposQueries -- see "help ConserveVRAMSettings").
+%
+% On Linux, built-in OpenML timestamping has the highest priority and is
+% available on the open-source graphics drivers (intel, radeon, nouveau).
+% Should that functionality be missing, beamposition timestamping is used
+% on NVidia, AMD/ATI and (optionally) Intel with the proprietary graphics
+% drivers, followed by the equivalent of kernel-level vbl timestamping
+% should that fail as well for some reason, followed by uncorrected
+% timestamping.
 %
 % The behaviour of PTB can be controlled by the command:
 % Screen('Preference', 'VBLTimestampingMode', mode); where mode can be one of the
@@ -140,6 +150,18 @@
 % common cause of failure. Psychtoolbox tries to enable work-arounds for
 % some common problems if possible. Usually you should update your graphics
 % card driver to see if that resolves the problems.
+%
+% Note: Apple's Retina MacBook Pro's ship with a broken NVidia graphics
+% driver that causes beamposition timestamping to fail. Please install the
+% PsychtoolboxKernelDriver on such systems and set the kPsychDontUseNativeBeamposQuery
+% flag in Screen('Preference', 'ConserveVRAM', x); ie., x must include the
+% value 2^16, e.g., add this to the top of your script:
+%
+% v = bitor(2^16, Screen('Preference','ConserveVRAM'));
+% Screen('Preference','ConserveVRAM', v);
+%
+% This will cause PTB to use our own implementation of beamosition queries,
+% which apparently isn't as shoddy as Apple's work.
 %
 % Note: As of Spring/Summer 2008, many graphics cards + driver combos from
 % ATI and NVidia on WindowsXP have bugs which cause beamposition queries to
@@ -199,7 +221,10 @@
 % accuracy and reliability for various MacOSX and Windows setups.
 %
 % The results of systematic studies can be found in the PsychDocumentation/
-% subfolder, the ECVP Timingprecision poster as a pdf file.
+% subfolder, the ECVP Timingprecision poster as a pdf file. They confirm
+% the robustness and high precision of beamposition timestamping and Linux
+% built in timestamping on a variety of tested hardware + operating system
+% combinations in various system configurations.
 %
 % Also check the FAQ section of http://www.psychtoolbox.org for latest infos.
 %
@@ -209,3 +234,4 @@
 % 16.11.2006 Updated for Windows exp. beampos support. (MK)
 %  7.07.2008 More infos and troubleshooting tips. (MK)
 %  3.01.2013 Some updates and cleanups. (MK)
+%  6.01.2013 Add info about OSX driver bugs with Retina displays. (MK)

@@ -1060,9 +1060,30 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		ifi_beamestimate = 0;
 	}
 	else {
-		// Check if VBL_Endline is greater than 2 * vbl_startline. This would indicate the backend is running in
-		// a double-scan videomode and we need to adapt our vbl_startline to be twice the framebuffer height:
-		if ((VBL_Endline >= vbl_startline * 2) && (VBL_Endline < vbl_startline * 2.25)) vbl_startline = vbl_startline * 2;
+        // Check if VBL_Endline is greater than 2 * vbl_startline. This would indicate the backend is running in
+        // a double-scan videomode and we need to adapt our vbl_startline to be twice the framebuffer height:
+        // Note: This should hopefully also take care of Apple's brain-dead pixel-doubling mode on MBP's with Retina-Display,
+        // where the backend is running with 1800 lines vertical resolution, but the framebuffer frontend only with
+        // 900 lines effective resolution ("Best for Retina" LOFL...).
+        if ((VBL_Endline >= vbl_startline * 2) && (VBL_Endline < vbl_startline * 2.25)) {
+            vbl_startline = vbl_startline * 2;
+            (*windowRecord)->VBL_Startline = vbl_startline;
+            
+            // OSX doesn't support double-scan modes by default, but a Retina display in scaled mode ("Best for Retina")
+            // would also lead to this point. Let's assume its non-native res Retina. We don't know if our timestamps make
+            // sense on such a display: Actual presentation timing might be decoupled from what we think by implicit triple-
+            // buffering caused by some gpu-based panel scaling, unless the used gpu's panel-fitter has some special circuitry
+            // to do it on the fly - which i doubt. No way to find out without photo-diode measurements etc., so better tell user
+            // about potential trouble:
+            if ((PSYCH_SYSTEM == PSYCH_OSX) && (PsychPrefStateGet_Verbosity() > 1)) {
+                printf("PTB-WARNING: Seems this window is displayed on a Retina-Display in scaled mode at a non-native resolution for the display.\n");
+                printf("PTB-WARNING: Reliabiliy of visual stimulus onset timing in such a scaled mode is so far unknown, but may be severely degraded.\n");
+                printf("PTB-WARNING: Stimulus onset timing and returned timestamps may be wrong, with no way for me to automatically detect this.\n");
+            }
+            
+            // Tell about double-scan video mode:
+            if ((PSYCH_SYSTEM != PSYCH_OSX) && (PsychPrefStateGet_Verbosity() > 2)) printf("PTB-INFO: Double-Scan video mode detected as active on display for this window.\n");
+        }
 
 		// Compute ifi from beampos:
 		ifi_beamestimate = tsum / tcount;
