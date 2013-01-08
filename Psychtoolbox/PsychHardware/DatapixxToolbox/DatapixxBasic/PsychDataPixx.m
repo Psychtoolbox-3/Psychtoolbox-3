@@ -922,6 +922,10 @@ end
 % Matlab on Linux:
 if (IsOctave && Is64Bit) || (IsLinux && ~IsOctave)
     % Skip the else branch with the new unsupported commands.
+    if strcmpi(cmd, 'EnableVideoStereoBlueline') || strcmpi(cmd, 'DisableVideoStereoBlueline') || ...
+       strcmpi(cmd, 'EnableVideoScanningBacklight') || strcmpi(cmd, 'DisableVideoScanningBacklight')
+        return;
+    end
 else
     % New Datapixx driver: Expose new functions...
     

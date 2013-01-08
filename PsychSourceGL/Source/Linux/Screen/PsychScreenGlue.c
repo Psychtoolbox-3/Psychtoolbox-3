@@ -108,7 +108,7 @@ static int    numKernelDrivers = 0;
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
 unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
 
-/* Mappings up to date for October 2012 (last update e-mail patch / commit 16-Oct-2012). Will need updates for anything after October 2012 */
+/* Mappings up to date for December 2012 (last update e-mail patch / commit 21-Nov-2012). Will need updates for anything after start of 2013 */
 
 /* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE61(int screenId)
@@ -416,7 +416,11 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			}
 
 			fDeviceType = kPsychIntelIGP;
-			fNumDisplayHeads = 2;
+            
+            // GEN-7+ (IvyBridge and later) and maybe GEN-6 (SandyBridge) has 3 display
+            // heads, older IGP's have 2. Let's be optimistic and assume 3, to safe us
+            // from lots of new detection code:
+			fNumDisplayHeads = 3;
 		}
 
 		// Try to MMAP MMIO registers with write access, assign their base address to gfx_cntl_mem on success:
@@ -453,8 +457,12 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		
 		if (fDeviceType == kPsychGeForce) {
 			fCardType = PsychGetNVidiaGPUType(NULL);
+            
+            // NV-E0 "Kepler" and later have 4 display heads:
+            if ((fCardType == 0x0) || (fCardType >= 0xe0)) fNumDisplayHeads = 4;
+            
 			if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Connected to NVidia %s GPU of NV-%02x family. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType);
+				printf("PTB-INFO: Connected to NVidia %s GPU of NV-%02x family with %i display heads. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType, fNumDisplayHeads);
 				fflush(NULL);
 			}
 		}
@@ -476,7 +484,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			}
 			
 			if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Connected to %s %s GPU with %s display engine. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? (fCardType >= 60) ? "DCE-6" : ((fCardType >= 50) ? "DCE-5" : "DCE-4") : "AVIVO");
+				printf("PTB-INFO: Connected to %s %s GPU with %s display engine [%i heads]. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? (fCardType >= 60) ? "DCE-6" : ((fCardType >= 50) ? "DCE-5" : "DCE-4") : "AVIVO", fNumDisplayHeads);
 				fflush(NULL);
 			}
 		}
@@ -2859,16 +2867,17 @@ int PsychOSKDGetBeamposition(int screenId)
 	int beampos = -1;
 	int headId  = PsychScreenToCrtcId(screenId, 0);
 
+    if (headId < 0 || headId > (fNumDisplayHeads - 1)) {
+        printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
+        return(beampos);
+    }
+
 	// MMIO registers mapped?
 	if (gfx_cntl_mem) {
 		// Query code for ATI/AMD Radeon/FireGL/FirePro:
 		if (fDeviceType == kPsychRadeon) {
 			if (isDCE4(screenId) || isDCE5(screenId)) {
 				// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's.
-                if (headId > (fNumDisplayHeads - 1)) {
-                    printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
-                    return(beampos);
-				}
                 
 				// Read raw beampostion from GPU:
 				beampos = (int) (ReadRegister(EVERGREEN_CRTC_STATUS_POSITION + crtcoff[headId]) & RADEON_VBEAMPOSITION_BITMASK);
@@ -2896,7 +2905,7 @@ int PsychOSKDGetBeamposition(int screenId)
 		// Query code for NVidia GeForce/Quadro:
 		if (fDeviceType == kPsychGeForce) {
 			// Pre NV-50 GPU? [Anything before GeForce-8 series]
-			if (fCardType < 0x50) {
+			if ((fCardType > 0x0) && (fCardType < 0x50)) {
 				// Pre NV-50, e.g., RivaTNT-1/2 and all GeForce 256/2/3/4/5/FX/6/7:
 				
 				// Lower 12 bits are vertical scanout position (scanline), bit 16 is "in vblank" indicator.
@@ -2912,13 +2921,13 @@ int PsychOSKDGetBeamposition(int screenId)
 				
 				// Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter.
 				// Offset between crtc's is 0x800, we're only interested in scanline, not vblank counter:
-				beampos = (int) (ReadRegister((headId == 0) ? 0x616340 : 0x616340 + 0x800) & 0xFFFF);
+				beampos = (int) (ReadRegister(0x616340 + (0x800 * headId)) & 0xFFFF);
 			}
 		}
 
 		// Query code for Intel IGP's:
 		if (fDeviceType == kPsychIntelIGP) {
-				beampos = (int) (ReadRegister((headId == 0) ? 0x70000 : 0x70000 + 0x1000) & 0x1FFF);
+				beampos = (int) (ReadRegister(0x70000 + (headId * 0x1000)) & 0x1FFF);
 		}
 
 		// Safety measure: Cap to zero if something went wrong -> This will trigger proper high level error handling in PTB:

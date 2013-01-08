@@ -96,7 +96,7 @@ static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET,
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for October 2012 (last update e-mail patch / commit 16-Oct-2012). Will need updates for anything after October 2012 */
+/* Mappings up to date for December 2012 (last update e-mail patch / commit 21-Nov-2012). Will need updates for anything after start of 2013 */
 
 /* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE61(void)
@@ -298,6 +298,12 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		// Assume it is an Intel IGP: BAR 0 is the MMIO registers:
 		pciBARReg = kIOPCIConfigBaseAddress0;
 		fDeviceType = kPsychIntelIGP;
+        
+        // GEN-7+ (IvyBridge and later) and maybe GEN-6 (SandyBridge) has 3 display
+        // heads, older IGP's have 2. Let's be optimistic and assume 3, to safe us
+        // from lots of new detection code:
+        fNumDisplayHeads = 3;
+        
 		IOLog("%s: This is a Intel GPU, hopefully a compatible one...\n", getName());
 	}
 
@@ -497,26 +503,33 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 				break;
 			case 0x40:
 			case 0x60:
-				// NV40: GeForce6/7 series:
+				// NV40: GeForce6/7 series: "Curie"
 				fCardType = 0x40;
 				break;
 			case 0x50:
 			case 0x80:
 			case 0x90:
 			case 0xa0:
-				// NV50: GeForce8/9/Gxxx
+				// NV50: GeForce8/9/Gxxx: "Tesla"
 				fCardType = 0x50;
 				break;
 			case 0xc0:
-				// Curie: GTX-400 and later:
+				// NVC0: GeForce-400/500: "Fermi"
 				fCardType = 0xc0;
 				break;
+			case 0xe0:
+				// NVE0: GeForce-600: "Kepler"
+				fCardType = 0xe0;
+				break;
 			default:				
-				IOLog("%s: Unknown NVidia chipset 0x%08x.\n", getName(), reg0);
+				IOLog("%s: Unknown NVidia chipset 0x%08x. Optimistically assuming latest generation GPU too new to be known.\n", getName(), reg0);
 				fCardType = 0x00;
 		}
 		
-		if (fCardType > 0x00) IOLog("%s: NV-%02x GPU detected.\n", getName(), fCardType);
+        // "Kepler" chip family and later supports 4 display heads:
+        if ((fCardType == 0x0) || (fCardType >= 0xe0)) fNumDisplayHeads = 4;
+        
+		if (fCardType > 0x00) IOLog("%s: NV-%02x GPU with %d display heads detected.\n", getName(), fCardType, fNumDisplayHeads);        
 	}
 
 	// The following code chunk if enabled, will detaching the Radeon driver IRQ handler and
@@ -550,8 +563,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.7 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
-	IOLog("%s: This driver is copyright 2008 - 2012 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.8 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
+	IOLog("%s: This driver is copyright 2008 - 2013 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under the MIT free and open-source software license.\n", getName());
 	IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
 	IOLog("%s: The driver contains bits of code derived from the free software nouveau and radeon kms drivers on Linux.\n", getName());
@@ -1053,15 +1066,16 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 {
 	SInt32					beampos = 0;
 
+    if (headId < 0 || headId >= fNumDisplayHeads) {
+        // Invalid head - bail:
+        IOLog("%s: GetBeamPosition: ERROR! Invalid headId %d provided. Must be between 0 and %d. Aborted.\n", getName(), headId, fNumDisplayHeads - 1);
+        return(0);
+    }
+
 	// Query code for ATI/AMD Radeon/FireGL/FirePro:
 	if (fDeviceType == kPsychRadeon) {
 		if (isDCE4() || isDCE5()) {
 			// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's.
-            if (headId > DCE4_MAXHEADID) {
-                // Invalid head - bail:
-                IOLog("%s: GetBeamPosition: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
-                return(0);
-            }
 
 			// Read raw beampostion from GPU:
 			beampos = (SInt32) (ReadRegister(EVERGREEN_CRTC_STATUS_POSITION + crtcoff[headId]) & RADEON_VBEAMPOSITION_BITMASK);
@@ -1089,7 +1103,7 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 	// Query code for NVidia GeForce/Quadro:
 	if (fDeviceType == kPsychGeForce) {
 		// Pre NV-50 GPU? [Anything before GeForce-8 series]
-		if (fCardType < 0x50) {
+		if ((fCardType > 0x00) && (fCardType < 0x50)) {
 			// Pre NV-50, e.g., RivaTNT-1/2 and all GeForce 256/2/3/4/5/FX/6/7:
 
 			// Lower 12 bits are vertical scanout position (scanline), bit 16 is "in vblank" indicator.
@@ -1100,19 +1114,18 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 			// scanout position. Offset between crtc's is 0x2000. We only use the lower 16 bits and
 			// ignore horizontal scanout position for now:
 			beampos = (SInt32) (ReadRegister((headId == 0) ? 0x600868 : 0x600868 + 0x2000) & 0xFFFF);
-
 		} else {
 			// NV-50 (GeForce-8) and later:
 			
 			// Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter.
 			// Offset between crtc's is 0x800, we're only interested in scanline, not vblank counter:
-			beampos = (SInt32) (ReadRegister((headId == 0) ? 0x616340 : 0x616340 + 0x800) & 0xFFFF);
+			beampos = (SInt32) (ReadRegister(0x616340 + (0x800 * headId)) & 0xFFFF);
 		}
 	}
 
     // Query code for Intel IGP's:
     if (fDeviceType == kPsychIntelIGP) {
-        beampos = (SInt32) (ReadRegister((headId == 0) ? 0x70000 : 0x70000 + 0x1000) & 0x1FFF);
+        beampos = (SInt32) (ReadRegister(0x70000 + (headId * 0x1000)) & 0x1FFF);
     }
 
 	// Safety measure: Cap to zero if something went wrong -> This will trigger proper high level error handling in PTB:

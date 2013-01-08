@@ -93,8 +93,8 @@ if ~ismember(winfo.StereoMode, [2,3])
     return;
 end
 
-% Query size of onscreen window in pixels w x h:
-[w, h] = Screen('WindowSize', win);
+% Query true size of onscreen window in pixels w x h:
+[w, h] = Screen('WindowSize', win, 1);
 
 % Parse other arguments, assign defaults if none passed:
 if nargin < 2 || isempty(leftOffset)

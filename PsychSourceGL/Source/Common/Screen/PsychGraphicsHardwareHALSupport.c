@@ -955,7 +955,7 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 			PsychOSIsKernelDriverAvailable(screenId)) {
 
 			// Need to read different regs for NV-50 and later:
-			if (PsychGetNVidiaGPUType(NULL) >= 0x50) {
+			if ((PsychGetNVidiaGPUType(NULL) >= 0x50) || (PsychGetNVidiaGPUType(NULL) == 0x0)) {
 				// Auto-Detection. Read values directly from NV-50 class and later hardware:
 				//
 				// SYNC_START_TO_BLANK_END 16 bit high-word in CRTC_VAL block of NV50_PDISPLAY on NV-50 encodes
@@ -965,15 +965,15 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 				// The low-word likely encodes hsyncstart to hblank end length in pixels, but we're not interested in that,
 				// so we shift and mask it out:
 				#if PSYCH_SYSTEM != PSYCH_WINDOWS
-				vblbias = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xe8 + ((crtcid > 0) ? 0x540 : 0), NULL) >> 16) & 0xFFFF);
+				vblbias = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xe8 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
 
 				// DISPLAY_TOTAL: Encodes VTOTAL in high-word, HTOTAL in low-word. Get the VTOTAL in high word:
-				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xf8 + ((crtcid > 0) ? 0x540 : 0), NULL) >> 16) & 0xFFFF);
+				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xf8 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
 				#endif
 			} else {
 				// Auto-Detection. Read values directly from pre-NV-50 class hardware:
 				// We only get VTOTAL and assume a bias value of zero, which seems to be
-				// the case according to measurments on NV-40 and NV-30 gpu's:
+				// the case according to measurements on NV-40 and NV-30 gpu's:
 				#if PSYCH_SYSTEM != PSYCH_WINDOWS
 				vblbias = 0;
 
@@ -990,12 +990,12 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 			vblbias = 0;
 
 			// VTOTAL at 0x6000C with stride 0x1000: Encodes VTOTAL in upper 16 bit word masked with 0x1fff :
-			vbltotal = (int) 1 + ((PsychOSKDReadRegister(crtcid, 0x6000c + ((crtcid > 0) ? 0x1000 : 0), NULL) >> 16) & 0x1FFF);
+			vbltotal = (int) 1 + ((PsychOSKDReadRegister(crtcid, 0x6000c + (crtcid * 0x1000), NULL) >> 16) & 0x1FFF);
 
 			// Decode VBL_START and VBL_END for debug purposes:
 			if (PsychPrefStateGet_Verbosity() > 5) {
 				unsigned int vbl_start, vbl_end, vbl;
-				vbl = PsychOSKDReadRegister(crtcid, 0x60010 + ((crtcid > 0) ? 0x1000 : 0), NULL);
+				vbl = PsychOSKDReadRegister(crtcid, 0x60010 + (crtcid * 0x1000), NULL);
 				vbl_start = vbl & 0x1fff;
 				vbl_end   = (vbl >> 16) & 0x1FFF;
 				printf("PTB-DEBUG: Screen %i [head %i]: vbl_start = %i  vbl_end = %i.\n", screenId, crtcid, (int) vbl_start, (int) vbl_end);

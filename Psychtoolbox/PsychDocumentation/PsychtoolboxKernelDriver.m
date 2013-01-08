@@ -5,9 +5,10 @@
 % of the X1000, HD2000, HD3000 and HD4000 series. It works with the most
 % recent HD-5000 series chips and later, although some functionality (10
 % Bit native framebuffer support) is not yet available. On NVidia and Intel
-% cards, beamposition queries are supported.
+% cards, only beamposition queries for high precision timestamping are
+% supported.
 %
-% The driver needs to be manually loaded by a user with administrator
+% The driver needs to be manually installed by a user with administrator
 % privileges and provides a few special services to PTB-3, ie., PTB's
 % functionality is extended/enhanced if it detects such a driver at startup
 % time:
@@ -34,12 +35,16 @@
 % Bits# boxes, or the VPixx Inc. DataPixx and ViewPixx devices, and similar
 % equipment.
 %
-%
-% The driver only works if a *single* graphics card (single-head or
-% dual/multi-head) is active in your machine. It may not work reliably if
-% more than one card is installed and or active. Specifically, we never
-% tested how (well) it behaves in the presence of multiple active graphics
-% cards.
+% The driver only works with one single graphics card at a time. On a
+% single-gpu system it will just work. On a MacBookPro hybrid-graphics
+% system with an integrated intel gpu and a discrete NVidia or AMD gpu, it
+% will automatically switch to use the proper gpu. On a multi-gpu system
+% with multiple discrete gpu's, e.g., MacPro with multiple graphics cards
+% installed, it will use the default gpu zero by default. You can ask it use a
+% different gpu by calling the command PsychTweak('UseGPUIndex', gpuidx);
+% to select gpu 'gpuidx' - numbering starts at zero. Then call clear
+% Screen, so Screen() actually picks up the new setting. Simultaneous use
+% of multiple gpu's is not supported at this time.
 %
 % As this driver accesses the hardware at a very low level, bypassing the
 % whole operating system, its graphics subsystem and the drivers from ATI,
@@ -61,28 +66,18 @@
 % For 32-Bit OSX kernel:
 % ----------------------
 %
-% Unzip the file
-% Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver32Bit.zip, then copy
-% the unpacked driver PsychtoolboxKernelDriver.kext into the system folder
-% /System/Library/Extensions/
-% You must do this from the terminal via:
+% You must type this into the terminal:
 %
-% sudo cp -R PsychtoolboxKernelDriver.kext /System/Library/Extensions/
-%
-% assuming the unzipped driver is in your current working directory.
+% cd /System/Library/Extensions/
+% sudo unzip /PathToPsychtoolbox/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver32Bit.kext.zip
 %
 % For 64-Bit OSX kernel:
 % ----------------------
 %
-% Unzip the file
-% Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver64Bit.zip, then copy
-% the unpacked driver PsychtoolboxKernelDriver.kext into the system folder
-% /System/Library/Extensions/
-% You must do this from the terminal via:
+% You must type this into the terminal:
 %
-% sudo cp -R PsychtoolboxKernelDriver.kext /System/Library/Extensions/
-%
-% assuming the unzipped driver is in your current working directory.
+% cd /System/Library/Extensions/
+% sudo unzip /PathToPsychtoolbox/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver64Bit.kext.zip
 %
 %
 % On modern OSX systems, this will automatically load the driver after a
@@ -90,11 +85,18 @@
 % have to load the driver manually - on new systems you could do this for
 % debugging purposes: How to enable (each time after restarting your system):
 %
-%
 % In a terminal type:
 % sudo kextload /System/Library/Extensions/PsychtoolboxKernelDriver.kext
 %
-% Both sudo commands will ask you for your password.
+% How to upgrade with a more recent version:
+% ------------------------------------------
+%
+% You can unload and delete the driver before a driver upgrade via:
+%
+% sudo kextunload /System/Library/Extensions/PsychtoolboxKernelDriver.kext
+% sudo rm -R /System/Library/Extensions/PsychtoolboxKernelDriver.kext
+%
+% Then you can follow the instructions for installation above.
 %
 % If everything went well, Psychtoolbox will report availability (and its
 % use) of the driver the first time the Screen() mex file gets loaded and
