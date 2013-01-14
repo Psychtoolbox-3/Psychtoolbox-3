@@ -342,6 +342,7 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 % 5.01.2012   Add optional 'dontReset' flag to 'deleteMeshAtIndex', so user
 %             can delete all keyshapes without incurring a full reset cycle (MK).
 %
+% 10.01.2013  Fix bug in argument checking (MK).
 
 % The GL OpenGL constant definition struct is shared with all other modules:
 global GL;
@@ -781,18 +782,24 @@ if strcmpi(cmd, 'addMesh')
         if ~isempty(obj.texcoords)
             argcount = 4;
             arg3 = obj.texcoords;
-        end;
+        else
+            arg3 = [];
+        end
         
         if ~isempty(obj.normals)
             argcount = 5;
             arg4 = obj.normals;
-        end;
+        else
+            arg4 = [];
+        end
 
         if isfield(obj, 'colors') && ~isempty(obj.colors)
             argcount = 6;
             arg5 = obj.colors;
-        end;    
-    end;
+        else
+            arg5 = [];
+        end
+    end
     
     % Sanity checks:
     if argcount < 3

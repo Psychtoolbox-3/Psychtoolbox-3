@@ -194,6 +194,9 @@ if stereoMode == 102
     PsychImaging('AddTask', 'General', 'SideBySideCompressedStereo');
 end
 
+fitSize = [RectWidth(Screen('Rect', scrnNum))*2, RectHeight(Screen('Rect', scrnNum))*1];
+%PsychImaging('AddTask', 'General', 'UsePanelFitter', fitSize, 'Aspect');
+
 % Consolidate the list of requirements (error checking etc.), open a
 % suitable onscreen window and configure the imaging pipeline for that
 % window according to our specs. The syntax is the same as for

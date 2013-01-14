@@ -45,6 +45,7 @@ function [xo, yo] = RemapMouse(win, viewId, xm, ym)
 
 % History:
 % 26.12.2011  mk  Written.
+% 12.01.2013  mk  Added panelfitter support.
 
 % This global array is setup by PsychImaging() when setting up geometric
 % display correction:
@@ -63,33 +64,52 @@ if ~ischar(viewId)
 end
 
 if isempty(ptb_geometry_inverseWarpMap) || isempty(ptb_geometry_inverseWarpMap{win})
-    % Window does not use geometry correction. We're a no-op and just
-    % pass-through our input values:
+    % Window does not use geometry correction. Just pass-through our input values:
     xo = xm;
     yo = ym;
-    return;
+else
+    % Apply gains and modulo transform to input (xm,ym):
+    xm = mod(xm * ptb_geometry_inverseWarpMap{win}.gx, ptb_geometry_inverseWarpMap{win}.mx);
+    ym = mod(ym * ptb_geometry_inverseWarpMap{win}.gy, ptb_geometry_inverseWarpMap{win}.my);
+    
+    if ~isfield(ptb_geometry_inverseWarpMap{win}, viewId)
+        % No inverse map, we're almost done:
+        xo = xm;
+        yo = ym;
+    else
+        % Retrieve proper inverse mapping matrix for given viewId:
+        map = ptb_geometry_inverseWarpMap{win}.(viewId);
+        
+        % Round and map (xm,ym) input mouse position to indices in inverse map:
+        xm = min(max(round(xm) + 1, 1), size(map, 2));
+        ym = min(max(round(ym) + 1, 1), size(map, 1));
+        
+        % Lookup corresponding unmapped position from matrix:
+        xo = double(map(ym, xm, 1));
+        yo = double(map(ym, xm, 2));
+    end
 end
 
-% Apply gains and modulo transform to input (xm,ym):
-xm = mod(xm * ptb_geometry_inverseWarpMap{win}.gx, ptb_geometry_inverseWarpMap{win}.mx);
-ym = mod(ym * ptb_geometry_inverseWarpMap{win}.gy, ptb_geometry_inverseWarpMap{win}.my);
-
-if ~isfield(ptb_geometry_inverseWarpMap{win}, viewId)
-    % No inverse map, we're done:
-    xo = xm;
-    yo = ym;
-    return;
+% At this point (xo, yo) contain mouse position relative to the imaging
+% pipelines image buffer for the requested viewId. If remapping wrt. some
+% internal buffer or final buffer was requested, we're done. For the most
+% common case of remapping to the stimulus input buffer, we need one more
+% step:
+if strcmpi(viewId, 'AllViews') || strcmpi(viewId, 'LeftView') || strcmpi(viewId, 'RightView')
+    % Want mouse position mapped to original stimulus image. The current
+    % (xo, yo) contains mouse position wrt. inputBufferFBO for viewId. If
+    % our gpu panel scaler is active then we need to undo the rescaling
+    % done by the scaler to get the position in the drawBufferFBO which
+    % corresponds to our effective stimulus position. Query panel fitter
+    % parameters into p:
+    p = Screen('PanelFitter', win);
+    
+    % Panelfitter active aka p non-zero?
+    if any(p)
+        % Remap:
+        xo = ((xo - p(5)) / (p(7) - p(5)) * (p(3) - p(1))) + p(1);
+        yo = ((yo - p(6)) / (p(8) - p(6)) * (p(4) - p(2))) + p(2);
+    end
 end
-
-% Retrieve proper inverse mapping matrix for given viewId:
-map = ptb_geometry_inverseWarpMap{win}.(viewId);
-
-% Round and map (xm,ym) input mouse position to indices in inverse map:
-xm = min(max(round(xm) + 1, 1), size(map, 2));
-ym = min(max(round(ym) + 1, 1), size(map, 1));
-
-% Lookup corresponding unmapped position from matrix:
-xo = double(map(ym, xm, 1));
-yo = double(map(ym, xm, 2));
 
 return;

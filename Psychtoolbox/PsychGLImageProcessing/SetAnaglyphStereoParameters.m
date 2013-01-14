@@ -159,11 +159,49 @@ if isempty(inverted)
     inverted = [];
 end
 
-try
     if nargin < 2
         error('Insufficient number of input arguments.');
     end
-    
+
+    if strcmpi(cmd, 'CreateMonoOverlay')
+        winfo = Screen('GetWindowInfo', win);
+        if winfo.StereoMode < 4 || winfo.StereoMode > 9
+            error('SetAnaglyphStereoParameters(''CreateMonoOverlay'') is not supported in current stereomode %i!', winfo.StereoMode);
+        end
+
+        % Create a monoscopic overlay window which is not affected by
+        % anaglyph conversion, but just overlaid to the final rendering.
+        glUseProgram(0);
+        
+        % Create Offscreen window for the overlay. It has the same size as
+        % the onscreen window, the same pixeldepth, but a completely black
+        % background with alpha value zero -- fully transparent by default.
+        overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0]);
+        
+        % Retrieve low-level OpenGl texture handle to the window:
+        overlaytex = Screen('GetOpenGLTexture', win, overlaywin);
+
+        % Append blitter command for a one-to-one blit of the overlay
+        % texture to the target buffer. We need to disable the 2nd texture
+        % unit and setup proper alpha testing, so a) it works at all and b)
+        % the overly only occludes the main image where the overly has a
+        % non-zero alpha:
+        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup1 Alphatest for Overlay', 'glAlphaFunc(516, 0.0);');
+        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup2 Alphatest for Overlay', 'glEnable(3008);');
+        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup3 Texunit1 off for Overlay', 'glActiveTexture(33985);');
+        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup4 Texunit1 off for Overlay', 'glDisable(34037);');
+        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup5 Texunit1 off for Overlay', 'glActiveTexture(33984);');
+        Screen('Hookfunction', win, 'AppendBuiltin',   'StereoCompositingBlit', 'Builtin:IdentityBlit', sprintf('TEXTURERECT2D(0)=%i', overlaytex));
+        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Teardown Alphatest for Overlay', 'glDisable(3008);');
+        
+        % Return handle to overlay window:
+        retval = overlaywin;
+        
+        % Done.
+        return;
+    end
+
+try    
     % Assume combined shader in 'StereoCompositingBlit' chain:
     combinedAnaglyph = 1;
 
@@ -519,43 +557,7 @@ end
                 glUniform1f( gammaloc, aux2);
             end            
         end
-    end
-
-    if strcmpi(cmd, 'CreateMonoOverlay')
-        winfo = Screen('GetWindowInfo', win);
-        if winfo.StereoMode < 2 || winfo.StereoMode > 9
-            error('SetAnaglyphStereoParameters(''CreateMonoOverlay'') is not supported in current stereomode %i!', winfo.StereoMode);
-        end
-
-        % Create a monoscopic overlay window which is not affected by
-        % anaglyph conversion, but just overlaid to the final rendering.
-        glUseProgram(0);
-        
-        % Create Offscreen window for the overlay. It has the same size as
-        % the onscreen window, the same pixeldepth, but a completely black
-        % background with alpha value zero -- fully transparent by default.
-        overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0]);
-        
-        % Retrieve low-level OpenGl texture handle to the window:
-        overlaytex = Screen('GetOpenGLTexture', win, overlaywin);
-
-        % Append blitter command for a one-to-one blit of the overlay
-        % texture to the target buffer. We need to disable the 2nd texture
-        % unit and setup proper alpha testing, so a) it works at all and b)
-        % the overly only occludes the main image where the overly has a
-        % non-zero alpha:
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup1 Alphatest for Overlay', 'glAlphaFunc(516, 0.0);');
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup2 Alphatest for Overlay', 'glEnable(3008);');
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup3 Texunit1 off for Overlay', 'glActiveTexture(33985);');
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup4 Texunit1 off for Overlay', 'glDisable(34037);');
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup5 Texunit1 off for Overlay', 'glActiveTexture(33984);');
-        Screen('Hookfunction', win, 'AppendBuiltin',   'StereoCompositingBlit', 'Builtin:IdentityBlit', sprintf('TEXTURERECT2D(0)=%i', overlaytex));
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Teardown Alphatest for Overlay', 'glDisable(3008);');
-        
-        % Return handle to overlay window:
-        retval = overlaywin;
-    end
-    
+    end    
 try
     % Unbind shader again...
     glUseProgram(0);

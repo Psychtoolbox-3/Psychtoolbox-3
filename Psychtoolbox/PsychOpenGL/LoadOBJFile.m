@@ -90,7 +90,7 @@ function objobject=LoadOBJFile(modelname, debug, preparse)
 %           into proper sub-meshes. (MK)
 % 02/08/11  Implement parsing/assignment of 'g' submesh-names, mtllib
 %           definitions and usemat selectors. (MK)
-%
+% 01/09/13  Fix MLint warnings and replace findstr() by future-proof strfind(). (MK)
 
 if nargin<1
     error('You did not provide any filename for the Alias-/Wavefront OBJ file!')
@@ -113,10 +113,10 @@ if preparse>0
     % Pre-Parse pass: Load the whole file into a matlab matrix and then count
     % number of vertices et al. to quickly determine the storage requirements.
     preobj = fread(fid, inf, 'uint8=>char')';
-    prevnum = length(findstr(preobj, 'v '));
-    prevtnum = length(findstr(preobj, 'vt '));
-    prevnnum = length(findstr(preobj, 'vn '));
-    pref3num = length(findstr(preobj, 'f '));
+    prevnum = length(strfind(preobj, 'v '));
+    prevtnum = length(strfind(preobj, 'vt '));
+    prevnnum = length(strfind(preobj, 'vn '));
+    pref3num = length(strfind(preobj, 'f '));
     
     % Rewind to beginning of file in preparation of real data parse pass:
     frewind(fid);
@@ -183,8 +183,8 @@ while 1
         switch s
             case 'f' % faces
                 Lyn=strtrim(Lyn(3:l));
-                nvrts=length(findstr(Lyn,' '))+1;
-                fstr=findstr(Lyn,'/');
+                nvrts=length(strfind(Lyn,' '))+1;
+                fstr=strfind(Lyn,'/');
                 nslash=length(fstr);
                 if nvrts == 3
                     % Triangle face:
@@ -225,7 +225,7 @@ while 1
                         end;
                         f1=[];
                     end
-                    F4(:,f4num)=f1; %#ok<AGROW>
+                    F4(:,f4num)=f1;
                     f4num=f4num+1;
                     lastWasFace = 1;
                 end
@@ -236,7 +236,7 @@ while 1
                 try
                     % Try to assign texture coordinate:
                     Texcoords(:,vtnum)=sscanf(Lyn(3:l),'%f');
-                catch
+                catch %#ok<CTCH>
                     % Failed. Most common reason is that this is not a 3
                     % component texture coordinate, so our preallocated array
                     % is of wrong size in 1st dimension.

@@ -11,6 +11,7 @@
 %   AnalyzeTiming                   - Analyze timing logs from FlipTimingWithRTBoxPhotoDiodeTest.
 %   AsyncFlipTest                   - Test robustness and performance of Screen('AsyncFlipBegin') et al.
 %   BatchAnalyzeTiming              - Batch version of AnalyzeTiming.
+%   BeampositionTest                - Test GPU scanout position ("beamposition") queries.
 %   CIEConeFundamentalsTest         - Test/demonstrate routines for producing cone fundamentals according to CIE 170-1:2006
 %   Color3DLUTTest                  - Test PsychColorCorrection() method for 3D-CLUT color correction.
 %   ConvolutionKernelTest           - Test routine for correctness, accuracy and speed of PTB imaging convolution shaders.
@@ -35,6 +36,7 @@
 %   GetCharTest                     - Tests of GetChar.
 %   GetSecsTest                     - Timing test of clock used by Psychtoolbox, e.g., GetSecs, WaitSecs, Screen...
 %   GraphicsDisplaySyncAcrossDualHeadsTest - Test synchronization of refresh cycles of different display heads.
+%   GraphicsDisplaySyncAcrossDualHeadsTestLinux - Linux version of the test.
 %   HIDIntervalTest                 - Sample HID keyboard and mouse, plot distribution of detected event times.
 %   HighColorPrecisionDrawingTest   - Test drawing precision of a variety of Screen() functions, esp. wrt. high precision framebuffers.
 %   HighPrecisionLuminanceOutputDriversImagingPipelineTest - Test precision of a variety of high precision luminance device output drivers.
