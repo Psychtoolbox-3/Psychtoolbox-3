@@ -256,6 +256,7 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 %  4.07.2009 Add support for other color correction methods like CLUT (MK).
 % 14.12.2009 Add support for other target devices, e.g., DataPixx (MK).
 %  3.01.2010 Some bugfixes to DataPixx support. (MK)
+% 12.01.2013 Make compatible with PTB panelfitter. (MK)
 
 global GL;
 
@@ -271,7 +272,7 @@ persistent devname;
 persistent drivername;
 persistent bplusname;
 persistent mononame;
-persistent colorname; %#ok<PUSE>
+persistent colorname;
 persistent devbits;
 persistent checkGPUEncoders;
 
@@ -565,7 +566,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
 
     % Test accuracy/correctness of GPU's rasterizer for different output
     % positioning methods: Return (non-zero) dx,dy offsets, if any:
-    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win, drivername);
+    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win, drivername); %#ok<ASGLU>
         
     if rpix~=0
         tlockXOffset = -rpix;
@@ -870,7 +871,20 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         % Use of overlay plane requested?
         if useOverlay
             % Create additional shader for overlay texel fetch:
-            shSrc = 'uniform sampler2DRect overlayImage; float getMonoOverlayIndex(vec2 pos) { return(texture2DRect(overlayImage, pos).r); }';
+            % Our gpu panel scaler might be active, so the size of the
+            % virtual window - and thereby our overlay window - can be
+            % different from the output framebuffer size. As the sampling
+            % 'pos'ition for the overlay is always provided in framebuffer
+            % coordinates, we need to subsample in the overlay fetch.
+            % Calculate proper scaling factor, based on virtual and real
+            % framebuffer size:
+            [wC, hC] = Screen('WindowSize', win);
+            [wF, hF] = Screen('WindowSize', win, 1);
+            sampleX = wC / wF;
+            sampleY = hC / hF;
+            
+            % Build the shader:
+            shSrc = sprintf('uniform sampler2DRect overlayImage; float getMonoOverlayIndex(vec2 pos) { return(texture2DRect(overlayImage, pos * vec2(%f, %f)).r); }', sampleX, sampleY);
 
             % Create Offscreen window for the overlay. It has the same size as
             % the onscreen window, but only 8 bpc fixed depth and a completely black
@@ -880,6 +894,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
             % Retrieve low-level OpenGl texture handle to the window:
             overlaytex = Screen('GetOpenGLTexture', win, overlaywin);
             
+            % Disable bilinear filtering on this texture - always use
+            % nearest neighbour sampling to avoid interpolation artifacts
+            % in color index image for clut indexing:
+            glBindTexture(GL.TEXTURE_RECTANGLE_EXT, overlaytex);
+            glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
+            glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
+            glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
         else
             % No.: Create "no-op" shader for zero overlay:
             shSrc = 'float getMonoOverlayIndex(vec2 pos) { return(0.0); }';
@@ -991,7 +1012,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     
     % Test accuracy/correctness of GPU's rasterizer for different output
     % positioning methods: Return (non-zero) dx,dy offsets, if any:
-    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win, drivername);
+    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win, drivername); %#ok<ASGLU>
         
     if rpix~=0
         tlockXOffset = -rpix;
@@ -1219,6 +1240,17 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win, drivername)
 
     global GL;
 
+    winfo = Screen('GetWindowInfo', win);
+    if bitand(winfo.ImagingMode, kPsychNeedFastBackingStore)
+        % Imaging pipeline: Read from drawBuffer. Important in case imaging
+        % pipeline applies geometric transformations, e.g., gpu panel
+        % fitting. Otherwise we'd get false positives in test below.
+        readbuffer = 'drawBuffer';
+    else
+        % Read from system backbuffer:
+        readbuffer = 'backBuffer';
+    end
+    
     % Test for off-by-one bugs in graphics drivers / GPU's and compute
     % corrective offsets for our Bits++ T-Lock blitters...
 
@@ -1238,7 +1270,7 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win, drivername)
     Screen('DrawingFinished', win, 0, 1);
 
     % Read top-left 4x4 rectangle back, only the red channel:
-    testreadback = Screen('GetImage', win, [0 0 4 4], 'backBuffer', 0, 1);
+    testreadback = Screen('GetImage', win, [0 0 4 4], readbuffer, 0, 1);
 
     % Must flip here, to clear the "drawingfinished" state from above:
     Screen('Flip', win);
@@ -1280,7 +1312,7 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win, drivername)
     Screen('DrawingFinished', win, 0, 1);
 
     % Read top-left 4x4 rectangle back, only the red channel:
-    testreadback = Screen('GetImage', win, [0 0 4 4], 'backBuffer', 0, 1);
+    testreadback = Screen('GetImage', win, [0 0 4 4], readbuffer, 0, 1);
 
     % Must flip here, to clear the "drawingfinished" state from above:
     Screen('Flip', win);
@@ -1323,7 +1355,7 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win, drivername)
     Screen('DrawingFinished', win, 0, 1);
 
     % Read top-left 4x4 rectangle back, only the red channel:
-    testreadback = Screen('GetImage', win, [0 0 4 4], 'backBuffer', 0, 1);
+    testreadback = Screen('GetImage', win, [0 0 4 4], readbuffer, 0, 1);
 
     % Must flip here, to clear the "drawingfinished" state from above:
     Screen('Flip', win);

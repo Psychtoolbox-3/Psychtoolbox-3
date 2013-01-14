@@ -329,6 +329,7 @@ try
         % Get overlay window handle: Drawing into this window will affect
         % the overlay:
         wo = PsychImaging('GetOverlayWindow', w);
+        Screen('Preference','TextAntiAliasing', 0);
     else
         wo = 0;
     end
@@ -541,6 +542,7 @@ try
     tend = Screen('Flip', w);
     fprintf('Average update rate in pipeline was %f Hz.\n', nmaxbench / (tend - tstart));
     
+    Screen('Preference','TextAntiAliasing', 1);
     
     % We're done: Close all windows and textures:
     Screen('CloseAll');    
@@ -548,6 +550,7 @@ catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
     Screen('CloseAll');
+    Screen('Preference','TextAntiAliasing', 1);
     ShowCursor;
     psychrethrow(psychlasterror);
 end %try..catch..
