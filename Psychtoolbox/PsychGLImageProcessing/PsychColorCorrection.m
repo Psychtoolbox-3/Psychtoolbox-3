@@ -127,6 +127,23 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %   out.rgb = [r', g', b'] / w'
 %   out.a = a
 %
+% * 'SensorToPrimary' : Implement the same conversion as SensorToPrimary.m
+%
+%   This can convert from XYZ sensor tristimulus values to standard RGB
+%   primary color values. This is the right thing to do if your display
+%   device is linearized via use of a proper gamma correction method.
+%
+%   Use the function PsychColorCorrection('SetSensorToPrimary') below to
+%   assign the 'cal'ibration struct to use for actual conversion from XYZ
+%   color values to RGB primaries.
+%
+%
+% * 'xyYToXYZ' : Implement the same conversion as xyYToXYZ.m
+%
+%   This can convert to tristimulus XYZ color coordinates from
+%   chromaticity (x,y) and luminance (Y) color coordinates xyY. It performs
+%   the same color space conversion as the M-Function XYZ = xyYToXYZ(xyY).
+%
 %
 % * 'LookupTable' : Apply color correction by color table lookup, ie. a CLUT.
 %
@@ -270,6 +287,13 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % - Set the 4-by-4 color transformation matrix to use for the 'MatrixMultiply4'
 % color correction method. 'matrix' must be the 2D 4 rows by 4 columns
 % matrix to use. By default, the matrix is set to an identity matrix.
+%
+%
+% PsychColorCorrection('SetSensorToPrimary', window, cal [, viewId]);
+% - Set the 'cal'ibration struct to use for the 'SensorToPrimary' color
+% correction method. 'cal' must be the same input format as used for the
+% M-Function SensorToPrimary(). By default, the transformation is a "no
+% operation".
 %
 %
 % PsychColorCorrection('SetLookupTable', window, clut [, viewId][, maxinput=1][, scalefactor]);
@@ -449,7 +473,8 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % 21.08.2012 Add support for 3D CLUTs for "color cube" lookups. (MK)
 % 21.08.2012 Add 'Verbosity' level support. (MK)
 % 24.08.2012 Add 'SetMultMatrix4' support for 4-by-4 matrix multiply. (MK)
-%
+% 25.01.2013 Add 'SensorToPrimary' XYZ -> RGB colorspace conversion. (MK)
+% 26.01.2013 Add 'xyYToXYZ' xyY -> XYZ colorspace conversion. (MK)
 
 % GL is needed for shader setup and parameter changes:
 global GL;
@@ -553,9 +578,14 @@ if strcmpi(cmd, 'GetCompiledShaders')
             icmShaders = LoadShaderFromFile('ICMSimpleGammaCorrectionShader.frag.txt', [], debuglevel);
             icmIdString = sprintf('ICM:%s', icmSpec.type);
             
-        case {'MatrixMultiply4'}
+        case {'MatrixMultiply4', 'SensorToPrimary'}
             % Load our matrix multiply shader:
             icmShaders = LoadShaderFromFile('ICMMatrixMult4Shader.frag.txt', [], debuglevel);
+            icmIdString = sprintf('ICM:%s', icmSpec.type);
+            
+        case {'xyYToXYZ'}
+            % Load our xyYToXYZ colorspace conversion shader:
+            icmShaders = LoadShaderFromFile('ICMConvert_xyYToXYZ_Shader.frag.txt', [], debuglevel);
             icmIdString = sprintf('ICM:%s', icmSpec.type);
             
         % Color correction by CLUT texture lookup table operation:
@@ -703,9 +733,12 @@ if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
                 % Set 3x3 transform matrix to identity matrix by default:
                 glUniformMatrix3fv(glGetUniformLocation(glsl, 'GainsLeft'), 1, 0, [[1 0 0]; [0 1 0]; [0 0 1]]);
 
-            case {'MatrixMultiply4'}
+            case {'MatrixMultiply4', 'SensorToPrimary'}
                 % Set 4x4 transform matrix to identity matrix by default:
                 glUniformMatrix4fv(glGetUniformLocation(glsl, 'M'), 1, 0, [[1 0 0 0]; [0 1 0 0]; [0 0 1 0]; [0 0 0 1]]);
+
+            case {'xyYToXYZ'}
+                % Nothing to do for xyYToXYZ colorspace conversion shader.
                 
             otherwise
                 error('Unknown type of color correction requested! Internal bug?!?');
@@ -1064,6 +1097,105 @@ if strcmpi(cmd, 'SetMultMatrix4')
     glUseProgram(0);
 
     return;
+end
+
+if strcmpi(cmd, 'SetSensorToPrimary')
+    % Need GL from here on...
+    if isempty(GL)
+        error('SetSensorToPrimary: No internal GL struct defined in "SetSensorToPrimary" routine?!? This is a bug - Check code!!');
+    end
+    
+    if nargin < 2
+        error('SetSensorToPrimary: Must provide window handle to onscreen window as 2nd argument!');
+    end
+
+    if nargin < 3
+        error('SetSensorToPrimary: Must provide ''cal'' struct, just as for M-Function ''SensorToPrimary''.');
+    end
+    
+    % Fetch window handle:
+    win = varargin{1};
+    
+    % Fetch calibration struct:
+    cal = varargin{2};
+    
+    if ~isstruct(cal)
+        error('SetSensorToPrimary: ''cal'' parameter must be a calibration struct, just as for M-Function ''SensorToPrimary''.');
+    end
+    
+    if ~isfield(cal, 'M_linear_device') || ~isfield(cal, 'ambient_linear')
+        error('SetSensorToPrimary: ''cal'' struct is missing at least one of the required M_linear_device or ambient_linear fields.');
+    end
+    
+    % Extract the info we need and validate further (see SensorToPrimary for reference):
+    M_linear_device = cal.M_linear_device;
+    ambient_linear  = cal.ambient_linear;
+    
+    if isempty(M_linear_device) || isempty(ambient_linear) || ~isnumeric(M_linear_device) || ~isnumeric(ambient_linear)
+        error('SetSensorToPrimary has not been called on valid fields M_linear_device and ambient_linear in calibration structure.');
+    end
+    
+    % Ambient corrections
+    [ma,na] = size(ambient_linear);
+    if (ma ~= 3) || (na ~= 1)
+        error('SetSensorToPrimary: Incorrect dimensions for ambient_linear. Must be a 3 element column vector.');
+    end
+    
+    % Color space conversion
+    [mm,nm] = size(M_linear_device);
+    if (mm ~= 3) || (nm ~= 3)
+        error ('SetSensorToPrimary: Incorrect dimensions for M_linear_device. Must be a 3-by-3 color matrix.');
+    end
+
+    % This is what we want to implement, with sensor being the (X,Y,Z) input
+    % tristimulus color vector, and primary the output (R,G,B) color vector:
+    % sensora = sensor - ambient_linear;
+    % primary = M_linear_device * sensora;
+    %
+    % We do this by a 4x4 matrix vector multiplication:
+    %
+    % <=> primary = M_linear_device * (sensor - ambient_linear)
+    % <=> primary = M_linear_device * sensor - M_linear_device * ambient_linear
+    % <=> primary = M_linear_device * sensor - constC with constC = M_linear_device * ambient_linear
+    %
+    % <=> [ M_linear_device -constC ] with M_linear_device is upper 3x3 matrix embedded in 4 x 4 matrix
+    %     [ 0    0     0     1      ] and -constC embedded in right column of 4 x 4 matrix
+    %
+    %
+    % This way the shader just needs to multiply our final matrix with the
+    % input color vector.
+    
+    % Build constC:
+    constC = M_linear_device * ambient_linear;
+    
+    % Build mother 4 x 4 matrix:
+    mat = eye(4); % Start off as identity 4x4 matrix.
+    mat(1:3, 1:3) = M_linear_device; % Embed upper 3x3 color matrix.
+    mat(1:3,   4) = -constC; % Embed -constC 3 element vector.
+    
+    % mat is all we need (and love of course).
+    
+    if nargin < 4
+        viewId = [];
+    else
+        viewId = varargin{3};
+    end
+
+    icmId = 'SensorToPrimary';
+    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmId, viewId); %#ok<NASGU>
+    
+    try
+        % Set 4x4 transform matrix to identity matrix by default:
+        glUniformMatrix4fv(glGetUniformLocation(glsl, 'M'), 1, 0, single(mat));
+    catch
+        % Empty...
+        psychrethrow(psychlasterror);
+    end
+    
+    % Unbind shader:
+    glUseProgram(0);
+
+    return;    
 end
 
 if strcmpi(cmd, 'SetLookupTable')

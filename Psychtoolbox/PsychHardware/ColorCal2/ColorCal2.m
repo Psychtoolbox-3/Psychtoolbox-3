@@ -91,6 +91,7 @@ function varargout = ColorCal2(command, varargin)
 % History:
 % 03.04.2009  Written (Chris Broussard).
 % 18.08.2010  Make useBigEndian persistent. Reported by Ian A. ("tatooed.tentackle@yahoo.com")
+% 19.01.2013  Make compatible with GNU/Octave-3 (Mario Kleiner).
 
 persistent usbHandle;
 persistent useBigEndian;
@@ -235,7 +236,7 @@ switch lower(command)
 			outString = char(PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength));
 
 			% Parse the output string and store the values returned.
-			colorMatrix(i, :) = sscanf(outString, 'OK00,%5d,%5d,%5d')';
+			colorMatrix(i, :) = sscanf(outString, 'OK00,%d,%d,%d')';
 		end
 
 		% Convert the matrix values from Minolta format to floating point.
@@ -254,7 +255,7 @@ switch lower(command)
 		outString = char(PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength));
 		
 		% Parse the device info string.
-		x = sscanf(outString, 'OK00,1,%3d,100.10,%8d,%3d');
+		x = sscanf(outString, 'OK00,1,%d,100.10,%d,%d');
 		
 		% Set the output: rom version, serial number, and build number.
 		dInfo.romVersion = x(1);

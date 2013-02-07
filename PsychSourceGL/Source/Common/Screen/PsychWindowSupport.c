@@ -55,6 +55,10 @@
 #include <errno.h>
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+extern psych_bool useCoreVideoTimestamping;
+#endif
+
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include "ptbstartlogo.h"
 #else
@@ -2738,12 +2742,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     }
     
     // Setup reasonable slack-factor for deadline miss detector:
-    if (windowRecord->VBL_Endline!=-1) {
-        // If beam position queries work, we use a tight value:
+    if (((windowRecord->VBL_Endline!=-1) && (vbltimestampmode>=0) && (vbltimestampmode<=2)) ||
+        ((vbltimestampmode == 4) && (!(windowRecord->specialflags & kPsychOpenMLDefective) || (windowRecord->VBL_Endline!=-1)))) {
+        // If beamposition queries work, or OpenML timestamping is supported and working, we use a tight value:
         slackfactor = 1.05;
     }
     else {
-        // If beam position queries don't work, we use a "slacky" value:
+        // If beam position queries don't work, or are disabled, we use a "slacky" value:
         slackfactor = 1.2;
     }
     
@@ -3304,10 +3309,20 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // correct timestamping, but preempted by our Matlab thread in realtime mode. If we don't succeed
             // in 2 msecs then something's pretty screwed and we should just give up.
             while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp) && (vbltimestampquery_retrycount < 8) && (time_at_swaprequest - preflip_vbltimestamp > 0.001)) {
+                #if PSYCH_SYSTEM == PSYCH_OSX
+                    // Shoddy OSX 10.7 or later with its deficient Core video display link implementation in use?
+                    // If so we wait another extra bit of time to give it a chance to catch up to reality:
+                    // CoreVideo display link callbacks can be tremendeously delayed wrt. actual VBlank time, so
+                    // querying vblank time and count too close to a vblank can easily provide us with stale
+                    // results. We take longer breaks between query retries to increase the chance of a callback
+                    // delivering updated results to us. Best we can do, after all other approaches turned out to
+                    // be flawed or fragile as well and Apple seems to be utterly disinterested in fixing their mess.
+                    if (useCoreVideoTimestamping) PsychWaitIntervalSeconds(0.00025);
+                #endif
                 PsychWaitIntervalSeconds(0.00025);
                 postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
                 vbltimestampquery_retrycount++;
-            }		
+            }
         }
 		
         // Calculate estimate of real time of VBL, based on our post glFinish() timestamp, post glFinish() beam-

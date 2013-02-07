@@ -1041,8 +1041,16 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         if (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "thread-types")) {
             // Yes. Set it up. From http://ffmpeg.org/doxygen/trunk/libavcodec_2avcodec_8h.html
             // FF_THREAD_SLICE == 2, FF_THREAD_FRAME == 1, so select both by setting = 2 + 1
-            g_object_set(G_OBJECT(videocodec), "thread-types", 2 + 1, NULL);
-            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use frame-threading and slice-threading for parallel decoding.\n");
+            if (getenv("PSYCH_GST_THREAD_TYPES")) {
+                // User env override: Whatever it wants:
+                g_object_set(G_OBJECT(videocodec), "thread-types", (int) atoi(getenv("PSYCH_GST_THREAD_TYPES")), NULL);
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use threading method %s for parallel decoding.\n", getenv("PSYCH_GST_THREAD_TYPES"));
+            }
+            else {
+                // Default: Enable both slice and frame threading:
+                g_object_set(G_OBJECT(videocodec), "thread-types", 2 + 1, NULL);
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use frame-threading and slice-threading for parallel decoding.\n");
+            }
         }
         else if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Video decoder does not support selection of parallel decoding mode via 'thread-types' property.\n");
     }

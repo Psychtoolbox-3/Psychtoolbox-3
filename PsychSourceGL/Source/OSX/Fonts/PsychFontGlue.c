@@ -178,16 +178,28 @@ void PsychInitFontList(void)
     fontListHead=PsychFontListHeadKeeper(FALSE, NULL); //get the font list head.
     if(fontListHead) PsychErrorExitMsg(PsychError_internal, "Attempt to set new font list head when one is already set.");
         
-    fontRecord=NULL;
-    halt= ATSFontIteratorCreate(PSYCH_ATS_ITERATOR_CONTEXT, NULL, NULL, PSYCH_ATS_ITERATOR_SCOPE, &fontIterator);
-    i=0;
+    fontRecord = NULL;
+    fontIterator = NULL;
+    halt = ATSFontIteratorCreate(PSYCH_ATS_ITERATOR_CONTEXT, NULL, NULL, PSYCH_ATS_ITERATOR_SCOPE, &fontIterator);
+    i = 0;
 	
-    while(halt==noErr){
+    while (halt==noErr) {
+        // Give repair hints early and obnoxiously. Experience shows we might crash during enumeration of a
+        // corrupt OSX font database, so make sure we get out the helpful message as early as possible. Doing
+        // this (just) at the end of enumeration might be too late - we might never get there...
+        if (trouble && PsychPrefStateGet_Verbosity() > 0) {
+            printf("\nPTB-HINT: ========================================================================================================================\n");
+            printf("PTB-HINT: Go to the Application folder and open the 'Font Book' application. It allows you to check and repair your font database.\n");
+            printf("PTB-HINT: Run its 'Validate' function on all installed fonts. Another thing you could try is downloading and running the free\n");
+            printf("PTB-HINT: FontNuke application (Google will find it for you) to regenerate corrupt OSX font caches. Good luck!\n");
+            printf("PTB-HINT: ========================================================================================================================\n\n");
+        }
+
         halt=ATSFontIteratorNext(fontIterator, &tempATSFontRef);
         if(halt==noErr){
             //create a new  font  font structure.  Set the next field  to NULL as  soon as we allocate the font so that if 
             //we break with an error then we can find the end when we  walk down the linked list. 
-            fontRecord=(PsychFontStructPtrType)malloc(sizeof(PsychFontStructType));
+            fontRecord=(PsychFontStructPtrType) calloc(1, sizeof(PsychFontStructType));
             fontRecord->next=NULL;
 
             //Get  FM and ATS font and font family references from the ATS font reference, which we get from iteration.
@@ -200,36 +212,42 @@ void PsychInitFontList(void)
 #else            
             // Create CTFont from given ATSFontRef. Available since OSX 10.5
             tempCTFontRef = CTFontCreateWithPlatformFont(fontRecord->fontATSRef, 0.0, NULL, NULL);
-
-            // Get font family name from CTFont:
-            CFStringRef cfFamilyName = CTFontCopyFamilyName(tempCTFontRef);
-
-            // Retrieve symbolic traits of font -- the closest equivalent of the fmStyle from the
-            // good'ol fontManager:
-            CTFontSymbolicTraits ctTraits = CTFontGetSymbolicTraits(tempCTFontRef);
-            
-            // Remap new trait constants to old constants for later Screen('TextStyle') matching.
-            fmStyle = 0;
-            if (ctTraits & kCTFontBoldTrait) fmStyle |= 1;
-            if (ctTraits & kCTFontItalicTrait) fmStyle |= 2;
-            if (ctTraits & kCTFontCondensedTrait) fmStyle |= 32;
-            if (ctTraits & kCTFontExpandedTrait) fmStyle |= 64;
-            
-            // CTFont no longer needed:
-            CFRelease(tempCTFontRef);
-
-            // Convert to C-String and assign:
-            resultOK = CFStringGetCString(cfFamilyName, (char*) fontRecord->fontFMFamilyName, 255, kCFStringEncodingASCII);
-            if(!resultOK){
+            if (tempCTFontRef) {
+                // Get font family name from CTFont:
+                CFStringRef cfFamilyName = CTFontCopyFamilyName(tempCTFontRef);
+                
+                // Retrieve symbolic traits of font -- the closest equivalent of the fmStyle from the
+                // good'ol fontManager:
+                CTFontSymbolicTraits ctTraits = CTFontGetSymbolicTraits(tempCTFontRef);
+                
+                // Remap new trait constants to old constants for later Screen('TextStyle') matching.
+                fmStyle = 0;
+                if (ctTraits & kCTFontBoldTrait) fmStyle |= 1;
+                if (ctTraits & kCTFontItalicTrait) fmStyle |= 2;
+                if (ctTraits & kCTFontCondensedTrait) fmStyle |= 32;
+                if (ctTraits & kCTFontExpandedTrait) fmStyle |= 64;
+                
+                // CTFont no longer needed:
+                CFRelease(tempCTFontRef);
+                
+                // Convert to C-String and assign:
+                resultOK = cfFamilyName && CFStringGetCString(cfFamilyName, (char*) fontRecord->fontFMFamilyName, 255, kCFStringEncodingASCII);
+                if(!resultOK){
+                    if (cfFamilyName) CFRelease(cfFamilyName);
+                    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to retrieve font family name for font... Defective font?!? Skipped this entry...\n");
+                    trouble = TRUE;
+                    continue;
+                }
+                
+                // Get ATSRef for font family:
+                fontRecord->fontFamilyATSRef = ATSFontFamilyFindFromName(cfFamilyName, kATSOptionFlagsDefault);
                 CFRelease(cfFamilyName);
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to retrieve font family name for font... Defective font?!? Skipped this entry...\n");
-				trouble = TRUE;
-				continue;
             }
-
-            // Get ATSRef for font family:
-            fontRecord->fontFamilyATSRef = ATSFontFamilyFindFromName(cfFamilyName, kATSOptionFlagsDefault);
-            CFRelease(cfFamilyName);
+            else {
+                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to retrieve CTFontRef for font... Defective font?!? Skipped this entry...\n");
+                trouble = TRUE;
+                continue;
+            }
 #endif
 
             //get the font name and set the the corresponding field of the struct
@@ -239,9 +257,9 @@ void PsychInitFontList(void)
 				continue;
             }
             
-            resultOK=CFStringGetCString(cfFontName, (char*) fontRecord->fontFMName, 255, kCFStringEncodingASCII);
+            resultOK = cfFontName && CFStringGetCString(cfFontName, (char*) fontRecord->fontFMName, 255, kCFStringEncodingASCII);
             if(!resultOK){
-                CFRelease(cfFontName);
+                if (cfFontName) CFRelease(cfFontName);
 				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to convert fontFMName CF string to char string. Defective font?!? Skipped this entry...\n");
 				trouble = TRUE;
 				continue;
@@ -255,16 +273,18 @@ void PsychInitFontList(void)
 				continue;
             }
 
-            resultOK=CFStringGetCString(cfFontName, (char*) fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII); //kCFStringEncodingASCII matches MATLAB for 0-127
+            resultOK = cfFontName && CFStringGetCString(cfFontName, (char*) fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII); //kCFStringEncodingASCII matches MATLAB for 0-127
             if(!resultOK){
-                CFRelease(cfFontName);
+                if (cfFontName) CFRelease(cfFontName);
 				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to convert fontPostScriptName CF string to char string for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
 				continue;
             }
             CFRelease(cfFontName);
 
-            //get the QuickDraw name of the font
+            // Get the QuickDraw name of the font:
+            fontRecord->fontFamilyQuickDrawName[0] = 0;
+            fontFamilyQuickDrawNamePString[0] = 0;
             ATSFontFamilyGetQuickDrawName(fontRecord->fontFamilyATSRef, fontFamilyQuickDrawNamePString);
             #ifndef __LP64__
             CopyPascalStringToC(fontFamilyQuickDrawNamePString, (char*) fontRecord->fontFamilyQuickDrawName);
@@ -340,22 +360,29 @@ void PsychInitFontList(void)
             // This has been already done above for 64-Bit:
             #ifndef __LP64__
             fmStatus=FMGetFontFamilyName(fontRecord->fontFamilyFMRef, fmFontFamilyNamePString);
+            if(fmStatus!=noErr){
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the fontFMFamilyName for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
+				trouble = TRUE;
+				continue;
+            }
             CopyPascalStringToC(fmFontFamilyNamePString, (char*) fontRecord->fontFMFamilyName);
             #endif
             
             fontRecord->fontFMStyle=fmStyle;
             fontRecord->fontFMNumStyles=PsychFindNumFMFontStylesFromStyle(fmStyle);
             fontRecord->fontFMNumStyles= fontRecord->fontFMNumStyles ? fontRecord->fontFMNumStyles : 1; //because the name is "normal" even if there are no styles.  
-            //get the locale info which is a property of the font family
+            // Get the locale info which is a property of the font family:
+            // No error checking is done here, because many (most?) fonts miss the information,
+            // so we would error-out all the time and this is non-critical for us:
             textEncoding=ATSFontFamilyGetEncoding(fontRecord->fontFamilyATSRef);
             scriptInfoOK=RevertTextEncodingToScriptInfo(textEncoding, &scriptCode, &languageCode, NULL);
             localOK=LocaleRefFromLangOrRegionCode(languageCode, kTextRegionDontCare, &locale); 
-            localOK=LocaleRefGetPartString(locale, kLocaleLanguageMask, 255, (char*) fontRecord->locale.language);			fontRecord->locale.language[255]='\0'; 
-            localOK=LocaleRefGetPartString(locale, kLocaleLanguageVariantMask, 255, (char*) fontRecord->locale.languageVariant);	fontRecord->locale.languageVariant[255]='\0';
-            localOK=LocaleRefGetPartString(locale, kLocaleRegionMask, 255, (char*) fontRecord->locale.region);			fontRecord->locale.region[255]='\0';
-            localOK=LocaleRefGetPartString(locale, kLocaleRegionVariantMask, 255, (char*) fontRecord->locale.regionVariant);	fontRecord->locale.regionVariant[255]='\0';
-            localOK=LocaleRefGetPartString(locale, kLocaleAllPartsMask, 255, (char*) fontRecord->locale.fullName);		fontRecord->locale.fullName[255]='\0';
-
+            localOK |= LocaleRefGetPartString(locale, kLocaleLanguageMask, 255, (char*) fontRecord->locale.language);			fontRecord->locale.language[255]='\0'; 
+            localOK |= LocaleRefGetPartString(locale, kLocaleLanguageVariantMask, 255, (char*) fontRecord->locale.languageVariant);	fontRecord->locale.languageVariant[255]='\0';
+            localOK |= LocaleRefGetPartString(locale, kLocaleRegionMask, 255, (char*) fontRecord->locale.region);			fontRecord->locale.region[255]='\0';
+            localOK |= LocaleRefGetPartString(locale, kLocaleRegionVariantMask, 255, (char*) fontRecord->locale.regionVariant);	fontRecord->locale.regionVariant[255]='\0';
+            localOK |= LocaleRefGetPartString(locale, kLocaleAllPartsMask, 255, (char*) fontRecord->locale.fullName);		fontRecord->locale.fullName[255]='\0';
+            
 			// Init for fontRecord (nearly) finished.
 			
 			// Set this fontRecord as head of font-list, or enqueue it in existing list:
@@ -375,30 +402,37 @@ void PsychInitFontList(void)
         }else if(halt == kATSIterationScopeModified){
             //exit because the font database changed during this loop.
             PsychFreeFontList();
-            PsychErrorExitMsg(PsychError_internal, "The system font database was modified during font list setup. Please 'clear all' and restart your script.");
+            if (fontIterator) ATSFontIteratorRelease(&fontIterator);
+            PsychErrorExitMsg(PsychError_system, "The system font database was modified during font list setup. Please 'clear all' and restart your script.");
         }
 		// Next parse iteration in system font database...
     }
 	
+    if (fontIterator) ATSFontIteratorRelease(&fontIterator);
+    
     if(halt != kATSIterationCompleted){
         PsychFreeFontList();
-        PsychErrorExitMsg(PsychError_internal, "Font iteration terminated prematurely. OS-X Font database corrupted?!?");
+        trouble = TRUE;
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Font iteration during enumeration terminated prematurely. OS-X Font database corrupted?!?");
     }
 	
 	// Did we get a hand on at least one font?
 	if (i==0) {
+        PsychFreeFontList();
+        trouble = TRUE;
 		if (PsychPrefStateGet_Verbosity() > 0) {
 			printf("PTB-ERROR: In font initialization: Could not even retrieve one valid font from the system! The OS-X font database must be corrupt.\n");
-			printf("PTB-ERROR: Will try to continue but will likely crash if your code tries to call any of the font handling or text drawing functions.\n");
-			trouble = TRUE;
+			printf("PTB-ERROR: Will try to continue but will likely abort if your code tries to call any of the font handling or text drawing functions.\n");
 		}
 	}
 	
 	if (trouble && PsychPrefStateGet_Verbosity() > 0) {
+		printf("PTB-HINT: ========================================================================================================================\n");
 		printf("PTB-HINT: Go to the Application folder and open the 'Font Book' application. It allows you to check and repair your font database.\n");
+        printf("PTB-HINT: Run its 'Validate' function on all installed fonts. Another thing you could try is downloading and running the free\n");
+        printf("PTB-HINT: FontNuke application (Google will find it for you) to regenerate corrupt OSX font caches. Good luck!\n");
+		printf("PTB-HINT: ========================================================================================================================\n");
 	} 
-
-    ATSFontIteratorRelease(&fontIterator);
 
     // Font database ready for use.
 	return;

@@ -41,7 +41,7 @@ int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmReq
 	request.wIndex = wIndex;
 	request.pData = pData;
 
-	dev = devRecord->device;
+	dev = (IOUSBDeviceInterface **) devRecord->device;
 	if (dev == NULL) {
 		PsychErrorExitMsg(PsychError_internal, "IOUSBDeviceInterface** device points to NULL device!");
 	}
@@ -71,7 +71,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 	CFMutableDictionaryRef  matchingDict;
 	SInt32                  usbVendor = (SInt32) spec->vendorID;
 	SInt32                  usbProduct = (SInt32) spec->deviceID;
-	IOUSBDeviceInterface    **dev = NULL;
+	IOUSBDeviceInterface182 **dev = NULL;
 	io_iterator_t           iterator;
 	IOCFPlugInInterface     **plugInInterface = NULL;
 	HRESULT                 result;
@@ -80,6 +80,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 	UInt16                  vendor;
 	UInt16                  product;
 	UInt16                  release;
+    int                     i;
 	psych_bool					deviceFound = false;
 	char *name="",*description="";
 
@@ -131,7 +132,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 		
 		// Now create the device interface
 		result = (*plugInInterface)->QueryInterface(plugInInterface,
-													CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID),
+													CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID182),
 													(LPVOID *)&dev);
 		
 		// Don't need the intermediate plug-in after device interface is created.
@@ -168,8 +169,24 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 	// either deviceFound == false on failure, or deviceFound == true and 'dev'
 	// is the device interface to our device.
 	if (deviceFound) {
-		// Open the device to change its state
-		kr = (*dev)->USBDeviceOpen(dev);
+		// Open the device to change its state. Retry opening up to 5 times if
+        // it doesn't immediately succeed:
+        for (i = 0; i < 5; i++) {
+            // Do a seize-open: This asks other drivers or apps claiming the device to
+            // release it for us if possible -- increases our chance of successful open:
+            kr = (*dev)->USBDeviceOpenSeize(dev);
+            
+            // If we don't get a kIOReturnExclusiveAccess, we're done, either successfully
+            // or with fatal error:
+            if (kr != kIOReturnExclusiveAccess) break;
+            
+            // Got kIOReturnExclusiveAccess -- Device claimed by other app or driver.
+            // Wait a second, then possibly retry, in the hope that the seize-request
+            // has been honored after a small amount of time:
+            PsychWaitIntervalSeconds(1);
+        }
+        
+        // Final verdict on our open attempt?
 		if (kr != kIOReturnSuccess) {
 			(void) (*dev)->Release(dev);
 			
@@ -180,7 +197,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 		}
 		
 		// Configure device
-		kr = ConfigureDevice(dev, spec->configurationID);
+		kr = ConfigureDevice((IOUSBDeviceInterface **) dev, spec->configurationID);
 		if (kr != kIOReturnSuccess) {
 			(void) (*dev)->USBDeviceClose(dev);
 			(void) (*dev)->Release(dev);

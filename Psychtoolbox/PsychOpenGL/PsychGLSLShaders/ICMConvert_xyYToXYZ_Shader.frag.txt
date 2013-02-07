@@ -1,0 +1,36 @@
+/* ICMConvert_xyYToXYZ_Shader.frag.txt
+ *
+ * Implements colorspace conversion from chromacity+Luminance color space to
+ * tristimulus color space. Implements M-File function xyYToXYZ.m
+ *
+ * (C) 2013 Mario Kleiner - Released to you under MIT license.
+ */
+
+vec4 icmTransformColor(vec4 incolor)
+{
+    vec4 outcolor;
+    vec3 XYZ, xyY;
+    float z;
+
+    /* Alpha is passed through unmodified: */
+    outcolor.a = incolor.a;
+
+    /* Direct translation of xyYToXYZ.m, just with 0-based indexing instead
+     * of 1-based indexing as in Matlab/Octave, so all indices shifted - 1:
+     */
+    xyY = incolor.rgb;
+    z = 1.0 - xyY[0] - xyY[1];
+    XYZ[0] = xyY[2] * xyY[0] / xyY[1];
+    XYZ[1] = xyY[2];
+    XYZ[2] = xyY[2] * z / xyY[1];
+
+    outcolor.rgb = XYZ;
+    return(outcolor);
+}
+
+/* This function simply makes no sense in the context of a colorspace conversion,
+ * but needs to be here. Define it as no-op, always returning identity. */
+float icmTransformColor1(float incolor)
+{
+    return(incolor);
+}

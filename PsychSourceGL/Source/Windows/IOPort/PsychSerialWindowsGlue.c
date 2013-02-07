@@ -370,8 +370,12 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
 			sprintf(errmsg, "Error opening serial port device %s - No such serial port device exists! (%d) [ENOENT].\n", portSpec, myerrno);
 			usererr = TRUE;
 		}
-		else if (myerrno == ERROR_SHARING_VIOLATION || myerrno == ERROR_ACCESS_DENIED) {
-			sprintf(errmsg, "Error opening serial port device %s - The serial port is already open, close it first! (%d) [EBUSY EPERM]. Could be a permission problem as well.\n", portSpec, myerrno);
+		else if (myerrno == ERROR_SHARING_VIOLATION) {
+			sprintf(errmsg, "Error opening serial port device %s - The serial port is already open in this or some other application, close it first! (Code = %d) [ERROR_SHARING_VIOLATION].\n", portSpec, myerrno);
+			usererr = TRUE;
+		}
+		else if (myerrno == ERROR_ACCESS_DENIED) {
+			sprintf(errmsg, "Error opening serial port device %s - The system didn't grant access (Code = %d) [ERROR_ACCESS_DENIED]. Maybe a permission or configuration problem?\n", portSpec, myerrno);
 			usererr = TRUE;
 		}
 		else {
