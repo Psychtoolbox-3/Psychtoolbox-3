@@ -318,7 +318,7 @@ BOOL CALLBACK PsychHostWindowEnumFunc(HWND hwnd, LPARAM passId)
 	#ifndef PTBOCTAVE3MEX
 		// Running on Matlab: Use Matlab name matching:
 		// Pass 1: Scan for Matlab in GUI mode:
-		if ((passId == 1) && strstr(hostwinName, "MATLAB  ")) {
+		if ((passId == 1) && (strstr(hostwinName, "MATLAB  ") || strstr(hostwinName, "MATLAB R20"))) {
 			// Found something that looks ok:
 			hostwinHandle = hwnd;
 			return(FALSE);
