@@ -527,6 +527,35 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   "mode" zero.
 %
 %
+% * 'UseBits#' Tell Psychtoolbox that additional functionality for
+%   displaying the onscreen window on a Cambridge Research Systems Bits#
+%   device should be enabled.
+%
+%   This command is implied by enabling a Bits+ or Bits# video mode by one
+%   of the commands for the Bits+/Bits# in the following sections, if the
+%   driver can auto-detect a connected Bits# device. If it cannot auto-detect
+%   a connected Bits# device and this command is omitted, Psychtoolbox will
+%   instead assume that an older Bits+ is in use and only allow functionality
+%   common to Bits# and Bits+, without automatic video mode switching.
+%
+%   If you provide this command, you can optionally specify the name of the
+%   serial port to which your Bits# is connected, instead of leaving it to
+%   the system to find this out (either via configuration file or via a
+%   guess-o-matic).
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseBits#' [, BitsSharpSerialPort]);
+%
+%   'BitsSharpSerialPort' is optional and can be set to the name of a serial
+%   port for your specific operating system and computer, to which the Bits#
+%   is connected. If omitted, Psychtoolbox will look for the name in the first
+%   line of text of a text file stored under the filesystem path and filename
+%   [PsychtoolboxConfigDir 'BitsSharpConfig.txt']. If that file is empty, the
+%   serial port is auto-detected (Good luck!).
+%
+%   'UseBits#' mostly prepares use of a variety of new Bits# subfunctions
+%   in the BitsPlusPlus() high-level driver ("help BitsPlusPlus").
+%
+%
 % * 'EnableBits++Bits++Output' Setup Psychtoolbox for Bits++ mode of the
 %   Cambridge Research Systems Bits++ box. This loads the graphics
 %   hardwares gamma table with an identity mapping so it can't interfere
@@ -1711,6 +1740,65 @@ stereoMode = -1;
 % No datapixx by default:
 datapixxmode = 0;
 
+% No Bits+ or Bits# by default:
+crsbitsdevice = 0;
+
+% Special setup for CRS Bits# next-generation devices:
+% Is a Bits+ / Bits# specific video display mode requested? Or
+% explicit use of a Bits# device?
+floc = [ find(mystrcmp(reqs, 'EnableBits++Bits++Output')) ];
+floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Mono++Output')) ; find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')) ];
+floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Color++Output')) ; find(mystrcmp(reqs, 'UseBits#')) ];
+if ~isempty(floc)
+    % Explicit use of Bits# requested? Or only implicit by video mode?
+    floc = find(mystrcmp(reqs, 'UseBits#'));
+    if ~isempty(floc)
+        % Use of Bits# requested. Try to retrieve any special Bits# parameters to
+        % pass them to the OpenBits# function:
+        [row cols] = ind2sub(size(reqs), floc);
+
+        % Extract first parameter - This should be the serial port name, or [] empty:
+        bitsSharpPortname = reqs{row, 3};
+    else
+        % No specific usage of Bits# requested. Leave it to auto-detection
+        % if we work with a Bits# or with a Bits+:
+        bitsSharpPortname = [];
+    end
+
+    % Initialize serial port connection to Bits#, if any such device present:
+    if BitsPlusPlus('OpenBits#', bitsSharpPortname)
+        % Connection to Bits# established. Do we need to explicitely
+        % specify use of it? Only if it was not already done by usercode via
+        % keyword UseBits#
+        if isempty(floc)
+            % Bits# connected. Makeit explicit by adding the reqs task UseBits#
+            reqs(end+1, :) = cell(1, size(reqs, 2));
+            reqs{end, 2} = 'UseBits#';
+        end
+
+        % Mark use of Bits#:
+        crsbitsdevice = 2;
+
+        fprintf('PsychImaging: Will use a connected CRS Bits# device instead of a Bits+ for this session - Connection established.\n');
+    else
+        % No connection to Bits#. Was one requested? If not, we just assume we are
+        % operating against a good old Bits+ which does not support connections.
+        % Otherwise, failure to connect to Bits# would be, well, a failure:
+        if ~isempty(floc)
+            % Bummer:
+            sca;
+            error('PsychImaging: Use of a CRS Bits# device was requested, but connecting to it failed. Disconnected or misconfigured?!?');
+        else
+            % Mark use of Bits+:
+            crsbitsdevice = 1;
+
+            fprintf('PsychImaging: Will use a CRS Bits+ device, which i assume is connected to target display output screen.\n');
+        end
+    end
+end
+
+% End of Bits# setup, start of DataPixx/ViewPixx/ProPixx setup:
+
 % Remap Datapixx L48 mode to equivalent Bits++ mode:
 floc = find(mystrcmp(reqs, 'EnableDataPixxL48Output'));
 if ~isempty(floc)
@@ -2263,6 +2351,15 @@ end
 
 % --- Implementation of CLUT animation via clut remapping of colors ---
 floc = find(mystrcmp(reqs, 'EnableCLUTMapping'));
+% Is a display mode on a CRS Bits+/Bits# or VPixx DataPixx/ViewPixx/ProPixx requested which requires use
+% and setup of the devices hardware CLUT? If so we must turn 'EnableCLUTMapping' into a no-op, as it
+% would clash with the hardware clut update - and is also superseded by it. Detect the namestrings of
+% Bits++ CLUT palette display mode and Mono++ CLUT overlay palette mode. These Bits+ namestrings also
+% cover VPixx devices due to the remapping of VPixx names into CRS reqs:
+if ~isempty(find(mystrcmp(reqs, 'EnableBits++Bits++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
+    % Yep. We must no-op this 'EnableCLUTMapping' request:
+    floc = [];
+end
 if ~isempty(floc)
     % Which channel?
     for x=floc
@@ -3525,7 +3622,7 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % slave window, thereby cloning the master windows framebuffer to the
     % slave windows framebuffer:
     % TODO FIXME: We assume that texture handle '1' denotes the color
-    % attachment exture of finalizedFBO[1]. This is true if this is the
+    % attachment texture of finalizedFBO[1]. This is true if this is the
     % first opened onscreen window (ie., 99% of the time). If that
     % assumption doesn't hold, we will guess the wrong texture handle and
     % bad things will happen!
@@ -3541,8 +3638,14 @@ if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
     % Yes: Need to call into high level DataPixx driver for final setup:
     PsychDataPixx('PerformPostWindowOpenSetup', win);    
 end
-
 % --- End of Datapixx in use? ---
+
+% --- Bits# in use? ---
+if ~isempty(find(mystrcmp(reqs, 'UseBits#')))
+    % Yes: Need to call into high level BitsPlusPlus driver for final setup:
+    BitsPlusPlus('PerformPostWindowOpenSetup', win);    
+end
+% --- End of Bits# in use? ---
 
 % Do we need identity gamma tables / CLUT's loaded into the graphics card?
 if needsIdentityCLUT

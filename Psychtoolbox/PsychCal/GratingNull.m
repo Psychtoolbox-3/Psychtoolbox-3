@@ -98,11 +98,11 @@ Screen(window,'FillRect',0,OffsetRect(testRect,RectWidth(testRect),0))
 
 % Print instructions
 theText=message;
-theText=str2mat(theText,sprintf('View from %.1f meters.',distanceM));
-theText=str2mat(theText,'Move the mouse up and');
-theText=str2mat(theText,'down to null out the');
-theText=str2mat(theText,'grating. Click when the');
-theText=str2mat(theText,'screen appears uniform.');
+theText=char(theText,sprintf('View from %.1f meters.',distanceM));
+theText=char(theText,'Move the mouse up and');
+theText=char(theText,'down to null out the');
+theText=char(theText,'grating. Click when the');
+theText=char(theText,'screen appears uniform.');
 s=24;
 Screen(window,'TextFont','Arial');
 Screen(window,'TextSize',s);

@@ -1258,17 +1258,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       ifi_beamestimate = 0;
     }
 
-	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
-
-	// Running on nouveau? Then issue some words of caution about lack of timing precision:
-	if ((PsychPrefStateGet_Verbosity() > 1) && (strstr((char*) glGetString(GL_VENDOR), "nouveau") || strstr((char*) glGetString(GL_RENDERER), "nouveau"))) {
-		printf("\n\nPTB-WARNING: You are using the free nouveau graphics driver on your NVidia graphics card. As of %s,\n", PsychGetBuildDate());
-		printf("PTB-WARNING: this driver does *not allow* robust and precise visual stimulus onset timestamping by any method at all!\n");
-		printf("PTB-WARNING: If you need precise visual stimulus timing, either install the binary NVidia driver, or double-check\n");
-		printf("PTB-WARNING: that a more recent version of nouveau is installed and in fact does provide proper timing.\n");
-		printf("PTB-WARNING: You may find relevant info on the Psychtoolbox forum, Psychtoolbox Wiki, or by updating your Psychtoolbox.\n");
-		printf("PTB-WARNING: If this warning goes away by a Psychtoolbox update then your nouveau driver is probably safe to use.\n\n");
-	}
+    if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
 
     if(PsychPrefStateGet_Verbosity()>2) {
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
@@ -2126,7 +2116,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 			// reached, and we need to be on the proper field -- so left-eye stims start always at even (or odd) fields,
 			// at the users discretion:
 			if (!needWork && (tnow >= flipRequest->flipwhen) &&
-			    ((windowRecord->targetFlipFieldType == -1) || (((vblcount + 1) % 2) == (int) windowRecord->targetFlipFieldType))) {
+			    ((windowRecord->targetFlipFieldType == -1) || (((vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType))) {
 				// Yes: Time to update the backbuffers with our finalizedFBOs and do
 				// properly scheduled/timestamped bufferswaps:
 
@@ -3055,7 +3045,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &preflip_vblcount);
 		// Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
 		// if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
-		flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType) || (osspecific_asyncflip_scheduled && !must_wait);
+		flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType) || (osspecific_asyncflip_scheduled && !must_wait);
 		// If in wrong video cycle, we simply sleep a millisecond, then retry...
 		if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
 	} while (!flipcondition_satisfied);

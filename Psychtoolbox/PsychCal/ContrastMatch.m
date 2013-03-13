@@ -90,11 +90,11 @@ end
 
 % Print instructions
 theText=sprintf(     'Move the mouse up and');
-theText=str2mat(theText,'down to match the grating');
-theText=str2mat(theText,'contrasts. Click when ');
-theText=str2mat(theText,'you see one long grating,');
-theText=str2mat(theText,'partly occluded by a dark');
-theText=str2mat(theText,'filter.');
+theText=char(theText,'down to match the grating');
+theText=char(theText,'contrasts. Click when ');
+theText=char(theText,'you see one long grating,');
+theText=char(theText,'partly occluded by a dark');
+theText=char(theText,'filter.');
 s=24;
 Screen('TextFont','Chicago');
 Screen('TextSize',s);

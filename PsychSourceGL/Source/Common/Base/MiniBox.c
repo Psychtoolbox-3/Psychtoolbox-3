@@ -120,7 +120,7 @@ char *int2str(psych_int64 num)
 {
 	static char numStr[256];
 	#if PSYCH_SYSTEM != PSYCH_WINDOWS
-	sprintf(numStr, "%lld", num);
+	sprintf(numStr, "%lld", (long long int) num);
 	#else
 	// TODO FIXME AUDIT 64BIT : Figure out a way to handle psych_int64 printing on Windows:
 	sprintf(numStr, "%d", (int) num);

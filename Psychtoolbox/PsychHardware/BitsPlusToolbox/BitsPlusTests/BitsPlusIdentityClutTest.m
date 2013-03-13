@@ -1,4 +1,4 @@
-function BitsPlusIdentityClutTest(whichScreen, dpixx)
+function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect)
 % Test signal transmission from the framebuffer to your CRS Bits+/Bits#
 % device or VPixx Inc. DataPixx/ViewPixx device and similar CRS and VPixx
 % products.
@@ -19,7 +19,7 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx)
 %
 % Usage:
 %
-% BitsPlusIdentityClutTest([whichScreen=max][usedpixx=0]);
+% BitsPlusIdentityClutTest([whichScreen=max][, usedpixx=0][, winrect=[]]);
 %
 % How to test:
 %
@@ -80,8 +80,12 @@ if nargin < 1 || isempty(whichScreen)
     whichScreen = max(Screen('Screens'));
 end
 
-if nargin < 2
+if nargin < 2 || isempty(dpixx)
     dpixx = 0;
+end
+
+if nargin < 3
+    winrect = [];
 end
 
 % Disable text anti-aliasing for this test:
@@ -101,30 +105,33 @@ try
     PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'ClampOnly');
 
     if dpixx
-        % Use Mono++ mode with overlay:
+        % Use M16 mode with overlay:
         PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
         
         % Reduce timeout for recognition of PSYNC code to about 1 second on
         % a 100 Hz display:
-        oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);
-        
+        oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);        
+    else
+        % Use Mono++ mode with overlay:
+        PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
+    end
+
+    % DataPixx or Bits# used? They allow advanced diagnostics.
+    if dpixx || BitsPlusPlus('OpenBits#')
         fprintf('\n\nYou can run extended diagnostics and fixes if you answer the following question\n');
         fprintf('with yes. However, we recommend first running this script once, answering no. Then\n');
         fprintf('if that at least somewhat succeeds, rerun the script and answer yes, to either fix\n');
         fprintf('remaining errors and glitches, or verify perfect function of your setup. If you don''t\n');
         fprintf('do it in this order, the test may hang on some setups.\n\n');
-        answer = input('Run DataPixx based diagnostics as well [Time consuming]? [y/n] ', 's');
+        answer = input('Run DataPixx/Bits# based diagnostics as well [Time consuming]? [y/n] ', 's');
         if answer == 'y'
-            % Enable one-shot diagnostic of GPU encoders via DataPixx:
+            % Enable one-shot diagnostic of GPU encoders via Data/View/ProPixx or Bits# :
             BitsPlusPlus('TestGPUEncoders');
         end
-    else
-        % Use Mono++ mode with overlay:
-        PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
     end
-    
+
     % Open the window, assign a gray background color with a 50% intensity gray:
-    [win, screenRect] = PsychImaging('OpenWindow', whichScreen, 0.5);
+    [win, screenRect] = PsychImaging('OpenWindow', whichScreen, 0.5, winrect);
 
     % Get handle to overlay:
     overlaywin = PsychImaging('GetOverlayWindow', win);
@@ -311,6 +318,9 @@ try
     % This flip is needed for the 'LoadIdentityClut' to take effect:
     Screen('Flip', win);
     
+    % Release our dedicated "encoder test" connection to Bits#
+    BitsPlusPlus('Close');
+
     % Done. Close everything down:
     ShowCursor;
     Screen('CloseAll');
@@ -327,6 +337,9 @@ try
 catch
     sca;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
+
+    % Release our dedicated "encoder test" connection to Bits#
+    BitsPlusPlus('Close');
 
     % Restore psync timeout on Datapixx, if any in use:
     if exist('oldpsynctimeout', 'var')

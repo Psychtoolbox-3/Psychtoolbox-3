@@ -219,7 +219,7 @@ PsychError SCREENOpenMovie(void)
                     if (windowRecord) {
                         memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
                     } else {
-                        memcpy(&asyncmovieinfo.windowRecord, 0, sizeof(PsychWindowRecordType));
+                        memset(&asyncmovieinfo.windowRecord, 0, sizeof(PsychWindowRecordType));
                     }
 
                     asyncmovieinfo.moviehandle = -1;

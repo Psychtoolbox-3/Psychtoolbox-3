@@ -933,9 +933,9 @@ void InitCGDisplayIDList(void)
   if (ptbdisplays) {
     // Displays explicitely specified. Parse the string and connect to all of them:
     j=0;
-    for (i=0; i<=strlen(ptbdisplays) && j<1000; i++) {
+    for (i = 0; i <= (int) strlen(ptbdisplays) && j < 1000; i++) {
       // Accepted separators are ',', '"', white-space and end of string...
-      if (ptbdisplays[i]==',' || ptbdisplays[i]=='"' || ptbdisplays[i]==' ' || i==strlen(ptbdisplays)) {
+      if (ptbdisplays[i]==',' || ptbdisplays[i]=='"' || ptbdisplays[i]==' ' || i == (int) strlen(ptbdisplays)) {
 	// Separator or end of string detected. Try to connect to display:
 	displayname[j]=0;
 	printf("PTB-INFO: Trying to connect to X-Display %s ...", displayname);
@@ -1722,7 +1722,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 
   // Find matching mode:
   for (modeid = 0; modeid < res->nmode; modeid++) {
-    if ((res->modes[modeid].width == newWidth) && (res->modes[modeid].height == newHeight) &&
+    if (((int) res->modes[modeid].width == newWidth) && ((int) res->modes[modeid].height == newHeight) &&
 	(newHz == (int)(PsychOSVRefreshFromMode(&res->modes[modeid]) + 0.5))) {
       break;
     }
@@ -1859,7 +1859,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 
     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
-    if (!isValid || cgMode < 0){
+    if (!isValid || (int) cgMode < 0){
         // This is an internal error because the caller is expected to check first. 
         PsychErrorExitMsg(PsychError_user, "Attempt to set invalid video settings or function unsupported with this graphics-driver.");
     }
@@ -1929,7 +1929,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
 
     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
-    if (!isValid || cgMode < 0){
+    if (!isValid || (int) cgMode < 0){
         // This is an internal error because the caller is expected to check first. 
         PsychErrorExitMsg(PsychError_user, "Attempt to restore invalid video settings or function unsupported with this graphics-driver.");
     }
@@ -2598,7 +2598,7 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 			if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
 
 			// Sanity check crtc id i:
-			if (i > fNumDisplayHeads - 1) {
+			if (i > (int) fNumDisplayHeads - 1) {
 				printf("PTB-ERROR: PsychOSSynchronizeDisplayScreens(): Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", i, (fNumDisplayHeads - 1));
 				return(PsychError_user);
 			}
@@ -2867,10 +2867,10 @@ int PsychOSKDGetBeamposition(int screenId)
 	int beampos = -1;
 	int headId  = PsychScreenToCrtcId(screenId, 0);
 
-    if (headId < 0 || headId > (fNumDisplayHeads - 1)) {
-        printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
-        return(beampos);
-    }
+	if (headId < 0 || headId > ((int) fNumDisplayHeads - 1)) {
+		printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
+		return(beampos);
+	}
 
 	// MMIO registers mapped?
 	if (gfx_cntl_mem) {
@@ -2988,7 +2988,7 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
             if (isDCE4(screenId) || isDCE5(screenId)) {
                 // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
                 // register offset for this headId:
-                if (headId > (fNumDisplayHeads - 1)) {
+                if (headId > ((int) fNumDisplayHeads - 1)) {
                     // Invalid head - bail:
                     if (PsychPrefStateGet_Verbosity() > 0) printf("SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
                     continue;

@@ -1526,9 +1526,9 @@ PsychError PsychSetSpecifiedArgDescriptor(	int			position,
 	if (direction == PsychArgOut) {
 		// Do not exceed index size limits of hw/os/build architecture,
 		// be it 32 bit or 64 bit:
-		if ((mDimMin > SIZE_MAX) || (mDimMax > SIZE_MAX) ||
-			(nDimMin > SIZE_MAX) || (nDimMax > SIZE_MAX) ||
-			(pDimMin > SIZE_MAX) || (pDimMax > SIZE_MAX)) {
+		if (((size_t) mDimMin > SIZE_MAX) || ((size_t) mDimMax > SIZE_MAX) ||
+			((size_t) nDimMin > SIZE_MAX) || ((size_t) nDimMax > SIZE_MAX) ||
+			((size_t) pDimMin > SIZE_MAX) || ((size_t) pDimMax > SIZE_MAX)) {
 
 			printf("PTB-ERROR: Tried to return a vector or matrix whose size along at least one dimension\n");
 			printf("PTB-ERROR: exceeds the maximum supported number of elements.\n");

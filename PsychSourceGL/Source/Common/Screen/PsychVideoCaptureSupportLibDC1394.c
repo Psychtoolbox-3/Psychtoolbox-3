@@ -295,7 +295,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     }
     else {
       // Does a camera with requested index exist?
-      if (deviceIndex>=numCameras) {
+      if (deviceIndex >= (int) numCameras) {
 	// No such cam.
 	capdev->valid = 0;
 	sprintf(msgerr, "You wanted me to open the %i th camera (deviceIndex: %i), but there are only %i cameras available!",
@@ -406,7 +406,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   h = (int) PsychGetHeightFromRect(capdev->roirect);
   maximgmode = DC1394_VIDEO_MODE_MIN;
 
-  for (i = 0; i < video_modes.num; i++) {
+  for (i = 0; i < (int) video_modes.num; i++) {
     // Query properties of this mode and match them against our requirements:
     mode = video_modes.modes[i];
     
@@ -432,7 +432,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
     if (capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0 && w==1 && h==1) {
       // No. Just find biggest one:
-      if (mw*mh < maximgarea) continue;
+      if (mw*mh < (unsigned int) maximgarea) continue;
       maximgarea = mw * mh;
       maximgmode = mode;
       mode_found = true;
@@ -440,12 +440,12 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     }
     else {
       // Yes. Check for exact match, reject everything else:
-      if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || w!=mw || h!=mh) continue;	
+      if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || w != (int) mw || h != (int) mh) continue;	
       roi_matched = true;
       
       // Ok, this is a valid mode wrt. reqpixeldepth and exact image size. Check for matching framerate:
       dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
-      for (j = 0; j < supported_framerates.num; j++) {
+      for (j = 0; j < (int) supported_framerates.num; j++) {
 	dc1394_framerate = supported_framerates.framerates[j];
 	dc1394_framerate_as_float(dc1394_framerate, &framerate);
 	if (framerate >= capturerate) break;
@@ -539,7 +539,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   // We probe all available non mode-7 framerates of camera for the best match, aka
   // the slowest framerate equal or faster to the requested framerate:
   dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
-  for (i = 0; i < supported_framerates.num; i++) {
+  for (i = 0; i < (int) supported_framerates.num; i++) {
     dc1394_framerate = supported_framerates.framerates[i];
     dc1394_framerate_as_float(dc1394_framerate, &framerate);
     if (framerate >= capturerate) break;
@@ -642,7 +642,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
   dc1394_video_get_supported_modes(capdev->camera,  &video_modes);
   minimgmode = DC1394_VIDEO_MODE_MIN;
 
-  for (i = 0; i < video_modes.num; i++) {
+  for (i = 0; i < (int) video_modes.num; i++) {
     // Query properties of this mode and match them against our requirements:
     mode = video_modes.modes[i];
     
@@ -688,7 +688,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     else {
       // Yes. Check for exact match, reject everything else:
       if(dc1394_format7_get_max_image_size(capdev->camera, mode, &mw, &mh)!=DC1394_SUCCESS) continue;
-      if (w > mw || h > mh) continue;
+      if (w > (int) mw || h > (int) mh) continue;
 
       // This mode allows for a ROI as big as the one we request. Try to set it up:
 
@@ -731,13 +731,13 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     packet_size = (int)((w * h * depth + num_packets - 1) /  num_packets);
     
     // Make sure that packet_size is an integral multiple of pbmin (IIDC constraint):
-    if (packet_size < pbmin) packet_size = pbmin;
+    if (packet_size < (int) pbmin) packet_size = pbmin;
     if (packet_size % pbmin != 0) {
       packet_size = packet_size - (packet_size % pbmin);
     }
     
     // Make sure that packet size is smaller than pbmax:
-    while (packet_size > pbmax) packet_size=packet_size - pbmin;
+    while (packet_size > (int) pbmax) packet_size=packet_size - pbmin;
     
     // Ok, we should now have the closest valid packet size for the given ROI and framerate:
     // Inverse compute framerate for this packetsize:

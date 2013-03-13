@@ -648,7 +648,6 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
 
 			// Accounting... ...this is only a rough guesstimate:
 			texmemguesstimate-= win->surfaceSizeBytes;
-			if (texmemguesstimate < 0) texmemguesstimate = 0;
 		}
 		
 		// PsychTestForGLErrors() is a GPU-CPU synchronization point, so in order to keep good

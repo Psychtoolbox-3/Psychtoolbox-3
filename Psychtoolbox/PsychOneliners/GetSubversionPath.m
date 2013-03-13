@@ -18,6 +18,7 @@ function svnpath = GetSubversionPath
 % History:
 % 11/21/06 Written (MK).
 % 01/19/09 Update to search in /bin and /usr/bin as well on OS/X.
+% 03/10/13 Change search path order to match DownloadPsychtoolbox on OS/X (MK)
 
 % Check for alternative install location of Subversion:
 if IsWin
@@ -41,23 +42,23 @@ else
 	if IsOSX
 		svnpath = '';
 		
-		if isempty(svnpath) & exist('/opt/subversion/bin/svn', 'file') %#ok<AND2>
-			svnpath = '/opt/subversion/bin/';
-		end
-
-		if isempty(svnpath) & exist('/usr/local/bin/svn','file') %#ok<AND2>
-			svnpath='/usr/local/bin/';
-		end
-
-		if isempty(svnpath) & exist('/usr/bin/svn','file') %#ok<AND2>
+		if isempty(svnpath) && exist('/usr/bin/svn','file')
 			svnpath='/usr/bin/';
 		end
 
-		if isempty(svnpath) & exist('/bin/svn','file') %#ok<AND2>
+		if isempty(svnpath) && exist('/usr/local/bin/svn','file')
+			svnpath='/usr/local/bin/';
+		end
+
+		if isempty(svnpath) && exist('/bin/svn','file')
 			svnpath='/bin/';
 		end
 
-		if isempty(svnpath) & exist('/opt/local/bin/svn', 'file') %#ok<AND2>
+		if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
+			svnpath = '/opt/subversion/bin/';
+		end
+
+		if isempty(svnpath) && exist('/opt/local/bin/svn', 'file')
 			svnpath = '/opt/local/bin/';
 		end
 	end

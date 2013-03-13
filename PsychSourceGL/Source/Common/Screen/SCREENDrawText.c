@@ -608,7 +608,7 @@ psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
 
   fontname[sizeof(fontname)-1]=0;
   // Convert fontname to lower-case characters:
-  for(i=0; i<strlen(fontname); i++) fontname[i]=tolower(fontname[i]);
+  for(i = 0; i < (int) strlen(fontname); i++) fontname[i]=tolower(fontname[i]);
 
   // Try to load font:
   fontstruct = XLoadQueryFont(winRec->targetSpecific.deviceContext, fontname); 

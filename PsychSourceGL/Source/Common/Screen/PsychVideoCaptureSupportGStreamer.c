@@ -583,7 +583,8 @@ static GstAppSinkCallbacks videosinkCallbacks = {
     PsychEOSCallback,
     PsychNewPrerollCallback,
     PsychNewBufferCallback,
-    PsychNewBufferListCallback
+    PsychNewBufferListCallback,
+    {NULL}
 };
 
 /*
@@ -944,15 +945,15 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
         
         // Create a fake entry for the autovideosrc:
         devices[0].deviceIndex = 0;
-        sprintf(devices[0].deviceVideoPlugin, "autovideosrc");
-        sprintf(devices[0].deviceSelectorProperty, "");
-        sprintf(devices[0].deviceHandle, "");
+        sprintf(devices[0].deviceVideoPlugin, "%s", "autovideosrc");
+        sprintf(devices[0].deviceSelectorProperty, "%s", "");
+        sprintf(devices[0].deviceHandle, "%s", "");
         
         // Create a fake entry for the videotestsrc:
         devices[1].deviceIndex = 1;
-        sprintf(devices[1].deviceVideoPlugin, "videotestsrc");
-        sprintf(devices[1].deviceSelectorProperty, "");
-        sprintf(devices[1].deviceHandle, "");
+        sprintf(devices[1].deviceVideoPlugin, "%s", "videotestsrc");
+        sprintf(devices[1].deviceSelectorProperty, "%s", "");
+        sprintf(devices[1].deviceHandle, "%s", "");
 
         ntotal= 2;
 	}
@@ -4237,7 +4238,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 */
 double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
 {
-	unsigned int intval, oldintval;
+	int intval, oldintval;
 	float oldfvalue = FLT_MAX;
 	double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
 	psych_bool assigned = false;
@@ -4572,8 +4573,8 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 				oldvalue = (double) gst_color_balance_get_value(cb, cc);
 
 				// Optionally assign new setting:
-				if (intval < (unsigned int) cc->min_value) intval = (unsigned int) cc->min_value;
-				if (intval > (unsigned int) cc->max_value) intval = (unsigned int) cc->max_value;
+				if (intval < cc->min_value) intval = cc->min_value;
+				if (intval > cc->max_value) intval = cc->max_value;
 				if (value != DBL_MAX) gst_color_balance_set_value(cb, cc, intval);
 			}
 		}

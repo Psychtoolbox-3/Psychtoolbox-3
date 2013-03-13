@@ -472,7 +472,8 @@ static GstAppSinkCallbacks videosinkCallbacks = {
     PsychEOSCallback,
     PsychNewPrerollCallback,
     PsychNewBufferCallback,
-    PsychNewBufferListCallback
+    PsychNewBufferListCallback,
+    {NULL}
 };
 
 /*
