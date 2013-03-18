@@ -90,6 +90,7 @@ end
 
 % Disable text anti-aliasing for this test:
 oldAntialias = Screen('Preference', 'TextAntiAliasing', 0);
+oldTextAlpha = Screen('Preference', 'TextAlphaBlending', 1);
 
 try
     % Setup imaging pipeline:
@@ -259,7 +260,7 @@ try
         % Color in low slots gets re-randomized:
         ovllut(1:100,:) = rand(100,3);
 
-        [isdown, secs, keyCode] = KbCheck;
+        [isdown, secs, keyCode] = KbCheck; %#ok<*ASGLU>
         if isdown
             if keyCode(escape)
                 break;
@@ -289,7 +290,10 @@ try
                 end
             end
 
-            if keyCode(key_o)
+            % Playing with gamma lut's for the overlay, only on
+            % non-Windows, as Windows doesn't allow loading arbitrary gpu
+            % gamma tables:
+            if keyCode(key_o) && ~IsWin
                 bluelutenable = 1 - bluelutenable;
                 if bluelutenable
                     % Reupload identity gamma table to reenable overlay:
@@ -326,6 +330,7 @@ try
     Screen('CloseAll');
     RestoreCluts;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
+    Screen('Preference', 'TextAlphaBlending', oldTextAlpha);
 
     % Restore psync timeout on Datapixx, if any in use:
     if exist('oldpsynctimeout', 'var')
@@ -334,9 +339,10 @@ try
     
     fprintf('Finished. Bye.\n\n');
 
-catch
+catch %#ok<CTCH>
     sca;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
+    Screen('Preference', 'TextAlphaBlending', oldTextAlpha);
 
     % Release our dedicated "encoder test" connection to Bits#
     BitsPlusPlus('Close');

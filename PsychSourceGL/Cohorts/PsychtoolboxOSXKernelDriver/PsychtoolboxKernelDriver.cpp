@@ -1041,6 +1041,7 @@ void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
         }
         else {
             // Disable all dithering if it is enabled: Clearing the register to all zero bits does this.
+            IOLog("%s: SetDitherMode: Current dither setting before our dither disable on head %d is 0x%x.\n", getName(), headId, ReadRegister(reg));
             if (ReadRegister(reg) > 0) {
                 oldDither[headId] = ReadRegister(reg);
                 IOLog("%s: SetDitherMode: Current dither setting before our dither disable on head %d is 0x%x. Disabling.\n", getName(), headId, oldDither[headId]);
