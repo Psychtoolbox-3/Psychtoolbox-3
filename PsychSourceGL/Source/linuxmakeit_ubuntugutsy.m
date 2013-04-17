@@ -49,7 +49,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-    mex CFLAGS='$CFLAGS -fPIC -fexceptions' -v -outdir ./ -output moglcore -DLINUX -DGLEW_STATIC -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c
+    mex CFLAGS='$CFLAGS -fPIC -fexceptions' -v -outdir ./ -output moglcore -DLINUX -DGLEW_STATIC -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch
     end
     unix(['mv moglcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);

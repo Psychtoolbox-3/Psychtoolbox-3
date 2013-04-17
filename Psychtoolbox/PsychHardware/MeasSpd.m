@@ -3,16 +3,17 @@ function [spectrum,qual] = MeasSpd(S,meterType,syncMode)
 %
 % This routine splines the raw return values from the
 % meter to the wavelength sampling S.  The splining
-% handles conversion of power units according to 
+% handles conversion of power units according to
 % to the wavelength sampling delta.  If S is not passed,
 % it is set to [380 5 81].
 %
 % Tries to handle low light level case gracefully by returning
-% zero as the answer. 
+% zero as the answer.
 %
 % meterType == 1:  PR650 (default)
 % meterType == 4:  PR655
 % meterType == 5:  PR670
+% meterType == 6:  PR705
 %
 % syncMode = 'on':  Try to sync integration time with display, if meter supports it (default)
 % syncMode = 'off': Don't try to sync, even if meter supports it.
@@ -38,6 +39,7 @@ function [spectrum,qual] = MeasSpd(S,meterType,syncMode)
 % 2/26/03       dhb   Change definition of PR-650 meter type to 1.
 % 8/26/10       dhb   The PR-655 line called the PR-650 code.  Change to call PR-655
 % 3/8/11        dhb   Pass syncMode option to speed things up for displays where it doesn't work.
+% 12/06/12      zlb   Adding PR-705 support as meter type 6.
 
 % Handle defaults
 if nargin < 3 || isempty(syncMode)
@@ -50,19 +52,30 @@ if nargin < 1 || isempty(S)
     S = [380 5 81];
 end
 
-switch meterType
-    % PR-650
-    case 1,
-        [spectrum, qual] = PR650measspd(S,syncMode);
-        
-    % PR-655
-    case 4,
-        [spectrum, qual] = PR655measspd(S,syncMode);
-        
-    % PR-670
-    case 5,
-        [spectrum, qual] = PR670measspd(S,syncMode);
-        
-    otherwise,
-        error('Unknown meter type');
+try
+    switch meterType
+        % PR-650
+        case 1,
+            [spectrum, qual] = PR650measspd(S,syncMode);
+            
+        % PR-655
+        case 4,
+            [spectrum, qual] = PR655measspd(S,syncMode);
+            
+        % PR-670
+        case 5,
+            [spectrum, qual] = PR670measspd(S,syncMode);
+            
+        % PR-705
+        case 6,
+            qual = 0;
+            spectrum = PR705measspd(S);
+            
+        otherwise,
+            error('Unknown meter type');
+    end
+catch %#ok<CTCH>
+    CMClose(meterType);
+    sca();
+    psychrethrow(psychlasterror);
 end

@@ -3,12 +3,12 @@
   
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
-  
+	Allen.Ingling@nyu.edu			awi 
+	mario.kleiner@tuebingen.mpg.de	mk
+
 	PLATFORMS:	
 	
-		All.
-    
+	All.
 
 	HISTORY:
   
@@ -76,10 +76,10 @@ PsychError SCREENglPoint(void)
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
 	glEnable(GL_POINT_SMOOTH);
-	glPointSize((float)dotSize);
-	glBegin(GL_POINTS);
-		glVertex2d( (GLdouble)*xPosition, *yPosition);
-	glEnd();
+	glPointSize((float) dotSize);
+	GLBEGIN(GL_POINTS);
+		GLVERTEX2d(*xPosition, *yPosition);
+	GLEND();
 	glDisable(GL_POINT_SMOOTH);
 	glPointSize(1);
 

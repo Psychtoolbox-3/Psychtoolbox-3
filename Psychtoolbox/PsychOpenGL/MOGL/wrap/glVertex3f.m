@@ -8,10 +8,16 @@ function glVertex3f( x, y, z )
 
 % 25-Mar-2011 -- created (generated automatically from header files)
 
+% ---protected---
+
 if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glVertex3f', x, y, z );
+if ~IsGLES
+    moglcore( 'glVertex3f', x, y, z );
+else
+    moglcore( 'ftglVertex3f', x, y, z );
+end
 
 return

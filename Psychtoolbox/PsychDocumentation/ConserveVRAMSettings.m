@@ -280,6 +280,22 @@
 % where the new method doesn't work.
 %
 %
+% 2^26 == kPsychForceUseNativeBeamposQuery
+% Force use of the OSX builtin beamposition query mechanism, even if the
+% PsychtoolboxKernelDriver is installed and would provide better results.
+% This is mostly for internal testing and benchmarking of Psychtoolbox. As
+% of April 2013 and MacOSX 10.8 "Mountain Lion", our own implementation is
+% superior to Apple's broken implementation, so we default to use of our
+% own implementation whenever possible. The OSX native implementation is
+% only supported on NVidia gpu's anymore, scheduled for removal in a future
+% OSX version (marked as deprecated in Apple developer documentation!),
+% always slightly broken and more noisy, imprecise and higher overhead than
+% our own implementation. At least on OSX 10.8 with GeForce-600 gpu's, the
+% OSX implementation is completely broken for anything but analog VGA CRT
+% displays, ie., it delivers bogus results for any kind of internal or
+% external digital lcd flat panel!
+%
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly

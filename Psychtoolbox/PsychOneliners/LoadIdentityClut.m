@@ -78,6 +78,18 @@ winfo = Screen('GetWindowInfo', windowPtr);
 % Get current clut for use as backup copy later on:
 oldClut = Screen('ReadNormalizedGammaTable', windowPtr);
 
+% Try to use PsychGPUControl() method to disable display dithering
+% globally on all connected GPUs and displays. As of March 2013, this
+% function is only supported on Linux and Windows with AMD/ATI GPU's,
+% and only when running the proprietary Catalyst display driver.
+% It will no-op silently on other system configurations.
+%
+% We don't use the success status return code of the function, because
+% we don't know how trustworthy it is. Also this only affects dithering,
+% not gamma table identity setup, so the code-pathes below must run anyway
+% for proper setup, even if their dithering disable effect may be redundant.
+PsychGPUControl('SetDitheringEnabled', 0);
+
 % Ask Screen to use low-level setup code to configure the GPU for
 % untampered framebuffer pixel paththrough. This is only supported on a
 % subset of GPU's under certain conditions if the PsychtoolboxKernelDriver

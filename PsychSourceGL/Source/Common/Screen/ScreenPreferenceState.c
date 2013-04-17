@@ -156,11 +156,11 @@ void PrepareScreenPreferences(void)
         Verbosity = atoi(getenv("PSYCH_SCREEN_VERBOSITY"));
     }
 
-	// Default synctest settings: 1 msec allowable max standard deviation from measured
+	// Default synctest settings: 200 usec allowable max standard deviation from measured
 	// mean flip duration, at least 50 valid sync samples, at most 10% deviation between
 	// measured duration and reference duration (os reported or other), at most 5 seconds
 	// worst-case duration per calibration run:
-	PsychPrefStateSet_SynctestThresholds(0.001, 50, 0.1, 5);
+	PsychPrefStateSet_SynctestThresholds(0.000200, 50, 0.1, 5);
 	
 	// Initialize our locale setting for multibyte/singlebyte to unicode character conversion
 	// for Screen('DrawText') et al. to be the current default system locale, as defined by

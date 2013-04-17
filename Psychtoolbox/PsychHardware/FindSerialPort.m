@@ -41,6 +41,9 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 %                           minimal modifications) from sample code donated
 %                           by Xiangrui Li. Thanks!
 %           6/14/09   mk    Remove redundant special case code for Octave.
+%          12/04/12   zlb   Removed usa19* from PortDB since Keyserial1 is
+%                           an alias for the first port anyway.
+%           3/11/13   mk    Add /dev/ttyACM* devices to Linux enumeration.
 
 % Comments from mpr:
 %
@@ -71,11 +74,11 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 if ~nargin || isempty(PortString)	
 	% List of serial port devices to look for. These should all be lower case:
     if IsOSX
-        PortDB = { lower('usa19'), lower('keyserial1'), lower('usbmodem'), lower('usbserial') };
+        PortDB = { lower('keyserial1'), lower('usbmodem'), lower('usbserial') };
     end
     
     if IsLinux
-        PortDB = { lower('USB') };
+        PortDB = { lower('USB'), lower('ACM') };
     end
     
     if IsWin
@@ -158,6 +161,7 @@ else
         % Linux or some other Posix OS. Use search patterns for Linux, both
         % for USB serial converters/adaptors, and standard native serial ports:
         ThePortDevices = dir('/dev/ttyUSB*');
+        ThePortDevices = [ dir('/dev/ttyACM*'); ThePortDevices];
         ThePortDevices = [ dir('/dev/ttyS*'); ThePortDevices];
     end
 end

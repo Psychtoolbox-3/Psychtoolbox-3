@@ -1526,9 +1526,9 @@ PsychError PsychSetSpecifiedArgDescriptor(	int			position,
 	if (direction == PsychArgOut) {
 		// Do not exceed index size limits of hw/os/build architecture,
 		// be it 32 bit or 64 bit:
-		if ((mDimMin > SIZE_MAX) || (mDimMax > SIZE_MAX) ||
-			(nDimMin > SIZE_MAX) || (nDimMax > SIZE_MAX) ||
-			(pDimMin > SIZE_MAX) || (pDimMax > SIZE_MAX)) {
+		if (((size_t) mDimMin > SIZE_MAX) || ((size_t) mDimMax > SIZE_MAX) ||
+			((size_t) nDimMin > SIZE_MAX) || ((size_t) nDimMax > SIZE_MAX) ||
+			((size_t) pDimMin > SIZE_MAX) || ((size_t) pDimMax > SIZE_MAX)) {
 
 			printf("PTB-ERROR: Tried to return a vector or matrix whose size along at least one dimension\n");
 			printf("PTB-ERROR: exceeds the maximum supported number of elements.\n");
@@ -2413,15 +2413,32 @@ psych_bool PsychAllocInDoubleMatArg64(int position, PsychArgRequirementType isRe
 	return(acceptArg);
 }
 
+/* Like PsychAllocInFloatMatArg64, but with 32-Bit int type size return-arguments. */
+psych_bool PsychAllocInFloatMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, float **array)
+{
+    psych_int64 mb, nb, pb;
+    psych_bool rc = PsychAllocInFloatMatArg64(position, isRequired, &mb, &nb, &pb, array);
+    *m = (int) mb;
+    *n = (int) nb;
+    *p = (int) pb;
+    return(rc);
+}
 
 /*
 
-Allocin a single precision floating point matrix, i.e. a matrix of
+Alloc-In a single precision floating point matrix, i.e. a matrix of
 C data type 32 bit float, aka Matlab/Octave data type single().
 This function allows to alloc in matrices with more than 2^32 elements
 per matrix dimension on 64 bit systems. Therefore the returned size
 descriptors must be psych_int64 variables, not int variables or bad things
 will happen.
+
+If the function receives a double() precision input matrix instead of the
+expected single() precision matrix, it will automatically create a temporary
+copy, with all values copied/converted from double to single data type, aka
+double -> float cast. This is transparent to the caller, so it can always
+operate on a returned float matrix -- at a performance penalty for the extra
+copy of course.
 
 A)input argument mandatory:
  
@@ -2438,10 +2455,47 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
     const mxArray 	*mxPtr;
 	PsychError		matchError;
 	psych_bool		acceptArg;
-    
+    double*         arrayD;
+    float*          arrayF;
+    psych_int64     i;
+
     PsychSetReceivedArgDescriptor(position, TRUE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_single, isRequired, 1,-1,1,-1,0,-1);
 	matchError=PsychMatchDescriptors();
+
+    // Argument provided, but not of required float type?
+    if (matchError == PsychError_invalidArg_type) {
+        // If the input type is double precision floating point, then we convert
+        // it here into single precision floating point via a temporary buffer.
+        // This is used for functions which absolutely need float input, e.g.,
+        // OpenGL-ES rendering code, but should accept double input from usercode
+        // so usercode doesn not need to be specifically ported for OpenGL-ES platforms.
+        // Performance may suffer somwehat though...
+        PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,-1,1,-1,0,-1);
+        matchError=PsychMatchDescriptors();
+        acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+        if(acceptArg){
+            mxPtr = PsychGetInArgMxPtr(position);
+            *m = (psych_int64) mxGetM(mxPtr);
+            *n = (psych_int64) mxGetNOnly(mxPtr);
+            *p = (psych_int64) mxGetP(mxPtr);
+
+            // Get a double pointer to the double input data matrix:
+            arrayD = (double*) mxGetData(mxPtr);
+
+            // Allocate temporary float input matrix. It will get deallocated
+            // automatically at return to runtime:
+            *array = (float*) PsychMallocTemp(sizeof(float) * (*m) * (*n) * (*p));
+            arrayF = *array;
+
+            // Copy/Convert loop:
+            for (i = (*m) * (*n) * (*p); i > 0; i--) *(arrayF++) = (float) *(arrayD++);            
+        }
+
+        return(acceptArg);
+    }
+
+    // Regular path: Matching float (aka single()) matrix/vector provided:
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
 	if(acceptArg){
 		mxPtr = PsychGetInArgMxPtr(position);

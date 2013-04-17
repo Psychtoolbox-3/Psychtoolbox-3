@@ -29,6 +29,11 @@ else
     target = 'PsychBasic/Octave3LinuxFiles/';
 end
 
+% Special folder for ARM binaries:
+if ~isempty(findstr(computer, 'arm'))
+    target = 'PsychBasic/Octave3LinuxFilesARM/';
+end
+
 if mode==0
     % Build Screen.mex:
     
@@ -42,16 +47,34 @@ if mode==0
         %
         % This will disable backwards compatibility with old Linux distros,
         % so only use for testing, not for production releases!
-        mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTB_USE_GSTENCODINGPROFILES -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/opt/gstreamer-sdk/include/gstreamer-0.10 -I/opt/gstreamer-sdk/include/glib-2.0 -I/opt/gstreamer-sdk/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/opt/gstreamer-sdk/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib -L/opt/gstreamer-sdk/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgstpbutils-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
+        mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTB_USE_GSTENCODINGPROFILES -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/opt/gstreamer-sdk/include/gstreamer-0.10 -I/opt/gstreamer-sdk/include/glib-2.0 -I/opt/gstreamer-sdk/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/opt/gstreamer-sdk/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib -L/opt/gstreamer-sdk/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgstpbutils-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
     else
         % Build against system installed GStreamer, backwards compatible to
         % old Linux distros. This is the default for production builds:
-        mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib  Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
+        mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib  Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
     end
     
     unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
 end;
+
+if mode==100
+    % Build Screen.mex with Waffle display backend, for embedded/android devices:
+    fprintf('Hmm, me likes some Waffle with this Screen :-)\n');
+    mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_WAFFLE -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/x86_64-linux-gnu/ -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib  Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1
+
+    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
+    striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
+end
+
+if mode==1000
+    % Build Screen.mex with Waffle display backend, for embedded/android devices:
+    fprintf('Hmm, me likes some mobile Waffle with this Screen :-)\n');
+    mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_WAFFLE -DPTB_USE_EGL -DPTB_USE_GLES1 -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/arm-linux-gnueabihf/ -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib  Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGLESv1_CM -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1
+
+    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
+    striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
+end
 
 if mode==1
     % Build GetSecs.mex:
@@ -93,7 +116,20 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-       mex -v -g --output moglcore.mex -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c
+       mex -v -g --output moglcore.mex -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+    catch
+    end
+    unix(['mv moglcore.mex ' PsychtoolboxRoot target]);
+    cd(curdir);
+    striplibsfrommexfile([PsychtoolboxRoot target 'moglcore.mex']);
+end;
+
+if mode==6000
+    % Build moglcore.mex for OpenGL-ES:
+    curdir = pwd;
+    cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
+    try
+       mex -v -g --output moglcore.mex -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGLESv1_CM -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch
     end
     unix(['mv moglcore.mex ' PsychtoolboxRoot target]);

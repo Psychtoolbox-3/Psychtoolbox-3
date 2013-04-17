@@ -1,11 +1,14 @@
 % Psychtoolbox:PsychColorimetric.
 %
-% Colorimetric and spectral calculations.  See also the closely related
-% Psychtoolbox:PsychColorimetricData.
+% Colorimetric and spectral calculations.  See also Psychtoolbox:PsychColorimetricData.
+% And also see the closely related Psychtoolbox:PsychRadiometric.  Sometimes it is
+% not entirely clear whether a routine should be classified as colorimetric or
+% radiometric. Apologies if our intuitions don't match yours
 %
 % help Psychtoolbox              % For an overview, triple-click me & hit enter.
 % help PsychColorimetricData     % For colorimetric calculations, triple-click me & hit enter.
 % help PsychColorimetricMatFiles % For list of data .mat files, triple-click me & hit enter.
+% help PsychRadiometric          % For list of data .mat files, triple-click me & hit enter.
 %
 %   AbsorbanceToAbsorbtance - Convert absorbance to absorbtance spectrum.
 %   CheckWls            - Check consistency of two wavelength descriptions.
@@ -18,7 +21,6 @@
 %   DKLToConeInc        - Convert from DKL to cone increments.
 %   EffectiveTrolandsFromLum - Compute effective trolands from luminance.
 %   EnergyToCones       - Convert monochromatic energy to cone excitations.
-%   EnergyToQuanta      - Convert monochromatic energy to quanta.
 %   ExcitationToContrast - Convert excitation coordinates to contrast.
 %   FindCovLinMod       - Find linear model from covariance matrix.
 %   FindLinMod          - Find linear model for an ensemble of vectors.
@@ -49,13 +51,8 @@
 %   M_TToP              - Conversion matrix from source cmfs and dest. primaries.
 %   M_TToT              - Conversion matrix from source/dest. cmfs.
 %   PhotonAbsorptionRate - Compute photon absoroption rate.
-%   PowerToTrolands     - Convert monochromatic power to photopic trolands.
 %   PupilDiameterFromLum - Estimate pupil diameter from luminance.
 %   PsychMunsell        - Munsell renotation to xyY conversion.
-%   QuantaToEnergy      - Convert monochromatic quanta to energy.
-%   QuantaToTrolands    - Convert monochromatic quanta to photopic trolands.
-%   RadianceToRetIrradiance - Convert spectral radiance to spectral retinal irradiance (power units).
-%   RetIrradianceToTrolands - Convert retinal irradiance (power units) to trolands.
 %   RetIrradianceToIsoRecSec - Convert retinal irradiance (power units) to iso. per receptor per second.
 %   SampleCircle        - Sample points on a circle.
 %   SampleSphere        - Sample points on a sphere.
@@ -72,10 +69,6 @@
 %   SToWls              - Convert S wavelength sampling spec to wls format.
 %   TestLxx             - Test routine for Lab/Luv calculations.
 %   TriToMetSPD         - Compute metamer from tristimulus coordinates.
-%   TrolandsToLum       - Convert trolands to luminance (cd/m2).
-%   TrolandsToPower     - Convert monochromatic photopic trolands to power.
-%   TrolandsToQuanta    - Convert monochromatic photopic trolands to quanta.
-%   TrolandsToRetIrradiance - Get retinal irradiance (power units) from spectrum and trolands.
 %   WattsToRetIrradiance - Get absolute retinal irradiance (power units) from rel. spectrum and watts/area.
 %   uvTols              - Convert between CIE u'v' and a cone based (ls) chromaticity.
 %   uvToxy              - Convert between CIE u'v' and CIE xy chromaticity.
@@ -93,8 +86,6 @@
 %   XYZTouvY            - Convert between XYZ and u'v'Y.
 %   XYZToxyY            - Convert between XYZ and xyY.
   
-%       
-%
-% Copyright (c) 1996-2008 by Denis Pelli & David Brainard
+% Copyright (c) 1996-2013 by David Brainard, Denis Pelli, & Mario Kleiner
 
 

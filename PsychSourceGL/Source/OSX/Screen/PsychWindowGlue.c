@@ -99,7 +99,7 @@ static CVDisplayLinkRef cvDisplayLink[kPsychMaxPossibleDisplays] = { NULL };
 static int screenRefCount[kPsychMaxPossibleDisplays] = { 0 };
 
 static SInt32 osMajor, osMinor;
-static psych_bool useCoreVideoTimestamping;
+psych_bool useCoreVideoTimestamping = FALSE;
 
 // Display link callback: Needed so we can actually start the display link:
 // Gets apparently called from a separate high-priority thread, close to vblank
@@ -622,7 +622,25 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
 			return(FALSE);
 		}
-		
+        
+        // No valid pixelformat found? And stereo format requested?
+        if ((windowRecord->targetSpecific.pixelFormatObject == NULL) && (stereomode == kPsychOpenGLStereo)) {
+            // Yep: Stereo may be the culprit. Remove the stereo attribute by overwriting it with something
+            // that is essentially a no-op, specifically kCGLPFAAccelerated which is supported by all real
+            // renderers that might end up in this code-path:
+            for (i=0; i<attribcount && attribs[i]!=kCGLPFAStereo; i++);
+            attribs[i] = kCGLPFAAccelerated;
+            
+            // Retry query of pixelformat without request for native OpenGL quad-buffered stereo. If we succeed, we're
+            // sort of ok, as the higher-level code will fallback to stereomode kPsychFrameSequentialStereo - our own
+            // homegrown frame-sequential stereo support, which may be good enough.
+            error = CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+            if (error || (windowRecord->targetSpecific.pixelFormatObject == NULL)) {
+                printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
+                return(FALSE);
+            }            
+        }
+        
 		// Create an OpenGL rendering context with the selected pixelformat: Share its ressources with 'slaveWindow's context, if slaveWindow is non-NULL:
 		error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL), &(windowRecord->targetSpecific.contextObject));
 		if (error) {
@@ -1076,7 +1094,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Use of CoreVideo is needed on 10.7 and later due to brokeness of the old method (thanks Apple!):
     if ((osMajor > 10) || (osMinor >= 7)) {
         useCoreVideoTimestamping = TRUE;
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Broken Apple OS/X 10.7 or later detected: Using CoreVideo timestamping instead of precise vbl-irq timestamping.\n");
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Deficient Apple OS/X 10.7 or later detected: Would use more fragile CoreVideo timestamping instead of precise vbl-irq timestamping\n");
+            printf("PTB-INFO: as fallback. Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual onset timestamping\n");
+            printf("PTB-INFO: or timing. See 'help PsychtoolboxKernelDriver' for instructions.\n");
+        }
     } else {
         useCoreVideoTimestamping = FALSE;
     }
@@ -1152,6 +1174,11 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
 
         // Current time more than 0.9 video refresh durations after queried
         // vblank timestamps cvTime?
+        /* Doesn't work, as calls to this function are often not synced to vblank, so
+           this may easily detect false positives and do the wrong thing, especially in
+           high load situations where it would be most urgently needed to fix Apple's
+           lame os. The PsychtoolboxKernelDriver method seems to be the only reasonable
+           choice going forward with the products of the iPhone company...
         cvRefresh = CVDisplayLinkGetActualOutputVideoRefreshPeriod(cvDisplayLink[screenid]);
         if ((tnow - cvTime) > (0.9 * cvRefresh)) {
             // Yes: It is more likely that we fetched a stale cvTime timestamp from
@@ -1162,7 +1189,8 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
             cvTime += cvRefresh;
             *vblCount = *vblCount + 1;
         }
-
+        */
+        
         // If timestamp debugging is off, we're done:
         if (PsychPrefStateGet_Verbosity() <= 19) return(cvTime);
     }
@@ -1317,9 +1345,10 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Releasing CVDisplayLink for screen %i.\n", windowRecord->screenNumber);
             
             if (CVDisplayLinkIsRunning(cvDisplayLink[windowRecord->screenNumber])) CVDisplayLinkStop(cvDisplayLink[windowRecord->screenNumber]);
-            PsychYieldIntervalSeconds(0.020);
+            PsychYieldIntervalSeconds(0.1);
             CVDisplayLinkRelease(cvDisplayLink[windowRecord->screenNumber]);
             cvDisplayLink[windowRecord->screenNumber] = NULL;
+            PsychYieldIntervalSeconds(0.1);
 
             // Teardown shared data structure and mutex:
             PsychDestroyMutex(&(cvDisplayLinkData[windowRecord->screenNumber].mutex));

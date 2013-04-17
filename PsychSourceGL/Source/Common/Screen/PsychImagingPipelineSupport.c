@@ -500,11 +500,9 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     // Panel fitter requested? If so, framebuffer blit extension supported?
     if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOBlit)) {
         // This is a no-go:
-        printf("PTB-ERROR: You requested use of the panel-fitter via the 'clientRect' parameter of Screen('OpenWindow', ...);\n");
-        printf("PTB-ERROR: but this graphics card and driver does not support the required GL_EXT_framebuffer_blit extension.\n");
-        printf("PTB-ERROR: Please upgrade your system or remove the 'clientRect' parameter from Screen('OpenWindow', ...); so\n");
-        printf("PTB-ERROR: we can resolve this issue.\n\n");
-        PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, panel-fitter not supported on your graphics hardware.");
+        printf("PTB-WARNING: You requested use of the panel-fitter via the 'clientRect' parameter of Screen('OpenWindow', ...);\n");
+        printf("PTB-WARNING: but this graphics card or graphics driver does not support the required GL_EXT_framebuffer_blit extension.\n");
+        printf("PTB-WARNING: Will use a lower performance fallback path to do it anyway. Some restrictions apply, check further status output.\n\n");
     }
 
 	// Multisampled anti-aliasing requested?
@@ -570,10 +568,21 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		if (windowRecord->gfxcaps & kPsychGfxCapFPBlend32) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->bpc = 32; }
 	}
 
+    // Floating point framebuffer on OpenGL-ES requested?
+    if (PsychIsGLES(windowRecord) && (imagingmode & (kPsychNeed16BPCFloat | kPsychNeed32BPCFloat | kPsychUse32BPCFloatAsap))) {
+        // Yes. We only support 32 bpc float framebuffers with alpha-blending. On less supportive hardware we fail:
+        if (!(windowRecord->gfxcaps & kPsychGfxCapFPTex32) || !(windowRecord->gfxcaps & kPsychGfxCapFPFBO32)) {
+            PsychErrorExitMsg(PsychError_user, "Sorry, the requested framebuffer color resolution of 32 bpc floating point is not supported by your graphics card. Game over.");
+        }
+
+        // Supported. Upgrade requested format to 32 bpc float, whatever it was before:
+        fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->bpc = 32;
+    }
+
     // Sanity check: Is a floating point framebuffer requested which requires floating point texture support and
     // the hardware doesn't support float textures? Bail early, if so.
     if (((windowRecord->bpc == 16) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16) && !(imagingmode & kPsychNeed16BPCFixed)) ||
-	((windowRecord->bpc == 32) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex32))) {
+        ((windowRecord->bpc == 32) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex32))) {
         printf("PTB-ERROR: Your script requested a floating point resolution framebuffer with a resolution of more than 8 bits per color channel.\n");
         printf("PTB-ERROR: Your graphics hardware doesn't support floating point textures or framebuffers, so this is a no-go. Aborting...\n");
 		PsychErrorExitMsg(PsychError_user, "Sorry, the requested framebuffer color resolution is not supported by your graphics card. Game over.");
@@ -1254,7 +1263,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				}
 
 				// Enable stereo compositor:
-				PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");		
+				PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");
 			break;
 
 			case kPsychOpenGLStereo:
@@ -1270,7 +1279,6 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			default:
 				PsychErrorExitMsg(PsychError_internal, "Unknown stereo mode encountered! FIX SCREENOpenWindow.c to catch this at the appropriate place!\n");
 		}
-		
 	}
 	
 
@@ -1434,15 +1442,26 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 	GLboolean isFloatBuffer;
 	char fbodiag[1024];
     GLenum glerr;
+    int twidth, theight;
     psych_bool multisampled_cb = FALSE;
 
 	// Eat all GL errors:
 	PsychTestForGLErrors();
 	
-    // Select type of texture target:
+    // Select type of texture target: Always GL_TEXTURE_2D on OpenGL-ES. Also, no multisample anti-aliasing
+    // on ES:
+    if (PsychIsGLES(NULL)) {
+        specialFlags |= 1;
+        if ((multisample > 0) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Requested multisample anti-aliasing unsupported on OpenGL-ES hardware. Disabling.\n");
+        multisample = 0;
+
+        // Eat all errors:
+        while(glGetError());
+    }
+
     texturetarget = (specialFlags & 0x1) ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_EXT;
-    
-	// If fboInternalFomrat!=1 then we need to allocate and assign a proper PsychFBO struct first:
+
+	// If fboInternalFormat!=1 then we need to allocate and assign a proper PsychFBO struct first:
 	if (fboInternalFormat!=1) {
 		*fbo = (PsychFBO*) malloc(sizeof(PsychFBO));
 		if (*fbo == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Out of system memory when trying to allocate PsychFBO struct!");
@@ -1470,14 +1489,51 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			// Build color buffer: Create a new texture handle for the color buffer attachment.
 			glGenTextures(1, (GLuint*) &((*fbo)->coltexid));
 			
-			// Bind it as rectangle texture:
+			// Bind it:
 			glBindTexture(texturetarget, (*fbo)->coltexid);
 			
 			// Create proper texture: Just allocate proper format, don't assign data.
-			glTexImage2D(texturetarget, 0, fboInternalFormat, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+            if (PsychIsGLES(NULL)) {
+                // OpenGL-ES: Internal and external format must match:
+                if (fboInternalFormat == GL_RGBA8) fboInternalFormat = GL_RGBA;
+                if (fboInternalFormat == GL_RGB8) fboInternalFormat = GL_RGB;
+
+                // Non-power-of-two textures supported on OES?
+                if (!strstr(glGetString(GL_EXTENSIONS), "GL_OES_texture_npot")) {
+                    // No: Find size of suitable pot texture (smallest power of two which is
+                    // greater than or equal to the image size:
+                    twidth=1;
+                    while (twidth < width) twidth*=2;
+                    theight=1;
+                    while (theight < height) theight*=2;
+                }
+                else {
+                    // Yes: Use size "as is":
+                    twidth = width;
+                    theight = height;
+                }
+
+                if (fboInternalFormat == GL_RGBA_FLOAT32_APPLE || fboInternalFormat == GL_RGB_FLOAT32_APPLE) {
+                    // 32-bpc float path:
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCreateFBO: OpenGL-ES allocated 32-Bit float %s texture.\n",
+                                                                  (fboInternalFormat == GL_RGBA_FLOAT32_APPLE) ? "RGBA32F" : "RGB32F");
+                    glTexImage2D(texturetarget, 0, fboInternalFormat, twidth, theight, 0, (fboInternalFormat == GL_RGBA_FLOAT32_APPLE) ? GL_RGBA : GL_RGB, GL_FLOAT, NULL);
+                }
+                else {
+                    // Classic 8-Bit integer path:
+                    glTexImage2D(texturetarget, 0, fboInternalFormat, twidth, theight, 0, fboInternalFormat, GL_UNSIGNED_BYTE, NULL);
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCreateFBO: OpenGL-ES allocated 8-Bit integer texture.\n");
+                }
+            }
+            else {
+                // Desktop OpenGL: Use size "as is":
+                twidth = width;
+                theight = height;
+                glTexImage2D(texturetarget, 0, fboInternalFormat, twidth, theight, 0, GL_RGBA, GL_FLOAT, NULL);
+            }
 		}
 		else {
-			// Yes. Bind it as rectangle texture:
+			// Yes. Bind it as texture:
 			glBindTexture(texturetarget, (*fbo)->coltexid);
 		}
 		
@@ -1625,16 +1681,10 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 	
 	// Do we need additional buffers for 3D rendering?
 	if (needzbuffer) {
-		// Yes. Try to setup and attach them:
-		if (multisample <= 0) {
-			// No multisampled FBO: Can use textures etc...
-			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach depth+stencil attachments to FBO...\n"); 
-			if (!glewIsSupported("GL_ARB_depth_texture")) {
-				printf("PTB-ERROR: Failed to setup internal framebuffer object for imaging pipeline! Your graphics hardware does not support\n");
-				printf("PTB-ERROR: the required GL_ARB_depth_texture extension. You'll need at least a NVidia GeforceFX 5200, ATI Radeon 9600\n");
-				printf("PTB-ERROR: or Intel GMA-950 with recent graphics-drivers for this to work.\n");
-				return(FALSE);
-			}
+		// Yes. Try to setup and attach them: We use depth textures if they are supported and no MSAA is needed:
+		if ((multisample <= 0) && (glewIsSupported("GL_ARB_depth_texture") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_depth_texture"))) {
+			// No multisampling requested on FBO and depth textures are supported. Use those to implement depth + stencil buffers:
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach texture depth+stencil attachments to FBO...\n"); 
 			
 			// Create texture object for z-buffer (or z+stencil buffer) and set it up:
 			glGenTextures(1, (GLuint*) &((*fbo)->ztexid));
@@ -1642,9 +1692,15 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			
 			// Setup texture wrapping behaviour to clamp, as other behaviours are
 			// unsupported on many gfx-cards for rectangle textures:
-			glTexParameterf(texturetarget,GL_TEXTURE_WRAP_S,GL_CLAMP);
-			glTexParameterf(texturetarget,GL_TEXTURE_WRAP_T,GL_CLAMP);
-			
+            if (!PsychIsGLES(NULL)) {
+                glTexParameterf(texturetarget,GL_TEXTURE_WRAP_S,GL_CLAMP);
+                glTexParameterf(texturetarget,GL_TEXTURE_WRAP_T,GL_CLAMP);
+			}
+            else {
+                glTexParameterf(texturetarget,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+                glTexParameterf(texturetarget,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+            }
+
 			// Setup filtering for the textures - Use nearest neighbour by default, as floating
 			// point filtering usually unsupported.
 			glTexParameterf(texturetarget, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
@@ -1654,17 +1710,21 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			PsychTestForGLErrors();
 			
 			// Do we have support for combined 24 bit depth and 8 bit stencil buffer textures?
-			if (glewIsSupported("GL_EXT_packed_depth_stencil") || (glewIsSupported("GL_NV_packed_depth_stencil") && glewIsSupported("GL_SGIX_depth_texture"))) {
+			if (glewIsSupported("GL_EXT_packed_depth_stencil") || (glewIsSupported("GL_NV_packed_depth_stencil") && glewIsSupported("GL_SGIX_depth_texture")) ||
+                strstr(glGetString(GL_EXTENSIONS), "GL_OES_packed_depth_stencil")) {
 				// Yes! Create combined depth and stencil texture:
 				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: packed_depth_stencil supported. Attaching combined 24 bit depth + 8 bit stencil texture...\n"); 
 				
 				// Create proper texture: Just allocate proper format, don't assign data.
-				if (glewIsSupported("GL_EXT_packed_depth_stencil")) {
-					glTexImage2D(texturetarget, 0, GL_DEPTH24_STENCIL8_EXT, width, height, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
+                if (PsychIsGLES(NULL)) {
+					glTexImage2D(texturetarget, 0, GL_DEPTH_STENCIL_EXT, twidth, theight, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
+                }
+                else if (glewIsSupported("GL_EXT_packed_depth_stencil")) {
+					glTexImage2D(texturetarget, 0, GL_DEPTH24_STENCIL8_EXT, twidth, theight, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
 				}
 				else {
 					// Ancient drivers with only NV extension support...
-					glTexImage2D(texturetarget, 0, GL_DEPTH_COMPONENT24_SGIX, width, height, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
+					glTexImage2D(texturetarget, 0, GL_DEPTH_COMPONENT24_SGIX, twidth, theight, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
 				}
 				
 				PsychTestForGLErrors();
@@ -1686,9 +1746,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 							printf("PTB-WARNING: OpenGL stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n");
 							printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
 							printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
-							printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers. According to specs,\n");
-							printf("PTB-WARNING: all gfx-cards starting with GeForceFX 5200 on Windows and Linux and all cards on Intel-Macs except the Intel GMA cards should work, whereas\n");
-							printf("PTB-WARNING: none of the PowerPC hardware is supported as of OS-X 10.4.9.\n"); 
+							printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers.\n");
 						}
 					}
 				}
@@ -1704,7 +1762,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: packed_depth_stencil unsupported. Attaching 24 bit depth texture and 8 bit stencil renderbuffer...\n"); 
 				
 				// Create proper texture: Just allocate proper format, don't assign data.
-				glTexImage2D(texturetarget, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+				glTexImage2D(texturetarget, 0, GL_DEPTH_COMPONENT, twidth, theight, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
 				
 				// Depth texture ready, unbind it.
 				glBindTexture(texturetarget, 0);
@@ -1716,7 +1774,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 					// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
 					glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
 					glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->stexid);
-					glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT, width, height);
+					glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT, twidth, theight);
 					glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
 					glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->stexid);
 				}
@@ -1760,37 +1818,58 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		else {
 			// Setup code of z- and stencilbuffer for multisampled mode. We must allocate these attachments as renderbuffers,
 			// as they need the same sample count as the color buffers, and textures do not support multisampling.
-			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach multisampled renderbuffer depth+stencil attachments to FBO...\n"); 
+			// We also use this path for non-multisampled renderbuffer setup if depth textures aren't available.
+			if (PsychPrefStateGet_Verbosity()>4) {
+				printf("PTB-DEBUG: Trying to attach %s renderbuffer depth+stencil attachments to FBO...\n", (multisample > 0) ? "multisample" : ""); 
+			}
+
 			glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->ztexid));
 			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
-		
-            
+
             // Use of depth+stencil requested and packed depth+stencil possible?
-            if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO) && glewIsSupported("GL_EXT_packed_depth_stencil")) {
+            if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO) && 
+                (glewIsSupported("GL_EXT_packed_depth_stencil") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_packed_depth_stencil"))) {
                 // Try a packed depth + stencil buffer:
-                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH24_STENCIL8_EXT, width, height);
+                if (multisample > 0) {
+                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH24_STENCIL8_EXT, twidth, theight);
+                }
+                else {
+                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, twidth, theight);
+                }
+
                 (*fbo)->stexid = (*fbo)->ztexid;
             }
             else {
                 // Depth buffer only:
-                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, width, height);
+                if (multisample > 0) {
+                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, twidth, theight);
+                }
+                else {
+                    // OES doesn't guarantee 24 bit depth buffers, only 16 bit, so fallback to them on OES if 24 bits are unsupported:
+                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT,
+                                             (!PsychIsGLES(NULL) || strstr(glGetString(GL_EXTENSIONS), "GL_OES_depth24")) ? GL_DEPTH_COMPONENT24_ARB : GL_DEPTH_COMPONENT16_ARB,
+                                             twidth, theight);
+                }
+
                 (*fbo)->stexid = 0;
             }
             
 			if (glGetError()!=GL_NO_ERROR) {
-				printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
-				printf("PTB-ERROR: Most likely the requested size, depth and multisampling level of the window or texture is not supported by your graphics hardware.\n");
+				printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a %s renderbuffer for imaging pipeline!\n", (multisample > 0) ? "multisample" : "");
+				printf("PTB-ERROR: Most likely the requested size, depth and multisampling level is not supported by your graphics hardware.\n");
 				return(FALSE);
 			}
 			
-			// Query real number of samples for renderbuffer:
-			glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
-			if ((*fbo)->multisample != multisample) {
-				printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
-				printf("PTB-ERROR: Could not get the same number of samples for depths renderbuffer as for color buffer, which is a requirement.\n");
-				return(FALSE);
+            if (multisample > 0) {
+                // Query real number of samples for renderbuffer:
+                glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
+                if ((*fbo)->multisample != multisample) {
+                    printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                    printf("PTB-ERROR: Could not get the same number of samples for depths renderbuffer as for color buffer, which is a requirement.\n");
+                    return(FALSE);
+                }
 			}
-			
+
 			// Unbind, we're done with setup:
 			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
 			
@@ -1806,16 +1885,24 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
             
 			// Now try to attach stencil buffer:
 			if (!((*fbo)->stexid) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
-				// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
+				// Create and attach renderbuffer as a stencil buffer of hopefully 8 bit depths:
 				glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
 				glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->stexid);
 
                 // Try to get stencil buffer with matching sample count to depth and color buffers:
-				glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_STENCIL_INDEX8_EXT, width, height);
+                if (multisample > 0) {
+                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_STENCIL_INDEX8_EXT, twidth, theight);
+                }
+                else {
+                    // OES does not guarantee 8 bit stencil buffers, only with extension. In fact, it does not even guarantee
+                    // stencil buffers at all, so we aim for 8 bit, fallback to 4 bit and leave it to the error handling below to disable
+                    // stencil buffers if the implementation doesn't support at least the 4 bit case:
+                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, (!PsychIsGLES(NULL) || strstr(glGetString(GL_EXTENSIONS), "GL_OES_stencil8")) ? GL_STENCIL_INDEX8_EXT : GL_STENCIL_INDEX4_EXT, twidth, theight);
+                }
 
 				if (glGetError()!=GL_NO_ERROR) {
 					if (PsychPrefStateGet_Verbosity() > 2) {
-                        printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                        printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a %s renderbuffer for imaging pipeline!\n", (multisample > 0) ? "multisample" : "");
                     }
                     
                     // Clean up:
@@ -1823,21 +1910,23 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 					glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
 					(*fbo)->stexid = 0;
 				}
-				
-				// Query real number of samples for renderbuffer:
-				glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
-				if ((*fbo)->multisample != multisample) {
-					if (PsychPrefStateGet_Verbosity() > 2) {
-                        printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
-                        printf("PTB-WARNING: Could not get the same number of samples for stencil renderbuffer as for color buffer, which is a requirement.\n");
-                    }
 
-                    // Clean up:
-                    glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
-					glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
-					(*fbo)->stexid = 0;
+                if (multisample > 0) {				
+                    // Query real number of samples for renderbuffer:
+                    glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
+                    if ((*fbo)->multisample != multisample) {
+                        if (PsychPrefStateGet_Verbosity() > 2) {
+                            printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                            printf("PTB-WARNING: Could not get the same number of samples for stencil renderbuffer as for color buffer, which is a requirement.\n");
+                        }
+
+                        // Clean up:
+                        glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+                        glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
+                        (*fbo)->stexid = 0;
+                    }
 				}
-				
+
                 if ((*fbo)->stexid > 0) {
                     glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
                     glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->stexid);
@@ -1847,7 +1936,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                     if (GL_FRAMEBUFFER_COMPLETE_EXT != fborc && 0 != fborc) {
                         // Nope. Our trick doesn't work, this hardware won't let us attach a stencil buffer at all. Remove it
                         // and live with a depth-buffer only setup.
-                        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil multisampled renderbuffer attachment failed! Detaching multisampled stencil buffer...\n");                        
+                        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil % renderbuffer attachment failed! Detaching stencil buffer...\n", (multisample > 0) ? "multisample" : "");                        
                         glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, 0);
                         glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
                         (*fbo)->stexid = 0;
@@ -1856,7 +1945,8 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                         // Checking command itself failed?!?
                         if (PsychPrefStateGet_Verbosity() > 1) {
                             // Warn the user:
-                            printf("PTB-WARNING: In setup of framebuffer object multisampled stencil attachment: glCheckFramebufferStatusEXT() malfunctioned. (glGetError reports: %s)\n", gluErrorString(glGetError()));
+                            printf("PTB-WARNING: In setup of framebuffer object %s stencil attachment: glCheckFramebufferStatusEXT() malfunctioned. (glGetError reports: %s)\n",
+                                   (multisample > 0) ? "multisample" : "", gluErrorString(glGetError()));
                             printf("PTB-WARNING: Therefore can't determine if FBO setup worked or not. Will continue and hope for the best :(\n");
                             printf("PTB-WARNING: This is most likely a graphics driver bug. You may want to update your graphics drivers, maybe it helps.\n");
                         }
@@ -1865,7 +1955,8 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 }
                 
                 if (((*fbo)->stexid == 0) && (PsychPrefStateGet_Verbosity() > 1)) {
-                    printf("PTB-WARNING: OpenGL multisampled stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n");
+                    printf("PTB-WARNING: OpenGL %s stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n",
+                           (multisample > 0) ? "multisample" : "");
                     printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
                     printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
                     printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers.\n\n");
@@ -1913,7 +2004,27 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
             break;
             
             case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-                sprintf(fbodiag, "Framebuffer attachment multisample-incomplete.");
+                sprintf(fbodiag, "Framebuffer attachment multisample incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+                sprintf(fbodiag, "Framebuffer attachments missing incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+                sprintf(fbodiag, "Framebuffer dimensions incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+                sprintf(fbodiag, "Framebuffer formats incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+                sprintf(fbodiag, "Framebuffer drawbuffer incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+                sprintf(fbodiag, "Framebuffer readbuffer incomplete.");
             break;
 
             default:
@@ -1940,7 +2051,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		// Output framebuffer properties:
 		glGetIntegerv(GL_RED_BITS, &bpc);
 		printf("PTB-DEBUG: FBO has %i bits precision per color component in ", bpc);
-		if (glewIsSupported("GL_ARB_color_buffer_float")) {
+		if (glewIsSupported("GL_ARB_color_buffer_float") || glewIsSupported("GL_EXT_color_buffer_float")) {
 			glGetBooleanv(GL_RGBA_FLOAT_MODE_ARB, &isFloatBuffer);
 			if (isFloatBuffer) {
 				printf("floating point format ");
@@ -1960,7 +2071,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		}
 		else {
 			isFloatBuffer = FALSE;
-			printf("unknown format ");
+			printf("unknown (but likely fixed point) format ");
 		}
 
 		glGetIntegerv(GL_DEPTH_BITS, &bpc);
@@ -2023,6 +2134,12 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_
 			// Need 32 bpc floating point precision?
 			if (forImagingmode & kPsychNeed32BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; textureRecord->bpc = 32; }
 			
+            // OpenGL-ES + float precision requested?
+            if (PsychIsGLES(textureRecord) && (textureRecord->bpc > 8)) {
+                // Upgrade to full 32bpc float -- we only support this, if at all:
+                fboInternalFormat = GL_RGBA_FLOAT32_APPLE; textureRecord->bpc = 32;
+            }
+
 			PsychCreateFBO(&(textureRecord->fboTable[0]), fboInternalFormat, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0, (PsychGetTextureTarget(textureRecord) == GL_TEXTURE_2D) ? 1 : 0);
 			
 			// Manually set up the texture id from our color attachment texture id:
@@ -2041,8 +2158,7 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_
 		if (!PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 1, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0, (PsychGetTextureTarget(textureRecord) == GL_TEXTURE_2D) ? 1 : 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_internal, "Preparation of drawing into an offscreen window or texture failed when trying to create associated framebuffer object!");
-			
-		}					
+		}
 	}
 	
 	return;
@@ -2097,14 +2213,21 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		fboptr = sourceRecord->fboTable[0];
 		if (fboptr!=NULL) { 			
 			// Detach and delete color buffer texture:
-
 			needzbuffer = (fboptr->ztexid) ? TRUE : FALSE;
 
-			// if (fboptr->coltexid) glDeleteTextures(1, &(fboptr->coltexid));
 			// Detach and delete depth buffer (and probably stencil buffer) texture, if any:
-			if (fboptr->ztexid) glDeleteTextures(1, &(fboptr->ztexid));
+			if (fboptr->ztexid) {
+                if (glIsTexture(fboptr->ztexid)) {
+                    glDeleteTextures(1, &(fboptr->ztexid));
+                }
+                else {
+                    glDeleteRenderbuffersEXT(1, &(fboptr->ztexid));
+                }
+            }
+
 			// Detach and delete stencil renderbuffer, if a separate stencil buffer was needed:
 			if (fboptr->stexid) glDeleteRenderbuffersEXT(1, &(fboptr->stexid));
+
 			// Delete FBO itself:
 			if (fboptr->fboid) glDeleteFramebuffersEXT(1, &(fboptr->fboid));
 						
@@ -2139,11 +2262,31 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 			width  = (int) PsychGetWidthFromRect(sourceRecord->rect);
 			height = (int) PsychGetHeightFromRect(sourceRecord->rect);
 		}
-		
+
+        // Special mapping for OpenGL-ES:
+        if (PsychIsGLES(sourceRecord)) {
+            // Enforce RGBA8 mapping, so all code below proceeds as if this is the case:
+            fboInternalFormat = GL_RGBA8;
+
+            // OpenGL-ES + float precision requested?
+            if ((sourceRecord->bpc > 8) || ((sourceRecord->depth / sourceRecord->nrchannels) >= 32)) {
+                // Upgrade to full 32bpc float -- we only support this, if at all:
+                fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
+
+                // This will force code into proper path below:
+                sourceRecord->textureexternalformat = fboInternalFormat;
+            }
+
+			// Override width and height: Can't query size from OpenGL-ES due to lack of support,
+			// get net width and height for recreation of FBO:
+			width  = (int) PsychGetWidthFromRect(sourceRecord->rect);
+			height = (int) PsychGetHeightFromRect(sourceRecord->rect);
+        }
+
 		// Renderable format? Pure luminance or luminance+alpha formats are not renderable on most hardware.
-		
+
 		// Upgrade 8 bit luminace to 8 bit RGBA:
-		if (fboInternalFormat == GL_LUMINANCE8 || fboInternalFormat == GL_LUMINANCE8_ALPHA8|| sourceRecord->depth == 8) fboInternalFormat = GL_RGBA8;
+		if (fboInternalFormat == GL_LUMINANCE8 || fboInternalFormat == GL_LUMINANCE8_ALPHA8 || sourceRecord->depth == 8) fboInternalFormat = GL_RGBA8;
 		
 		// Upgrade non-renderable floating point formats to their RGB or RGBA counterparts of matching precision:
 		if (sourceRecord->nrchannels < 3 && fboInternalFormat != GL_RGBA8) {
@@ -2857,16 +3000,19 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 		// Enable associated GL context:
 		PsychSetGLContext(windowRecord);
 		
-		// Save current FBO bindings for later restore:
-		if (glBindFramebufferEXT) {
+		// Save current FBO bindings for later restore on classic desktop OpenGL1/2:
+		if (glBindFramebufferEXT && PsychIsGLClassic(windowRecord)) {
 			glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &restorefboid);
 		}
+        else {
+            // Unsupported on OES and next gen: TODO FIXME - Implement proper state tracking.
+            restorefboid = 0;
+        }
 		
 		// Setup initial source -> target binding:
 		PsychPipelineSetupRenderFlow(mysrcfbo1, mysrcfbo2, mydstfbo, scissor_ignore);
 	}
 
-	
 	// Reget start of enabled chain:
 	hookfunc = windowRecord->HookChain[hookId];
 
@@ -3149,7 +3295,7 @@ psych_bool PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int
 
 			if (strstr(hookfunc->idString, "Builtin:IdentityBlit")) {
 				// Perform the most simple blit operation: A simple one-to-one copy of input FBO to output FBO:
-				if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, NULL, NULL, TRUE, FALSE, srcfbo1, NULL, dstfbo, NULL)) {
+				if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, hookUserData, hookBlitterFunction, TRUE, FALSE, srcfbo1, NULL, dstfbo, NULL)) {
 					// Blitter failed!
 					return(FALSE);
 				}
@@ -3266,7 +3412,6 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 		glDisable(GL_TEXTURE_2D);
 	}
 
-	
 	if (dstfbo) {
 		// Setup viewport, scissor rectangle and projection matrix for orthonormal rendering into the
 		// target FBO or system framebuffer:
@@ -3281,7 +3426,7 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 		}
 
 		// Settings changed? We skip if not - state changes are expensive...
-		if (w!=ow || h!=oh) {
+		if ((w!=ow || h!=oh) && PsychIsMasterThread()) {
 			ow=w;
 			oh=h;
 			
@@ -3292,16 +3437,24 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 			// Setup projection matrix for a proper orthonormal projection for this framebuffer:
 			glMatrixMode(GL_PROJECTION);
 			glLoadIdentity();
-			gluOrtho2D(0, w, h, 0);
+            
+            if (!PsychIsGLES(NULL)) {
+                gluOrtho2D(0, w, h, 0);
+            }
+            else {
+                glOrthofOES(0, (float) w, (float) h, 0, -1, 1);
+            }
 
 			// Switch back to modelview matrix, but leave it unaltered:
 			glMatrixMode(GL_MODELVIEW);
 		}
 	}
 	else {
-		// Reset our cached settings:
-		ow=0;
-		oh=0;
+        if (PsychIsMasterThread()) {
+            // Reset our cached settings:
+            ow=0;
+            oh=0;
+        }
 	}
 
 	return;
@@ -3495,10 +3648,13 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
  */
 psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
-	int w, h, x, y;
+	int w, h, x, y, wf, hf;
 	float sx, sy, wt, ht;
 	char* strp;
 	psych_bool bilinearfiltering;
+
+    // hookUserData, if non-NULL, can provide override parameter string:
+    char* pString1 = (hookUserData) ? (char*) hookUserData : hookfunc->pString1;
 
 	// Child protection:
 	if (!(srcfbo1 && (*srcfbo1))) {
@@ -3513,10 +3669,26 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
     wt = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1 : (float) w;
     ht = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1 : (float) h;
 
+    // This pot-textures remapping mostly applies to OpenGL-ES 1.x hardware:
+    if (((*srcfbo1)->textarget == GL_TEXTURE_2D) && !(windowRecord->gfxcaps & kPsychGfxCapNPOTTex)) {
+        // Only power-of-two GL_TEXTURE_2D targets supported. Find real width of
+        // FBO color buffer backing texture (wf, hf):
+        wf = 1;
+        while (wf < w) wf *= 2;
+        hf = 1;
+        while (hf < h) hf *= 2;
+
+        // Remap texture coordinates relative to (wf, hf) to select a proper
+        // subrectangle for the blit - the subrectangle with actual meaningful
+        // framebuffer content:
+        wt = (float) w / (float) wf;
+        ht = (float) h / (float) hf;
+    }
+
 	// Check for override width x height parameter in the blitterString: An integral (w,h)
 	// size the blit. This allows to blit a target quad with a size different from srcfbo1, without
 	// scaling or filtering it. Mostly useful in conjunction with specific shaders.
-	if (strp=strstr(hookfunc->pString1, "OvrSize:")) {
+	if (strp=strstr(pString1, "OvrSize:")) {
 		// Parse and assign offset:
 		if (sscanf(strp, "OvrSize:%i:%i", &w, &h)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): OvrSize: blit string parameter is invalid! Parse error...\n");
@@ -3524,7 +3696,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	}
 
 	// Bilinear filtering of srcfbo1 texture requested?
-	if (strstr(hookfunc->pString1, "Bilinear")) {
+	if (strstr(pString1, "Bilinear")) {
 		// Yes. Enable it.
 		bilinearfiltering = TRUE;
 		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -3538,7 +3710,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	// offset for the destination of the blit. This allows to blit the srcfbo1, without
 	// scaling or filtering it, to a different start location than (0,0):
 	x=y=0;
-	if (strp=strstr(hookfunc->pString1, "Offset:")) {
+	if (strp=strstr(pString1, "Offset:")) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Offset:%i:%i", &x, &y)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Offset: blit string parameter is invalid! Parse error...\n");
@@ -3547,7 +3719,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 
 	// Check for scaling parameter:
 	sx = sy = 1.0;
-	if (strp=strstr(hookfunc->pString1, "Scaling:")) {
+	if (strp=strstr(pString1, "Scaling:")) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Scaling:%f:%f", &sx, &sy)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Scaling: blit string parameter is invalid! Parse error...\n");
@@ -3567,34 +3739,57 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	
 	if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychBlitterIdentity: Blitting x=%i y=%i sx=%f sy=%f w=%i h=%i\n", x, y, sx, sy, w, h);
 	
-	// Do the blit, using a rectangular quad:
-	glBegin(GL_QUADS);
+    if (PsychIsGLClassic(windowRecord)) {
+        // OpenGL-1/2: Do the blit, using a rectangular quad:
+        glBegin(GL_QUADS);
 	
-	// Note the swapped y-coord for textures wrt. y-coord of vertex position!
-	// Texture coordinate system has origin at bottom-left, y-axis pointing upward,
-	// but PTB has framebuffer coordinate system with origin at top-left, with
-	// y-axis pointing downward! Normally OpenGL would have origin always bottom-left,
-	// but PTB has to use a different system (changed by special gluOrtho2D) transform),
-	// because our 2D coordinate system needs to conform to the standards of the old
-	// Psychtoolboxes and of typical windowing systems. -- A tribute to the past.
+        // Note the swapped y-coord for textures wrt. y-coord of vertex position!
+        // Texture coordinate system has origin at bottom-left, y-axis pointing upward,
+        // but PTB has framebuffer coordinate system with origin at top-left, with
+        // y-axis pointing downward! Normally OpenGL would have origin always bottom-left,
+        // but PTB has to use a different system (changed by special gluOrtho2D) transform),
+        // because our 2D coordinate system needs to conform to the standards of the old
+        // Psychtoolboxes and of typical windowing systems. -- A tribute to the past.
 
-	// Upper left vertex in window
-	glTexCoord2f(0, ht);
-	glVertex2f(0, 0);
+        // Upper left vertex in window
+        glTexCoord2f(0, ht);
+        glVertex2f(0, 0);
 
-	// Lower left vertex in window
-	glTexCoord2f(0, 0);
-	glVertex2f(0, (float) h);
+        // Lower left vertex in window
+        glTexCoord2f(0, 0);
+        glVertex2f(0, (float) h);
 
-	// Lower right  vertex in window
-	glTexCoord2f(wt, 0);
-	glVertex2f((float) w, (float) h);
+        // Lower right  vertex in window
+        glTexCoord2f(wt, 0);
+        glVertex2f((float) w, (float) h);
 
-	// Upper right in window
-	glTexCoord2f(wt, ht);
-	glVertex2f((float) w, 0);
+        // Upper right in window
+        glTexCoord2f(wt, ht);
+        glVertex2f((float) w, 0);
 
-	glEnd();
+        glEnd();
+    }
+    else {
+        // Other. Need to emulate immediate mode GL-QUADS via GL_TRIANGLE_STRIPs:
+        // Also need to avoid immediate mode functions and use our own vertex arrray
+        // on our local function call stack, because this blitter can be called from
+        // async flipper threads for frame-sequential stereo emulation, so can't use
+        // global convenience helpers (GLBEGIN, GLEND etc.), as they'd use shared data
+        // This glverts array is local on our stack, thereby thread-local. Also our
+        // thread has its own OpenGL context, so no danger there either:
+        GLfloat glverts[4*4] = { 0,   0,  0, h,
+                                 0,  ht,  0, 0,
+                                 wt,  0,  w, h,
+                                 wt, ht, w,  0};
+
+        glVertexPointer(2, GL_FLOAT, 4 * sizeof(GLfloat), &glverts[2]);
+        glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(GLfloat), &glverts[0]);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    }
 
 	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
 		glPopMatrix();
@@ -3623,7 +3818,13 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 	float sx, sy;
 	char* strp;
 	psych_bool bilinearfiltering;
-	
+
+    // Not available on non-classic OpenGL. Need to find some replacement for display lists at some point in time to make this work :(
+    if (!PsychIsGLClassic(windowRecord)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychBlitterDisplayList(): Called, but function unsupported on this non-OpenGL-1/2 rendering context! Aborted.\n");
+        return(FALSE);
+	}
+
 	// Child protection:
 	if (!(srcfbo1 && (*srcfbo1))) {
 		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): srcfbo1 is a NULL - Pointer!!!");

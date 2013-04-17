@@ -165,7 +165,7 @@ struct PsychUSBDeviceRecord_Struct {
 	
 	#if PSYCH_SYSTEM == PSYCH_OSX
 	// OS/X stuff:
-	IOUSBDeviceInterface**    device;  // Actual low-level device specific pointer for OS/X.
+	IOUSBDeviceInterface182**    device;  // Actual low-level device specific pointer for OS/X.
 	#else
         // Linux & Windows stuff:
         void*     device;  // libusb device handle for other os'es.

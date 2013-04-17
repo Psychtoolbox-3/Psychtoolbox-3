@@ -125,7 +125,7 @@ int _kbhit(void) {
             // Detach stdin from controlling tty, redirect to
             // /dev/zero, so it doesn't get any input from now on,
             // regardless what characters go to the terminal:
-            freopen("/dev/zero", "r", stdin);
+            if (!freopen("/dev/zero", "r", stdin)) printf("PTB-WARNING: Could not freopen() stream during ListenChar(2)!\n");
 
             // We are detached: No characters received from terminal,
             // no characters echo'ed by terminal itself.

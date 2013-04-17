@@ -61,6 +61,7 @@ function SpinningCubeDemo
 % 21-Jan-2006 -- Modified for use with OpenGL-Psychtoolbox (MK)
 % 16-Feb-2006 -- Modified for use with new MOGL (MK)
 % 05-Mar-2006 -- Cleaned up for public consumption (MK)
+% 06-Apr-2013 -- Make compatible with OpenGL-ES1.1. (MK)
 
 % Is the script running in OpenGL Psychtoolbox?
 AssertOpenGL;
@@ -182,7 +183,7 @@ while (1)
 
     % Setup cubes rotation around axis:
     glPushMatrix;
-    glRotated(theta,rotatev(1),rotatev(2),rotatev(3));
+    glRotatef(theta,rotatev(1),rotatev(2),rotatev(3));
 
     % Clear out the backbuffer: This also cleans the depth-buffer for
     % proper occlusion handling:
@@ -242,24 +243,25 @@ n=cross(v(:,i(2))-v(:,i(1)),v(:,i(3))-v(:,i(2)));
 
 % Bind (Select) texture 'tx' for drawing:
 glBindTexture(GL.TEXTURE_2D,tx);
-% Begin drawing of a new polygon:
-glBegin(GL.POLYGON);
+
+% Begin drawing of a new quad:
+glBegin(GL.QUADS);
 
 % Assign n as normal vector for this polygons surface normal:
-glNormal3dv(n);
+glNormal3f(n(1), n(2), n(3));
 
 % Define vertex 1 by assigning a texture coordinate and a 3D position:
-glTexCoord2dv([ 0 0 ]);
-glVertex3dv(v(:,i(1)));
+glTexCoord2f(0, 0);
+glVertex3f(v(1,i(1)),v(2,i(1)),v(3,i(1)));
 % Define vertex 2 by assigning a texture coordinate and a 3D position:
-glTexCoord2dv([ 1 0 ]);
-glVertex3dv(v(:,i(2)));
+glTexCoord2f(1, 0);
+glVertex3f(v(1,i(2)),v(2,i(2)),v(3,i(2)));
 % Define vertex 3 by assigning a texture coordinate and a 3D position:
-glTexCoord2dv([ 1 1 ]);
-glVertex3dv(v(:,i(3)));
+glTexCoord2f(1, 1);
+glVertex3f(v(1,i(3)),v(2,i(3)),v(3,i(3)));
 % Define vertex 4 by assigning a texture coordinate and a 3D position:
-glTexCoord2dv([ 0 1 ]);
-glVertex3dv(v(:,i(4)));
+glTexCoord2f(0, 1);
+glVertex3f(v(1,i(4)),v(2,i(4)),v(3,i(4)));
 % Done with this polygon:
 glEnd;
 

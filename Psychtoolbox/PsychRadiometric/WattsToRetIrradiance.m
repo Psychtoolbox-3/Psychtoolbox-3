@@ -27,7 +27,7 @@ function [irradiance, irradianceS] =...
 %								   readingInWatts is the total power measured.
 %                  radiometer is a structure describing the radiometer. (default = Sterling Lab's IL1400A).
 %
-%	04/29/03	lyin Wrote it with advice from DHB
+% 04/29/03	lyin Wrote it with advice from DHB
 % 05/06/03	lyin Put wls into variable: lightSource
 % 05/06/03	lyin Correction for wavelength sampling interval
 % 06/12/03	lyin Change the way, variable being passed
@@ -45,7 +45,7 @@ if (exist('radiometer', 'var') ~= 1 || isempty(radiometer))
 	%
 	% The data below describe the Sterling Lab's IL1400A, whose reference
 	% spectrum is a HeNe 633 nm line.	
-	radiometer.pinholeDiameter = 1000;																% um
+	radiometer.pinholeDiameter = 1000;														    % um
 	radiometer.efficiencyS = [350 10 46]; 														% nm
 	radiometer.efficiency = [0.264 0.376 0.486 0.584 0.700...
 													0.766 0.804 0.820 0.834 0.864...

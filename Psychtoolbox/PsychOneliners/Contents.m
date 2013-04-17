@@ -19,6 +19,7 @@
 %   CreateUniformDotsIn3DFrustum - Sample dots in 3D frustum uniformly.
 %   CropBlackEdges          - Detects if there are any black edges around an image and returns indices that can be used to cut away these edges.
 %   DeEmptify               - Deletes empty cells or rows from cellarray.
+%   DegToMrad               - Convert angle in degrees to milliradians (mrad).
 %   DescribeComputer        - Print a description of the environment.
 %   DotOffset               - Calculate offsets for a 3D movement. Various per-dot options.
 %   Ellipse                 - Returns a boolean mask in the shape of a (super-) Ellipse.
@@ -35,6 +36,7 @@
 %   GetNumber               - Get a number typed at the keyboard.
 %   GetString               - Get a string typed at the keyboard.
 %   GetSubversionPath       - Return path required to invoke snv.
+%   GetSVNInfo              - Find info on SVN version number of directory or file.
 %   GetWithDefault          - Get string or number with prompt and default value.
 %   GrayIndex               - Any graylevel from black (0) to white (1).
 %   GroupStructArrayByFields - An aid to sorting data kept in structure arrays.
@@ -43,6 +45,9 @@
 %   Ind2Str                 - Converts numbers to characters (decimal to base 26 conversion). Useful for character indices.
 %   Interleave              - Interleaves any number of arrays. Can handle different data types.
 %   IsACell                 - Tests (recursively--cells in cells) if a cell satisfies a user-supplied condition.
+%   IsARM                   - Return if running on a processor with ARM architecture, typically a mobile or embedded system.
+%   IsGLES                  - Return if the current rendering api in use is OpenGL-ES, the "OpenGL Embedded Subset".
+%   IsGLES1                 - Return if the current rendering api in use is OpenGL-ES 1.x.
 %   IsGUI                   - Is the Matlab or Octave GUI enabled in this session?
 %   IsLinux                 - Shorthand for testing whether running under Linux.
 %   IsMinimumOSXVersion     - Query if this is a specific OS/X version or higher.
@@ -63,6 +68,7 @@
 %   MakeSineImage           - Make a sinusoidal image.
 %   MapIndexColorThroughClut - Convert an index color image and clut to a true color image.
 %   MergeCell               - Concatenates contents of input cells element-wise.
+%   MradToDeg               - Convert angle in milliradians (mrad) to degrees.
 %   NameBytes               - Nicely format memory size for human readers.
 %   NameFrequency           - Nicely format clock rate for human readers.
 %   NearestResolution       - Find a screen resolution that most closely matches a requested resolution.

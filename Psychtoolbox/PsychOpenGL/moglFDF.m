@@ -543,7 +543,7 @@ if strcmpi(cmd, 'CreateContext') | strcmpi(cmd, 'ReinitContext') %#ok<OR2>
     % window with a pixel size of 128 bits, aka 32 bpc float.
     ctx.sampleLinesPerBatch = ceil((round(ctx.maxFGDots / ctx.dotLifetime)) / ctx.samplesPerLine);
     ctx.sampleLinesTotal = ctx.sampleLinesPerBatch * ctx.dotLifetime;
-    ctx.sampleBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], double([0 0 ctx.samplesPerLine ctx.sampleLinesTotal]), 128);
+    ctx.sampleBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], double([0 0 ctx.samplesPerLine ctx.sampleLinesTotal]), 128, 32);
     ctx.maxFGDots = ctx.sampleLinesTotal * ctx.samplesPerLine;
     
     % Silhouette buffer: Contains the "perspective correct image space"
@@ -558,7 +558,7 @@ if strcmpi(cmd, 'CreateContext') | strcmpi(cmd, 'ReinitContext') %#ok<OR2>
     % channel encodes t-coord of 2D texture coordinate, blue encodes
     % interpolated z-buffer depths.
     [ctx.silhouetteWidth, ctx.silhouetteHeight] = RectSize(ctx.rect);
-    ctx.silhouetteBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.silhouetteWidth, ctx.silhouetteHeight], 128);
+    ctx.silhouetteBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.silhouetteWidth, ctx.silhouetteHeight], 128, 32);
 
     % Retrieve OpenGL texture handle for the sihouetteBuffer:
     ctx.silhouetteTexture = Screen('GetOpenGLTexture', ctx.parentWin, ctx.silhouetteBuffer);
@@ -578,12 +578,12 @@ if strcmpi(cmd, 'CreateContext') | strcmpi(cmd, 'ReinitContext') %#ok<OR2>
     % Again a 32bpc float offscreen window FBO, but the resolution is
     % chosen per user spec to be fine enough in texture coordinate space to
     % avoid aliasing artifacts as good as possible:
-    ctx.trackingBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 128);
+    ctx.trackingBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 128, 32);
 
     % Final buffer with foreground dot positions. This one will get filled
     % by the createFGDotShader. It will later get either read back to
     % Matlab on usercode request, or converted to a VBO and then rendered.
-    ctx.FGDotsBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], Screen('Rect', ctx.sampleBuffer), 128);
+    ctx.FGDotsBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], Screen('Rect', ctx.sampleBuffer), 128, 32);
     
 
     % Final buffer with background dot positions. This one will get filled
@@ -595,7 +595,7 @@ if strcmpi(cmd, 'CreateContext') | strcmpi(cmd, 'ReinitContext') %#ok<OR2>
     ctx.BGsamplesPerLine = min(ctx.BGsamplesPerLine, round(ctx.maxBGDots / ctx.dotLifetime));
     ctx.BGsampleLinesPerBatch = ceil((round(ctx.maxBGDots / ctx.dotLifetime)) / ctx.BGsamplesPerLine);
     ctx.BGsampleLinesTotal = ctx.BGsampleLinesPerBatch * ctx.dotLifetime;
-    ctx.BGDotsBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], double([0 0 ctx.BGsamplesPerLine ctx.BGsampleLinesTotal]), 128);
+    ctx.BGDotsBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], double([0 0 ctx.BGsamplesPerLine ctx.BGsampleLinesTotal]), 128, 32);
     ctx.maxBGDots = ctx.BGsampleLinesTotal * ctx.BGsamplesPerLine;
     ctx.BGSampleSet = zeros(ctx.BGsampleLinesTotal, ctx.BGsamplesPerLine, 3);
 

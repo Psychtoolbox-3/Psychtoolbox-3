@@ -14,9 +14,10 @@
 % 06/26/03 dhb	Rewrote to be self-contained, plus new calling conventions.
 % 07/10/03 dhb  Various tuning.
 % 07/11/03 dhb  Grab data through subroutines.  Get rid of integration time.
+% 04/2/13  dhb  Change clear all to clear, and close figs.
 
 % clear
-clear all;
+clear; close all;
 
 % Set some photoreceptor properties.
 photoreceptors = DefaultPhotoreceptors('GuineaPig');

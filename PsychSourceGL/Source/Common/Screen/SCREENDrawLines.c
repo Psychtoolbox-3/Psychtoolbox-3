@@ -1,4 +1,3 @@
-
 /*
 SCREENDrawLines.c	
  
@@ -54,14 +53,13 @@ SCREENDrawLines.c
 
  */
 
-
 #include "Screen.h"
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('DrawLines', windowPtr, xy [,width] [,colors] [,center] [,smooth]);";
 //                                             1          2    3        4         5         6
 static char synopsisString[] = 
-"Quickly draw an array of lines into the specified window \"windowPtr\". "
+"Quickly draw an array of lines into the specified window \"windowPtr\".\n"
 "\"xy\" is a two-row vector containing the x and y coordinates of the line segments: Pairs of consecutive "
 "columns define (x,y) positions of the starts and ends of line segments. All positions are relative "
 "to \"center\" (default center is [0 0]). \"width\" is either a scalar with the global width for "
@@ -71,9 +69,9 @@ static char synopsisString[] =
 "endpoint in the xy position argument. If you specify different colors for the start- and endpoint of a "
 "line segment, PTB will generate a smooth transition of colors along the line via linear interpolation. "
 "The default color is white if colors is omitted. \"smooth\" is a flag that determines whether lines "
-"should be smoothed: 0 (default) no smoothing, 1 smoothing (with anti-aliasing). If you use smoothing, "
-"you'll also need to set a proper blending mode with Screen('BlendFunction').";
-  
+"should be smoothed: 0 (default) no smoothing, 1 smoothing (with anti-aliasing), 2 = high quality smoothing. "
+"If you use smoothing, you'll also need to set a proper blending mode with Screen('BlendFunction').";
+
 static char seeAlsoString[] = "BlendFunction";	 
 
 PsychError SCREENDrawLines(void)  
@@ -85,6 +83,8 @@ PsychError SCREENDrawLines(void)
 	double						*xy, *size, *center, *dot_type, *colors;
 	unsigned char               *bytecolors;
 	float						linesizerange[2];
+    float						*sizef;
+    psych_bool                  lenient = FALSE;
 
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -104,10 +104,13 @@ PsychError SCREENDrawLines(void)
 	colors = NULL;
 	bytecolors = NULL;
 
-	PsychPrepareRenderBatch(windowRecord, 2, &nrvertices, &xy, 4, &nc, &mc, &colors, &bytecolors, 3, &nrsize, &size);
+	PsychPrepareRenderBatch(windowRecord, 2, &nrvertices, &xy, 4, &nc, &mc, &colors, &bytecolors, 3, &nrsize, &size, (GL_FLOAT == PsychGLFloatType(windowRecord)));
 	isdoublecolors = (colors) ? TRUE:FALSE;
 	isuint8colors  = (bytecolors) ? TRUE:FALSE;
 	usecolorvector = (nc>1) ? TRUE:FALSE;
+
+    // Assign sizef as float-type array of sizes, if float mode active, NULL otherwise:
+    sizef = (GL_FLOAT == PsychGLFloatType(windowRecord)) ? (float*) size : NULL;
 
 	// Get center argument
 	isArgThere = PsychIsArgPresent(PsychArgIn, 5);
@@ -127,11 +130,11 @@ PsychError SCREENDrawLines(void)
 	} else {
 		PsychAllocInDoubleMatArg(6, TRUE, &m, &n, &p, &dot_type);
 		smooth = (int) dot_type[0];
-		if(p!=1 || n!=1 || m!=1 || (smooth!=0 && smooth!=1)) PsychErrorExitMsg(PsychError_user, "smooth must be 0 or 1");
+		if(p!=1 || n!=1 || m!=1 || (smooth < 0 || smooth > 2)) PsychErrorExitMsg(PsychError_user, "smooth must be 0, 1 or 2.");
 	}
 
 	// Child-protection: Alpha blending needs to be enabled for smoothing to work:
-	if (smooth>0 && windowRecord->actualEnableBlending!=TRUE) {
+	if (smooth > 0 && windowRecord->actualEnableBlending!=TRUE) {
 		PsychErrorExitMsg(PsychError_user, "Line smoothing doesn't work with alpha-blending disabled! See Screen('BlendFunction') on how to enable it.");
 	}
 
@@ -139,19 +142,29 @@ PsychError SCREENDrawLines(void)
 	if(smooth) {
         glGetFloatv(GL_SMOOTH_LINE_WIDTH_RANGE, (GLfloat*) &linesizerange);
         glEnable(GL_LINE_SMOOTH);
+		// A smooth level of 2 requests highest quality line smoothing:
+		glHint(GL_LINE_SMOOTH_HINT, (smooth > 1) ? GL_NICEST : GL_DONT_CARE);
     }
     else {
-        glGetFloatv(GL_LINE_WIDTH_RANGE, (GLfloat*) &linesizerange);
+        glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, (GLfloat*) &linesizerange);
     }
 
-    if (size[0] < linesizerange[0] || size[0] > linesizerange[1]) {
+    // Does ES-GPU only support a fixed line width of 1 pixel?
+    if ((linesizerange[0] == linesizerange[1]) && (linesizerange[0] <= 1) && PsychIsGLES(windowRecord)) {
+        // Yes. Not much point bailing on this, as it should be easily visible
+        // during testing of a studies code on a OpenGL-ES device.
+        lenient = TRUE;
+    }
+
+	if (!lenient && ((sizef && (sizef[0] > linesizerange[1] || sizef[0] < linesizerange[0])) ||
+                     (!sizef && (size[0] > linesizerange[1] || size[0] < linesizerange[0])))) {
 		printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
-			   size[0], linesizerange[0], linesizerange[1]);
+			   (sizef) ? sizef[0] : size[0], linesizerange[0], linesizerange[1]);
 		PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
 	}
 
 	// Set global width of lines:
-	glLineWidth((float) size[0]);
+	if (!lenient) glLineWidth((sizef) ? sizef[0] : (float) size[0]);
 
 	// Setup modelview matrix to perform translation by 'center':
 	glMatrixMode(GL_MODELVIEW);	
@@ -160,7 +173,7 @@ PsychError SCREENDrawLines(void)
 	glPushMatrix();
 	
 	// Apply a global translation of (center(x,y)) pixels to all following lines:
-	glTranslated(center[0], center[1],0);
+	glTranslatef((float) center[0], (float) center[1], (float) 0);
 	
 	// Render the array of 2D-Lines - Efficient version:
 	// This command sequence allows fast processing of whole arrays
@@ -169,7 +182,7 @@ PsychError SCREENDrawLines(void)
 	// optimized in specific OpenGL implementations.
 	
 	// Pass a pointer to the start of the arrays:
-	glVertexPointer(2, GL_DOUBLE, 0, &xy[0]);
+	glVertexPointer(2, PSYCHGLFLOAT, 0, &xy[0]);
 	
 	if (usecolorvector) {
 		PsychSetupVertexColorArrays(windowRecord, TRUE, mc, colors, bytecolors);
@@ -185,22 +198,23 @@ PsychError SCREENDrawLines(void)
 	else {
 		// Different line-width per line: Need to manually loop through this mess:
 		for (i=0; i < nrvertices/2; i++) {
-            if (size[i] < linesizerange[0] || size[i] > linesizerange[1]) {
+            if (!lenient && ((sizef && (sizef[i] > linesizerange[1] || sizef[i] < linesizerange[0])) ||
+                             (!sizef && (size[i] > linesizerange[1] || size[i] < linesizerange[0])))) {
                 printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
-                       size[i], linesizerange[0], linesizerange[1]);
+                       (sizef) ? sizef[i] : size[i], linesizerange[0], linesizerange[1]);
                 PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
             }
             
-            glLineWidth((float) size[i]);
+            if (!lenient) glLineWidth((sizef) ? sizef[i] : (float) size[i]);
 
-	      // Render line:
-	      glDrawArrays(GL_LINES, i * 2, 2);
+            // Render line:
+            glDrawArrays(GL_LINES, i * 2, 2);
 		}
 	}
 	
 	// Disable fast rendering of arrays:
 	glDisableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_DOUBLE, 0, NULL);
+	glVertexPointer(2, PSYCHGLFLOAT, 0, NULL);
 
 	if (usecolorvector) PsychSetupVertexColorArrays(windowRecord, FALSE, 0, NULL, NULL);
 	
@@ -219,4 +233,3 @@ PsychError SCREENDrawLines(void)
  	//All psychfunctions require this.
 	return(PsychError_none);
 }
-

@@ -260,9 +260,6 @@ hwinpidout:
 }
 
 // SetUserFocusWindow() is a drop-in replacement for Carbon's function.
-// TODO FIXME: This doesn't work on the windows we are interested to
-// control focus, ie., the host windows of octave/matlab etc. Probably
-// only works on self-created Cocoa window, if any?
 OSStatus SetUserFocusWindow(WindowRef inWindow)
 {
     NSWindow* focusWindow = (NSWindow*) inWindow;
@@ -291,8 +288,13 @@ OSStatus SetUserFocusWindow(WindowRef inWindow)
         // all possible candidates, and a shielding window from CGDisplayCapture() will still prevent keyboard
         // input, even if the window has input focus...
         pid_t pid = GetHostingWindowsPID();
-        if (pid) {
-            NSRunningApplication* motherapp = [NSRunningApplication runningApplicationWithProcessIdentifier: pid];    
+        
+        // Also, the required NSRunningApplication class is unsupported on 64-Bit OSX 10.5, so we need to
+        // dynamically bind it and no-op if it is unsupported:
+        Class nsRunningAppClass = NSClassFromString(@"NSRunningApplication");
+        
+        if (pid && (nsRunningAppClass != NULL)) {
+            NSRunningApplication* motherapp = [nsRunningAppClass runningApplicationWithProcessIdentifier: pid];    
             [motherapp activateWithOptions: NSApplicationActivateIgnoringOtherApps];
         }
     }

@@ -18,7 +18,6 @@ function ThePath=PsychHomeDir(subDir)
 %          2/06/09    mk  Derived from PsychtoolboxConfigDir().
 
 persistent PTBHomePath %#ok<REDEF>
-
 ThePath = [];
 
 % Already have a cached path to config directory?
@@ -83,7 +82,7 @@ if isempty(ThePath)
         StringStart = [pwd filesep];
     end
 
-    TheDir = [StringStart];
+    TheDir = strtrim(StringStart);
 
     if exist(TheDir,'dir')
         ThePath = TheDir; %#ok<NASGU>

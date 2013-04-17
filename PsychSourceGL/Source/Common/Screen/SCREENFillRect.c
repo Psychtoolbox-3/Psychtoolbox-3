@@ -80,9 +80,10 @@ PsychError SCREENFillRect(void)
 	nrsize = 0;
 	colors = NULL;
 	bytecolors = NULL;
+
 	// The negative position -3 means: xy coords are expected at position 3, but they are optional.
 	// NULL means - don't want a size's vector.
-	PsychPrepareRenderBatch(windowRecord, -3, &numRects, &xy, 2, &nc, &mc, &colors, &bytecolors, 0, &nrsize, NULL);
+	PsychPrepareRenderBatch(windowRecord, -3, &numRects, &xy, 2, &nc, &mc, &colors, &bytecolors, 0, &nrsize, NULL, FALSE);
 	isScreenRect=FALSE;
 	
 	// Only up to one rect provided?
@@ -105,14 +106,14 @@ PsychError SCREENFillRect(void)
 		// We only use this fast-path on real onscreen windows, not on textures or
 		// offscreen windows.
 		
-		//Get the color argument or use the default, then coerce to the form determened by the window depth.  
+		//Get the color argument or use the default, then coerce to the form determened by the window depth.
 		isArgThere=PsychCopyInColorArg(2, FALSE, &color);
 		if(!isArgThere){
 			whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
 			PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
 		}
 		PsychCoerceColorMode( &color);
-				
+
 		// Disable any active shaders:
 		PsychSetShader(windowRecord, 0);
 

@@ -472,7 +472,8 @@ static GstAppSinkCallbacks videosinkCallbacks = {
     PsychEOSCallback,
     PsychNewPrerollCallback,
     PsychNewBufferCallback,
-    PsychNewBufferListCallback
+    PsychNewBufferListCallback,
+    {NULL}
 };
 
 /*
@@ -1041,8 +1042,16 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         if (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "thread-types")) {
             // Yes. Set it up. From http://ffmpeg.org/doxygen/trunk/libavcodec_2avcodec_8h.html
             // FF_THREAD_SLICE == 2, FF_THREAD_FRAME == 1, so select both by setting = 2 + 1
-            g_object_set(G_OBJECT(videocodec), "thread-types", 2 + 1, NULL);
-            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use frame-threading and slice-threading for parallel decoding.\n");
+            if (getenv("PSYCH_GST_THREAD_TYPES")) {
+                // User env override: Whatever it wants:
+                g_object_set(G_OBJECT(videocodec), "thread-types", (int) atoi(getenv("PSYCH_GST_THREAD_TYPES")), NULL);
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use threading method %s for parallel decoding.\n", getenv("PSYCH_GST_THREAD_TYPES"));
+            }
+            else {
+                // Default: Enable both slice and frame threading:
+                g_object_set(G_OBJECT(videocodec), "thread-types", 2 + 1, NULL);
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use frame-threading and slice-threading for parallel decoding.\n");
+            }
         }
         else if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Video decoder does not support selection of parallel decoding mode via 'thread-types' property.\n");
     }
@@ -1871,76 +1880,89 @@ void PsychGSFreeMovieTexture(PsychWindowRecordType *win)
  */
 int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume)
 {
-    int			dropped = 0;
-    GstElement		*theMovie = NULL;
+    int	dropped = 0;
+    GstElement *theMovie = NULL;
     double timeindex;
     
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
-        
+    
     // Fetch references to objects we need:
     theMovie = movieRecordBANK[moviehandle].theMovie;    
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
+
+    // Try to set movie playback rate to value identical to current value?
+    if (playbackrate == movieRecordBANK[moviehandle].rate) {
+        // Yes: This would be a no-op, except we allow to change the sound output volume
+        // dynamically and on-the-fly with low overhead this way:
+        
+        // Set volume and mute state for audio:
+        g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
+        g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
+        
+        // Done. Return success status code:
+        return(0);
+    }
     
     if (playbackrate != 0) {
         // Start playback of movie:
-
-	// Set volume and mute state for audio:
-	g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
-	g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
-
-	// Set playback rate: An explicit seek to the position we are already (supposed to be)
-	// is needed to avoid jumps in movies with bad encoding or keyframe placement:
-	timeindex = PsychGSGetMovieTimeIndex(moviehandle);
-
-	if (playbackrate > 0) {
-		gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
-				 (gint64) (timeindex * (double) 1e9), GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
-	}
-	else {
-		gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
-				 0, GST_SEEK_TYPE_SET, (gint64) (timeindex * (double) 1e9));
-	}
-
+        
+        // Set volume and mute state for audio:
+        g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
+        g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
+        
+        // Set playback rate: An explicit seek to the position we are already (supposed to be)
+        // is needed to avoid jumps in movies with bad encoding or keyframe placement:
+        timeindex = PsychGSGetMovieTimeIndex(moviehandle);
+        
+        if (playbackrate > 0) {
+            gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
+                             (gint64) (timeindex * (double) 1e9), GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+        }
+        else {
+            gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
+                             0, GST_SEEK_TYPE_SET, (gint64) (timeindex * (double) 1e9));
+        }
+        
         movieRecordBANK[moviehandle].loopflag = loop;
         movieRecordBANK[moviehandle].last_pts = -1.0;
         movieRecordBANK[moviehandle].nr_droppedframes = 0;
-	movieRecordBANK[moviehandle].rate = playbackrate;
-	movieRecordBANK[moviehandle].frameAvail = 0;
-	movieRecordBANK[moviehandle].preRollAvail = 0;
-
-	// Is this a movie with actual videotracks and frame-dropping on videosink full enabled?
-	if ((movieRecordBANK[moviehandle].nrVideoTracks > 0) && gst_app_sink_get_drop(GST_APP_SINK(movieRecordBANK[moviehandle].videosink))) {
-	    // Yes: We only schedule deferred start of playback at first Screen('GetMovieImage')
-	    // frame fetch. This to avoid dropped frames due to random delays between
-	    // call to Screen('PlayMovie') and Screen('GetMovieImage'):
-	    movieRecordBANK[moviehandle].startPending = 1;
-	}
-	else {
-	    // Only soundtrack or framedropping disabled with videotracks - Start it immediately:
-	    movieRecordBANK[moviehandle].startPending = 0;
-	    PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
-	    PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
-	}
+        movieRecordBANK[moviehandle].rate = playbackrate;
+        movieRecordBANK[moviehandle].frameAvail = 0;
+        movieRecordBANK[moviehandle].preRollAvail = 0;
+        
+        // Is this a movie with actual videotracks and frame-dropping on videosink full enabled?
+        if ((movieRecordBANK[moviehandle].nrVideoTracks > 0) && gst_app_sink_get_drop(GST_APP_SINK(movieRecordBANK[moviehandle].videosink))) {
+            // Yes: We only schedule deferred start of playback at first Screen('GetMovieImage')
+            // frame fetch. This to avoid dropped frames due to random delays between
+            // call to Screen('PlayMovie') and Screen('GetMovieImage'):
+            movieRecordBANK[moviehandle].startPending = 1;
+        }
+        else {
+            // Only soundtrack or framedropping disabled with videotracks - Start it immediately:
+            movieRecordBANK[moviehandle].startPending = 0;
+            PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
+            PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+        }
     }
     else {
-	// Stop playback of movie:
-	movieRecordBANK[moviehandle].rate = 0;
-	movieRecordBANK[moviehandle].startPending = 0;
-	movieRecordBANK[moviehandle].loopflag = 0;
-	movieRecordBANK[moviehandle].endOfFetch = 0;
-
-	PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 10.0);
-	PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
-
+        // Stop playback of movie:
+        movieRecordBANK[moviehandle].rate = 0;
+        movieRecordBANK[moviehandle].startPending = 0;
+        movieRecordBANK[moviehandle].loopflag = 0;
+        movieRecordBANK[moviehandle].endOfFetch = 0;
+        
+        PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 10.0);
+        PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+        
         // Output count of dropped frames:
         if ((dropped=movieRecordBANK[moviehandle].nr_droppedframes) > 0) {
             if (PsychPrefStateGet_Verbosity()>2) {
-		printf("PTB-INFO: Movie playback had to drop %i frames of movie %i to keep playback in sync.\n", movieRecordBANK[moviehandle].nr_droppedframes, moviehandle);
-	    }
+                printf("PTB-INFO: Movie playback had to drop %i frames of movie %i to keep playback in sync.\n", movieRecordBANK[moviehandle].nr_droppedframes, moviehandle);
+            }
         }
     }
 

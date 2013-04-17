@@ -12,6 +12,7 @@
 % help Psychtoolbox % For an overview, triple-click me & hit enter.
 % help PsychDemos   % For demos, triple-click me & hit enter.
 %
+%   BasicToneMapCalFormat - Apply simple (truncation) tone mapping to XYZ data in cal format.
 %   CalDataFolder       - Path to the calibration data folder "PsychCalData".
 %   CalFormatToImage    - Put a stretched out image back into an image image.
 %   CalibrateAmbDrvr    - Common code called by monitor calibration programs.  Script.

@@ -8,7 +8,7 @@
 	AUTHORS:
 	
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
-		Mario Kleiner           mk              mario.kleiner@tuebingen.mpg.de
+		Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 	
@@ -17,14 +17,14 @@
 		1/4/05		mk		Performance optimizations, some bug-fixes.
 		1/13/05		awi		Merged in Mario's changes of 1/4/05 into the psychtoolbox.org master.
 		1/23/05		awi		Merged mk's update which adds glEnable(GL_TEXTURE_RECTANGLE_EXT) call.  Fixes DrawText and DrawTexture
-								interference reported by Frans Cornelissen and others;
-		1/30/05     mk			Small bugfix: Now specifying sourceRect in DrawTexture really works as expected.
+							interference reported by Frans Cornelissen and others;
+		1/30/05     mk		Small bugfix: Now specifying sourceRect in DrawTexture really works as expected.
 		5/13/05		mk		Support for rotated drawing of textures. Switched to bilinear texture filtering instead of nearest neighbour.
 		6/07/05		mk		Change definition of texture coords from GLint to GLflot -> Allows subpixel accurate texturing.
 		7/23/05		mk		New options filterMode and globalAlpha for PsychBlitTextureToDisplay().
 		8/11/05		mk		New texture handling: We now use real OpenGL textures instead of our old "pseudo-texture"
-								implementation. This is *way* faster, e.g., drawing times decrease from 35 ms to 3 ms for big
-								textures. Some experimental optimizations are implemented but not yet enabled...
+							implementation. This is *way* faster, e.g., drawing times decrease from 35 ms to 3 ms for big
+							textures. Some experimental optimizations are implemented but not yet enabled...
 		10/11/05	mk		Support for special Quicktime movie textures added.
 		01/02/05	mk		Moved from OSX folder to Common folder. Contains nearly only shared code.
 		3/07/06		awi		Print warnings conditionally according to PsychPrefStateGet_SuppressAllWarnings(). 
@@ -34,13 +34,8 @@
 		Psychtoolbox functions for dealing with textures.
 	
 	NOTES:
-	
-
 		
 */
-
-
-
 
 #include "Screen.h"
 
@@ -74,34 +69,36 @@ void PsychDetectTextureTarget(PsychWindowRecordType *win)
     if (texturetarget==0) {
         // Yes. Need to auto-detect texturetarget to use. This routine is called with
 		// the OpenGL context for the 'win' already attached, from PsychOpenOnscreenWindow().
-
         if ((strstr((char*) glGetString(GL_EXTENSIONS), "GL_EXT_texture_rectangle") || strstr((char*) glGetString(GL_EXTENSIONS), "GL_ARB_texture_rectangle")) && GL_TEXTURE_RECTANGLE_EXT != GL_TEXTURE_2D) {
-	    // Great! GL_TEXTURE_RECTANGLE_EXT is available! Use it.
-	    texturetarget = GL_TEXTURE_RECTANGLE_EXT;
-	    if(PsychPrefStateGet_Verbosity()>3)
-			printf("PTB-INFO: Using OpenGL GL_TEXTURE_RECTANGLE_EXT extension for efficient high-performance texture mapping...\n");
+            // Great! GL_TEXTURE_RECTANGLE_EXT is available! Use it.
+            texturetarget = GL_TEXTURE_RECTANGLE_EXT;
+            if(PsychPrefStateGet_Verbosity()>3)
+                printf("PTB-INFO: Using OpenGL GL_TEXTURE_RECTANGLE_EXT extension for efficient high-performance texture mapping...\n");
         }
         else if (strstr((char*) glGetString(GL_EXTENSIONS), "GL_NV_texture_rectangle") && GL_TEXTURE_RECTANGLE_NV != GL_TEXTURE_2D){
-	    // Try NVidia specific texture rectangle extension:
-	    texturetarget = GL_TEXTURE_RECTANGLE_NV;
-	    if(PsychPrefStateGet_Verbosity()>3)
-			printf("PTB-INFO: Using NVidia's GL_TEXTURE_RECTANGLE_NV extension for efficient high-performance texture mapping...\n");
+            // Try NVidia specific texture rectangle extension:
+            texturetarget = GL_TEXTURE_RECTANGLE_NV;
+            if(PsychPrefStateGet_Verbosity()>3)
+                printf("PTB-INFO: Using NVidia's GL_TEXTURE_RECTANGLE_NV extension for efficient high-performance texture mapping...\n");
         }
         else {
-	    // No texture rectangle extension available :(
-	    // We fall back to standard power of two textures...
-		if(PsychPrefStateGet_Verbosity()>1){
-			printf("\nPTB-WARNING: Your graphics hardware & driver doesn't support OpenGL rectangle textures.\n");
-			printf("PTB-WARNING: This won't affect the correctness or visual accuracy of image drawing, but it can significantly\n");
-			printf("PTB-WARNING: degrade performance/speed and increase memory consumption of images by up to a factor of 4!\n");
-			printf("PTB-WARNING: If you use a lot of image stimuli (DrawTexture, Offscreen windows, Stereo display, Quicktime movies)\n");
-			printf("PTB-WARNING: and you are unhappy with the performance, then please upgrade your graphics driver and possibly\n");
-			printf("PTB-WARNING: your gfx hardware if you need higher performance...\n");
-		}
-	    //printf("%s", glGetString(GL_EXTENSIONS));
-	    fflush(NULL);
-	    texturetarget = GL_TEXTURE_2D;
-	  }
+            // No texture rectangle extension available :(
+            // We fall back to standard power-of-two or non-power-of-two normalized textures...
+            texturetarget = GL_TEXTURE_2D;
+
+            // Warn only about lack of rectangle textures on desktop OpenGL, not on OpenGL-ES, as ES does not
+            // support rectangle textures at all, so no point about making noise about it. At least OpenGL-ES-2
+            // usually supports non-power-of-two textures, so we can work around many of the limitations there,
+            // but no remedy for ES-1:
+            if ((PsychPrefStateGet_Verbosity() > 1) && !PsychIsGLES(win)){
+                printf("\nPTB-WARNING: Your graphics hardware & driver doesn't support OpenGL rectangle textures.\n");
+                printf("PTB-WARNING: This won't affect the correctness or visual accuracy of image drawing, but it can significantly\n");
+                printf("PTB-WARNING: degrade performance/speed and increase memory consumption of images by up to a factor of 4!\n");
+                printf("PTB-WARNING: If you use a lot of image stimuli (DrawTexture, Offscreen windows, Stereo display, Quicktime movies)\n");
+                printf("PTB-WARNING: and you are unhappy with the performance, then please upgrade your graphics driver and possibly\n");
+                printf("PTB-WARNING: your gfx hardware if you need higher performance...\n");
+            }
+        }
     }
     return;
 }
@@ -111,36 +108,44 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 	win->textureMemory=NULL;
 	win->textureNumber=0;
 	win->textureMemorySizeBytes=0;
-        // NULL-Out special texture handle for Quicktime Movie textures (see PsychMovieSupport.c)
-        win->targetSpecific.QuickTimeGLTexture = NULL;
-        // Setup initial texture orientation: 0 = Transposed texture == Format of Matlab image matrices.
-        // This number defines how the height and width of a texture need to be interpreted and how
-        // texture coordinates are assigned in PsychBlitTextureToDisplay().
-        win->textureOrientation=0;
+
+    // NULL-Out special texture handle for Quicktime Movie textures (see PsychMovieSupport.c)
+    win->targetSpecific.QuickTimeGLTexture = NULL;
+
+    // Setup initial texture orientation: 0 = Transposed texture == Format of Matlab image matrices.
+    // This number defines how the height and width of a texture need to be interpreted and how
+    // texture coordinates are assigned in PsychBlitTextureToDisplay().
+    win->textureOrientation=0;
+
 	// Set to default minus 1-value (== disabled): Meaning of this field is specific for source of texture. It should
 	// somehow identify the cache data structure for textures of specifif origin in a unique way.
 	// If this is a cached texture for use by the PsychMovieSupport Quicktime subsystem and we
 	// use GWorld rendering, then this points to the movieRecord of the movie which is associated
 	// with this texture...
 	win->texturecache_slot=-1;
-        // Explicit storage of the type of texture target for this texture: Zero means - Autodetect.
-        win->texturetarget=0;
+
+    // Explicit storage of the type of texture target for this texture: Zero means - Autodetect.
+    win->texturetarget=0;
+
 	// We do not have a preset for texture representation by default:
-        win->textureinternalformat=0;
-        win->textureexternalformat=0;
-        win->textureexternaltype=0;
-		// Optional GLSL filtershader: This defaults to zero i.e. no such thing. SCREENMakeTexture.c will
-		// initialize this on demand: If a floating point texture is created on a piece of gfx-hardware that
-		// doesn't support float-texture filtering. Then a shader is created which can reimplement that for
-		// float-textures and the handle is stored in the onscreen window record and in the corresponding
-		// texture. The blitters can then optionally bind that shader if filtering is requested.
-		win->textureFilterShader=0;
-		// Same for nearest neighbour lookup -- needed for unclamped high precision drawing.
-		win->textureLookupShader=0;
-		// Input pixel data for textures is not aligned to some x-byte boundary by default. A non-zero
-		// setting will be used for the GL_UNPACK_ALIGNMENT setting in PsychCreateTexture() and friends
-		// to optimize texture upload:
-		win->textureByteAligned=0;
+    win->textureinternalformat=0;
+    win->textureexternalformat=0;
+    win->textureexternaltype=0;
+
+    // Optional GLSL filtershader: This defaults to zero i.e. no such thing. SCREENMakeTexture.c will
+    // initialize this on demand: If a floating point texture is created on a piece of gfx-hardware that
+    // doesn't support float-texture filtering. Then a shader is created which can reimplement that for
+    // float-textures and the handle is stored in the onscreen window record and in the corresponding
+    // texture. The blitters can then optionally bind that shader if filtering is requested.
+    win->textureFilterShader=0;
+
+    // Same for nearest neighbour lookup -- needed for unclamped high precision drawing.
+    win->textureLookupShader=0;
+
+    // Input pixel data for textures is not aligned to some x-byte boundary by default. A non-zero
+    // setting will be used for the GL_UNPACK_ALIGNMENT setting in PsychCreateTexture() and friends
+    // to optimize texture upload:
+    win->textureByteAligned=0;
 }
 
 void PsychCreateTexture(PsychWindowRecordType *win)
@@ -172,8 +177,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	// Setup for renderswap, if requested:
 	if (win->textureOrientation==0 && renderswap) win->textureOrientation=1;
 
-	// Enable the proper OpenGL rendering context for the window associated with this
-	// texture:
+	// Enable the proper OpenGL rendering context for the window associated with this texture:
 	PsychSetGLContext(win);
 
 	// Make sure we don't have any dangling GL errors from other operations...
@@ -273,7 +277,8 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		sourceWidth=PsychGetWidthFromRect(win->rect);
 	}
 	
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, (int) sourceWidth);
+    // Desktop-GL only:
+	if (!PsychIsGLES(win)) glPixelStorei(GL_UNPACK_ROW_LENGTH, (int) sourceWidth);
 	
 	// We used to have different cases for Luminance, Luminance+Alpha, RGB, RGBA.
 	// This way we saved texture memory for the source->textureMemory -- Arrays, as well as copy-time
@@ -307,7 +312,9 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		// creation will succeed without trouble, then we either fail in case of error,
 		// or we do the real thing and create the texture:
 		for (pass=0; pass < 2; pass++) {
-			if (avoidCPUGPUSync && !(verbosity > 10) && (pass == 0)) {
+            // Skip first probing pass if usercode wants it, or if we're on OpenGL-ES, as
+            // ES does not support proxy textures, so we can't do the probing:
+			if ((PsychIsGLES(win) || (avoidCPUGPUSync && !(verbosity > 10))) && (pass == 0)) {
 				// Usercode wants us to skip dual-path texture creation in order to save
 				// some time: Skip pass 0...
 				oldtexturetarget = texturetarget;
@@ -324,29 +331,43 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				texturetarget = oldtexturetarget;
 			}
 			
-			if (win->textureinternalformat==0) {
+			if (win->textureinternalformat == 0) {
 				// Standard path: Derive texture format and such from requested pixeldepth:
 				switch(win->depth) {
 					case 8:
-						glinternalFormat=GL_LUMINANCE8;
+						glinternalFormat = PsychIsGLES(win) ? GL_LUMINANCE : GL_LUMINANCE8;
 						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, texmemptr);
 						break;
 						
 					case 16:
 						//glinternalFormat=GL_LUMINANCE8_ALPHA8;
-						glinternalFormat=GL_RGBA8;
+						glinternalFormat = PsychIsGLES(win) ? GL_LUMINANCE_ALPHA : GL_RGBA8;
 						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, texmemptr);
 						break;
 						
 					case 24:
 						//glinternalFormat=GL_RGB8;
-						glinternalFormat=GL_RGBA8;
+						glinternalFormat = PsychIsGLES(win) ? GL_RGB : GL_RGBA8;
 						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_RGB, GL_UNSIGNED_BYTE, texmemptr);
 						break;
 						
 					case 32:
-						glinternalFormat=GL_RGBA8;
-						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA, ((win->gfxcaps & kPsychGfxCapNeedsUnsignedByteRGBATextureUpload) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_INT_8_8_8_8_REV), texmemptr);
+                        if (PsychIsGLES(win)) {
+                            // GLES is much more restricted:
+                            if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                                glinternalFormat = GL_BGRA_EXT;
+                                glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, texmemptr);
+                            }
+                            else {
+                                glinternalFormat = GL_RGBA;
+                                glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_RGBA, GL_UNSIGNED_BYTE, texmemptr);
+                            }
+                        }
+                        else {
+                            // Classic path with optimizations:
+                            glinternalFormat = GL_RGBA8;
+                            glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA, ((win->gfxcaps & kPsychGfxCapNeedsUnsignedByteRGBATextureUpload) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_INT_8_8_8_8_REV), texmemptr);
+                        }
 						break;
 				}
 			}
@@ -357,37 +378,78 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				glinternalFormat = win->textureinternalformat;
 			}
 
-			// Only query real color depths per channel if either a special internal format was requested, ie., we
-			// need to query the real depths because we don't know it, or if verbosity is very high or avoidance
-			// of synchronizing calls is not disabled.
-			if ((!avoidCPUGPUSync || (verbosity > 10)) || ((glinternalFormat!=GL_RGBA8) && (glinternalFormat!=GL_LUMINANCE8))) {
-				// Request sizes of created (proxy-)texture:
-				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_RED_SIZE, &gl_rbits);                
-				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_GREEN_SIZE, &gl_gbits);                
-				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_BLUE_SIZE, &gl_bbits);                
-				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_ALPHA_SIZE, &gl_abits);                
-				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);
+            if (!PsychIsGLES(win)) {
+                // Only query real color depths per channel if either a special internal format was requested, ie., we
+                // need to query the real depths because we don't know it, or if verbosity is very high or avoidance
+                // of synchronizing calls is not disabled.
+                if ((!avoidCPUGPUSync || (verbosity > 10)) || ((glinternalFormat!=GL_RGBA8) && (glinternalFormat!=GL_LUMINANCE8))) {
+                    // Request sizes of created (proxy-)texture:
+                    glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_RED_SIZE, &gl_rbits);                
+                    glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_GREEN_SIZE, &gl_gbits);                
+                    glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_BLUE_SIZE, &gl_bbits);                
+                    glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_ALPHA_SIZE, &gl_abits);                
+                    glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);
 
-				// Special override for YCBCR textures which return all component bits as zero:
-				if (glinternalFormat == GL_YCBCR_MESA || win->textureexternalformat == GL_YCBCR_422_APPLE) gl_rbits = 8;
+                    // Special override for YCBCR textures which return all component bits as zero:
+                    if (glinternalFormat == GL_YCBCR_MESA || win->textureexternalformat == GL_YCBCR_422_APPLE) gl_rbits = 8;
 
-				// Store override per-component bit-depths:
-				win->bpc = (int) ((gl_rbits > gl_lbits) ? gl_rbits : gl_lbits); 
+                    // Store override per-component bit-depths:
+                    win->bpc = (int) ((gl_rbits > gl_lbits) ? gl_rbits : gl_lbits); 
+                }
+                else {
+                    // Null out to catch implementation error in our own code, if any:
+                    gl_rbits = gl_gbits = gl_bbits = gl_abits = gl_lbits = 0;
+
+                    // Assume 8 bpc. This is the default anyway, just here to make it explicit:
+                    win->bpc = 8;
+                }
 			}
-			else {
-				// Null out to catch implementation error in our own code, if any:
-				gl_rbits = gl_gbits = gl_bbits = gl_abits = gl_lbits = 0;
+            else {
+                // OpenGL-ES: Can't query bit depth of texture. Assume 8 (integer) or 32 (float) bits per channel:
+                win->bpc = (win->textureexternaltype == GL_FLOAT) ? 32 : 8;
+                gl_rbits = gl_gbits = gl_bbits = gl_abits = gl_lbits = win->bpc;
+            }
 
-				// Assume 8 bpc. This is the default anyway, just here to make it explicit:
-				win->bpc = 8;
-			}
-			
+            if (PsychIsGLES(win)) {
+                // Our error checking for ES is very limited:
+                if ((!avoidCPUGPUSync || (verbosity > 10)) && ((glerr = glGetError()) !=0 )) {
+					glBindTexture(texturetarget, 0);
+					win->textureNumber = 0;
+					if (!clientstorage) {
+						if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
+						win->textureMemory=NULL;
+						win->textureMemorySizeBytes=0;
+					}
+					while(glGetError());
+
+                    if (verbosity > 0) {
+                        printf("\n\nPTB-ERROR: Texture creation failed or malfunctioned for a texture of requested size w x h = %i x %i texels\n", twidth, theight);
+                        printf("PTB-ERROR: and at least %i bytes VRAM memory consumption per texel.\n", win->depth / 8);
+                        if (glerr == GL_INVALID_VALUE) {
+                            glGetIntegerv(GL_MAX_TEXTURE_SIZE, &gl_rbits);
+                            if (gl_rbits < twidth || gl_rbits < theight) {
+                                // Hard hardware limit exceeded:
+                                printf("PTB-ERROR: Your image or texture exceeds the maximum width and/or height of %i texels supported by your graphics hardware.\n", gl_rbits);
+                                printf("PTB-ERROR: You'll have to either reduce the size of your images below that limit, or upgrade your hardware.\n\n");
+                            }
+                            else {
+                                printf("PTB-ERROR: The hardware likely does not support the requested texture storage format.\n");
+                            }
+                        }
+                        else {
+                            printf("PTB-ERROR: The gfx-hardware reports the following error: %s\n", gluErrorString(glerr));
+                        }
+                    }
+                    PsychErrorExitMsg(PsychError_user, "Texture creation failed, most likely due to unsupported precision or insufficient free memory.");
+                }
+            }
+            // Checking for desktop OpenGL - much more elaborate...
 			// Sanity check: A sum of zero over all texture channels would indicate that texture
 			// creation failed, most likely due to an out of memory condition in the graphics
 			// hardwares VRAM:
-			if ((!avoidCPUGPUSync || (verbosity > 10)) && (((glerr = glGetError())!=0) || (gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits == 0))) {
+			else if ((!avoidCPUGPUSync || (verbosity > 10)) && (((glerr = glGetError())!=0) || (gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits == 0))) {
 				// Texture creation failed or malfunctioned!
-				if (PsychPrefStateGet_Verbosity() > 0) {
+				if (verbosity > 0) {
 					// Abort with error:
 					
 					// First eat up any pending GL errors to make sure our shutdown path doesn't fail:
@@ -419,7 +481,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 							printf("PTB-ERROR: Your image or texture exceeds the maximum width and/or height of %i texels supported by your graphics hardware.\n", gl_rbits);
 							printf("PTB-ERROR: You'll have to either reduce the size of your images below that limit, or upgrade your hardware.\n\n");
 						}
-						else {							
+						else {
 							// Either out-of-memory in VRAM for such large textures, or unsupported format/precision:
 							if (glinternalFormat!=GL_LUMINANCE8 && glinternalFormat!=GL_RGBA8 && !glewIsSupported("GL_APPLE_float_pixels") && !glewIsSupported("GL_ATI_texture_float") && !glewIsSupported("GL_ARB_texture_float")) {
 								// Requested format is not one of the 8bpc fixed-point LDR formats, but a HDR format which
@@ -486,111 +548,124 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		
 		// Accounting... ...this is only a rough guesstimate:
 		win->surfaceSizeBytes = ((size_t) ((glinternalFormat==GL_RGBA8) ? 4 : win->depth / 8)) * (size_t) twidth * (size_t) theight;
-		texmemguesstimate+= win->surfaceSizeBytes;
-				
+		texmemguesstimate+= win->surfaceSizeBytes;				
 	}  // End of new texture creation.
 	
 	// Stage 2: If it is a 2D texture or a recycled texture, fill it with content via glTexSubImage2D:
-	if (texturetarget==GL_TEXTURE_2D || recycle) {
-	  // Special setup code for pot2 textures: Fill the empty power of two texture object with content:
-	  // We only fill a subrectangle (of sourceWidth x sourceHeight size) with our images content. The
-	  // unused border contains all zero == black.
-	  // The same path is used for efficient refilling existing textures that are to be recycled:
-	  if (win->textureinternalformat==0) {
-	    // Standard path: Derive texture format and such from requested pixeldepth:
-	    switch(win->depth) {
-	    case 8:
-	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, win->textureMemory);
-	      break;
+	if (texturetarget == GL_TEXTURE_2D || recycle) {
+        // Special setup code for pot2 textures: Fill the empty power of two texture object with content:
+        // We only fill a subrectangle (of sourceWidth x sourceHeight size) with our images content. The
+        // unused border contains all zero == black.
+        // The same path is used for efficient refilling existing textures that are to be recycled:
+        if (win->textureinternalformat==0) {
+            // Standard path: Derive texture format and such from requested pixeldepth:
+            switch(win->depth) {
+            case 8:
+                glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, win->textureMemory);
+                break;
 	    
-	    case 16:
-	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, win->textureMemory);
-	      break;
+            case 16:
+                glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, win->textureMemory);
+                break;
 	    
-	    case 24:
-	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_RGB, GL_UNSIGNED_BYTE, win->textureMemory);
-	      break;
+            case 24:
+                glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_RGB, GL_UNSIGNED_BYTE, win->textureMemory);
+                break;
 	    
-	    case 32:
-	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_BGRA, ((win->gfxcaps & kPsychGfxCapNeedsUnsignedByteRGBATextureUpload) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_INT_8_8_8_8_REV), win->textureMemory);
-	      break;
-	    }
-	  }
-	  else {
-	    // Requested internal format and external data representation are explicitely requested: Use it.
-	    glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, win->textureexternalformat, win->textureexternaltype, win->textureMemory);
-	    glinternalFormat = win->textureinternalformat;
-	  }
+            case 32:
+                if (PsychIsGLES(win)) {
+                    // GLES is much more restricted:
+                    if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                        glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_BGRA_EXT, GL_UNSIGNED_BYTE, win->textureMemory);
+                    }
+                    else {
+                        glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_RGBA, GL_UNSIGNED_BYTE, win->textureMemory);
+                    }
+                }
+                else {
+                    // Classic path:
+                    glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_BGRA, ((win->gfxcaps & kPsychGfxCapNeedsUnsignedByteRGBATextureUpload) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_INT_8_8_8_8_REV), win->textureMemory);
+                }
+                break;
+            }
+        }
+        else {
+            // Requested internal format and external data representation are explicitely requested: Use it.
+            glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, win->textureexternalformat, win->textureexternaltype, win->textureMemory);
+            glinternalFormat = win->textureinternalformat;
+        }
 	}
 
-	// New internal format requested?
-	if ((!avoidCPUGPUSync || (verbosity > 10)) && (!recycle && (gl_lastrequestedinternalFormat != glinternalFormat))) {
-		// Seems so...
-		gl_lastrequestedinternalFormat = glinternalFormat;
+    if (!PsychIsGLES(win)) {
+        // New internal format requested?
+        if ((!avoidCPUGPUSync || (verbosity > 10)) && (!recycle && (gl_lastrequestedinternalFormat != glinternalFormat))) {
+            // Seems so...
+            gl_lastrequestedinternalFormat = glinternalFormat;
 		
-		// Query real internal format and params...
-		glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_INTERNAL_FORMAT, &gl_realinternalformat);
-		// If there is a mismatch between wish and reality, report it:
-		if (false || gl_realinternalformat != glinternalFormat) {
-			// Mismatch between requested format and format that the OpenGL has chosen:
-			printf("PTB-WARNING: In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=x%x\n", win->depth, gl_realinternalformat);
-			printf("PTB-WARNING: Requested size = %i bits, real size = %i bits.\n", win->depth, gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits); 
-			printf("PTB-WARNING: This could mean that something went wrong when creating the texture!\n");
-			fflush(NULL);
-		}
-	}
+            // Query real internal format and params...
+            glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_INTERNAL_FORMAT, &gl_realinternalformat);
+            // If there is a mismatch between wish and reality, report it:
+            if (false || gl_realinternalformat != glinternalFormat) {
+                // Mismatch between requested format and format that the OpenGL has chosen:
+                printf("PTB-WARNING: In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=x%x\n", win->depth, gl_realinternalformat);
+                printf("PTB-WARNING: Requested size = %i bits, real size = %i bits.\n", win->depth, gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits); 
+                printf("PTB-WARNING: This could mean that something went wrong when creating the texture!\n");
+                fflush(NULL);
+            }
+        }
 	
-	///////// EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
-	if (win->textureOrientation == 1 && renderswap) {
-		// Turn off alpha-blending - We want the texture "as is", overwriting any previous
-		// framebuffer content completely!
-		glDisable(GL_BLEND);
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-		glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        ///////// EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
+        if (win->textureOrientation == 1 && renderswap) {
+            // Turn off alpha-blending - We want the texture "as is", overwriting any previous
+            // framebuffer content completely!
+            glDisable(GL_BLEND);
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
-		// Render full texture with swapped texture coords into lower-left corner of framebuffer:
-		glBegin(GL_QUADS);
-		//lower left
-		glTexCoord2f((GLfloat) 0, (GLfloat) 0);			//lower left vertex in texture
-		glVertex2f((GLfloat) 0, (GLfloat)0);			//upper left vertex in window
+            // Render full texture with swapped texture coords into lower-left corner of framebuffer:
+            glBegin(GL_QUADS);
+            //lower left
+            glTexCoord2f((GLfloat) 0, (GLfloat) 0);			//lower left vertex in texture
+            glVertex2f((GLfloat) 0, (GLfloat)0);			//upper left vertex in window
 		
-		//upper left
-		glTexCoord2f((GLfloat) sourceWidth, (GLfloat) 0);		//upper left vertex in texture
-		glVertex2f((GLfloat) 0, (GLfloat)sourceWidth);		//lower left vertex in window
+            //upper left
+            glTexCoord2f((GLfloat) sourceWidth, (GLfloat) 0);		//upper left vertex in texture
+            glVertex2f((GLfloat) 0, (GLfloat)sourceWidth);		//lower left vertex in window
 		
-		//upper right
-		glTexCoord2f((GLfloat) sourceWidth, (GLfloat) sourceHeight); //upper right vertex in texture
-		glVertex2f((GLfloat) sourceHeight, (GLfloat) sourceWidth );	//lower right  vertex in window
+            //upper right
+            glTexCoord2f((GLfloat) sourceWidth, (GLfloat) sourceHeight); //upper right vertex in texture
+            glVertex2f((GLfloat) sourceHeight, (GLfloat) sourceWidth );	//lower right  vertex in window
 		
-		//lower right
-		glTexCoord2f((GLfloat) 0, (GLfloat) sourceHeight);		//lower right in texture
-		glVertex2f((GLfloat) sourceHeight, (GLfloat)0);		//upper right in window
-		glEnd();
+            //lower right
+            glTexCoord2f((GLfloat) 0, (GLfloat) sourceHeight);		//lower right in texture
+            glVertex2f((GLfloat) sourceHeight, (GLfloat)0);		//upper right in window
+            glEnd();
 		
-		// Assign proper dimensions, now that the texture is "reswapped to normal" :)
-		sourceHeight=PsychGetHeightFromRect(win->rect);
-		sourceWidth=PsychGetWidthFromRect(win->rect);
+            // Assign proper dimensions, now that the texture is "reswapped to normal" :)
+            sourceHeight=PsychGetHeightFromRect(win->rect);
+            sourceWidth=PsychGetWidthFromRect(win->rect);
 		
-		PsychGetScreenSize(win->screenNumber, &screenWidth, &screenHeight);
+            PsychGetScreenSize(win->screenNumber, &screenWidth, &screenHeight);
 		
-		// Texture is now displayed/stored in the top-left corner of the framebuffer
-		// in its proper (upright 0 deg.) orientation. Let's make a screenshot and
-		// store it as a "new" texture into our current texture object - effectively
-		// transposing the texture into normal format:                        
-		glCopyTexImage2D(texturetarget, 0, glinternalFormat, 0, (GLint) (screenHeight - sourceHeight), (GLsizei) sourceWidth, (GLsizei) sourceHeight, 0);
+            // Texture is now displayed/stored in the top-left corner of the framebuffer
+            // in its proper (upright 0 deg.) orientation. Let's make a screenshot and
+            // store it as a "new" texture into our current texture object - effectively
+            // transposing the texture into normal format:                        
+            glCopyTexImage2D(texturetarget, 0, glinternalFormat, 0, (GLint) (screenHeight - sourceHeight), (GLsizei) sourceWidth, (GLsizei) sourceHeight, 0);
 		
-		// Reenable alpha-blending:
-		glEnable(GL_BLEND);
+            // Reenable alpha-blending:
+            glEnable(GL_BLEND);
 		
-		// Flush the command buffers to enforce start of texture swap operation so that it
-		// really runs in parallel to the MakeTexture() C-Code...
-		glFlush();
-	}
+            // Flush the command buffers to enforce start of texture swap operation so that it
+            // really runs in parallel to the MakeTexture() C-Code...
+            glFlush();
+        }
 	
-	///////// END OF EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
+        ///////// END OF EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
+    }
 	
 	// Free system RAM backing memory buffer, if client storage extensions are not used for this texture:
 	if (!clientstorage) {
@@ -600,11 +675,11 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	}
 	
 	// Texture object ready for future use. Unbind it:
-	glBindTexture(texturetarget, 0);
+    glBindTexture(texturetarget, 0);
 	glDisable(texturetarget);
 
 	// Reset pixel storage parameter:
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    if (!PsychIsGLES(win)) glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     // Client rect of a texture is always == rect of it:
@@ -635,6 +710,7 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
         // Call special texture release routine for Movie textures: This routine will
         // check if 'win' is a movie texture and perform the necessary cleanup work, if so:
         PsychFreeMovieTexture(win);
+
         // If we use client-storage textures, we need to wait for completion of texture operations on the
         // to-be-released client texture buffer before deleting it and freeing the RAM backing buffers. Waiting for
         // completion is done via FinishObjectApple...
@@ -648,7 +724,6 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
 
 			// Accounting... ...this is only a rough guesstimate:
 			texmemguesstimate-= win->surfaceSizeBytes;
-			if (texmemguesstimate < 0) texmemguesstimate = 0;
 		}
 		
 		// PsychTestForGLErrors() is a GPU-CPU synchronization point, so in order to keep good
@@ -668,7 +743,8 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
 void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordType *target, double *sourceRect, double *targetRect,
                                double rotationAngle, int filterMode, double globalAlpha)
 {
-        GLdouble				sourceWidth, sourceHeight, tWidth, tHeight;
+        int                     tWidth, tHeight;
+        GLdouble				sourceWidth, sourceHeight;
         GLdouble                sourceX, sourceY, sourceXEnd, sourceYEnd;
 		double                  transX, transY;
         GLenum                  texturetarget;
@@ -746,14 +822,14 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             // No: Find size of real underlying texture (smallest power of two which is
             // greater than or equal to the image size:
             tWidth=1;
-            while (tWidth < sourceWidth) tWidth*=2;
+            while (tWidth < (int) sourceWidth) tWidth*=2;
             tHeight=1;
-            while (tHeight < sourceHeight) tHeight*=2;
+            while (tHeight < (int) sourceHeight) tHeight*=2;
         }
         else {
             // Yes:
-            tWidth = sourceWidth;
-            tHeight = sourceHeight;
+            tWidth = (int) sourceWidth;
+            tHeight = (int) sourceHeight;
         }
         
         // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
@@ -767,10 +843,10 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         sourceYEnd-=0.5f;
 
         // Remap:
-        sourceX=sourceX / tWidth;
-        sourceXEnd=sourceXEnd / tWidth;
-        sourceY=sourceY / tHeight;
-        sourceYEnd=sourceYEnd / tHeight;
+        sourceX=sourceX / (double) tWidth;
+        sourceXEnd=sourceXEnd / (double) tWidth;
+        sourceY=sourceY / (double) tHeight;
+        sourceYEnd=sourceYEnd / (double) tHeight;
 	}
 
 	// MK: We need to reenable the proper texturing mode. This fixes bug reported in Forum message 3055,
@@ -841,7 +917,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // This makes even sense for negative filterMode arguments, because the filterMode
         // parameter is passed as an attribute to the filtershader, so the shader itself can
         // decide how to implement a specific blur level on its own, unrestricted by us:
-        if (texturetarget == GL_TEXTURE_2D) {
+        if ((texturetarget == GL_TEXTURE_2D) && !PsychIsGLES(source)) {
             glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
             glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
         }
@@ -883,7 +959,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             }
 
             // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
-            if (texturetarget == GL_TEXTURE_2D) {
+            if ((texturetarget == GL_TEXTURE_2D) && !PsychIsGLES(source)) {
                 glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
                 glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
             }
@@ -898,7 +974,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             // mipmap pyramid, according to the filterMode, starting with mip level 0, i.e,
             // full resolution for a value of -1, then level 1 aka half-resolution for a value
             // of -2 etc.:
-            if (texturetarget == GL_TEXTURE_2D) {
+            if ((texturetarget == GL_TEXTURE_2D) && !PsychIsGLES(source)) {
                 glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, (-1 * filterMode) - 1);
                 glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  (-1 * filterMode) - 1);
             }
@@ -953,8 +1029,13 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 
 	// A globalAlpha of DBL_MAX means: Don't set vertex color here, higher-level code
 	// has done it already. Used in SCREENDrawTexture for a global override color...
-	if (globalAlpha != DBL_MAX) glColor4f(1, 1, 1, (GLfloat) globalAlpha);
-	
+	if (globalAlpha != DBL_MAX) {
+        if (PsychIsGLClassic(source)) {
+            glColor4f(1, 1, 1, (GLfloat) globalAlpha);
+        }
+        else PsychGLColor4f(source, 1, 1, 1, (GLfloat) globalAlpha);
+	}
+
 	// Apply a rotation transform for rotated drawing, either to modelview-,
 	// or texture matrix.
 	if ((rotationAngle != 0.0) && !(source->specialflags & kPsychDontDoRotation)) {
@@ -972,9 +1053,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		}
 		
 		glPushMatrix();
-		glTranslated(+transX, +transY, 0);
-		glRotated(rotationAngle, 0, 0, 1);
-		glTranslated(-transX, -transY, 0);
+		glTranslatef(+transX, +transY, 0);
+		glRotatef(rotationAngle, 0, 0, 1);
+		glTranslatef(-transX, -transY, 0);
 		// Rotation transform ready...
 	}
 
@@ -1054,59 +1135,115 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		#endif
 	}
 
-	// matchups for inverted Y coordinate frame (which is inverted?)
-	// MK: Texture coordinate assignments have been changed.
-	// Explanation: Matlab stores matrices in column-major order, but OpenGL requires
-	// textures in row-major order. The old implementation of AWI performed row-column
-	// swapping in MakeTexture via C-Code on the CPU. This makes copy-loop implementation
-	// complex and creates "Cash trashing" effects on the processor. --> slow MakeTexture performance.
-	// Now we store the textures as provided by Matlab, simplifying MakeTexture's implementation,
-	// and let the Graphics hardware do the job of "swapping" during rendering, by drawing the texture
-	// in some rotated and mirrored order. This is way faster, as the GPU is optimized for such things...
-	glBegin(GL_QUADS);
-	// Coordinate assignments depend on internal texture orientation...
-	// Override for special case: Corevideo texture from Quicktime-subsystem.
-	if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture ||
-		source->textureOrientation == 3 || source->textureOrientation == 4) {
-		// NEW CODE: Uses "normal" coordinate assignments, so that the rotation == 0 deg. case
-		// is the fastest case --> Most common orientation has highest performance.
-		//lower left
-		glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceYEnd);
-		glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));		//upper left vertex in window
+    if (PsychIsGLClassic(source)) {
+        // Classic OpenGL-1/2:
+
+        // matchups for inverted Y coordinate frame (which is inverted?)
+        // MK: Texture coordinate assignments have been changed.
+        // Explanation: Matlab stores matrices in column-major order, but OpenGL requires
+        // textures in row-major order. The old implementation of AWI performed row-column
+        // swapping in MakeTexture via C-Code on the CPU. This makes copy-loop implementation
+        // complex and creates "Cash trashing" effects on the processor. --> slow MakeTexture performance.
+        // Now we store the textures as provided by Matlab, simplifying MakeTexture's implementation,
+        // and let the Graphics hardware do the job of "swapping" during rendering, by drawing the texture
+        // in some rotated and mirrored order. This is way faster, as the GPU is optimized for such things...
+        glBegin(GL_QUADS);
+        // Coordinate assignments depend on internal texture orientation...
+        // Override for special case: Corevideo texture from Quicktime-subsystem.
+        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture ||
+            source->textureOrientation == 3 || source->textureOrientation == 4) {
+            // Use "normal" coordinate assignments, so that the rotation == 0 deg. case
+            // is the fastest case --> Most common orientation has highest performance.
+            //lower left
+            glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceYEnd);
+            glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));        //upper left vertex in window
 		
-		//upper left
-		glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceY);
-		glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));		//lower left vertex in window
+            //upper left
+            glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceY);
+            glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));     //lower left vertex in window
 		
-		//upper right
-		glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceY);
-		glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );		//lower right  vertex in window
+            //upper right
+            glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceY);
+            glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );   //lower right  vertex in window
 		
-		//lower right
-		glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);
-		glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));		//upper right in window
+            //lower right
+            glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);
+            glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));       //upper right in window
+        }
+        else {
+            // Use swapped texture coordinates....
+            //lower left
+            glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceY);                                       //lower left vertex in  window
+            glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));        //upper left vertex in window
+		
+            //upper left
+            glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceY);                                    //upper left vertex in texture
+            glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));     //lower left vertex in window
+		
+            //upper right
+            glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);                                 //upper right vertex in texture
+            glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );   //lower right  vertex in window
+		
+            //lower right
+            glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceYEnd);                                    //lower right in texture
+            glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));       //upper right in window
+        }            
+	
+        glEnd();
 	}
-	else {
-		// OLD CODE: Uses swapped texture coordinates....
-		//lower left
-		glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceY);						//lower left vertex in  window
-		glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));		//upper left vertex in window
+    else {
+        // Non-classic path (OpenGL-3/4/... and OpenGL-ES). No GL_QUADS and no immediate mode,
+        // need to do it with triangles and vertex arrays:
+
+        // Define "windowRecord", so our convenience macros work:
+        PsychWindowRecordType *windowRecord = source;
+
+        GLBEGIN(GL_TRIANGLE_STRIP);
+        // Coordinate assignments depend on internal texture orientation...
+        // Override for special case: Corevideo texture from Quicktime-subsystem.
+        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture ||
+            source->textureOrientation == 3 || source->textureOrientation == 4) {
+            // Use "normal" coordinate assignments, so that the rotation == 0 deg. case
+            // is the fastest case --> Most common orientation has highest performance.
+            //upper left
+            GLTEXCOORD2f((GLfloat)sourceX, (GLfloat)sourceY);
+            GLVERTEX2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));     //lower left vertex in window
+
+            //lower left
+            GLTEXCOORD2f((GLfloat)sourceX, (GLfloat)sourceYEnd);
+            GLVERTEX2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));        //upper left vertex in window
 		
-		//upper left
-		glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceY);					        //upper left vertex in texture
-		glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));		//lower left vertex in window
+            //upper right
+            GLTEXCOORD2f((GLfloat)sourceXEnd, (GLfloat)sourceY);
+            GLVERTEX2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );   //lower right  vertex in window
 		
-		//upper right
-		glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);					//upper right vertex in texture
-		glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );	        //lower right  vertex in window
+            //lower right
+            GLTEXCOORD2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);
+            GLVERTEX2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));       //upper right in window
+        }
+        else {
+            // Use swapped texture coordinates....
+
+            //upper left
+            GLTEXCOORD2f((GLfloat)sourceXEnd, (GLfloat)sourceY);                                    //upper left vertex in texture
+            GLVERTEX2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));     //lower left vertex in window
+
+            //lower left
+            GLTEXCOORD2f((GLfloat)sourceX, (GLfloat)sourceY);                                       //lower left vertex in  window
+            GLVERTEX2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));        //upper left vertex in window
 		
-		//lower right
-		glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceYEnd);					        //lower right in texture
-		glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));		//upper right in window
-	}            
+            //upper right
+            GLTEXCOORD2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);                                 //upper right vertex in texture
+            GLVERTEX2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );   //lower right  vertex in window
+		
+            //lower right
+            GLTEXCOORD2f((GLfloat)sourceX, (GLfloat)sourceYEnd);                                    //lower right in texture
+            GLVERTEX2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));       //upper right in window
+        }            
 	
-	glEnd();
-	
+        GLEND();
+    }
+
 	// Undo rotation transform, if any...
 	if ((rotationAngle != 0.0) && !(source->specialflags & kPsychDontDoRotation)) {
 		glPopMatrix();
@@ -1122,7 +1259,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
-        if (texturetarget == GL_TEXTURE_2D) {
+        if  ((texturetarget == GL_TEXTURE_2D) && !PsychIsGLES(source)) {
             glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
             glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
         }

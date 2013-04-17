@@ -155,9 +155,10 @@ try
             PsychHomeDir('.cache');
 
             % Increase buffering time for those:
-            preloadsecs = 10;
+            % No again. This seems to do more harm than good for many streaming sources: preloadsecs = 10;
             
             % Elon Musk talks about electrical cars, space-flight and solar power:
+            moviefiles(end+1).name = 'http://video.ted.com/talk/podcast/2013/None/ElonMusk_2013.mp4';
             moviefiles(end+1).name = 'http://www.oxfordmartin.ox.ac.uk/webcast/201211_musk.mp4';
             
             % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":

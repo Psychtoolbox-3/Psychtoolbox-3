@@ -3,11 +3,12 @@
 
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+	Allen.Ingling@nyu.edu			awi 
+	mario.kleiner@tuebingen.mpg.de	mk
 
-	PLATFORMS:
+	PLATFORMS:	
 	
-		Only OS X for now.
+	All.
 
 	HISTORY:
 
@@ -77,7 +78,6 @@ PsychError SCREENFramePoly(void)
 	if(pSize>1)
 		PsychErrorExitMsg(PsychError_user, "Polygons must consist of at leat 3 vertices; M dimension of pointList was <3");
 	
-	
 	//get the pen size
 	penSize=1;
 	PsychCopyInDoubleArg(4, kPsychArgOptional, &penSize);
@@ -92,10 +92,10 @@ PsychError SCREENFramePoly(void)
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
-	glBegin(GL_LINE_LOOP);
-		for(i=0;i<mSize;i++)
-			glVertex2d((GLdouble)pointList[i], (GLdouble)pointList[i+mSize]);
-	glEnd();
+	GLBEGIN(GL_LINE_LOOP);
+		for(i = 0; i < mSize; i++)
+			GLVERTEX2d((GLdouble)pointList[i], (GLdouble)pointList[i+mSize]);
+	GLEND();
 
 	glLineWidth((GLfloat) 1);
 

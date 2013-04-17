@@ -48,7 +48,7 @@ else
 			end
 		end
 		if unique
-			directory=str2mat(directory,new);
+			directory=char(directory,new);
 		end
 	end
 end

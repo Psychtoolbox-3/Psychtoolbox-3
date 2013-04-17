@@ -402,7 +402,7 @@ try
             end
             
             sn = Screen('WindowScreenNumber', eyewin); 
-            offscreen = Screen('OpenOffscreenWindow', sn, el.backgroundcolour);
+            offscreen = Screen('OpenOffscreenWindow', sn, el.backgroundcolour, [], [], 32);
             
             Screen(offscreen,'TextFont',el.imgtitlefont);
             Screen(offscreen,'TextSize',el.imgtitlefontsize);

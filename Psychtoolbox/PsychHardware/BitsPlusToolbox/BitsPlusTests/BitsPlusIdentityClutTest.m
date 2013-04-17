@@ -1,4 +1,4 @@
-function BitsPlusIdentityClutTest(whichScreen, dpixx)
+function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect)
 % Test signal transmission from the framebuffer to your CRS Bits+/Bits#
 % device or VPixx Inc. DataPixx/ViewPixx device and similar CRS and VPixx
 % products.
@@ -19,7 +19,7 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx)
 %
 % Usage:
 %
-% BitsPlusIdentityClutTest([whichScreen=max][usedpixx=0]);
+% BitsPlusIdentityClutTest([whichScreen=max][, usedpixx=0][, winrect=[]]);
 %
 % How to test:
 %
@@ -73,19 +73,41 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx)
 %
 
 % History:
-% 09/20/09  mk  Written.
+% 09/20/09    mk  Written.
+% 03/xx/2012  mk  Major updates for Bits# and other polishing.
 
 % Select screen for test/display:
 if nargin < 1 || isempty(whichScreen)
     whichScreen = max(Screen('Screens'));
 end
 
-if nargin < 2
+if nargin < 2 || isempty(dpixx)
     dpixx = 0;
+end
+
+if nargin < 3
+    winrect = [];
 end
 
 % Disable text anti-aliasing for this test:
 oldAntialias = Screen('Preference', 'TextAntiAliasing', 0);
+
+% Disable text alpha-blending to avoid color weirdness in the color
+% overlay text due to off-by-one color index values indexing into the
+% wrong clut slot. This is a workaround for some alpha-blending bugs
+% in some MS-Windows graphics drivers. This is fine on MS-Windows and
+% on OSX with its default text renderer, as long as anti-aliasing for
+% text is disabled, which it is. On Linux we must keep alpha-blending
+% enabled/alone, as the text rendering plugin depends on it to actually define
+% the shape of the character glyphs in the alpha-channel, not in the color
+% channels. The same would be true for OSX with the alternate text renderer,
+% but lets not overdo it. TODO: Fix this in a more intelligent way within
+% the text renderers!
+if ~IsLinux
+    oldTextAlpha = Screen('Preference', 'TextAlphaBlending', 1);
+else
+    oldTextAlpha = Screen('Preference', 'TextAlphaBlending');
+end
 
 try
     % Setup imaging pipeline:
@@ -101,30 +123,33 @@ try
     PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'ClampOnly');
 
     if dpixx
-        % Use Mono++ mode with overlay:
+        % Use M16 mode with overlay:
         PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
         
         % Reduce timeout for recognition of PSYNC code to about 1 second on
         % a 100 Hz display:
-        oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);
-        
+        oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);        
+    else
+        % Use Mono++ mode with overlay:
+        PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
+    end
+
+    % DataPixx or Bits# used? They allow advanced diagnostics.
+    if dpixx || BitsPlusPlus('OpenBits#')
         fprintf('\n\nYou can run extended diagnostics and fixes if you answer the following question\n');
         fprintf('with yes. However, we recommend first running this script once, answering no. Then\n');
         fprintf('if that at least somewhat succeeds, rerun the script and answer yes, to either fix\n');
         fprintf('remaining errors and glitches, or verify perfect function of your setup. If you don''t\n');
         fprintf('do it in this order, the test may hang on some setups.\n\n');
-        answer = input('Run DataPixx based diagnostics as well [Time consuming]? [y/n] ', 's');
+        answer = input('Run DataPixx/Bits# based diagnostics as well [Time consuming]? [y/n] ', 's');
         if answer == 'y'
-            % Enable one-shot diagnostic of GPU encoders via DataPixx:
+            % Enable one-shot diagnostic of GPU encoders via Data/View/ProPixx or Bits# :
             BitsPlusPlus('TestGPUEncoders');
         end
-    else
-        % Use Mono++ mode with overlay:
-        PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
     end
-    
+
     % Open the window, assign a gray background color with a 50% intensity gray:
-    [win, screenRect] = PsychImaging('OpenWindow', whichScreen, 0.5);
+    [win, screenRect] = PsychImaging('OpenWindow', whichScreen, 0.5, winrect);
 
     % Get handle to overlay:
     overlaywin = PsychImaging('GetOverlayWindow', win);
@@ -252,7 +277,7 @@ try
         % Color in low slots gets re-randomized:
         ovllut(1:100,:) = rand(100,3);
 
-        [isdown, secs, keyCode] = KbCheck;
+        [isdown, secs, keyCode] = KbCheck; %#ok<*ASGLU>
         if isdown
             if keyCode(escape)
                 break;
@@ -282,7 +307,10 @@ try
                 end
             end
 
-            if keyCode(key_o)
+            % Playing with gamma lut's for the overlay, only on
+            % non-Windows, as Windows doesn't allow loading arbitrary gpu
+            % gamma tables:
+            if keyCode(key_o) && ~IsWin
                 bluelutenable = 1 - bluelutenable;
                 if bluelutenable
                     % Reupload identity gamma table to reenable overlay:
@@ -311,11 +339,15 @@ try
     % This flip is needed for the 'LoadIdentityClut' to take effect:
     Screen('Flip', win);
     
+    % Release our dedicated "encoder test" connection to Bits#
+    BitsPlusPlus('Close');
+
     % Done. Close everything down:
     ShowCursor;
     Screen('CloseAll');
     RestoreCluts;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
+    Screen('Preference', 'TextAlphaBlending', oldTextAlpha);
 
     % Restore psync timeout on Datapixx, if any in use:
     if exist('oldpsynctimeout', 'var')
@@ -324,9 +356,13 @@ try
     
     fprintf('Finished. Bye.\n\n');
 
-catch
+catch %#ok<CTCH>
     sca;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
+    Screen('Preference', 'TextAlphaBlending', oldTextAlpha);
+
+    % Release our dedicated "encoder test" connection to Bits#
+    BitsPlusPlus('Close');
 
     % Restore psync timeout on Datapixx, if any in use:
     if exist('oldpsynctimeout', 'var')

@@ -50,6 +50,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 09/14/2012 Cancel support for Octave on MS-Windows. (MK)
 % 09/14/2012 Cancel support for 32-Bit Octave on OSX. (MK)
 % 11/11/2012 More cleanup. E.g., don't warn about Octave > 3.2 anymore. (MK)
+% 04/16/2013 Use javaclasspath.txt instead of classpath.txt on R2013a and later. (MK)
+%
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -330,6 +332,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles64']);
         end
         
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM']);
+        end
+        
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
         end
@@ -362,6 +368,11 @@ if IsOctave
             rdir = [rdir 'WindowsFiles'];
         end
         
+        if IsARM
+            % ARM processor architecture:
+            rdir = [rdir 'ARM'];
+        end
+
         if Is64Bit
             % 64 bit Octave. Select 64 bit mex file folder:
             rdir = [rdir '64'];
@@ -416,7 +427,7 @@ if IsOctave
     end
     
     try
-        % Try if Screen MEX file works...
+        % Try if WaitSecs MEX file works...
         WaitSecs(0.1);
     catch
         % Failed! Either screwed setup of path or missing runtime
@@ -524,10 +535,34 @@ if ~IsOctave
         % classpath.
         path_PsychJava = [PsychtoolboxRoot, 'PsychJava'];
 
-        % Open up the classpath.txt file and find any PsychJava entries.  If
-        % they exist, remove them, and put the current one in the file.  This
-        % only allows on PsychJava to be on the path.
-        classpathFile = which('classpath.txt');
+        % Matlab 8.1 changes the rules about static java classpath. Lovely.
+        if verLessThan('matlab', '8.1')
+            % Legacy: Open up the classpath.txt file and find any PsychJava
+            % entries.  If they exist, remove them, and put the current one
+            % in the file.  This only allows on PsychJava to be on the
+            % path.
+            classpathFile = which('classpath.txt');
+        else
+            % Matlab version 8.1 (R2013a) or later. classpath.txt can't be
+            % used anymore. Now they want us to store static classpath
+            % definitions in a file called javaclasspath.txt inside the
+            % Matlab preference folder:
+            
+            % Try to find the file, if it already exists, e.g., inside the
+            % Matlab startup folder:
+            classpathFile = which('javaclasspath.txt');
+            
+            % Found it?
+            if isempty(classpathFile)
+                % Nope. So we try the preference folder.
+                % Retrieve path to preference folder. Create the folder if it
+                % doesn't already exist:
+                prefFolder = prefdir(1);
+                classpathFile = [prefFolder filesep 'javaclasspath.txt'];
+            end
+        end
+        
+        % Define name of backup file:
         bakclasspathFile = [classpathFile '.bak'];
         
         if ~verLessThan('matlab', '7.14')
@@ -578,7 +613,7 @@ if ~IsOctave
             [s, w] = copyfile(classpathFile, bakclasspathFile, 'f');
 
             if s==0
-                error(['Could not make a backup copy of Matlab''s JAVA path definition file ''classpath.txt''. ' ...
+                error(['Could not make a backup copy of Matlab''s JAVA static path definition file. ' ...
                     'The system reports: ', w]);
             end
             madeBackup = 1; %#ok<NASGU>
@@ -586,7 +621,7 @@ if ~IsOctave
             % Write out the new contents.
             FID = fopen(classpathFile, 'w');
             if FID == -1
-                error('Could not open Matlab''s JAVA path definition file ''classpath.txt'' for write access.');
+                error('Could not open Matlab''s JAVA path definition file for write access.');
             end
             for i = 1:length(newFileContents)
                 fprintf(FID, '%s\n', newFileContents{i});
@@ -600,7 +635,7 @@ if ~IsOctave
         end
     catch
         lerr = psychlasterror;
-        fprintf('Could not update the Matlab JAVA classpath.txt file due to the following error:\n');
+        fprintf('Could not update the Matlab JAVA classpath file due to the following error:\n');
         fprintf('%s\n\n', lerr.message);
         fprintf('Probably you do not have sufficient access permissions for the Matlab application folder\n');
         fprintf('or the file itself to change the file %s .\n\n', classpathFile);
@@ -659,6 +694,20 @@ try
         fprintf('If you receive an installation failure soon, then please read the output of\n');
         fprintf('"help GStreamer" first and follow the installation instructions for GStreamer\n');
         fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
+
+        % Additional setup instructions for embedded/mobile devices with ARM cpu required?
+        if IsARM
+            fprintf('Additionally, as this is a device with ARM processor, the helper library\n');
+            fprintf('libwaffle-1.so needs to be installed in a system library folder for Screen\n');
+            fprintf('to work. You can find a copy of the library in the PsychContributed/ArmArch/\n');
+            fprintf('subfolder of your Psychtoolbox main folder. Rename it to libwaffle-1.so.0 during\n');
+            fprintf('the copy.\n');
+            fprintf('Another requirement, at least as of April 2013 and Ubuntu 13.04 for the Nexus-7,\n');
+            fprintf('is that you must start octave from the command line, or via some script, like this:\n');
+            fprintf('LD_PRELOAD=/usr/lib/libGLESv1_CM.so octave\n');
+            fprintf('This is a workaround for a small bug in octave for Nexus-7, which would cause Screen()\n');
+            fprintf('to crash shortly after opening an onscreen window.\n\n');
+        end
     end
 
     % Check Screen:

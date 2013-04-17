@@ -318,7 +318,7 @@ BOOL CALLBACK PsychHostWindowEnumFunc(HWND hwnd, LPARAM passId)
 	#ifndef PTBOCTAVE3MEX
 		// Running on Matlab: Use Matlab name matching:
 		// Pass 1: Scan for Matlab in GUI mode:
-		if ((passId == 1) && strstr(hostwinName, "MATLAB  ")) {
+		if ((passId == 1) && (strstr(hostwinName, "MATLAB  ") || strstr(hostwinName, "MATLAB R20"))) {
 			// Found something that looks ok:
 			hostwinHandle = hwnd;
 			return(FALSE);
@@ -1531,6 +1531,42 @@ dwmdontcare:
 		 printf("PTB-DEBUG: Window and master OpenGL context creation finished.\n");
 		 fflush(NULL);
 	 }
+     
+     while((glerr = glGetError())!=GL_NO_ERROR) {
+         if (PsychPrefStateGet_Verbosity()>6) {
+             printf("PTB-DEBUG: Before slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
+             fflush(NULL);
+         }       
+     }
+     
+     if (PsychPrefStateGet_Verbosity()>6) {
+         printf("PTB-DEBUG: Before slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+         fflush(NULL);
+     }
+     
+     // Do we have a slaveWindow with which to share all object ressources like display lists, textures, FBO's and shaders?
+     if (windowRecord->slaveWindow) {
+         // Enable ressource sharing with slaveWindow context for this window:
+         if (!wglShareLists(windowRecord->slaveWindow->targetSpecific.contextObject, windowRecord->targetSpecific.contextObject)) {
+             // This is ugly, but not fatal...
+             if (PsychPrefStateGet_Verbosity()>0) {
+                 printf("\nPTB-WARNING[wglShareLists for slaveWindow context failed]: Ressource sharing with OpenGL context for slave window failed for unknown reasons. Dual-Window stereo may not work.\n\n");
+             }      
+         }
+     }
+     
+     glFinish();
+     while((glerr = glGetError())!=GL_NO_ERROR) {
+         if (PsychPrefStateGet_Verbosity()>6) {
+             printf("PTB-DEBUG: After slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
+             fflush(NULL);
+         }       
+     }
+     
+     if (PsychPrefStateGet_Verbosity()>6) {
+         printf("PTB-DEBUG: After slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+         fflush(NULL);
+     }
 	 
     // External 3D graphics support enabled? Or OpenGL quad-buffered stereo enabled?
 	 // For the former, we need this code for OpenGL state isolation. For the latter we
@@ -1661,12 +1697,6 @@ dwmdontcare:
 	 }
 
 	 glFinish();
-	 while((glerr = glGetError())!=GL_NO_ERROR) {
-		 if (PsychPrefStateGet_Verbosity()>6) {
-			 printf("PTB-DEBUG: Before slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
-			 fflush(NULL);
-		 }		 
-	 }
 
      // Setup dedicated swap context for async flips:
      windowRecord->targetSpecific.glswapcontextObject = wglCreateContext(hDC);
@@ -1687,35 +1717,6 @@ dwmdontcare:
              printf("\nPTB-WARNING[wglShareLists for swap context failed]: Ressource sharing with private OpenGL context for async flips failed for unknown reasons.\n\n");
          }		
      }
-     
-	 if (PsychPrefStateGet_Verbosity()>6) {
-		 printf("PTB-DEBUG: Before slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
-		 fflush(NULL);
-	 }
-	 
-	 // Do we have a slaveWindow with which to share all object ressources like display lists, textures, FBO's and shaders?
-	 if (windowRecord->slaveWindow) {
-		 // Enable ressource sharing with slaveWindow context for this window:
-		 if (!wglShareLists(windowRecord->slaveWindow->targetSpecific.contextObject, windowRecord->targetSpecific.contextObject)) {
-			 // This is ugly, but not fatal...
-			 if (PsychPrefStateGet_Verbosity()>0) {
-				 printf("\nPTB-WARNING[wglShareLists for slaveWindow context failed]: Ressource sharing with OpenGL context for slave window failed for unknown reasons. Dual-Window stereo may not work.\n\n");
-			 }		
-		 }
-	 }
-	 
-	 glFinish();
-	 while((glerr = glGetError())!=GL_NO_ERROR) {
-		 if (PsychPrefStateGet_Verbosity()>6) {
-			 printf("PTB-DEBUG: After slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
-			 fflush(NULL);
-		 }		 
-	 }
-	 
-	 if (PsychPrefStateGet_Verbosity()>6) {
-		 printf("PTB-DEBUG: After slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
-		 fflush(NULL);
-	 }
 
 	 if (PsychPrefStateGet_Verbosity()>4) {
 		printf("PTB-DEBUG: Final low-level window setup: ShowWindow(), SetCapture(), diagnostics...\n");

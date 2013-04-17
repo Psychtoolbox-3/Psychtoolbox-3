@@ -76,6 +76,15 @@ else
     nrchannels = size(wavedata,1); % Number of rows == number of channels.
 end
 
+% Make sure we have always 2 channels stereo output.
+% Why? Because some low-end and embedded soundcards
+% only support 2 channels, not 1 channel, and we want
+% to be robust in our demos.
+if nrchannels < 2
+    wavedata = [wavedata ; wavedata];
+    nrchannels = 2;
+end
+
 % Perform basic initialization of the sound driver:
 InitializePsychSound;
 

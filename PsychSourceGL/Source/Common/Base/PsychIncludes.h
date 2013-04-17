@@ -62,7 +62,9 @@ typedef __CHAR16_TYPE__ char16_t;
     #endif
 
     // This is the new glew include for GLX extension support:
+#if defined(PTBMODULE_Screen)
     #include "../Screen/glxew.h"
+#endif
 
     #include <X11/Xlib.h>
     #include <X11/keysym.h>

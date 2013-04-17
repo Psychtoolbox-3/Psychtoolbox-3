@@ -46,7 +46,6 @@ function MinimumMotionExp(writeResult)
 % 08/19/12  Use PsychImaging CLUT mapping mode instead of moglClutBlit().
 %           This simplifies code somewhat. (MK)
 
-clear all;
 clc;
 
 disp('============================ Minimum Motion Windmill ==============================================')

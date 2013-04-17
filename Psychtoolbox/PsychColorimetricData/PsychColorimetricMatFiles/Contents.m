@@ -72,10 +72,13 @@
 %   den_mac_ws          - Macular pigment density from W&S, Table 2(2.4.6), p. 112.
 %   spd_appratusrel     - Relative spectrum from a monitor.  Used by IsomerizationInDishDemo.
 %   spd_CIEA            - Spectral power distribtion for CIE illuminant A.
-%   spd_CIDC            - Spectral power distribution for CIE illuminant C.
+%   spd_CIEC            - Spectral power distribution for CIE illuminant C.
 %   spd_D65             - Spectral power distribution for CIE illuminant D65.
 %   spd_flourescent     - Spectral power distribution for some flourescent lamp.
 %   spd_incanCC         - Spectral power distribution for some incandescent lamp.
+%   spd_phillybright    - Direct bright sunlight measured through window and off of a piece of white paper towel
+%                       -   on the floor of DB's office in Philly, March 2013.
+%                       -   Measurements made with PR-650, power in Watts/[m2-sr-wlband].
 %   spd_xenonArc        - Spectral power distribution for some xenon arc lamp.
 %   spd_xenonFlash      - Spectral power distribuiton for some xenon flash tube.
 %   sur_nickerson       - The Nickerson measurements of the Munsell papers.

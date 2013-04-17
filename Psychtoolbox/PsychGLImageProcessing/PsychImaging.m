@@ -40,6 +40,38 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 'whichTask' contains the name string of one of the supported
 % actions:
 %
+% * 'UseGPGPUCompute' Enable use of GeneralPurposeGPU computing support.
+%   This prepares use of Psychtoolbox functions which are meant to
+%   interface with, or take advantage of, the general purpose computation
+%   capabilities of modern graphics processing units and other massively
+%   parallel compute acceleration hardware, e.g., DSP's, or multi-core
+%   processors. Interfacing with such hardware is done via common standard
+%   compute API's like NVidia's CUDA or the cross-platform OpenCL API.
+%
+%   Use of this function often requires specific modern GPU hardware and
+%   the installation of additional driver software, e.g., NVidia's freely
+%   available CUDA SDK and runtime, or the free and open-source GPUmat
+%   toolbox. Read 'help PsychGPGPU' for further info.
+%
+%   This function just detects and selects supported GPU compute API's for
+%   use with Psychtoolbox and initializes them and some Psychtoolbox
+%   function to take advantage if appropriate. While you could use those
+%   API's by themselves without calling this init function, Psychtoolbox
+%   builtin processing functions would not be able to take advantage of the
+%   API's or perform efficient and fast data exchange with them.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseGPGPUCompute', apitype [, flags]);
+%
+%   'apitype' Allows selection of the compute API to use. The value 'Auto'
+%   leaves the choice to Psychtoolbox. The value 'GPUmat' selects the
+%   high-level, free and open-source GPUmat compute toolkit for Matlab.
+%   Currently no other choices are supported, but this is expected to
+%   change in the future.
+%
+%   'flags' An optional string of keyword flags to determine behaviour.
+%   There aren't any flags defined yet.
+%
+%
 % * 'SideBySideCompressedStereo' Ask for stereo display in a horizontally
 %   compressed side-by-side format. Left and Right eye images are drawn at
 %   full framebuffer resolution by usercode. Screen('Flip', ...) draws them
@@ -527,6 +559,35 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   "mode" zero.
 %
 %
+% * 'UseBits#' Tell Psychtoolbox that additional functionality for
+%   displaying the onscreen window on a Cambridge Research Systems Bits#
+%   device should be enabled.
+%
+%   This command is implied by enabling a Bits+ or Bits# video mode by one
+%   of the commands for the Bits+/Bits# in the following sections, if the
+%   driver can auto-detect a connected Bits# device. If it cannot auto-detect
+%   a connected Bits# device and this command is omitted, Psychtoolbox will
+%   instead assume that an older Bits+ is in use and only allow functionality
+%   common to Bits# and Bits+, without automatic video mode switching.
+%
+%   If you provide this command, you can optionally specify the name of the
+%   serial port to which your Bits# is connected, instead of leaving it to
+%   the system to find this out (either via configuration file or via a
+%   guess-o-matic).
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseBits#' [, BitsSharpSerialPort]);
+%
+%   'BitsSharpSerialPort' is optional and can be set to the name of a serial
+%   port for your specific operating system and computer, to which the Bits#
+%   is connected. If omitted, Psychtoolbox will look for the name in the first
+%   line of text of a text file stored under the filesystem path and filename
+%   [PsychtoolboxConfigDir 'BitsSharpConfig.txt']. If that file is empty, the
+%   serial port is auto-detected (Good luck!).
+%
+%   'UseBits#' mostly prepares use of a variety of new Bits# subfunctions
+%   in the BitsPlusPlus() high-level driver ("help BitsPlusPlus").
+%
+%
 % * 'EnableBits++Bits++Output' Setup Psychtoolbox for Bits++ mode of the
 %   Cambridge Research Systems Bits++ box. This loads the graphics
 %   hardwares gamma table with an identity mapping so it can't interfere
@@ -923,9 +984,15 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 13.12.2013  Add support for 'UsePanelFitter' Screen panelfitter setup. (MK)
 %
+% 15.04.2013  Add support for 'UseGPGPUCompute', currently via GPUmat. (MK)
+%
 
 persistent configphase_active;
 persistent reqs;
+
+% This global variable signals if a GPGPU compute api is enabled, and which
+% one. 0 = None, 1 = GPUmat.
+global psych_gpgpuapi;
 
 % These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
@@ -959,6 +1026,12 @@ if strcmp(cmd, 'PrepareConfiguration')
     % MK: This clear reqs causes malfunctions on Octave 3.2.0 for some reason, so don't use it! clear reqs;
     reqs = [];
     ptb_outputformatter_icmAware = 0;
+    
+    % Set GPGPU api type indicator to zero "none in use" default:
+    if isempty(psych_gpgpuapi)
+        psych_gpgpuapi = 0;
+    end
+    
     rc = 0;
     return;
 end
@@ -1522,7 +1595,7 @@ if strcmp(cmd, 'OpenWindow')
         % left-right borders will get initialized to the selected
         % background clear color, which should be the most well defined
         % choice:
-        Screen('PanelFitter', win, fitterParams);
+        Screen('PanelFitter', win, round(fitterParams));
         
         % Now that the fitter is fully configured, perform an extra
         % double-flip to apply proper scaling and borders and such:
@@ -1687,6 +1760,7 @@ return; %#ok<UNRCH>
 % Screen('OpenWindow') for pipeline preconfiguration.
 function [imagingMode, stereoMode, reqs] = FinalizeConfiguration(reqs, userstereomode)
 global ptb_outputformatter_icmAware;
+global psych_gpgpuapi;
 
 if nargin < 2
     userstereomode = [];
@@ -1710,6 +1784,118 @@ stereoMode = -1;
 
 % No datapixx by default:
 datapixxmode = 0;
+
+% No Bits+ or Bits# by default:
+crsbitsdevice = 0; %#ok<NASGU>
+
+% Request for GPGPU compute support?
+floc = find(mystrcmp(reqs, 'UseGPGPUCompute'));
+if ~isempty(floc)
+    % Yes.
+    [row cols] = ind2sub(size(reqs), floc); %#ok<NASGU>
+    
+    % Extract first mandatory parameter, the apitype to use:
+    apitype = reqs{row, 3};
+    if ~ischar(apitype) || (~strcmpi(apitype, 'Auto') && ~strcmpi(apitype, 'GPUmat'))
+        % Missing or invalid apitype specified:
+        sca;
+        error('PsychImaging: Use of GPU compute device via UseGPGPUCompute was requested, but mandatory apitype parameter is missing or invalid!');
+    end
+    
+    % Extract 2nd optional parameter, the compute flags:
+    gpgpuflags = reqs{row, 4};
+    if ~isempty(gpgpuflags) && ~ischar(gpgpuflags)
+        % There ain't no valid flags yet, so providing anything but the empty string is invalid:
+        sca;
+        error('PsychImaging: Use of GPU compute device via UseGPGPUCompute was requested, but optional flags argument is invalid!');
+    end
+
+    % Ok, all parameters validated. Check if our only currently supported
+    % GPU compute api, 'GPUmat' is installed and functional and start it,
+    % if possible:
+    if ~exist('GPUstart', 'file')
+        % Unsupported:
+        sca;
+        error('PsychImaging: Use of GPU compute device via UseGPGPUCompute was requested, but the required GPUmat toolbox seems to be missing!');
+    end
+    
+    % Available. Start it:
+    psychlasterror('reset');
+    try
+        % Start/Initialize GPUmat GPU computing toolkit if not already started:
+        if ~GPUstart(1)
+            GPUstart;
+        end
+    catch %#ok<CTCH>
+        fprintf('PsychImaging: Failed to start GPGPU compute toolkit GPUmat! See error message below:\n');
+        err = psychlasterror('reset');
+        disp(err.message);
+        sca;
+        error('PsychImaging: GPGPU init failed!');
+    end
+    
+    % Ok, GPUmat is online. Set a global marker that it is running:
+    fprintf('PsychImaging: GPGPU computing support via GPUmat toolbox enabled.\n');
+    
+    % Type 1 is GPUmat:
+    psych_gpgpuapi = 1; %#ok<NASGU>
+end
+
+% Special setup for CRS Bits# next-generation devices:
+% Is a Bits+ / Bits# specific video display mode requested? Or
+% explicit use of a Bits# device?
+floc = [ find(mystrcmp(reqs, 'EnableBits++Bits++Output')) ];
+floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Mono++Output')) ; find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')) ];
+floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Color++Output')) ; find(mystrcmp(reqs, 'UseBits#')) ];
+if ~isempty(floc)
+    % Explicit use of Bits# requested? Or only implicit by video mode?
+    floc = find(mystrcmp(reqs, 'UseBits#'));
+    if ~isempty(floc)
+        % Use of Bits# requested. Try to retrieve any special Bits# parameters to
+        % pass them to the OpenBits# function:
+        [row cols] = ind2sub(size(reqs), floc);
+
+        % Extract first parameter - This should be the serial port name, or [] empty:
+        bitsSharpPortname = reqs{row, 3};
+    else
+        % No specific usage of Bits# requested. Leave it to auto-detection
+        % if we work with a Bits# or with a Bits+:
+        bitsSharpPortname = [];
+    end
+
+    % Initialize serial port connection to Bits#, if any such device present:
+    if BitsPlusPlus('OpenBits#', bitsSharpPortname)
+        % Connection to Bits# established. Do we need to explicitely
+        % specify use of it? Only if it was not already done by usercode via
+        % keyword UseBits#
+        if isempty(floc)
+            % Bits# connected. Makeit explicit by adding the reqs task UseBits#
+            reqs(end+1, :) = cell(1, size(reqs, 2));
+            reqs{end, 2} = 'UseBits#';
+        end
+
+        % Mark use of Bits#:
+        crsbitsdevice = 2;
+
+        fprintf('PsychImaging: Will use a connected CRS Bits# device instead of a Bits+ for this session - Connection established.\n');
+    else
+        % No connection to Bits#. Was one requested? If not, we just assume we are
+        % operating against a good old Bits+ which does not support connections.
+        % Otherwise, failure to connect to Bits# would be, well, a failure:
+        if ~isempty(floc)
+            % Bummer:
+            sca;
+            error('PsychImaging: Use of a CRS Bits# device was requested, but connecting to it failed. Disconnected or misconfigured?!?');
+        else
+            % Mark use of Bits+:
+            crsbitsdevice = 1;
+
+            fprintf('PsychImaging: Will use a CRS Bits+ device, which i assume is connected to target display output screen.\n');
+        end
+    end
+end
+
+% End of Bits# setup, start of DataPixx/ViewPixx/ProPixx setup:
 
 % Remap Datapixx L48 mode to equivalent Bits++ mode:
 floc = find(mystrcmp(reqs, 'EnableDataPixxL48Output'));
@@ -2096,6 +2282,7 @@ function rc = PostConfiguration(reqs, win, clearcolor)
 global ptb_outputformatter_icmAware;
 global GL;
 global ptb_geometry_inverseWarpMap;
+global psych_gpgpuapi; %#ok<NUSED>
 
 if isempty(GL)
     % Perform minimal OpenGL init, so we can call OpenGL commands and use
@@ -2263,6 +2450,15 @@ end
 
 % --- Implementation of CLUT animation via clut remapping of colors ---
 floc = find(mystrcmp(reqs, 'EnableCLUTMapping'));
+% Is a display mode on a CRS Bits+/Bits# or VPixx DataPixx/ViewPixx/ProPixx requested which requires use
+% and setup of the devices hardware CLUT? If so we must turn 'EnableCLUTMapping' into a no-op, as it
+% would clash with the hardware clut update - and is also superseded by it. Detect the namestrings of
+% Bits++ CLUT palette display mode and Mono++ CLUT overlay palette mode. These Bits+ namestrings also
+% cover VPixx devices due to the remapping of VPixx names into CRS reqs:
+if ~isempty(find(mystrcmp(reqs, 'EnableBits++Bits++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
+    % Yep. We must no-op this 'EnableCLUTMapping' request:
+    floc = [];
+end
 if ~isempty(floc)
     % Which channel?
     for x=floc
@@ -3525,7 +3721,7 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % slave window, thereby cloning the master windows framebuffer to the
     % slave windows framebuffer:
     % TODO FIXME: We assume that texture handle '1' denotes the color
-    % attachment exture of finalizedFBO[1]. This is true if this is the
+    % attachment texture of finalizedFBO[1]. This is true if this is the
     % first opened onscreen window (ie., 99% of the time). If that
     % assumption doesn't hold, we will guess the wrong texture handle and
     % bad things will happen!
@@ -3541,8 +3737,14 @@ if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
     % Yes: Need to call into high level DataPixx driver for final setup:
     PsychDataPixx('PerformPostWindowOpenSetup', win);    
 end
-
 % --- End of Datapixx in use? ---
+
+% --- Bits# in use? ---
+if ~isempty(find(mystrcmp(reqs, 'UseBits#')))
+    % Yes: Need to call into high level BitsPlusPlus driver for final setup:
+    BitsPlusPlus('PerformPostWindowOpenSetup', win);    
+end
+% --- End of Bits# in use? ---
 
 % Do we need identity gamma tables / CLUT's loaded into the graphics card?
 if needsIdentityCLUT

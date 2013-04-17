@@ -30,6 +30,12 @@
 
 #include "Screen.h"
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+#define GLUTESSCBCASTER (_GLUfuncptr)
+#else
+#define GLUTESSCBCASTER
+#endif
+
 // Our pointer to the used GLUtesselator object:
 static GLUtesselator		*tess = NULL;
 
@@ -44,17 +50,18 @@ static int					tempvsize = 0;
 // Callback-Routines for the GLU-Tesselator functions used on the FillPoly - Slow - path:
 void APIENTRY PsychtcbBegin(GLenum prim)
 {
-    glBegin(prim);
+    PsychGLBegin(NULL, prim);
 }
 
 void APIENTRY PsychtcbVertex(void *data)
 {
-    glVertex3dv((GLdouble *)data);
+    GLdouble *v = (GLdouble*) data;
+    PsychGLVertex4f(NULL, (float) v[0], (float) v[1], (float) v[2], (float) 1);
 }
 
 void APIENTRY PsychtcbEnd(void)
 {
-    glEnd();
+    PsychGLEnd(NULL);
 }
 
 void APIENTRY PsychtcbCombine(GLdouble c[3], void *d[4], GLfloat w[4], void **out)
@@ -165,6 +172,12 @@ PsychError SCREENFillPoly(void)
 	isConvex = -1;
 	PsychCopyInDoubleArg(4, kPsychArgOptional, &isConvex);
 	
+    // On non-OpenGL1/2 we always force isConvex to zero, so the GLU tesselator is
+    // always used. This because the tesselator only emits GL_TRIANGLES and GL_TRIANGLE_STRIP
+    // and GL_TRIANGLE_FANS primitives which are supported on all current OpenGL API's, whereas
+    // or "classic" fast-path needs GL_POLYGONS, which are only supported on classic OpenGL1/2:
+    if (!PsychIsGLClassic(windowRecord)) isConvex = 0;
+
 	// Enable this windowRecords framebuffer as current drawingtarget:
 	PsychSetDrawingTarget(windowRecord);
 	
@@ -219,7 +232,6 @@ PsychError SCREENFillPoly(void)
 	////// Switch between fast path and slow path, depending on convexity of polygon:
 	if (isConvex > 0) {
 		// Convex, non-self-intersecting polygon - Take the fast-path:
-		//draw the rect
 		glBegin(GL_POLYGON);
 		for(i=0;i<mSize;i++) glVertex2d((GLdouble)pointList[i], (GLdouble)pointList[i+mSize]);
 		glEnd();
@@ -236,14 +248,14 @@ PsychError SCREENFillPoly(void)
 			if (NULL == tess) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory condition in Screen('FillPoly')! Not enough space.");
 
 			// Assign our callback-functions:
-			gluTessCallback(tess, GLU_TESS_BEGIN, PsychtcbBegin);
-			gluTessCallback(tess, GLU_TESS_VERTEX, PsychtcbVertex);
-			gluTessCallback(tess, GLU_TESS_END, PsychtcbEnd);
-			gluTessCallback(tess, GLU_TESS_COMBINE, PsychtcbCombine);
+			gluTessCallback(tess, GLU_TESS_BEGIN, GLUTESSCBCASTER PsychtcbBegin);
+			gluTessCallback(tess, GLU_TESS_VERTEX, GLUTESSCBCASTER PsychtcbVertex);
+			gluTessCallback(tess, GLU_TESS_END, GLUTESSCBCASTER PsychtcbEnd);
+			gluTessCallback(tess, GLU_TESS_COMBINE, GLUTESSCBCASTER PsychtcbCombine);
 
-			// Define all to be tesselated polygons to lie in the x-y plane:
+			// Define all tesselated polygons to lie in the x-y plane:
 			gluTessNormal(tess, 0, 0, 1);
-		}	  
+		}
 
 		// We need to hold the values in a temporary array:
 		if (tempvsize < mSize) {

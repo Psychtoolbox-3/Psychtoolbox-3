@@ -105,22 +105,38 @@ static int    minimum_crtcid = 0;
 // Count of kernel drivers:
 static int    numKernelDrivers = 0;
 
+// Internal helper function prototype:
+void PsychInitNonX11(void);
+
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
 unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
 
-/* Mappings up to date for December 2012 (last update e-mail patch / commit 21-Nov-2012). Will need updates for anything after start of 2013 */
+/* Mappings up to date for March 2013 (last update e-mail patch / commit 15-Mar-2013). Will need updates for anything after start of April 2013 */
+
+/* Is a given ATI/AMD GPU a DCE6.4 type ASIC, i.e., with the new display engine? */
+static psych_bool isDCE64(int screenId)
+{
+	psych_bool isDCE64 = false;
+    
+	// Everything == OLAND is DCE6.4 -- This is part of the "Southern Islands" GPU family.
+    
+    // OLAND in 0x66xx range:
+	if ((fPCIDeviceId & 0xFF00) == 0x6600) isDCE64 = true;
+    
+	return(isDCE64);
+}
 
 /* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE61(int screenId)
 {
-	psych_bool isDCE61 = false;
-    
-	// Everything >= ARUBA which is an IGP is DCE6.1 -- This is the "Trinity" GPU family.
+    psych_bool isDCE61 = false;
+
+    // Everything >= ARUBA which is an IGP is DCE6.1 -- This is the "Trinity" GPU family.
 
     // ARUBA in 0x99xx range: This is the "Trinity" chip family.
-	if ((fPCIDeviceId & 0xFF00) == 0x9900) isDCE61 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x9900) isDCE61 = true;
 
-	return(isDCE61);
+    return(isDCE61);
 }
 
 /* Is a given ATI/AMD GPU a DCE6 type ASIC, i.e., with the new display engine? */
@@ -144,6 +160,9 @@ static psych_bool isDCE6(int screenId)
 
 	// All DCE-6.1 engines are also DCE-6:
 	if (isDCE61(screenId)) isDCE6 = true;
+
+	// All DCE-6.4 engines are also DCE-6:
+	if (isDCE64(screenId)) isDCE6 = true;
 
 	return(isDCE6);
 }
@@ -476,8 +495,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId)) {
 				gfx_lowlimit = 0x6df0;
                 
-				// Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 (which still has only 2) or DCE-6.1 (4 heads), supports up to six display heads:
-				if (!isDCE41(screenId) && !isDCE61(screenId)) fNumDisplayHeads = 6;
+				// Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
+				if (!isDCE41(screenId) && !isDCE61(screenId) && !isDCE64(screenId)) fNumDisplayHeads = 6;
 
                 // DCE-6.1 "Trinity" chip family supports 4 display heads:
 				if (!isDCE41(screenId) && isDCE61(screenId)) fNumDisplayHeads = 4;
@@ -502,7 +521,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		// Ready to rock!
 	} else {
 		// No candidate.
-		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No suitable low-level controllable GPU found for screenId %i. Beamposition timestamping and other special functions disabled.\n", screenId);
+		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No low-level controllable GPU on screenId %i. Beamposition timestamping and other special functions disabled.\n", screenId);
 		fflush(NULL);
 		
 		// Cleanup:
@@ -512,7 +531,6 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	// Return final success or failure status:
 	return((gfx_cntl_mem) ? TRUE : FALSE);
 }
-
 
 /*
  * Return identifying information about GPU for a given screen screenNumber:
@@ -933,9 +951,9 @@ void InitCGDisplayIDList(void)
   if (ptbdisplays) {
     // Displays explicitely specified. Parse the string and connect to all of them:
     j=0;
-    for (i=0; i<=strlen(ptbdisplays) && j<1000; i++) {
+    for (i = 0; i <= (int) strlen(ptbdisplays) && j < 1000; i++) {
       // Accepted separators are ',', '"', white-space and end of string...
-      if (ptbdisplays[i]==',' || ptbdisplays[i]=='"' || ptbdisplays[i]==' ' || i==strlen(ptbdisplays)) {
+      if (ptbdisplays[i]==',' || ptbdisplays[i]=='"' || ptbdisplays[i]==' ' || i == (int) strlen(ptbdisplays)) {
 	// Separator or end of string detected. Try to connect to display:
 	displayname[j]=0;
 	printf("PTB-INFO: Trying to connect to X-Display %s ...", displayname);
@@ -989,7 +1007,7 @@ void InitCGDisplayIDList(void)
     // At least one screen enumerated?
     if (numDisplays < 1) {
       // We're screwed :(
-      PsychErrorExitMsg(PsychError_internal, "FATAL ERROR: Couldn't open any X11 display connection to any X-Server!!!");
+      PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Couldn't open any X11 display connection to any X-Server!!!");
     }
   }
   else {
@@ -997,8 +1015,16 @@ void InitCGDisplayIDList(void)
     // the default $DISPLAY or -display of Matlab:
     x11_dpy = XOpenDisplay(NULL);
     if (x11_dpy == NULL) {
-      // We're screwed :(
-      PsychErrorExitMsg(PsychError_internal, "FATAL ERROR: Couldn't open default X11 display connection to X-Server!!!");
+      #ifndef PTB_USE_WAFFLE
+        // We're screwed :(
+        PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Couldn't open default X11 display connection to X-Server!!!");
+      #endif
+
+        // No X-Display available, but we are configured with waffle support, so
+        // probably user wants to use a non-X11 based display backend.
+        printf("PTB-INFO: Could not open any X11/X-Windows system based display connection. Trying other display backends.\n");
+        PsychInitNonX11();
+        return;
     }
     
     // Query number of available screens on this X11 display:
@@ -1044,6 +1070,24 @@ void InitCGDisplayIDList(void)
   return;
 }
 
+void PsychInitNonX11(void)
+{
+    int i;
+
+    // Set the screenNumber --> X11 display mappings up:
+    for (i=0; i < kPsychMaxPossibleDisplays; i++) {
+        displayCGIDs[i] = NULL;
+        displayX11Screens[i] = i;
+        xinput_info[i] = NULL;
+        xinput_ndevices[i] = 0;
+    }
+
+    // Just make something up;
+    numDisplays = 1;
+
+    return;
+}
+
 void PsychCleanupDisplayGlue(void)
 {
 	CGDirectDisplayID dpy, last_dpy;
@@ -1055,6 +1099,9 @@ void PsychCleanupDisplayGlue(void)
 	  // Get display-ptr for this screen:
 	  PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
 
+      // No X11 display associated with this screen? Skip it.
+      if (!dpy) continue;
+
 	  // Did we close this connection already (dpy==last_dpy)?
 	  if (dpy != last_dpy) {
 	    // Nope. Keep track of it...
@@ -1064,7 +1111,7 @@ void PsychCleanupDisplayGlue(void)
 
 	    // Release actual xinput info list for this x11 display connection:
 	    if (xinput_info[i]) {
-		XIFreeDeviceInfo(xinput_info[i]);
+            XIFreeDeviceInfo(xinput_info[i]);
 	    }
 	  }
 
@@ -1179,15 +1226,18 @@ int PsychGetNumDisplays(void)
 void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 {
   int* x11_depths;
-  int  i, count;
+  int  i, count = 0;
 
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
 
   // Update XLib's view of this screens configuration:
   ProcessRandREvents(screenNumber);
 
-  x11_depths = XListDepths(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &count);
-  if (depths && count>0) {
+  if (displayCGIDs[screenNumber]) {
+      x11_depths = XListDepths(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &count);
+  }
+
+  if (depths && count > 0) {
     // Query successful: Add all values to depth struct:
     for(i=0; i<count; i++) PsychAddValueToDepthStruct(x11_depths[i], depths);
     XFree(x11_depths);
@@ -1401,7 +1451,12 @@ void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
   // Update XLib's view of this screens configuration:
   ProcessRandREvents(screenNumber);
 
-  PsychAddValueToDepthStruct(DefaultDepth(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), depth);
+  if (displayCGIDs[screenNumber]) {
+      PsychAddValueToDepthStruct(DefaultDepth(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), depth);
+  }
+  else {
+      PsychAddValueToDepthStruct(32, depth);
+  }
 }
 
 int PsychGetScreenDepthValue(int screenNumber)
@@ -1417,6 +1472,12 @@ float PsychGetNominalFramerate(int screenNumber)
 {
   if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
 
+  if(screenNumber >= numDisplays || screenNumber < 0)
+      PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetNominalFramerate() is out of range"); 
+
+  // No-Op on non-X11:
+  if (!displayCGIDs[screenNumber]) return(0);
+
 #ifdef USE_VIDMODEEXTS
 
   // Information returned by the XF86VidModeExtension:
@@ -1425,9 +1486,6 @@ float PsychGetNominalFramerate(int screenNumber)
 
   // We start with a default vrefresh of zero, which means "couldn't query refresh from OS":
   float vrefresh = 0;
-
-  if(screenNumber >= numDisplays || screenNumber < 0)
-    PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
 
   // First we try to get modeline of primary crtc from RandR:
   XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, 0, NULL);
@@ -1516,6 +1574,9 @@ float PsychSetNominalFramerate(int screenNumber, float requestedHz)
   if(screenNumber>=numDisplays)
     PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); 
 
+  // Not available on non-X11:
+  if (!displayCGIDs[screenNumber]) return(0);
+
   if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
     // Failed to use VidMode-Extension. We just return a vrefresh of zero.
     return(0);
@@ -1595,6 +1656,9 @@ void PsychGetDisplaySize(int screenNumber, int *width, int *height)
     if(screenNumber>=numDisplays)
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDisplaySize() is out of range");
 
+    // Not available on non-X11:
+    if (!displayCGIDs[screenNumber]) { *width = 0; *height = 0; return; }
+
     // Update XLib's view of this screens configuration:
     ProcessRandREvents(screenNumber);
 
@@ -1605,6 +1669,9 @@ void PsychGetDisplaySize(int screenNumber, int *width, int *height)
 void PsychGetScreenSize(int screenNumber, long *width, long *height)
 {
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
+
+  // Not available on non-X11: MK TODO FIXME - How to get real values?
+  if (!displayCGIDs[screenNumber]) { *width = 1680; *height = 1050; return; }
 
   // Update XLib's view of this screens configuration:
   ProcessRandREvents(screenNumber);
@@ -1722,7 +1789,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 
   // Find matching mode:
   for (modeid = 0; modeid < res->nmode; modeid++) {
-    if ((res->modes[modeid].width == newWidth) && (res->modes[modeid].height == newHeight) &&
+    if (((int) res->modes[modeid].width == newWidth) && ((int) res->modes[modeid].height == newHeight) &&
 	(newHz == (int)(PsychOSVRefreshFromMode(&res->modes[modeid]) + 0.5))) {
       break;
     }
@@ -1814,6 +1881,9 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     if (settings->screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
     dpy = displayCGIDs[settings->screenNumber];
 
+    // Not available on non-X11:
+    if (!dpy) return(false);
+
     //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
     // MK Disabled: if(PsychCheckScreenSettingsLock(settings->screenNumber)) return(false);  //calling function should issue an error for attempt to change display settings while windows were open.
     
@@ -1859,7 +1929,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 
     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
-    if (!isValid || cgMode < 0){
+    if (!isValid || (int) cgMode < 0){
         // This is an internal error because the caller is expected to check first. 
         PsychErrorExitMsg(PsychError_user, "Attempt to set invalid video settings or function unsupported with this graphics-driver.");
     }
@@ -1929,7 +1999,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
 
     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
-    if (!isValid || cgMode < 0){
+    if (!isValid || (int) cgMode < 0){
         // This is an internal error because the caller is expected to check first. 
         PsychErrorExitMsg(PsychError_user, "Attempt to restore invalid video settings or function unsupported with this graphics-driver.");
     }
@@ -1967,11 +2037,15 @@ void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor)
     PsychWindowRecordType **windowRecordArray;
     int i, numWindows;
 
+    // Not available on non-X11:
+    if (!displayCGIDs[screenNumber]) return;
+
     // Iterate over all open onscreen windows associated with this screenNumber and
     // apply new X11 cursor definition to each of them:
     PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
     for(i = 0; i < numWindows; i++) {
-	if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]->screenNumber == screenNumber)) {
+	if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]->screenNumber == screenNumber) &&
+        windowRecordArray[i]->targetSpecific.xwindowHandle) {
 		// Candidate.
 		if (deviceId >= 0) {
 			// XInput extension for per-device settings:
@@ -1996,6 +2070,9 @@ void PsychHideCursor(int screenNumber, int deviceIdx)
 
   // Check for valid screenNumber:
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
+
+  // Not available on non-X11:
+  if (!displayCGIDs[screenNumber]) return;
 
   // Cursor already hidden on screen? If so, nothing to do:
   if ((deviceIdx < 0) && displayCursorHidden[screenNumber]) return;
@@ -2050,6 +2127,9 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
   // Check for valid screenNumber:
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
 
+  // Not available on non-X11:
+  if (!displayCGIDs[screenNumber]) return;
+
   if (deviceIdx < 0) {
 	// Cursor not hidden on screen? If so, nothing to do:
 	if(!displayCursorHidden[screenNumber]) return;
@@ -2079,6 +2159,9 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
 
 void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 {
+  // Not available on non-X11:
+  if (!displayCGIDs[screenNumber]) return;
+
   // Reposition the mouse cursor:
   if (deviceIdx < 0) {
 	// Core protocol cursor:
@@ -2120,6 +2203,9 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
 
   // Initial assumption: Failed.
   n = 0;
+
+  // Not available on non-X11:
+  if (!displayCGIDs[screenNumber]) { *numEntries = 0; return; }
 
   // Query OS for gamma table:
   PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
@@ -2265,6 +2351,9 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
   // Initial assumption: Failure.
   n = 0;
 
+  // Not available on non-X11:
+  if (!displayCGIDs[screenNumber]) return(0);
+
   if (has_xrandr_1_2) {
     // Use RandR V 1.2 for per-crtc setup:
 
@@ -2353,6 +2442,9 @@ int PsychOSIsDWMEnabled(int screenNumber)
 {
     CGDirectDisplayID dpy;
     PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+
+    // Not available on non-X11: Assume no desktop compositor active.
+    if (!dpy) return(0);
     
     // According to ICCCM spec, a compositing window manager who does composition on a
     // specific X-Screen must aquire "selection ownership" of the atom specified in our
@@ -2598,7 +2690,7 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 			if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
 
 			// Sanity check crtc id i:
-			if (i > fNumDisplayHeads - 1) {
+			if (i > (int) fNumDisplayHeads - 1) {
 				printf("PTB-ERROR: PsychOSSynchronizeDisplayScreens(): Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", i, (fNumDisplayHeads - 1));
 				return(PsychError_user);
 			}
@@ -2867,10 +2959,10 @@ int PsychOSKDGetBeamposition(int screenId)
 	int beampos = -1;
 	int headId  = PsychScreenToCrtcId(screenId, 0);
 
-    if (headId < 0 || headId > (fNumDisplayHeads - 1)) {
-        printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
-        return(beampos);
-    }
+	if (headId < 0 || headId > ((int) fNumDisplayHeads - 1)) {
+		printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
+		return(beampos);
+	}
 
 	// MMIO registers mapped?
 	if (gfx_cntl_mem) {
@@ -2988,7 +3080,7 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
             if (isDCE4(screenId) || isDCE5(screenId)) {
                 // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
                 // register offset for this headId:
-                if (headId > (fNumDisplayHeads - 1)) {
+                if (headId > ((int) fNumDisplayHeads - 1)) {
                     // Invalid head - bail:
                     if (PsychPrefStateGet_Verbosity() > 0) printf("SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
                     continue;

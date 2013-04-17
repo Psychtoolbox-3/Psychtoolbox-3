@@ -61,7 +61,8 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 %
 % GPU based operation should be efficiently supported on all ATI Radeon
 % X-1000 or later hardware and all NVidia Geforce-6000 and later hardware.
-%
+% GPU based operation is not supported under OpenGL-ES1.x mobile/embedded
+% GPUs.
 %
 %
 % All following subfunctions must be only called when at least one onscreen
@@ -180,6 +181,8 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 % later on via the command glCallList(glListHandle); and delete it via
 % glDeleteLists(glListHandle, 1);
 %
+% Unsupported on OpenGL-ES.
+%
 %
 % moglmorpher('renderRange' [, startfaceidx=0] [, endfaceidx]);
 % moglmorpher('renderRangeToDisplayList' [, startfaceidx=0] [, endfaceidx]);
@@ -211,7 +214,7 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 % index of the first vertex, resp. the last vertex to transform. The returned 'vpos' is a
 % vcount-by-3 matrix, where vcount is the number of returned vertices, and row i contains the
 % projected 3D position of the i'th vertex vcount(i,:) = (screen_x, screen_y, depth_z);
-%
+% Unsupported on OpenGL-ES.
 %
 % count = moglmorpher('getMeshCount');
 % -- Returns number of stored shapes.
@@ -343,6 +346,7 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 %             can delete all keyshapes without incurring a full reset cycle (MK).
 %
 % 10.01.2013  Fix bug in argument checking (MK).
+% 04.04.2013  Make OpenGL-ES compatible, at least basic functionality (MK).
 
 % The GL OpenGL constant definition struct is shared with all other modules:
 global GL;
@@ -352,6 +356,9 @@ persistent ctx;
 
 % Data type for OpenGL data, GL_FLOAT or GL_DOUBLE.
 persistent usetype;
+
+% Data type for indices, GL_UNSIGNED_INT or GL_UNSIGNED_SHORT.
+persistent indextype;
 
 % glDrawRangeElements() command supported?
 persistent drawrangeelements;
@@ -474,6 +481,12 @@ if isempty(isbuggyatidriver)
     if gpubasedmorphing
         usetype = GL.FLOAT;
     end    
+
+    indextype = GL.UNSIGNED_INT;
+    if IsGLES
+        % We are pretty limited on ES:
+        indextype = GL.UNSIGNED_SHORT;
+    end
 end
 
 if isempty(gpubasedmorphing)
@@ -835,7 +848,12 @@ if strcmpi(cmd, 'addMesh')
     end;
         
     % Cast vector of face indices to unsigned int 32 for use by OpenGL and assign it:
-    ctx.faces = uint32(arg1);
+    if indextype == GL.UNSIGNED_INT
+        ctx.faces = uint32(arg1);
+    else
+        ctx.faces = uint16(arg1);
+    end
+
     ctx.minvertex=min(min(ctx.faces));
     ctx.maxvertex=max(max(ctx.faces));
     
@@ -958,7 +976,7 @@ if strcmpi(cmd, 'addMesh')
         % into a 32bpc floating point texture (floatprecision == 2) and
         % request immediate conversion into optimal storage format for
         % Screen('TransformTexture') (orientation == 1):
-        ctx.keyshapes(ctx.objcount) = Screen('MakeTexture', ctx.win, myshapeimg, [], [], 2, 1);
+        ctx.keyshapes(ctx.objcount) = Screen('MakeTexture', ctx.win, myshapeimg, [], 32, 2, 1);
            
         % Reset masterkeyshape texture, if any:
         if ~isempty(ctx.masterkeyshapetex)
@@ -967,8 +985,8 @@ if strcmpi(cmd, 'addMesh')
         end
 
         % First time invocation? A warm restart (dontReset = 1 set in 'deleteMeshXXX')
-	% does not count as first time invocation, as a dontReset does keep all
-	% shaders, FBOs and other resources setup, so no need to do it here again.
+        % does not count as first time invocation, as a dontReset does keep all
+        % shaders, FBOs and other resources setup, so no need to do it here again.
         if (ctx.objcount == 1) && isempty(ctx.warmstart)
             % Yes! Need to allocate and setup FBO's PBO's and VBO's and create
             % GLSL operator for morphing on GPU:
@@ -1021,8 +1039,8 @@ if strcmpi(cmd, 'addMesh')
             % Create offscreen floating point windows as morph-accumulation
             % buffers: Need two of them for buffer-pingpong...
             % We request 128 bpp == 32 bpc float precision:
-            ctx.morphbuffer(1) = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 ncols nrows], 128);
-            ctx.morphbuffer(2) = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 ncols nrows], 128);
+            ctx.morphbuffer(1) = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 ncols nrows], 128, 32);
+            ctx.morphbuffer(2) = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 ncols nrows], 128, 32);
 
             % Create and setup PBO-backed VBO:
             Screen('BeginOpenGL', ctx.win);
@@ -1071,11 +1089,17 @@ if strcmpi(cmd, 'addMesh')
             ctx.ibo = glGenBuffers(1);
             glBindBuffer(GL.ELEMENT_ARRAY_BUFFER_ARB, ctx.ibo);
             % Allocate buffer for number of face indices stored in 'ctx.faces',
-            % each taking up 4 Bytes (== sizeof(uint32)) of memory.
+            % each taking up elsize Bytes (== sizeof(indextype)) of memory.
             % Initialize immediately with content of 'ctx.faces' array and tell
             % OpenGL that this won't change at all during operation
             % (STATIC_DRAW):
-            glBufferData(GL.ELEMENT_ARRAY_BUFFER_ARB, size(ctx.faces,1) * size(ctx.faces,2) * 4, ctx.faces, GL.STATIC_DRAW);
+            if indextype == GL.UNSIGNED_INT
+                elsize = 4;
+            else
+                elsize = 2;
+            end
+
+            glBufferData(GL.ELEMENT_ARRAY_BUFFER_ARB, size(ctx.faces,1) * size(ctx.faces,2) * elsize, ctx.faces, GL.STATIC_DRAW);
             glBindBuffer(GL.ELEMENT_ARRAY_BUFFER_ARB, 0);
 
             Screen('EndOpenGL', ctx.win);
@@ -1343,7 +1367,7 @@ if strcmpi(cmd, 'renderMorph') || strcmpi(cmd, 'computeMorph')
             if (h * ctx.objcount < glGetIntegerv(GL.MAX_RECTANGLE_TEXTURE_SIZE_EXT))
                 % Number and size of keyshapes fits within contraints of
                 % hardware. Build unified keyshape texture:
-                ctx.masterkeyshapetex = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 w h*ctx.objcount], 128);
+                ctx.masterkeyshapetex = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 w h*ctx.objcount], 128, 32);
                 for i=1:ctx.objcount
                     Screen('DrawTexture', ctx.masterkeyshapetex, ctx.keyshapes(ctx.objcount+1-i), [], OffsetRect([0 0 w h], 0, h*(i-1)), 0, 0);
                 end
@@ -1424,7 +1448,7 @@ if strcmpi(cmd, 'renderMorph') || strcmpi(cmd, 'computeMorph')
             % Convert weight-vector into float texture:
             if isempty(ctx.weighttex)
                 % Doesn't exist yet: Create it:
-                ctx.weighttex = Screen('MakeTexture', ctx.win, arg1, [], [], 2, 2);
+                ctx.weighttex = Screen('MakeTexture', ctx.win, arg1, [], 32, 2, 2);
                 ctx.weighttexgl = Screen('GetOpenGLTexture', ctx.win, ctx.weighttex);
             else
                 % ctx.weighttex exists already and can be recycled. Just bind
@@ -1564,17 +1588,25 @@ if strcmpi(cmd, 'renderNormals')
         end;
     end;
     
-    % Loop over all vertices and draw their corresponding normals:
-    % This is OpenGL immediate-mode rendering, so it will be slow...
-    glBegin(GL.LINES);
+    % Loop over all vertices and draw their corresponding normals to
+    % build a vertex array for line drawing:
+    j = 2 * (endidx - startidx + 1);
+    tmpvertices = zeros(size(ctx.vertices,1), j, 'single');
+    j = 0;
     for i=startidx:endidx
         % Start position of normal is vertex position:
-        glVertex3dv(ctx.vertices(:,i));
+        tmpvertices(:,j+1) = ctx.vertices(:,i);
         % End position is defined by scaled normal vector: Argument 1 defines length of normal:
-        glVertex3dv(ctx.vertices(:,i) + (ctx.normals(:,i)/norm(ctx.normals(:,i)))*arg1);
-    end;
-    glEnd;
-    
+        tmpvertices(:,j+2) = ctx.vertices(:,i) + ((ctx.normals(:,i)/norm(ctx.normals(:,i))) * arg1);
+        j = j + 2;
+    end
+
+    % Set pointer to start of vertex array:
+    glEnableClientState(GL.VERTEX_ARRAY);
+    glVertexPointer(size(ctx.vertices,1), GL.FLOAT, 0, tmpvertices);
+    glDrawArrays(GL.LINES, 0, j);
+    glDisableClientState(GL.VERTEX_ARRAY);
+
     % Done.
     return;
 end;
@@ -1627,6 +1659,12 @@ if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist') || ...
     end
     
     if strcmpi(cmd, 'renderToDisplaylist') || strcmpi(cmd, 'renderRangeToDisplaylist')
+        % No such thing as display lists on the embedded subset:
+        if IsGLES
+            fprintf('moglmorpher: WARNING: Rendering to display list requested, but this is not possible on OpenGL-ES! Ignored.\n');
+            return;
+        end
+
         % Create new display list and direct all rendering into it:
         rc = glGenLists(1);
         glNewList(rc, GL.COMPILE);
@@ -1673,18 +1711,18 @@ if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist') || ...
         if drawrangeelements
             % Faster rendering-path, needs OpenGL-1.2 or higher:
             if (size(ctx.faces,1)==3)
-                glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
+                glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, indextype, ctx.faces(:, startIdx:end));
             elseif size(ctx.faces,1)==4
-                glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
+                glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, indextype, ctx.faces(:, startIdx:end));
             else
                 error('Invalid number of rows in face index array!');
             end;
         else
             % Slower rendering path, needed to support OpenGL-1.1 renderers as well:
             if (size(ctx.faces,1)==3)
-                glDrawElements(GL.TRIANGLES, fcount * 3, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
+                glDrawElements(GL.TRIANGLES, fcount * 3, indextype, ctx.faces(:, startIdx:end));
             elseif size(ctx.faces,1)==4
-                glDrawElements(GL.QUADS, fcount * 4, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
+                glDrawElements(GL.QUADS, fcount * 4, indextype, ctx.faces(:, startIdx:end));
             else
                 error('Invalid number of rows in face index array!');
             end;
@@ -1731,9 +1769,9 @@ if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist') || ...
 
         % Render mesh, using topology given by 'ctx.faces':
         if (size(ctx.faces,1)==3)
-            glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, GL.UNSIGNED_INT, startIdx * 3 * 4);
+            glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, indextype, startIdx * 3 * 4);
         elseif size(ctx.faces,1)==4
-            glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, GL.UNSIGNED_INT, startIdx * 4 * 4);
+            glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, indextype, startIdx * 4 * 4);
         else
             error('Invalid number of rows in face index array!');
         end;
@@ -1764,7 +1802,14 @@ end;
 if strcmpi(cmd, 'getVertexPositions')   
    % Calling routine wants projected screen space vertex positions of all vertices
    % in our current renderbuffer.
-   
+
+   % No such thing as glFeedbackPointer() on the embedded subset:
+   % TODO: Reimplement some day via transform feedback on modern GL implementations?
+   if IsGLES
+       error('moglmorpher: ERROR: ''getVertexPositions'' requested, but this is not possible on OpenGL-ES! Aborted.');
+       return;
+   end
+
    if nargin < 2 || isempty(arg1)
       error('win Windowhandle missing in call to getVertexPositions!')
    end;
@@ -1913,15 +1958,15 @@ if strcmpi(cmd, 'morphTexture')
     if isempty(ctx.texmorphbuffer)
         if highprec
             % Create float buffers of matching size:
-            ctx.texmorphbuffer(1) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 128);
-            ctx.texmorphbuffer(2) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 128);
+            ctx.texmorphbuffer(1) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 128, 32);
+            ctx.texmorphbuffer(2) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 128, 32);
 
             % Setup proper blend mode:
             Screen('Blendfunction', ctx.texmorphbuffer(1), GL_ONE, GL_ZERO);
             Screen('Blendfunction', ctx.texmorphbuffer(2), GL_ONE, GL_ZERO);
         else
             % Create low precision buffer of matching size:
-            ctx.texmorphbuffer(1) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 32);
+            ctx.texmorphbuffer(1) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 32, 32);
 
             % Setup proper blend mode for morphing via blending: alpha
             % value will define blend weight:

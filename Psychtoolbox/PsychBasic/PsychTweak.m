@@ -69,6 +69,14 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % existing directory where the .dot files should be written to.
 %
 %
+% PsychTweak('GStreamerPlaybackThreadingMethod', methodId);
+% -- Ask GStreamer to use multi-threaded video decoding method 'methodId'
+% for video playback if multi-threaded video decoding is requested by
+% user-code. Only some codecs support this. Currently available values are:
+% 1 = Frame-Threading, 2 = Slice-Threading, 3 = 2+1 = Frame and Slice
+% threading. By default, Frame+Slice threading will be used.
+%
+%
 % MS-Windows only tweaks:
 % -----------------------
 %
@@ -246,6 +254,20 @@ if strcmpi(cmd, 'GStreamerDumpFilterGraph')
     end
     
     setenv('GST_DEBUG_DUMP_DOT_DIR', val);
+    return;
+end
+
+if strcmpi(cmd, 'GStreamerPlaybackThreadingMethod')
+    if length(varargin) < 1
+        error('Must provide an integer GStreamer playback threading method setting.');
+    end
+    
+    val = varargin{1};
+    if ~isscalar(val) || ~isnumeric(val)
+        error('Must provide an integer value as argument!');
+    end
+    
+    setenv('PSYCH_GST_THREAD_TYPES', sprintf('%i', floor(val)));
     return;
 end
 

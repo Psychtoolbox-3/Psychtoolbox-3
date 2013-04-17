@@ -3,11 +3,12 @@
 
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+    Allen.Ingling@nyu.edu           awi
+    mario.kleiner@tuebingen.mpg.de  mk
 
 	PLATFORMS:
 
-		Only OS X for now.
+    All
 
 	HISTORY:
 		
@@ -26,11 +27,8 @@
  
 	DESCRIPTION:
 
-
-	TO DO:  
-
+	TO DO:
 */
-
 
 #include "Screen.h"
 	  
@@ -103,6 +101,7 @@ static char synopsisString[] =
 	int textureShader, backupShader;
 	double*							auxParameters;
 	int								numAuxParams, m, n, p;
+    psych_bool isclassic;
 	int specialFlags = 0;
 
     //all subfunctions should have these two lines.  
@@ -121,6 +120,9 @@ static char synopsisString[] =
     if(source->windowType!=kPsychTexture) {
       PsychErrorExitMsg(PsychError_user, "The first argument supplied was a window pointer, not a texture pointer");
     }
+
+    // Classic OpenGL-1/2?
+    isclassic = PsychIsGLClassic(target);
 
     PsychCopyRect(sourceRect,source->clientrect);
     PsychCopyInRectArg(3, kPsychArgOptional, sourceRect);
@@ -152,13 +154,20 @@ static char synopsisString[] =
 		
 		// Setup global vertex color as modulate color for texture drawing:
 		PsychCoerceColorMode(&color);
+
 		// This call stores unclamped color in target->currentColor, as needed
 		// if color is to be processed by some bound shader (procedural or filtershader)
 		// inside PsychBlitTextureToDisplay():
 		PsychConvertColorToDoubleVector(&color, target, (GLdouble*) &(target->currentColor));
+
 		// Submit the same color to fixed function pipe attribute as well, in case no
 		// shader is bound, or shader pulls from standard color attribute (we can't know yet):
-		glColor4dv(target->currentColor);
+        if (isclassic) {
+            glColor4dv(target->currentColor);
+        }
+        else {
+            PsychGLColor4f(target, (float) target->currentColor[0], (float) target->currentColor[1], (float) target->currentColor[2], (float) target->currentColor[3]);
+        }
 	}
 
 	// Assign optional override texture shader, if any provided:
@@ -243,6 +252,7 @@ PsychError SCREENDrawTextures(void)
 	double*							auxParameters;
 	int								numAuxParams, numAuxComponents;
 
+    psych_bool isclassic;
 	int textureShader, backupShader;
 	int specialFlags = 0;
 
@@ -258,6 +268,9 @@ PsychError SCREENDrawTextures(void)
 	
 	// The target window is a fixed parameter:
     PsychAllocInWindowRecordArg(1, kPsychArgRequired, &target);
+
+    // Classic OpenGL-1/2?
+    isclassic = PsychIsGLClassic(target);
 	
 	// First get all source texture handles:
 	PsychAllocInDoubleMatArg(2, kPsychArgRequired, &m, &n, &p, &texids);
@@ -283,7 +296,7 @@ PsychError SCREENDrawTextures(void)
 	
 	// The negative position -4 means: dstRects coords are expected at position 4, but they are optional.
 	// NULL means - don't want a size's vector.
-	PsychPrepareRenderBatch(target, -4, &numdstRects, &dstRects, 8, &nc, &mc, &colors, &bytecolors, 5, &nrsize, &penSizes);
+	PsychPrepareRenderBatch(target, -4, &numdstRects, &dstRects, 8, &nc, &mc, &colors, &bytecolors, 5, &nrsize, &penSizes, FALSE);
 
 	// At this point, target is set up as target window, i.e. its GL-Context is active, it is set as drawing target,
 	// alpha blending is set up according to Screen('BlendFunction'), and the drawing color is set if it is a singular one.
@@ -497,44 +510,49 @@ PsychError SCREENDrawTextures(void)
 		
 		// Multiple modulateColors provided?
 		if (nc > 1) {
-			// Yes. Set it up as current vertex color: We submit to internal currentColor for
-			// shader based color processing and via glColorXXX() for fixed pipe processing:
-			if (mc==3) {
-				if (colors) {
-					// RGB double:
-					glColor3dv(&(colors[i*3]));
-					target->currentColor[0]=colors[i*3 + 0];
-					target->currentColor[1]=colors[i*3 + 1];
-					target->currentColor[2]=colors[i*3 + 2];
-					target->currentColor[3]=1.0;
-				}
-				else {
-					// RGB uint8:
-					glColor3ubv(&(bytecolors[i*3]));
-					target->currentColor[0]=((double) bytecolors[i*3 + 0] / 255.0);
-					target->currentColor[1]=((double) bytecolors[i*3 + 1] / 255.0);
-					target->currentColor[2]=((double) bytecolors[i*3 + 2] / 255.0);
-					target->currentColor[3]=1.0;
-				}
-			}
-			else {
-				if (colors) {
-					// RGBA double:
-					glColor4dv(&(colors[i*4]));
-					target->currentColor[0]=colors[i*4 + 0];
-					target->currentColor[1]=colors[i*4 + 1];
-					target->currentColor[2]=colors[i*4 + 2];
-					target->currentColor[3]=colors[i*4 + 3];
-				}
-				else {
-					// RGBA uint8:
-					glColor4ubv(&(bytecolors[i*4]));
-					target->currentColor[0]=((double) bytecolors[i*4 + 0] / 255.0);
-					target->currentColor[1]=((double) bytecolors[i*4 + 1] / 255.0);
-					target->currentColor[2]=((double) bytecolors[i*4 + 2] / 255.0);
-					target->currentColor[3]=((double) bytecolors[i*4 + 3] / 255.0);
-				}					
-			}			
+            if (isclassic) {
+                // Yes. Set it up as current vertex color: We submit to internal currentColor for
+                // shader based color processing and via glColorXXX() for fixed pipe processing:
+                if (mc==3) {
+                    if (colors) {
+                        // RGB double:
+                        glColor3dv(&(colors[i*3]));
+                        target->currentColor[0]=colors[i*3 + 0];
+                        target->currentColor[1]=colors[i*3 + 1];
+                        target->currentColor[2]=colors[i*3 + 2];
+                        target->currentColor[3]=1.0;
+                    }
+                    else {
+                        // RGB uint8:
+                        glColor3ubv(&(bytecolors[i*3]));
+                        target->currentColor[0]=((double) bytecolors[i*3 + 0] / 255.0);
+                        target->currentColor[1]=((double) bytecolors[i*3 + 1] / 255.0);
+                        target->currentColor[2]=((double) bytecolors[i*3 + 2] / 255.0);
+                        target->currentColor[3]=1.0;
+                    }
+                }
+                else {
+                    if (colors) {
+                        // RGBA double:
+                        glColor4dv(&(colors[i*4]));
+                        target->currentColor[0]=colors[i*4 + 0];
+                        target->currentColor[1]=colors[i*4 + 1];
+                        target->currentColor[2]=colors[i*4 + 2];
+                        target->currentColor[3]=colors[i*4 + 3];
+                    }
+                    else {
+                        // RGBA uint8:
+                        glColor4ubv(&(bytecolors[i*4]));
+                        target->currentColor[0]=((double) bytecolors[i*4 + 0] / 255.0);
+                        target->currentColor[1]=((double) bytecolors[i*4 + 1] / 255.0);
+                        target->currentColor[2]=((double) bytecolors[i*4 + 2] / 255.0);
+                        target->currentColor[3]=((double) bytecolors[i*4 + 3] / 255.0);
+                    }					
+                }
+            }
+            else {
+                PsychSetArrayColor(target, i, mc, colors, bytecolors);
+            }
 		}
 		
 		// Ok, everything assigned. Check parameters:

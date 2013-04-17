@@ -515,10 +515,10 @@ if strcmpi(cmd, 'CreateSnapshotBufferPair')
 
     % Create source offscreen window: Has 128 bpp or 32bpc float RGBA
     % representation:
-    srcBuffer = Screen('OpenOffscreenWindow', windowPtr, 0, [], 128);
+    srcBuffer = Screen('OpenOffscreenWindow', windowPtr, 0, [], 128, 32);
 
     % Yes. Create a target RGBA8 offscreen window of sufficient size:
-    dstBuffer = Screen('OpenOffscreenWindow', windowPtr, 0, [], 32);
+    dstBuffer = Screen('OpenOffscreenWindow', windowPtr, 0, [], 32, 32);
     
     win = srcBuffer;
     winRect = dstBuffer;
@@ -536,7 +536,7 @@ if strcmpi(cmd, 'ConvertImageToSnapshotBuffer') || strcmpi(cmd, 'GetSnapshotBuff
     % Shall we create a suitable target RGBA8 buffer ourselves?
     if strcmpi(cmd, 'GetSnapshotBuffer')
         % Yes. Create a RGBA8 offscreen window of sufficient size:
-        dstBuffer = Screen('OpenOffscreenWindow', windowPtr, 0, [], 32);
+        dstBuffer = Screen('OpenOffscreenWindow', windowPtr, 0, [], 32, 32);
         
         if exist('arg', 'var') && ~isempty(arg)
             srcBuffer = arg;            

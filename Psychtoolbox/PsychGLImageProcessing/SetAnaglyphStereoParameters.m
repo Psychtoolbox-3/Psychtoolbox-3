@@ -176,7 +176,10 @@ end
         % Create Offscreen window for the overlay. It has the same size as
         % the onscreen window, the same pixeldepth, but a completely black
         % background with alpha value zero -- fully transparent by default.
-        overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0]);
+        % The specialflags 32 setting protects the overlay offscreen
+        % window from accidental batch-deletion by usercode calls to
+        % Screen('Close'):
+        overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [], [], 32);
         
         % Retrieve low-level OpenGl texture handle to the window:
         overlaytex = Screen('GetOpenGLTexture', win, overlaywin);

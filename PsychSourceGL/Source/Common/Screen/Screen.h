@@ -64,6 +64,10 @@
 #endif
 #endif
 
+#ifdef PTB_USE_WAFFLE
+#include <waffle.h>
+#endif
+
 // Include specifications of the GPU registers:
 #include "PsychGraphicsCardRegisterSpecs.h"
 
@@ -119,7 +123,28 @@ char		*PsychGetGLErrorNameString(GLenum errorConstant);
 #define		PsychTestForGLErrors()		PsychTestForGLErrorsC(__LINE__, __func__, __FILE__) 
 void		PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName);
 GLdouble	*PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdouble *vertex);
-void		PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos, int* coords_count, double** xy, int colors_pos, int* colors_count, int* colorcomponent_count, double** colors, unsigned char** bytecolors, int sizes_pos, int* sizes_count, double** size);
+void		PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos, int* coords_count, double** xy, int colors_pos, int* colors_count, int* colorcomponent_count, double** colors, unsigned char** bytecolors, int sizes_pos, int* sizes_count, double** size, psych_bool usefloat);
+void		PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord);
+psych_bool	PsychIsGLClassic(PsychWindowRecordType *windowRecord);
+GLenum		PsychGLFloatType(PsychWindowRecordType *windowRecord);
+#define PSYCHGLFLOAT PsychGLFloatType(windowRecord)
+psych_bool	PsychIsGLES(PsychWindowRecordType *windowRecord);
+#define PSYCHEXECNONGLES(x) if (!PsychIsGLES(windowRecord)) (x)
+
+void PsychGLBegin(PsychWindowRecordType *windowRecord, GLenum primitive);
+void PsychGLEnd(PsychWindowRecordType *windowRecord);
+void PsychGLVertex4f(PsychWindowRecordType *windowRecord, float x, float y, float z, float w);
+void PsychGLColor4f(PsychWindowRecordType *windowRecord, float r, float g, float b, float a);
+void PsychGLTexCoord4f(PsychWindowRecordType *windowRecord, float s, float t, float u, float v);
+void PsychGLRectd(PsychWindowRecordType *windowRecord, double x1, double y1, double x2, double y2);
+void PsychDrawDisc(PsychWindowRecordType *windowRecord, float xc, float yc, float innerRadius, float outerRadius, int numSlices, float xScale, float yScale, float startAngle, float arcAngle);
+
+#define GLBEGIN(p) PsychGLBegin(windowRecord, (p))
+#define GLEND() PsychGLEnd(windowRecord)
+#define GLVERTEX2f(x,y) PsychGLVertex4f(windowRecord, (x), (y), 0.0, 1.0)
+#define GLVERTEX2d(x,y) PsychGLVertex4f(windowRecord, (float) (x), (float) (y), (float) 0.0, (float) 1.0)
+#define GLRECTd(x1, y1, x2, y2) PsychGLRectd(windowRecord, (x1), (y1), (x2), (y2))
+#define GLTEXCOORD2f(s,t) PsychGLTexCoord4f(windowRecord, (s), (t), 0.0, 1.0)
 
 // Helper routines for vertically compressed stereo displays: Defined in SCREENSelectStereoDrawBuffer.c
 int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, int newbuffer);

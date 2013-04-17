@@ -44,13 +44,17 @@
 #endif
 #if PSYCH_SYSTEM == PSYCH_LINUX
 //Placeholder for the GNU/Linux version at build time.
+#ifdef PTB_USE_WAFFLE
+#define PSYCHTOOLBOX_OS_NAME                                    "GNU/Linux WAFFLE"
+#else
 #define PSYCHTOOLBOX_OS_NAME                                    "GNU/Linux X11"
+#endif
 #endif
 
 #if defined(__LP64__) || defined(_WIN64)
 #define PTB_ARCHITECTURE " 64-Bit"
 #else
-#define PTB_ARCHITECTURE
+#define PTB_ARCHITECTURE " 32-Bit"
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB

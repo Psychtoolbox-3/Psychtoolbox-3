@@ -131,6 +131,7 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % History:
 % 16.04.2007 Written (MK).
 % 13.08.2008 Cleaned up, commented, more help text etc... (MK).
+% 18.03.2013 Cleaned up, changed contrast of gratings to sensible 0.25 (MK).
 
 KbName('UnifyKeyNames');
 UpArrow = KbName('UpArrow');
@@ -171,7 +172,7 @@ try
 	% two monitors are connected the one without the menu bar is used as 
 	% the stimulus display.  Chosing the display with the highest dislay number is 
 	% a best guess about where you want the stimulus displayed.  
-	screenNumber=max(Screen('Screens'));
+	screenNumber = max(Screen('Screens'));
     
     % Open a double-buffered fullscreen window with a gray (intensity =
     % 0.5) background and support for 16- or 32 bpc floating point framebuffers.
@@ -322,7 +323,7 @@ try
     % Finally open a window according to the specs given with above
     % PsychImaging calls, clear it to a background color of 0.5 aka 50%
     % luminance:
-    [w, wRect]=PsychImaging('OpenWindow',screenNumber, 0.5, lrect);
+    [w, wRect]=PsychImaging('OpenWindow', screenNumber, 0.5, lrect);
     
     % Use of overlay in Bits++ box Mono++ mode or DPixx box M16 mode wanted?
     if overlay
@@ -395,7 +396,7 @@ try
     % source alpha into account:
     Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE);
 
-	inc=0.5;
+	inc=0.25;
 	
 	% Compute one frame of a static grating: It has a total size of third
 	% the screen size:
@@ -434,7 +435,7 @@ try
     
     % Animation loop:
     while 1
-        Screen('DrawTexture', w, tex, [], [], [], [], 0.5);
+        Screen('DrawTexture', w, tex, [], [], [], [], 0.25);
         i=i+rotate;
         [x,y,buttons]=GetMouse(w);
         [x,y] = RemapMouse(w, 'AllViews', x, y);
@@ -452,7 +453,7 @@ try
            Screen('DrawTexture', w, tex, [], dstRect, i, [], inc);
         end
         
-        [d1 d2 keycode]=KbCheck;
+        [d1 d2 keycode]=KbCheck; %#ok<*ASGLU>
         if d1
             if keycode(UpArrow)
                 yd=yd-0.1;
@@ -499,7 +500,7 @@ try
         txt0= 'At startup:\ngrating = sin(f*cos(angle)*x + f*sin(angle)*y);         % Compute luminance grating matrix in Matlab.\n';
         txt1= 'tex = Screen(''MakeTexture'', win, grating, [], [], 2); % Convert it into a 32bpc floating point texture.\n';
         txt2= 'Screen(''BlendFunction'', win, GL_SRC_ALPHA, GL_ONE);   % Enable additive alpha-blending.\n\nIn Display loop:\n\n';
-        txt3= 'Screen(''DrawTexture'', win, tex, [], [], [], [], 0.5); % Draw static grating at center of screen.\n';
+        txt3= 'Screen(''DrawTexture'', win, tex, [], [], [], [], 0.25); % Draw static grating at center of screen.\n';
         txt4 = sprintf('Screen(''DrawTexture'', win, tex, [], [%i %i %i %i], %f, [], %f);\n', dstRect(1), dstRect(2), dstRect(3), dstRect(4), i, inc);
         txt5 = sprintf('\nEncoding Gamma is %f --> Correction for a %f gamma display.', gamma, 1/gamma);
 
@@ -546,7 +547,7 @@ try
     
     % We're done: Close all windows and textures:
     Screen('CloseAll');    
-catch
+catch %#ok<*CTCH>
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
     Screen('CloseAll');
@@ -555,7 +556,7 @@ catch
     psychrethrow(psychlasterror);
 end %try..catch..
 
-if ~isempty(findstr(outputdevice, 'VideoSwitcher'))
+if ~isempty(strfind(outputdevice, 'VideoSwitcher'))
     % If VideoSwitcher was active, switch it back to standard RGB desktop
     % display mode:
     PsychVideoSwitcher('SwitchMode', screenNumber, 0);

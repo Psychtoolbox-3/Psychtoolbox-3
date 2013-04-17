@@ -60,7 +60,7 @@ for beta = [1.5:.5:5.5]
 		pThreshold=0.6370;
 		tActual=0;
 		trialsDesired=64;
-		wrongRight=str2mat('wrong','right');
+		wrongRight=char('wrong','right');
 		q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
 		qObserver=QuestCreate(tActual,tGuessSd,pThreshold,3.5,delta,gamma,grain,range);
 		%fprintf('Quest estimate of thresh after initialization is %g\n',QuestMean(q));

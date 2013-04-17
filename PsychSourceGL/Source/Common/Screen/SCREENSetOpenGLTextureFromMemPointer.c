@@ -210,6 +210,9 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     // specialFlags setting 8? Disable auto-mipmap generation:
     if (specialFlags & 0x8) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;    
 
+    // A specialFlags setting of 32? Protect texture against deletion via Screen('Close') without providing a explicit handle:
+    if (specialFlags & 32) textureRecord->specialflags |= kPsychDontDeleteOnClose;    
+
     // Return new (or old) PTB textureHandle for this texture:
     PsychCopyOutDoubleArg(1, FALSE, textureRecord->windowIndex);
     PsychCopyOutRectArg(2, FALSE, textureRecord->rect);

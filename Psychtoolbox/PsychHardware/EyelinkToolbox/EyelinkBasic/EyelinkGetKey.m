@@ -45,7 +45,7 @@ function [key, el]=EyelinkGetKey(el)
 
 	key=0;
 
-	if nargin < 1
+	if nargin < 1  || ~isstruct(el)
 		error( 'USAGE: [key, el]=EyelinkGetKey(el)' );
 	end
 
@@ -61,7 +61,7 @@ function [key, el]=EyelinkGetKey(el)
 	% you can change this by setting el.modifierkey en el.quitkey
 	% specific quitkey defined in 'EyelinkInitDefaults.m' file.
 
-	[keyIsDown,secs,keyCodes] = KbCheck;
+	[keyIsDown,secs,keyCodes] = KbCheck(el.devicenumber);
 
 	if 1==isequal(keyCodes, el.lastKeyCodes)
 		return;

@@ -6,14 +6,11 @@ function SimpleMovieDemo(moviename, windowrect)
 % This bare-bones demo plays a single movie whose name has to be provided -
 % including the full filesystem path to the movie - exactly once, then
 % exits. This is the most minimalistic way of doing it. For a more complex
-% demo see PlayMoviesDemoOSX. The remaining demos show even more advanced
-% concepts like proper timing etc.
+% demo see PlayMoviesDemo. The remaining demos show more advanced concepts
+% like proper timing etc.
 %
 % The demo will play our standard DualDiscs.mov movie if the 'moviename' is
 % omitted.
-%
-% Movieplayback works on Mac OS/X, and on MS-Windows if you install
-% Quicktime-7 or later, which is available as a free download from Apple.
 %
 
 % History:

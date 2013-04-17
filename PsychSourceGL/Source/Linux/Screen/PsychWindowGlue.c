@@ -8,7 +8,7 @@
 	AUTHORS:
 	
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
-                Mario Kleiner           mk              mario.kleiner at tuebingen.mpg.de
+        Mario Kleiner       mk      mario.kleiner at tuebingen.mpg.de
 
 	HISTORY:
 	
@@ -30,49 +30,41 @@
 
 #include "Screen.h"
 
+/* Following code is shared between the classic X11/GLX backend and the new Waffle backend: */
+
 /* These are needed for realtime scheduling control: */
 #include <sched.h>
 #include <errno.h>
 
-/* XAtom support for setup of transparent windows: */
-#include <X11/Xatom.h>
+// Perform OS specific processing of Window events:
+void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
+{
+	Window rootRet;
+	unsigned int depth_return, border_width_return, w, h;
+	int x, y;
 
-// Use dedicated x-display handles for each onscreen window?
-static psych_bool usePerWindowXConnections = FALSE;
+	// Trigger event queue dispatch processing for GUI windows:
+	if (windowRecord == NULL) {
+		// No op, so far...
+		return;
+	}
+	
+    // No-Op if we are not running on a X11 based display backend:
+    if (!windowRecord->targetSpecific.privDpy || !windowRecord->targetSpecific.xwindowHandle) return;
 
-// Use GLX version 1.3 setup code? Enabled INTEL_SWAP_EVENTS and other goodies...
-static psych_bool useGLX13 = FALSE;
-
-// Event base for GLX extension:
-static int glx_error_base, glx_event_base;
-
-// Number of currently open onscreen windows:
-static int x11_windowcount = 0;
-
-// Typedef and fcn-pointer for optional Mesa get swap interval call:
-typedef int (*PFNGLXGETSWAPINTERVALMESAPROC)(void);
-PFNGLXGETSWAPINTERVALMESAPROC __glXGetSwapIntervalMESA = NULL;
-#define glXGetSwapIntervalMESA __glXGetSwapIntervalMESA
-
-#ifndef GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK
-#define GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK	0x04000000
-#endif
-
-#ifndef GLX_BufferSwapComplete
-#define GLX_BufferSwapComplete	1
-#endif
-
-typedef struct GLXBufferSwapComplete {
-    int type;
-    unsigned long serial;	/* # of last request processed by server */
-    Bool send_event;		/* true if this came from a SendEvent request */
-    Display *display;		/* Display the event was read from */
-    GLXDrawable drawable;	/* drawable on which event was requested in event mask */
-    int event_type;
-    int64_t ust;
-    int64_t msc;
-    int64_t sbc;
-} GLXBufferSwapComplete;
+	// GUI windows need to behave GUIyee:
+	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+		// Update windows rect and globalrect, based on current size and location:
+		XGetGeometry(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, &rootRet, &x, &y,
+                     &w, &h, &border_width_return, &depth_return);
+		XTranslateCoordinates(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, rootRet,
+                              0,0, &x, &y, &rootRet);
+		PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w - 1, y + (int) h - 1);
+		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
+		PsychSetupClientRect(windowRecord);
+		PsychSetupView(windowRecord, FALSE);
+	}
+}
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
     PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
@@ -97,45 +89,45 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
     
     // Transition requested:    
     if (enable_realtime) {
-      // Transition to realtime requested:
+        // Transition to realtime requested:
       
-      // Get current scheduling policy and back it up for later restore:
-      pthread_getschedparam(pthread_self(), &oldPriority, &oldparam);
+        // Get current scheduling policy and back it up for later restore:
+        pthread_getschedparam(pthread_self(), &oldPriority, &oldparam);
 
-      // Check if realtime scheduling isn't already active.
-      // If we are already in RT mode (e.g., Priority(2) call in Matlab), we skip the switch...
-      if (oldPriority != realtime_class) {
-	// RT scheduling not yet active -> Switch to it.
-	// We use the smallest realtime priority that's available for realtime_class.
-	// This way, other processes like watchdogs can preempt us, if needed.
-	param.sched_priority = sched_get_priority_min(realtime_class);
-	if (pthread_setschedparam(pthread_self(), realtime_class, &param)) {
-	  // Failed!
-	  if(!PsychPrefStateGet_SuppressAllWarnings()) {
-	    printf("PTB-INFO: Failed to enable realtime-scheduling [%s]!\n", strerror(errno));
-	    if (errno==EPERM) {
-	      printf("PTB-INFO: You need to run Matlab or Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
-	    }
-	  }
-	  errno=0;
-	}
-      }
+        // Check if realtime scheduling isn't already active.
+        // If we are already in RT mode (e.g., Priority(2) call in Matlab), we skip the switch...
+        if (oldPriority != realtime_class) {
+            // RT scheduling not yet active -> Switch to it.
+            // We use the smallest realtime priority that's available for realtime_class.
+            // This way, other processes like watchdogs can preempt us, if needed.
+            param.sched_priority = sched_get_priority_min(realtime_class);
+            if (pthread_setschedparam(pthread_self(), realtime_class, &param)) {
+                // Failed!
+                if(!PsychPrefStateGet_SuppressAllWarnings()) {
+                    printf("PTB-INFO: Failed to enable realtime-scheduling [%s]!\n", strerror(errno));
+                    if (errno==EPERM) {
+                        printf("PTB-INFO: You need to run Matlab or Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
+                    }
+                }
+                errno=0;
+            }
+        }
     }
     else {
-      // Transition from RT to whatever-it-was-before scheduling requested: We just reestablish the backed-up old
-      // policy: If the old policy wasn't Non-RT, then we don't switch back...
-      if (oldPriority != realtime_class) oldparam.sched_priority = 0;
+        // Transition from RT to whatever-it-was-before scheduling requested: We just reestablish the backed-up old
+        // policy: If the old policy wasn't Non-RT, then we don't switch back...
+        if (oldPriority != realtime_class) oldparam.sched_priority = 0;
 
-      if (pthread_setschedparam(pthread_self(), oldPriority, &oldparam)) {
-	// Failed!
-	if(!PsychPrefStateGet_SuppressAllWarnings()) {
-	  printf("PTB-INFO: Failed to disable realtime-scheduling [%s]!\n", strerror(errno));
-	  if (errno==EPERM) {
-	    printf("PTB-INFO: You need to run Matlab or Octave with root-privileges or run the script PsychLinuxConfiguration once for this to work.\n");
-	  }
-	}
-	errno=0;
-      }
+        if (pthread_setschedparam(pthread_self(), oldPriority, &oldparam)) {
+            // Failed!
+            if(!PsychPrefStateGet_SuppressAllWarnings()) {
+                printf("PTB-INFO: Failed to disable realtime-scheduling [%s]!\n", strerror(errno));
+                if (errno==EPERM) {
+                    printf("PTB-INFO: You need to run Matlab or Octave with root-privileges or run the script PsychLinuxConfiguration once for this to work.\n");
+                }
+            }
+            errno=0;
+        }
     }
 
     //printf("PTB-INFO: Realtime scheduling %sabled\n", enable_realtime ? "en" : "dis");
@@ -144,6 +136,46 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
     old_enable_realtime = enable_realtime;
     return(TRUE);
 }
+
+/* The following code is only used for implementation of the classic X11/GLX backend: */
+
+#ifndef PTB_USE_WAFFLE
+
+/* XAtom support for setup of transparent windows: */
+#include <X11/Xatom.h>
+
+// Use dedicated x-display handles for each onscreen window?
+static psych_bool usePerWindowXConnections = FALSE;
+
+// Use GLX version 1.3 setup code? Enabled INTEL_SWAP_EVENTS and other goodies...
+static psych_bool useGLX13 = FALSE;
+
+// Event base for GLX extension:
+static int glx_error_base, glx_event_base;
+
+// Number of currently open onscreen windows:
+static int x11_windowcount = 0;
+
+#ifndef GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK
+#define GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK	0x04000000
+#endif
+
+#ifndef GLX_BufferSwapComplete
+#define GLX_BufferSwapComplete	1
+#endif
+
+typedef struct GLXBufferSwapComplete {
+    int type;
+    unsigned long serial;	/* # of last request processed by server */
+    Bool send_event;		/* true if this came from a SendEvent request */
+    Display *display;		/* Display the event was read from */
+    GLXDrawable drawable;	/* drawable on which event was requested in event mask */
+    int event_type;
+    int64_t ust;
+    int64_t msc;
+    int64_t sbc;
+} GLXBufferSwapComplete;
+
 
 /*
     PsychOSOpenOnscreenWindow()
@@ -195,6 +227,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // 2000 is the default.
   windowLevel = PsychPrefStateGet_WindowShieldingLevel();
   
+  // Set windowing system backend type to zero, aka "classic" aka X11/GLX: Not strictly needed, as this is init-default.
+  windowRecord->winsysType = 0;
+
+  // Set OpenGL api type to classic desktop OpenGL: Not strictly needed, as this is init-default.
+  windowRecord->glApiType = 0;
+
   // Init userspace GL context to safe default:
   windowRecord->targetSpecific.glusercontextObject = NULL;
   windowRecord->targetSpecific.glswapcontextObject = NULL;
@@ -686,6 +724,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   windowRecord->targetSpecific.deviceContext = dpy;
   windowRecord->targetSpecific.contextObject = ctx;
+
+  // Set flags to mark this window as a classic X11/GLX window:
+  windowRecord->specialflags |= (kPsychIsX11Window | kPsychIsGLXWindow);
 
   // Create rendering context for async flips with identical visual and display as main context, share all heavyweight ressources with it:
   if (fbconfig) {
@@ -1222,7 +1263,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
  *
  * Retrieve a very precise timestamp of doublebuffer swap completion by means
  * of OS specific facilities. This function is optional. If the underlying
- * OS/drier/GPU combo doesn't support a high-precision, high-reliability method
+ * OS/driver/GPU combo doesn't support a high-precision, high-reliability method
  * to query such timestamps, the function should return -1 as a signal that it
  * is unsupported or (temporarily) unavailable. Higher level timestamping code
  * should use/prefer timestamps returned by this function over other timestamps
@@ -1910,33 +1951,6 @@ try_sgi_swapgroup:
 	return(rc);
 }
 
-// Perform OS specific processing of Window events:
-void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
-{
-	Window rootRet;
-	unsigned int depth_return, border_width_return, w, h;
-	int x, y;
-
-	// Trigger event queue dispatch processing for GUI windows:
-	if (windowRecord == NULL) {
-		// No op, so far...
-		return;
-	}
-	
-	// GUI windows need to behave GUIyee:
-	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
-		// Update windows rect and globalrect, based on current size and location:
-		XGetGeometry(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, &rootRet, &x, &y,
-			     &w, &h, &border_width_return, &depth_return);
-		XTranslateCoordinates(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, rootRet,
-				      0,0, &x, &y, &rootRet);
-		PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w - 1, y + (int) h - 1);
-		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
-		PsychSetupClientRect(windowRecord);
-		PsychSetupView(windowRecord, FALSE);
-	}
-}
-
 psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int cmd, int aux1)
 {
 	const char *FieldNames[]={ "OnsetTime", "OnsetVBLCount", "SwapbuffersCount", "SwapType" };
@@ -2067,3 +2081,6 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
     // Invalid cmd or failed cmd:
     return(FALSE);
 }
+
+/* End of classic X11/GLX backend: */
+#endif

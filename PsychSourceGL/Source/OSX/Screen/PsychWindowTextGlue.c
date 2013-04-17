@@ -63,7 +63,7 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
         settings->textFontNumber=initFontRecord->fontNumber;
     }
     else {
-		PsychErrorExitMsg(PsychError_internal,"Failed to initialze the window record because the default font for DrawText, Geneva, was not found.");
+		PsychErrorExitMsg(PsychError_internal,"Failed to initialize the window record because the default font for DrawText, Geneva, was not found.");
     }
 	
 	PsychLoadColorStruct(&(settings->textColor), kPsychIndexColor,  0.0);  //index type which may be coerced into anything.

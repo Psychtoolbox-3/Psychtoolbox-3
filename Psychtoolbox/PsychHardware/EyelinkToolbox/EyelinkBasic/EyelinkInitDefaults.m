@@ -26,6 +26,8 @@ function el=EyelinkInitDefaults(window)
 %               and eye image size. Note that many default settings
 %               are no longer used in the "callback" version of calibration
 %               and driftcorrection.
+% 15-01-13	ia	Added el.devicenumber to allow better control of multiple
+%				input devices
 
 el=[];
 
@@ -98,6 +100,7 @@ el.calibrationtargetsize=2.5;  % size of calibration target as percentage of scr
 el.calibrationtargetwidth=1; % width of calibration target's border as percentage of screen
 el.calibrationtargetcolour=[0 0 0];
 
+el.devicenumber = []; %see KbCheck for details of this value
 el.getkeyrepeat=1/5; % "sample time" for eyelinkgetkey
 el.getkeytime=-1; % stores last time eyelinkgetkey was used
 

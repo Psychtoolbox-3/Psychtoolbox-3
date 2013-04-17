@@ -30,7 +30,7 @@ if nargin >= 2 && ~isempty(warprectangle)
     % Create an offscreen window of corresponding size: This will define the
     % warp-map, the 2D distortion field to apply to source images or
     % framebuffers:
-    warpmap = Screen('OpenOffscreenWindow', gloperator, [0 0 0 0], warprectangle, 64);
+    warpmap = Screen('OpenOffscreenWindow', gloperator, [0 0 0 0], warprectangle, 64, 32);
 
     % Assign its OpenGL texture handle to our return argument. This is not
     % needed for Screen('TransformTexture'), but it is needed for application

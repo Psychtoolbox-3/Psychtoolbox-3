@@ -77,7 +77,7 @@ PsychError SCREENFrameOval(void)
 	PsychRectType			rect;
 	double					numSlices, outerRadius, xScale, yScale, xTranslate, yTranslate, rectY, rectX, penWidth, penHeight, penSize, innerRadius;
 	PsychWindowRecordType	*windowRecord;
-	psych_bool				isArgThere;
+	psych_bool				isArgThere, isclassic;
     double					*xy, *colors;
 	unsigned char			*bytecolors;
 	double*					penSizes;
@@ -104,7 +104,8 @@ PsychError SCREENFrameOval(void)
 	
 	// The negative position -3 means: xy coords are expected at position 3, but they are optional.
 	// NULL means - don't want a size's vector.
-	PsychPrepareRenderBatch(windowRecord, -3, &numRects, &xy, 2, &nc, &mc, &colors, &bytecolors, 4, &nrsize, &penSizes);
+	PsychPrepareRenderBatch(windowRecord, -3, &numRects, &xy, 2, &nc, &mc, &colors, &bytecolors, 4, &nrsize, &penSizes, FALSE);
+    isclassic = PsychIsGLClassic(windowRecord);
 
 	// Only up to one rect provided?
 	if (numRects <= 1) {
@@ -123,12 +124,12 @@ PsychError SCREENFrameOval(void)
 	}
 	else {
 		// Multiple ovals provided. Set up the first one:
-		PsychCopyRect(rect, &xy[0]);
+        PsychCopyRect(rect, &xy[0]);
 		penSize = penSizes[0];
 	}
 
 	// Create quadric object:
-	diskQuadric=gluNewQuadric();
+	if (isclassic) diskQuadric = gluNewQuadric();
 
 	// Draw all ovals (one or multiple):
 	for (i=0; i < numRects;) {
@@ -168,29 +169,34 @@ PsychError SCREENFrameOval(void)
 			numSlices   =   3.14159265358979323846  * 2 * outerRadius;
 			innerRadius = outerRadius - penSize;
 			innerRadius = (innerRadius < 0) ? 0 : innerRadius;         
-			
-			// Draw: Set up position, scale and size via matrix transform:
-			glPushMatrix();
-			glTranslated(xTranslate, yTranslate, 0);
-			glScaled(xScale, yScale, 1);
 
-			// Compute disk quadric for given params: This is awfully slow and would
-			// benefit a lot from shader magic on modern GPUs:
-			gluDisk(diskQuadric, innerRadius, outerRadius, (int) numSlices, 1);
+            if (isclassic) {
+                // Draw: Set up position, scale and size via matrix transform:
+                glPushMatrix();
+                glTranslated(xTranslate, yTranslate, 0);
+                glScaled(xScale, yScale, 1);
 
-			// Done.
-			glPopMatrix();
+                // Compute disk quadric for given params: This is awfully slow and would
+                // benefit a lot from shader magic on modern GPUs:
+                gluDisk(diskQuadric, innerRadius, outerRadius, (int) numSlices, 1);
+                glPopMatrix();
+            }
+            else {
+                PsychDrawDisc(windowRecord, (float) xTranslate, (float) yTranslate, (float) innerRadius, (float) outerRadius, (int) numSlices, (float) xScale, (float) yScale, 0, 360);
+            }
 		}
 		
 		// Done with this one. Set up the next one, if any...
 		i++;
-		if (i < numRects) PsychCopyRect(rect, &xy[i*4]);
+		if (i < numRects) {
+            PsychCopyRect(rect, &xy[i*4]);
+        }
 
 		// Next oval.
 	}
 
 	// Release quadric object:
-	gluDeleteQuadric(diskQuadric);
+	if (isclassic) gluDeleteQuadric(diskQuadric);
 
 	// Mark end of drawing op. This is needed for single buffered drawing:
 	PsychFlushGL(windowRecord);

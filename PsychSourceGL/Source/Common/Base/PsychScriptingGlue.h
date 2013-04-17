@@ -68,6 +68,7 @@ psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRe
 
 //for float's aka singles:
 psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, float **array);
+psych_bool PsychAllocInFloatMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, float **array);
 psych_bool PsychAllocOutFloatMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, float **array);
 
 //for doubles

@@ -1,9 +1,9 @@
 function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % BitsPlusPlus(cmd [, arg1][, arg2, ...]) -- Psychtoolbox interface to
-% Cambridge Research Systems Bits++ box for high precision stimulus
-% output to analog displays via 14 bit video converters.
+% Cambridge Research Systems Bits++ and Bits# boxes for high precision
+% stimulus output to analog displays via 14 bit video converters.
 %
-% This function is used to set up and interface with the Bits++ box of
+% This function is used to set up and interface with the Bits++ / Bits# box of
 % CRS. It is a Matlab wrapper around lower level GLSL Psychtoolbox
 % functions. This function depends on graphics hardware that supports the
 % Psychtoolbox imaging pipeline and framebuffers with more than 14 bit
@@ -16,6 +16,10 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % harder to use, much slower and not fully integrated into PTB, ie, you
 % can't take full advantage of PTB's advanced drawing and image processing
 % functions when using the old Bits++ toolbox.
+%
+% See the help section about Bits# for advanced Bits# commands and how to
+% establish communication and convenient control for the Bits# via USB
+% connection.
 %
 % cmd - The command that BitsPlusPlus should execute. cmd can be any of
 % the following:
@@ -178,6 +182,9 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % explanation of this mandatory parameter. The setting before 22nd
 % September 2010 for all PTB-3 versions was 0 (==zero).
 %
+% You can query the mode for an onscreen window 'win' by a call to:
+% mode = BitsPlusPlus('GetColorConversionMode', win);
+%
 %
 % Notes for both Mono++ and Color++ mode:
 %
@@ -247,6 +254,95 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % 8 bpc displays at the higher 14 bpc quality of Bits++. If you find this
 % not to be the case then it's either an omission in our documentation
 % or a bug - Please report it.
+%
+%
+% BITS# specific functions:
+%
+% A Bits# device which is connected via USB will show up as an additional
+% serial port on the system. This driver will communicate with the Bits#
+% by establishing a serial port connection to the device via that serial
+% port. Presence of a Bits# can be signalled by either calling the BitsPlusPlus('OpenBits#')
+% function, passing a serial port device spec 'portSpec', or just by calling
+% BitsPlusPlus('OpenBits#') without any parameters. In the latter case, the
+% driver will check for the existence of a configuration file named...
+% [PsychtoolboxConfigDir 'BitsSharpConfig.txt'] . Presence of the file means
+% to use a Bits# device, absence means to treat any device as a Bits+ device.
+% Presence of a serial port device file name in the first line of that text
+% configuration file will use the serial port device with that name for
+% communication, otherwise the driver will try to auto-detect the proper
+% serial port for communication.
+%
+%
+% rc = BitsPlusPlus('OpenBits#' [, portSpec]);
+% -- Open a serial port control connection to a connected Bits# device.
+% The 'portSpec' parameter is optional and defines the name of the serial
+% port(-device file) to use for the connection. If omitted, the name will
+% be taken from a configuration file, or auto-detected. This function must
+% be called before use of any Bits# specific functions, otherwise they'll turn
+% into  no-ops or failures. This function can be called multiple times. It will
+% only open the connection on first call. Successive calls will do nothing but
+% increment a reference count of clients to the device.
+%
+%
+% rc = BitsPlusPlus('Close');
+% -- Decrement reference count to a Bits# device, close the serial connection
+% to it once the count drops to zero, ie., as soon as nobody is using the
+% connection anymore.
+%
+%
+% rc = BitsPlusPlus('ResetOnWindowClose');
+% -- Like 'Close', but switch display back to Bits++ video mode first, as
+% that mode is "GUI friendly". Usually automatically called from Screen()
+% when the Bits# stimulation onscreen window gets closed, at least if you
+% used PsychImaging() to control the device.
+%
+%
+% rc = BitsPlusPlus('CheckGPUSanity', window, xoffset [, injectFault=0]);
+% -- Perform online-test of GPU identity gamma tables and DVI-D display
+% encoders. Try to correct problems with wrong identity gamma tables and at
+% least detect problems with (spatio-)temporal display dithering. Returns
+% rc == 0 on full success, rc > 0 on failure.
+% If the optional 'injectFault' parameter is set to 1, then an intentionally
+% perturbed gamma table is loaded into the gpu to test how well the gamma table
+% tweaking code is able to recover from wrong tables.
+%
+%
+% pixels = BitsPlusPlus('GetVideoLine', nrPixels, scanline);
+% -- Return the first (left-most) 'nrPixels' pixels in video scanline
+% 'scanline' of the video display driven by a Bits# device. 'pixels' is
+% a uint8 matrix with three rows for red, green and blue pixel color values,
+% and 'nrPixels' columns, the three elements of each column encoding the
+% r,g,b color values of the pixel corresponding to that column (x-position)
+% of the scanline (y-position). Values are read back via the USB-Serial
+% connection from the Bits# and the device sends back the pixel data as
+% received over the DVI-D link.
+%
+%
+% BitsPlusPlus('SwitchToBits++');
+% -- Switch Bits# to Bits++ mode.
+%
+%
+% BitsPlusPlus('SwitchToMono++');
+% -- Switch Bits# to Mono++ mode.
+%
+%
+% BitsPlusPlus('SwitchToColor++');
+% -- Switch Bits# to Color++ mode.
+%
+%
+% BitsPlusPlus('SwitchToStatusScreen');
+% -- Switch Bits# to Status screen display.
+%
+%
+% BitsPlusPlus('MassStorageMode');
+% -- Switch Bits# to MassStorageMode. This will forcefully close allow
+% client connections to the device, close the USB serial port connection
+% and close the driver. The Bits# will report into USB mass storage mode,
+% where it can get accessed like a USB flash drive, e.g., to edit configuration
+% files, update firmware or EDID's etc. Only a power-cycle will bring the
+% device back into a mode which allows us to connect to it again.
+%
+%
 
 % History:
 % 22.04.2007 Written (MK).
@@ -257,6 +353,8 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % 14.12.2009 Add support for other target devices, e.g., DataPixx (MK).
 %  3.01.2010 Some bugfixes to DataPixx support. (MK)
 % 12.01.2013 Make compatible with PTB panelfitter. (MK)
+% 13.03.2013 Make compatible with CRS Bits# video display system. (MK)
+% 15.04.2013 Add mode = BitsPlusPlus('GetColorConversionMode', win); (MK)
 
 global GL;
 
@@ -276,6 +374,9 @@ persistent colorname;
 persistent devbits;
 persistent checkGPUEncoders;
 
+persistent bitsSharpPort;
+persistent refCount;
+
 % Vector that assigns overlay window handles to onscreen window handles:
 persistent OverlayWindows;
 
@@ -288,6 +389,9 @@ persistent tlockXOffset;
 
 % Opmode for color conversion/buffer sampling in Color++ / C48 mode:
 persistent colorConversionMode;
+
+% Vector of cached per-window colorConversionMode:
+persistent colorConversionModeWin;
 
 if nargin < 1
     error('You must specify a command in argument "cmd"!');
@@ -337,6 +441,9 @@ if isempty(validated)
     devbits = 14;
     checkGPUEncoders = 0;
     colorConversionMode = [];
+    colorConversionModeWin = [];
+    bitsSharpPort = [];
+    refCount = 0;
 end
 
 if strcmpi(cmd, 'DIOCommand')
@@ -390,7 +497,7 @@ if strcmpi(cmd, 'DIOCommand')
             % Set default position: 3rd scanline of display, so we don't get
             % into the way of a possible CLUT T-Lock code:
             xDIO = 0;
-            yDIO = 3;
+            yDIO = 2 + i;
         end
         
         % Add command sequence for this T-Lock code to display list:
@@ -434,7 +541,11 @@ if strcmpi(cmd, 'SetTargetDeviceType')
     switch (targetdevicetype)
         case 0,
             drivername = 'BitsPlusPlus';
-            devname = 'Bits+';
+            if ~isempty(bitsSharpPort)
+                devname = 'Bits#';
+            else
+                devname = 'Bits+';
+            end
             bplusname = 'Bits++';
             mononame = 'Mono++';
             colorname = 'Color++';
@@ -455,6 +566,329 @@ if strcmpi(cmd, 'SetTargetDeviceType')
     return;
 end
 
+if strcmpi(cmd, 'OpenBits#')
+    % Try to open connection to a Bits# device. Return true if successfull,
+    % false otherwise - which would likely imply a Bits+ instead of Bits#.
+    
+    if ~isempty(bitsSharpPort)
+        % Already open. Do nothing but return and report success:
+        win = 1;
+                
+        % Increment reference count:
+        refCount = refCount + 1;
+
+        return;
+    end
+
+    % Explicit serial port name for connection to device provided?
+    if nargin > 1 && ~isempty(arg)
+        bitsSharpPortname = arg;
+        if ~ischar(bitsSharpPortname)
+            error('Provided Bits# serial port name is not a valid namestring!');
+        end
+    else
+        % No portname given:
+        bitsSharpPortname = [];
+    end
+
+    % Have a portname?
+    if isempty(bitsSharpPortname)
+        % No: Find out if a Bits# configuration file exists. Otherwise we assume
+        % that usercode does not want to connect to a Bits# but user probably uses
+        % an older - connectionless - Bits+ and turn ourselves into a no-op:
+        configfile = [PsychtoolboxConfigDir 'BitsSharpConfig.txt'];
+        if ~exist(configfile, 'file')
+            % No config file -> No Bits#. We no-op and return "no such device":
+            win = 0;
+            fprintf('BitsPlusPlus: Could not find a Bits# config file under [%s]. Assuming a Bits+ device instead of a Bits# is connected.\n', configfile);
+            fprintf('BitsPlusPlus: Please create a config file under this name if you have a Bits# and want to use it as Bits# instead of as a Bits+.\n');
+            fprintf('BitsPlusPlus: The most simple way is to create an empty file. A more robust way is to store the name of the Bits# serial port\n');
+            fprintf('BitsPlusPlus: in the first line of the text file, e.g., COM5 [Windows], or /dev/ttyACM0 [Linux] or similar.\n');
+            return;
+        end
+
+        % File exists -> We want to access a Bits#. Parse file for a port name string:
+        fid = fopen(configfile);
+        fileContentsWrapped = fgets(fid);
+        fclose(fid);
+
+        % Port spec available?
+        if ~isempty(fileContentsWrapped) && ischar(fileContentsWrapped)
+            % Yes: Assign namestring for port.
+            bitsSharpPortname = deblank(fileContentsWrapped);
+            fprintf('BitsPlusPlus: Connecting to Bits# device via serial port [%s], as provided by configuration file [%s].\n', bitsSharpPortname, configfile);
+        else
+            % No: Do the guess-o-matic dance: Fail softly if it doesn't work:
+            try
+                % Try to find proper serial port:
+                bitsSharpPortname = FindSerialPort([], 1, 0);
+                fprintf('BitsPlusPlus: Connecting to Bits# device via auto-detected serial port [%s].\n', bitsSharpPortname);
+            catch
+                lerr = psychlasterror('reset');
+                disp(lerr.message);
+                fprintf('BitsPlusPlus: Failed to find the Bits# device! Is it connected and ready? See diagnostics above. Continuing without Bits# support.\n');
+                win = 0;
+                return;
+            end
+        end
+    else
+        fprintf('BitsPlusPlus: Connecting to Bits# device via serial port [%s], as provided by usercode.\n', bitsSharpPortname);
+    end
+
+    % Ok. Try to connect:
+    try
+        % Open the port. We need to select "Lenient" mode, because the driver will try to change
+        % ReceiveLatency during setup by default. Setting ReceiveLatency is apparently not supported
+        % with the Bits# specific serial port driver, so it triggers an "unsupported operation" error.
+        % The "Lenient" keyword turns that error into a mere warning, instead of failure.
+        % We also reduce level of verbosity during open, to suppress the "unsupported operation" warning:
+        oldverblevel = IOPort('Verbosity', 0);
+        [bitsSharpPort, errmsg] = IOPort('OpenSerialPort', bitsSharpPortname, 'Lenient');
+        IOPort('Verbosity', oldverblevel);
+    catch %#ok<*CTCH>
+        error('Failed to establish a connection to the Bits# via serial port. The error message was: %s', errmsg);
+    end
+
+    % Success?
+    if bitsSharpPort < 0
+        % No: Delete invalid port handle.
+        bitsSharpPort = []; %#ok<NASGU>
+        error('Failed to establish a connection to the Bits# via serial port. The error message was: %s', errmsg);
+    end
+
+    % Yes. Change reported device name:
+    devname = 'Bits#';
+
+    fprintf('BitsPlusPlus: Device information:\n');
+
+    % Some queries to the device to test the connection:
+    IOPort('Write', bitsSharpPort, ['$ProductType' char(13)]);
+    WaitSecs('YieldSecs', 0.1);
+    while IOPort('BytesAvailable', bitsSharpPort)
+        fprintf('BitsPlusPlus: %s\n', deblank(char(IOPort('Read', bitsSharpPort))));
+        WaitSecs('YieldSecs', 0.1);
+    end
+
+    IOPort('Write', bitsSharpPort, ['$SerialNumber' char(13)]);
+    WaitSecs('YieldSecs', 0.1);
+    while IOPort('BytesAvailable', bitsSharpPort)
+        fprintf('BitsPlusPlus: %s\n', deblank(char(IOPort('Read', bitsSharpPort))));
+        WaitSecs('YieldSecs', 0.1);
+    end
+
+    IOPort('Write', bitsSharpPort, ['$FirmwareDate' char(13)]);
+    WaitSecs('YieldSecs', 0.1);
+    while IOPort('BytesAvailable', bitsSharpPort)
+        fprintf('BitsPlusPlus: %s\n', deblank(char(IOPort('Read', bitsSharpPort))));
+        WaitSecs('YieldSecs', 0.1);
+    end
+
+    fprintf('\n');
+
+    % Increment reference count:
+    refCount = refCount + 1;
+
+    % Report success:
+    win = 1;
+
+    return;
+end
+
+if strcmp(cmd, 'GetVideoLine')
+    % Readback a video line of pixels from the device:
+    %
+    % Usage:
+    %
+    % BitsPlusPlus('GetVideoLine', nrPixels, scanline);
+
+    % Parse inputs: Number of pixels to read back and scanline index
+    % of scanline to read back:
+    nrPixels = arg;
+    scanline = dummy;
+
+    % Perform pixel readback from device:
+    scanline = BitsSharpGetScanline(bitsSharpPort, scanline, nrPixels);
+    
+    % Return scanline pixels as 1st return argument:
+    win = scanline;
+
+    return;
+end
+
+if strcmpi(cmd, 'PerformPostWindowOpenSetup')
+    % Called from PsychImaging after onscreen window and associated imaging pipeline
+    % is fully opened and initialized:
+
+    % Get windowhandle of associated onscreen window:
+    win = arg;
+
+    % Attach a window close callback for Device teardown at window close time:
+    Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into BitsPlusPlus driver.', 'BitsPlusPlus(''ResetOnWindowClose'');');
+    Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
+
+    return;
+end
+
+if strcmpi(cmd, 'ResetOnWindowClose')
+    % Called from Screen() at onscreen window close time, or manually from usercode:
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to desktop GUI friendly Bits++ mode.\n');
+        IOPort('Write', bitsSharpPort, ['$BitsPlusPlus' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        % Signal that device connection was actually open:
+        win = 1;
+    else
+        % Signal that device connection was not actually open:
+        win = 0;
+    end
+
+    % Fall through to close command:
+    cmd = 'Close';
+end
+
+if strcmpi(cmd, 'Close')
+    % Connection to Bits# established?
+
+    % More than one client (this calling client) holding a reference to Bits# ?
+    if refCount > 1
+        % Yes. Just decrement the refCount to release this reference and be done:
+        refCount = refCount - 1;
+        win = 1;
+        return;
+    end
+    
+    % Caller is last client of Bits#. Reset refCount to zero and really
+    % close the connection:
+    refCount = 0;
+    
+    if ~isempty(bitsSharpPort)
+        % Yes. Close connection:
+        IOPort('Close', bitsSharpPort);
+        bitsSharpPort = [];
+        fprintf('BitsPlusPlus: Connection to Bits# device closed.\n');
+
+        % Signal that device connection was actually open:
+        win = 1;
+    else
+        % Signal that device connection was not actually open:
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'SwitchToBits++')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to Bits++ mode.\n');
+        IOPort('Write', bitsSharpPort, ['$BitsPlusPlus' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        win = 1;
+    else
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'SwitchToMono++')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to Mono++ mode.\n');
+        IOPort('Write', bitsSharpPort, ['$monoPlusPlus' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        win = 1;
+    else
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'SwitchToColor++')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to Color++ mode.\n');
+        IOPort('Write', bitsSharpPort, ['$colourPlusPlus' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        win = 1;
+    else
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'SwitchToStatusScreen')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to Diagnostic display mode.\n');
+        IOPort('Write', bitsSharpPort, ['$statusScreen' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        win = 1;
+    else
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'MassStorageMode')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to MassStorageMode mode and disconnecting...\n');
+        IOPort('Write', bitsSharpPort, ['$USB_massStorage' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        % Disconnect forcefully, as the Bits# will no longer respond to our
+        % commands until it is manually restarted:
+        refCount = 0;
+        IOPort('Close', bitsSharpPort);
+        bitsSharpPort = [];
+        
+        win = 1;
+    else
+        win = 0;
+    end
+
+    return;
+end
 
 if strcmpi(cmd, 'SetColorConversionMode')
     % Set the mode of operation for color conversion in Color++ / C48 mode.
@@ -466,10 +900,20 @@ if strcmpi(cmd, 'SetColorConversionMode')
     return;
 end
 
+if strcmpi(cmd, 'GetColorConversionMode')
+    % Return the mode of operation for color conversion in Color++ / C48 mode.
+    if nargin < 2 || isempty(arg) || ~isa(arg, 'double') || (Screen('WindowKind', arg) ~= 1)
+        error('%s: "GetColorConversionMode" called without valid onscreen window handle.', drivername);
+    end
+
+    win = colorConversionModeWin(arg);
+    return;
+end
+
 if strcmpi(cmd, 'TestGPUEncoders')
     % Perform check of GPU identity gamma tables and encoders during next
-    % 'OpenWindowXXX' call in Datapixx mode. This is a one-shot, auto-reset
-    % flag:
+    % 'OpenWindowXXX' call in Datapixx mode or Bits# mode. This is a one-shot,
+    % auto-reset flag:
     checkGPUEncoders = 1;
     return;
 end
@@ -507,7 +951,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
     % by our own Initialization. Return values of 'OpenWindow'.
     %
     % This will set up the Bits++ mode of Bits++
-        
+
     % Assign screen index:
     if nargin < 2 || isempty(arg) || ~isa(arg, 'double')
         error('%s: "OpenWindow..." called without valid screen handle.', drivername);
@@ -523,7 +967,11 @@ if strcmpi(cmd, 'OpenWindowBits++')
 
     % windowRect is always full screen -- Anything else would make the
     % Bits++ display fail.
-    winRect = [];
+    if IsLinux && ~isempty(varargin)
+        winRect = varargin{1};
+    else
+        winRect = [];
+    end
 
     % pixelSize is also fixed to 32 bit RGBA8 framebuffer:
     pixelSize = 32;
@@ -582,6 +1030,25 @@ if strcmpi(cmd, 'OpenWindowBits++')
             % GPU and wasn't able to auto-correct them.
             fprintf('%s: CAUTION! DataPixx internal diagnostic detected problems with your graphics card driver which it could not correct by itself!\n', drivername);
         end
+    end
+
+    if targetdevicetype == 0 && checkGPUEncoders
+        % Perform Bits# builtin diagnostics to detect problems with
+        % wrong GPU gamma tables or GPU dithering:
+        checkGPUEncoders = 0;
+        if doCheckGPUSanity(win, tlockXOffset, bitsSharpPort)
+            % Ohoh, trouble ahead! The driver detected problems with the
+            % GPU and wasn't able to auto-correct them.
+            fprintf('%s: CAUTION! Bits# internal diagnostic detected problems with your graphics card driver which it could not correct by itself!\n', drivername);
+        end
+    end
+
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch it to Bits++ display mode:
+        IOPort('Write', bitsSharpPort, ['$BitsPlusPlus' char(13)]);
+        fprintf('BitsPlusPlus: Switching Bits# device to Bits++ video mode. This will take about 5 seconds...\n');
+        WaitSecs('YieldSecs', 5);
     end
     
     % Now enable finalizer hook chains and load them with the special Bits++
@@ -645,6 +1112,9 @@ if strcmpi(cmd, 'OpenWindowBits++')
     
     % Reset validation flag after first run:
     validated = 0;
+
+    % Set colorConversionMode for this window to safe "undefined" default:
+    colorConversionModeWin(win) = -1;
     
     % Ready!
     return;
@@ -675,7 +1145,11 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     
     % windowRect is always full screen -- Anything else would make the
     % Bits++ display fail.
-    winRect = [];
+    if IsLinux && ~isempty(varargin)
+        winRect = varargin{1};
+    else
+        winRect = [];
+    end
 
     % pixelSize is also fixed to 32 bit RGBA8 framebuffer:
     pixelSize = 32;
@@ -756,6 +1230,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
             % account for all relevant calculations:
             imagingmode = mor(imagingmode, kPsychNeedHalfWidthWindow);
         end        
+
+        targetMode = ['$colourPlusPlus' char(13)];
+        targetModeName = 'Color++';
+    else
+        % Mono++ mode, with or without overlay.
+        targetMode = ['$monoPlusPlus' char(13)];
+        targetModeName = 'Mono++';
     end
 
     % Open the window, pass all parameters (partially modified or overriden), return Screen's return values:
@@ -886,10 +1367,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
             % Build the shader:
             shSrc = sprintf('uniform sampler2DRect overlayImage; float getMonoOverlayIndex(vec2 pos) { return(texture2DRect(overlayImage, pos * vec2(%f, %f)).r); }', sampleX, sampleY);
 
-            % Create Offscreen window for the overlay. It has the same size as
-            % the onscreen window, but only 8 bpc fixed depth and a completely black
-            % background -- fully transparent by default.
-            overlaywin = Screen('OpenOffscreenWindow', win, 0, [], 8);
+            % Create Offscreen window for the overlay. It has the same size
+            % as the onscreen window, but only 8 bpc fixed depth and a
+            % completely black background -- fully transparent by default.
+            % The specialflags 32 setting protects the overlay offscreen
+            % window from accidental batch-deletion by usercode calls to
+            % Screen('Close'):
+            overlaywin = Screen('OpenOffscreenWindow', win, 0, [], 8, 32);
 
             % Retrieve low-level OpenGl texture handle to the window:
             overlaytex = Screen('GetOpenGLTexture', win, overlaywin);
@@ -1030,6 +1514,28 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         end
     end
     
+    if targetdevicetype == 0 && checkGPUEncoders
+        % Perform Bits# builtin diagnostics to detect problems with
+        % wrong GPU gamma tables or GPU dithering:
+        checkGPUEncoders = 0;
+        if doCheckGPUSanity(win, tlockXOffset, bitsSharpPort)
+            % Ohoh, trouble ahead! The driver detected problems with the
+            % GPU and wasn't able to auto-correct them.
+            fprintf('%s: CAUTION! Bits# internal diagnostic detected problems with your graphics card driver which it could not correct by itself!\n', drivername);
+        end
+    end
+
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch it to target display mode:
+        IOPort('Write', bitsSharpPort, targetMode);
+        fprintf('BitsPlusPlus: Switching Bits# device to %s video mode. Will take about 5 seconds...\n', targetModeName);
+
+        % Wait 5 seconds. In the worst case, if the diagnostic/status screen on Bits# was
+        % active, the video mode switch can take that long to stabilize:
+        WaitSecs('YieldSecs', 5);
+    end
+
     % Enable framebuffer output formatter: From this point on, all visual
     % output will be reformatted to Bits++ framebuffer format at each
     % invokation of Screen('DrawingFinished') or Screen('Flip'), whatever
@@ -1122,7 +1628,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     validated = 0;
 
     % Reset colorConversionMode after opening the window. It is a one-shot
-    % parameter:
+    % parameter, but not before storing a cached copy in the per-window
+    % vector:
+    if ~isempty(colorConversionMode)
+        colorConversionModeWin(win) = colorConversionMode;
+    else
+        colorConversionModeWin(win) = -1;
+    end
     colorConversionMode = [];
     
     % Ready!
@@ -1149,6 +1661,17 @@ if strcmpi(cmd, 'GetOverlayWindow')
     % And the defining rectangle of the overlay:
     winRect = Screen('Rect', win);
     
+    return;
+end
+
+if strcmpi(cmd, 'CheckGPUSanity')
+    if length(varargin) < 1 || isempty(varargin{1})
+        injectFault = 0;
+    else
+        injectFault = varargin{1};
+    end
+    
+    win = doCheckGPUSanity(arg, dummy, bitsSharpPort, injectFault);
     return;
 end
 
@@ -1380,4 +1903,62 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win, drivername)
     if vix~=0
         fprintf('%s:GPU-Rasterizertest: Warning: glVertex2i() command draws at wrong position (Offset %i, %i)!\n', drivername, vix, viy);
     end
+end
+
+function scanline = BitsSharpGetScanline(bitsSharpPort, lineNr, nrPixels)
+
+    % Emit request for video scanline to Bits#
+    IOPort('Write', bitsSharpPort, [sprintf('$GetVideoLine=[%i,%i]', lineNr, nrPixels) char(13)]);
+    IOPort('Flush', bitsSharpPort);
+    
+    % First we do a blocking read for the minimum number of bytes expected, which is the
+    % length of the header in chars + at least 3 chars per pixel (format 00; 01; 02; ... 99;):
+    rawline = IOPort('Read', bitsSharpPort, 1, length('#GetVideoLine;') + nrPixels * 3);
+
+    % Then we iterate over non-blocking reads until we find the end-of-date terminator code 13:
+    while ~isempty(rawline) && (rawline(end) ~= 13)
+        WaitSecs('YieldSecs', 0.001);
+        rawline = [rawline IOPort('Read', bitsSharpPort)]; %#ok<AGROW>
+    end
+
+    % Cut away header:
+    rawline = rawline(length('#GetVideoLine;')+1:end);
+    if isempty(rawline)
+        warning('BitsSharpGetScanline: Empty pixelline returned!'); %#ok<WNTAG>
+        scanline = [];
+        return;
+    end
+
+    % Convert into integer array:
+    rawline = char(rawline);
+    rawline(rawline == ';') = ' ';
+    scanline = sscanf(rawline, '%d');
+    if (length(scanline) ~= 3 * nrPixels)
+        warning('BitsSharpGetScanline: Incomplete pixelline %s with only %i elements (less than %i) returned!', rawline, length(scanline), 3 * nrPixels); %#ok<WNTAG>
+        scanline = [];
+    else
+        scanline = uint8(reshape(scanline, 3, nrPixels));
+    end
+
+    return;
+end
+
+function rc = doCheckGPUSanity(win, xoffset, bitsSharpPort, injectFault)
+    % If this isn't a connected Bits#, simply no-op with success return code:
+    if isempty(bitsSharpPort)
+        rc = 0;
+        return;
+    end
+
+    if nargin < 4 || isempty(injectFault)
+        injectFault = 0;
+    end
+    
+    % Execute test and optimization (tweaking) procedure which uses
+    % onscreen window 'win' for sending test stimuli to the Bits# device,
+    % and use the builtin measurement functions of that device to drive
+    % the tweaking procedure. Return success status, 0 = Success, 1 = Failure.
+    rc = PsychGPUTestAndTweakGammaTables(win, xoffset, 1, injectFault, bitsSharpPort);
+
+    return;
 end

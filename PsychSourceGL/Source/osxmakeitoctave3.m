@@ -97,7 +97,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-        mex -g -v --output ./moglcore -DMACOSX -DGLEW_STATIC -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.5'" "-Wl,-F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework OpenGL -framework GLUT,-syslibroot,'/Developer/SDKs/MacOSX10.6.sdk' -mmacosx-version-min='10.5'" -I/usr/include moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c
+        mex -g -v --output ./moglcore -DMACOSX -DGLEW_STATIC -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.5'" "-Wl,-F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework OpenGL -framework GLUT,-syslibroot,'/Developer/SDKs/MacOSX10.6.sdk' -mmacosx-version-min='10.5'" -I/usr/include moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
     unix(['mv moglcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);

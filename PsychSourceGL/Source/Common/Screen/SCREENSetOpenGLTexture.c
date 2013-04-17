@@ -176,7 +176,10 @@ PsychError SCREENSetOpenGLTexture(void)
 
     // specialFlags setting 8? Disable auto-mipmap generation:
     if (specialFlags & 0x8) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;    
-        
+
+    // A specialFlags setting of 32? Protect texture against deletion via Screen('Close') without providing a explicit handle:
+    if (specialFlags & 32) textureRecord->specialflags |= kPsychDontDeleteOnClose;    
+
     // User specified override shader for this texture provided? This is useful for
     // basic image processing and procedural texture shading:
     if (textureShader!=0) {

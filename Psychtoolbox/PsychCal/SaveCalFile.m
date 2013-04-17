@@ -7,7 +7,12 @@ function SaveCalFile(cal, filespec, dir)
 % If filespec is not passed, then it saves to default.mat
 % in the CalData folder.  If filespec is an integer, saves
 % to screenN.mat.  If filespec is a string, saves to string.mat.
-
+%
+% Saves to existing file if it is found, otherwise creates a
+% new calibration file.
+%
+% See also LoadCalFile, CalDataFolder.
+%
 % 5/28/96  dgp  Wrote it.
 % 6/6/96   dgp  Use CalibrationsFolder.
 % 7/25/96  dgp  Use CalDataFolder.
@@ -20,29 +25,34 @@ function SaveCalFile(cal, filespec, dir)
 % 7/9/02   dhb  Incorporate filespec/filename fix as suggested by Eiji Kimura.
 % 3/27/12  dhb  Pass dir to LoadCalFile call, so that it does the right thing
 %               in cases where cal file location is expilcitly passed.
+% 4/2/13   dhb  Updated for subdir searching logic.
+% 4/12/13  dhb  Make this save to cal file folder when file doesn't yet exist.
 
 % Set the filename
-if nargin < 3 || isempty(dir)
-	dir = CalDataFolder;
-end
 if nargin < 2 || isempty(filespec)
 	filespec = 'default';
-	filename = [dir 'default.mat'];
+	filename = ['default.mat'];
 elseif ischar(filespec)
-	filename = [dir filespec '.mat'];
+	filename = [filespec '.mat'];
 else
-	filename = [dir sprintf('screen%d.mat',filespec)];
+	filename = [sprintf('screen%d.mat',filespec)];
 end
 
+if nargin < 3 || isempty(dir)
+	dir = CalDataFolder(0,filename);
+end
+
+
 % Load the file to get older calibrations
-[oldCal, oldCals] = LoadCalFile(filespec, [], dir);
+[oldCal, oldCals, fullFilename] = LoadCalFile(filespec, [], dir);
 if isempty(oldCals)
 	cals = {cal}; %#ok<NASGU>
+    eval(['save ' QuoteString(fullFilename) ' cals']);
 else
 	nOldCals = length(oldCals);
 	cals = oldCals;
 	cals{nOldCals+1} = cal; %#ok<NASGU>
+    eval(['save ' QuoteString(fullFilename) ' cals']);
 end
 
 % Save the file
-eval(['save ' QuoteString(filename) ' cals']);

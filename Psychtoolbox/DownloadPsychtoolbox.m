@@ -273,6 +273,8 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 %
 % 09/14/12 mk  Drop support for Octave on MS-Windows.
 % 09/14/12 mk  Drop support for 32-Bit Octave on OSX.
+% 03/10/13 mk  Add additional svn search-pathes matching UpdatePsychtoolbox et al.
+%              Also update download URL for OSX Suversion client.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -470,24 +472,38 @@ else
     % simply have to hope that it is in some system dependent search path.
 
     % Currently, we only know how to check this for Mac OSX.
-    if IsOSX
-        % Try OS/X 10.5 Leopard install location for svn first:
-        svnpath='/usr/bin/';
-        if exist('/usr/bin/svn','file')~=2
-            % This would have been the default install location of the svn
-            % client bundled with OS/X 10.5.x Leopard. Let's try the
-            % default install location from the web installer:
-            svnpath='/usr/local/bin/';
-            if exist('/usr/local/bin/svn','file')~=2
-                fprintf('The Subversion client "svn" is not in its expected\n');
-                fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
-                fprintf('download and install the most recent Subversion client from:\n');
-                fprintf('web http://metissian.com/projects/macosx/subversion/ -browser\n');
-                fprintf('and then run %s again.\n',mfilename);
-                error('Subversion client is missing. Please install it.');
-            end
+	if IsOSX
+		svnpath = '';
+		
+		if isempty(svnpath) & exist('/usr/bin/svn','file') %#ok<AND2>
+			svnpath='/usr/bin/';
+		end
+
+		if isempty(svnpath) & exist('/usr/local/bin/svn','file') %#ok<AND2>
+			svnpath='/usr/local/bin/';
+		end
+
+		if isempty(svnpath) & exist('/bin/svn','file') %#ok<AND2>
+			svnpath='/bin/';
+		end
+
+		if isempty(svnpath) & exist('/opt/subversion/bin/svn', 'file') %#ok<AND2>
+			svnpath = '/opt/subversion/bin/';
+		end
+
+		if isempty(svnpath) & exist('/opt/local/bin/svn', 'file') %#ok<AND2>
+			svnpath = '/opt/local/bin/';
+		end
+
+        if isempty(svnpath)
+            fprintf('The Subversion client "svn" is not in one of its expected\n');
+            fprintf('locations for Mac OSX  on your disk. Please download and\n');
+            fprintf('install the most recent Subversion client from:\n');
+            fprintf('web http://subversion.apache.org/packages.html#osx -browser\n');
+            fprintf('and then run %s again.\n', mfilename);
+            error('Subversion client is missing. Please install it.');
         end
-    end
+	end
 end
 
 if ~isempty(svnpath)

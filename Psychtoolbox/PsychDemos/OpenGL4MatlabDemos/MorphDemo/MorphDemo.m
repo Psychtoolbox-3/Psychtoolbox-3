@@ -1,5 +1,5 @@
-function MorphDemo(textureon, dotson, normalson, stereomode, usefastoffscreenwindows)
-% function MorphDemo([textureon][, dotson][, normalson][, stereomode][, usefastoffscreenwindows])
+function MorphDemo(textureon, dotson, normalson, stereomode)
+% function MorphDemo([textureon][, dotson][, normalson][, stereomode])
 % MorphDemo -- Demonstrates use of "moglmorpher" for fast morphing
 % and rendering of 3D shapes. See "help moglmorpher" for info on
 % moglmorphers purpose and capabilities.
@@ -7,6 +7,9 @@ function MorphDemo(textureon, dotson, normalson, stereomode, usefastoffscreenwin
 % This demo will load two morpheable shapes from OBJ files and then
 % morph them continously into each other, using a simple sine-function
 % to define the timecourse of the morph.
+%
+% The demo is OpenGL-ES1 compatible, with some restrictions: Only cpu based,
+% slower morphing. The dotson flag is ignored.
 %
 % Control keys and their meaning:
 % 'a' == Zoom out by moving object away from viewer.
@@ -32,10 +35,6 @@ function MorphDemo(textureon, dotson, normalson, stereomode, usefastoffscreenwin
 % built-in stereo display algorithms is used to present the 3D stimulus. This
 % is very preliminary so it doesn't work that well yet.
 %
-% usefastoffscreenwindows = If set to 0 (default), work on any graphics
-% card. If you have recent hardware, set it to 1. That will enable support
-% for fast offscreen windows - and a much faster implementation of shape
-% morphing.
 %
 % This demo and the morpheable OBJ shapes were contributed by
 % Dr. Quoc C. Vuong, MPI for Biological Cybernetics, Tuebingen, Germany.
@@ -71,11 +70,6 @@ if nargin < 4 || isempty(stereomode)
 end;
 stereomode %#ok<NOPRT>
 
-if nargin < 5 || isempty(usefastoffscreenwindows)
-    usefastoffscreenwindows = 0;
-end
-usefastoffscreenwindows %#ok<NOPRT>
-
 % Response keys: Mapping of keycodes to keynames.
 KbName('UnifyKeyNames');
 closer = KbName('a');
@@ -108,11 +102,8 @@ else
    rect = [0 0 500 500];
 end;
 
-if usefastoffscreenwindows
-    [win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode, [], kPsychNeedFastOffscreenWindows);
-else
-    [win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode);
-end
+% Go for it!
+[win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode);
 
 % Setup texture mapping if wanted:
 if ( textureon==1 )
@@ -122,7 +113,7 @@ if ( textureon==1 )
     texid = Screen('MakeTexture', win, texture);
 
     % Retrieve a standard OpenGL texture handle and target from Psychtoolbox for use with MOGL:
-    [gltexid gltextarget] = Screen('GetOpenGLTexture', win, texid);
+    [gltexid gltextarget, uscale, vscale] = Screen('GetOpenGLTexture', win, texid, size(texture, 1), size(texture, 2));
 
     % Swap (u,v) <-> (v,u) to account for the transposed images read via Matlab imread():
     texcoords(2,:) = objs{1}.texcoords(1,:);
@@ -130,7 +121,19 @@ if ( textureon==1 )
 
     % Which texture type is provided to us by Psychtoolbox?
     if gltextarget == GL.TEXTURE_2D
-        % Nothing to do for GL_TEXTURE_2D textures...
+        % Nothing to do for GL_TEXTURE_2D textures, unless we are on OpenGL-ES,
+        % in which case only GL.TEXTURE_2D is supported, but it is not certain
+        % if non-power-of-two textures are supported.
+        if IsGLES
+            % We are on OES, and 'MakeTexture' was supposed to make a clever choice
+            % of formatting of the GL_TEXTURE_2D. Depending if npot texture are
+            % supported or not, the loaded pixel image may or may not fill the unit
+            % rectangle 0.0 - 1.0. We don't trust here, but queried the texture position
+            % of the full size of the image in 'uscale' and 'vscale'. We can use these
+            % values to rescale texture coordinates, how convenient?
+            texcoords(1,:) = texcoords(1,:) * uscale;
+            texcoords(2,:) = texcoords(2,:) * vscale;
+        end
     else
         % Rectangle texture: We need to rescale our texcoords as they are made for
         % power-of-two textures, not rectangle textures:
@@ -178,6 +181,12 @@ if ( textureon==1 )
     % Choose texture application function: It shall modulate the light
     % reflection properties of the the objects surface:
     glTexEnvfv(GL.TEXTURE_ENV,GL.TEXTURE_ENV_MODE,GL.MODULATE);
+
+    glTexParameteri(gltextarget, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
+    glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
+
+    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
+    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
 end
 
 % Get the aspect ratio of the screen, we need to correct for non-square
@@ -250,7 +259,19 @@ glLineWidth(2.0);
 
 % Add z-offset to reference lines, so they do not get occluded by surface:
 glPolygonOffset(0, -5);
-glEnable(GL.POLYGON_OFFSET_LINE);
+if ~IsGLES
+    glEnable(GL.POLYGON_OFFSET_LINE);
+else
+    % glPolygonMode() and associated settings are unsupported on OpenGL-ES.
+    % Btw. on OpenGL-3+, only GL.FRONT_AND_BACK are allowable 'face' settings
+    % for glPolygonMode, although the function is supported other than that.
+    % The glFeedbackBuffer() function used by moglmorpher() for dotson == 4
+    % is also not supported. Effectively this limits us to the default of zero.
+    if dotson ~= 0
+        fprintf('Non zero dotson settings are not supported on OpenGL-ES hardware. Reverting to zero.\n');
+        dotson = 0;
+    end
+end
 
 % Use alpha-blending:
 glEnable(GL.BLEND);
@@ -281,7 +302,6 @@ Screen('EndOpenGL', win);
 % Compute initial morphed shape for next frame, based on initial weights:
 moglmorpher('computeMorph', w, morphnormals);
 
-
 % Retrieve duration of a single monitor flip interval: Needed for smooth
 % animation.
 ifi = Screen('GetFlipInterval', win);
@@ -304,7 +324,6 @@ while ((GetSecs - t) < 60)
     % at the origin (0,0,0) of the worlds coordinate system:
     glLoadIdentity;
     gluLookAt(-eye_halfdist, 0, zz, 0, 0, 0, 0, 1, 0);
-
 
     % Draw into image buffer for left eye:
     Screen('EndOpenGL', win);
@@ -434,26 +453,26 @@ global win
 glPushMatrix;
 
 % Setup rotation around axis:
-glRotated(theta,rotatev(1),rotatev(2),rotatev(3));
-glRotated(ang,0,1,0);
+glRotatef(theta,rotatev(1),rotatev(2),rotatev(3));
+glRotatef(ang,0,1,0);
 
 % Scale object by a factor of a:
 a=0.1;
 glScalef(a,a,a);
 
-glColor3f(0.8,0.8,0.8);
+glColor4f(0.8,0.8,0.8,1.0);
 
 % Render current morphed shape via moglmorpher:
 moglmorpher('render');
 
 % Some extra visualizsation code for normals, mesh and vertices:
-if (dotson == 1 | dotson == 3) %#ok<OR2>
+if (dotson == 1 || dotson == 3)
     % Draw some dot-markers at positions of vertices:
     % We disable lighting for this purpose:
     glDisable(GL.LIGHTING);
     % From all polygons, only their defining vertices are drawn:
     glPolygonMode(GL.FRONT_AND_BACK, GL.POINT);
-    glColor3f(0,0,1);
+    glColor4f(0,0,1,1);
 
     % Ask morpher to rerender the last shape:
     moglmorpher('render');
@@ -468,7 +487,7 @@ if (dotson == 2)
     % We disable lighting for this purpose:
     glDisable(GL.LIGHTING);
     % From all polygons, only their connecting outlines are drawn:
-    glColor3f(0,0,1);
+    glColor4f(0,0,1,1);
     glPolygonMode(GL.FRONT_AND_BACK, GL.LINE);
 
     % Ask morpher to rerender the last shape:
@@ -483,17 +502,17 @@ if (normalson > 0)
     % Draw surface normal vectors on top of object:
     glDisable(GL.LIGHTING);
     % Green is a nice color for this:
-    glColor3f(0,1,0);
+    glColor4f(0,1,0,1);
 
     % Ask morpher to render the normal vectors of last shape:
     moglmorpher('renderNormals', normalson);
 
     % Reset settings for shape rendering:
     glEnable(GL.LIGHTING);
-    glColor3f(0,0,1);
- end;
- 
-if (dotson == 3 | dotson == 4) %#ok<OR2>
+    glColor4f(0,0,1,1);
+end;
+
+if (dotson == 3 || dotson == 4)
    % Compute and retrieve projected screen-space vertex positions:
    vpos = moglmorpher('getVertexPositions', win);
    
