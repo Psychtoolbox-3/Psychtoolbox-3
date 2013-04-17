@@ -73,7 +73,8 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect)
 %
 
 % History:
-% 09/20/09  mk  Written.
+% 09/20/09    mk  Written.
+% 03/xx/2012  mk  Major updates for Bits# and other polishing.
 
 % Select screen for test/display:
 if nargin < 1 || isempty(whichScreen)
@@ -90,7 +91,23 @@ end
 
 % Disable text anti-aliasing for this test:
 oldAntialias = Screen('Preference', 'TextAntiAliasing', 0);
-oldTextAlpha = Screen('Preference', 'TextAlphaBlending', 1);
+
+% Disable text alpha-blending to avoid color weirdness in the color
+% overlay text due to off-by-one color index values indexing into the
+% wrong clut slot. This is a workaround for some alpha-blending bugs
+% in some MS-Windows graphics drivers. This is fine on MS-Windows and
+% on OSX with its default text renderer, as long as anti-aliasing for
+% text is disabled, which it is. On Linux we must keep alpha-blending
+% enabled/alone, as the text rendering plugin depends on it to actually define
+% the shape of the character glyphs in the alpha-channel, not in the color
+% channels. The same would be true for OSX with the alternate text renderer,
+% but lets not overdo it. TODO: Fix this in a more intelligent way within
+% the text renderers!
+if ~IsLinux
+    oldTextAlpha = Screen('Preference', 'TextAlphaBlending', 1);
+else
+    oldTextAlpha = Screen('Preference', 'TextAlphaBlending');
+end
 
 try
     % Setup imaging pipeline:

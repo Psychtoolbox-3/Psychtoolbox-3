@@ -40,14 +40,15 @@ function PsychLinuxConfiguration
 %
 
 % History:
-% 6.01.2012   mk  Written.
+%  6.01.2012   mk  Written.
+% 16.04.2013   mk  Add info about 'dialout' group for serial port access.
 
 if ~IsLinux
   return;
 end
 
 % Retrieve login username of current user:
-[ignore, username] = system('whoami');
+[ignore, username] = system('whoami'); %#ok<ASGLU>
 username = username(1:end-1);
 addgroup = 0;
 
@@ -217,9 +218,10 @@ fprintf('You need to add each user of Psychtoolbox to that group. You could do t
 fprintf('with the user management tools of your system. Or you can open a terminal window\n');
 fprintf('and type the following command (here as an example to add yourself to that group):\n\n');
 fprintf('sudo usermod -a -G psychtoolbox %s\n\n', username);
+fprintf('One should also add oneself to the ''dialout'' group for access to serial port devices:\n\n');
+fprintf('sudo usermod -a -G dialout %s\n\n', username);
 fprintf('After that, the new group member must log out and then login again for the\n');
 fprintf('settings to take effect.\n\n');
-
 fprintf('\nFinished. Your system should now be ready for use with Psychtoolbox.\n');
 fprintf('If you encounter problems, try rebooting the machine. Some of the settings only\n');
 fprintf('become effective after a reboot.\n\n\n');

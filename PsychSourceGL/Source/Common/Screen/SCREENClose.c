@@ -85,7 +85,7 @@ PsychError SCREENClose(void)
 		// No window handle provided: In this case, we close/destroy all textures:
 		PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
 		for(i=0;i<numWindows;i++) {
-			if (windowRecordArray[i]->windowType==kPsychTexture) PsychCloseWindow(windowRecordArray[i]);			
+			if ((windowRecordArray[i]->windowType == kPsychTexture) && !(windowRecordArray[i]->specialflags & kPsychDontDeleteOnClose)) PsychCloseWindow(windowRecordArray[i]);			
 		}
 
 		PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);

@@ -1,0 +1,47 @@
+% Screen on Linux, when compiled for multiple graphics and display
+% backends, typically on embedded devices, utilizes Chad Versaces
+% excellent Waffle display library, which is copyright and funded by
+% Intel, licensed to us under a compatible OSS license - see below for
+% exact licensing text: http://people.freedesktop.org/~chadversary/waffle/
+%
+% This folder contains a precompiled libwaffle-1.so library for Linux on
+% ARM 32-Bit processors, specifically, this library was compiled and tested
+% under 32-Bit Ubuntu 13.04 "Raring Ringtail" for ARM hardfloat architecture
+% processors on a Google Nexus-7 tablet with NVidia Tegra-3 SoC. You must
+% rename the library to libwaffle-1.so and place it in a system library
+% folder (and possibly run sudo ldconfig) for it to work. It contains support
+% for the X11/GLX and X11/EGL display backends. The Tegra binary drivers on
+% the Nexus-7/Tegra-3 SoC only support X11/EGL display backend.
+%
+% =========================================================================
+%
+% Full text of Waffle library license:
+% ====================================
+% Copyright 2012 Intel Corporation
+%
+% All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are met:
+%
+% - Redistributions of source code must retain the above copyright notice, this
+%   list of conditions and the following disclaimer.
+%
+% - Redistributions in binary form must reproduce the above copyright notice,
+%   this list of conditions and the following disclaimer in the documentation
+%   and/or other materials provided with the distribution.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+% DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+% FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+% DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+% SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+% CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+% OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+% OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+%
+% END OF TERMS AND CONDITIONS
+% 
+% =========================================================================

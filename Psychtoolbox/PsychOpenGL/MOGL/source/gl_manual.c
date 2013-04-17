@@ -8,6 +8,7 @@
  */
 
 #include "mogltypes.h"
+#include "ftglesGlue.h"
 
 void gl_getbufferpointerv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
     
@@ -806,13 +807,63 @@ void glu_tesscallback( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
     
 }
 
+// GLES emulation wrapper wrappers:
+void gles_color4f( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == ftglColor4f) mogl_glunsupported("ftglColor4f");
+	ftglColor4f((GLfloat)mxGetScalar(prhs[0]),
+		(GLfloat)mxGetScalar(prhs[1]),
+		(GLfloat)mxGetScalar(prhs[2]),
+		(GLfloat)mxGetScalar(prhs[3]));
+}
+
+void gles_texcoord2f( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == ftglTexCoord2f) mogl_glunsupported("ftglTexCoord2f");
+	ftglTexCoord2f((GLfloat)mxGetScalar(prhs[0]),
+		(GLfloat)mxGetScalar(prhs[1]));
+}
+
+void gles_vertex2f( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == ftglVertex2f) mogl_glunsupported("ftglVertex2f");
+	ftglVertex2f((GLfloat)mxGetScalar(prhs[0]),
+		(GLfloat)mxGetScalar(prhs[1]));
+}
+
+void gles_vertex3f( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == ftglVertex3f) mogl_glunsupported("ftglVertex3f");
+	ftglVertex3f((GLfloat)mxGetScalar(prhs[0]),
+		(GLfloat)mxGetScalar(prhs[1]),
+		(GLfloat)mxGetScalar(prhs[2]));
+}
+
+void gles_begin( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == ftglBegin) mogl_glunsupported("ftglBegin");
+	ftglBegin((GLenum)mxGetScalar(prhs[0]));
+}
+
+void gles_end( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == ftglEnd) mogl_glunsupported("ftglEnd");
+	ftglEnd();
+}
+
 
 // command map:  moglcore string commands and functions that handle them
 // *** it's important that this list be kept in alphabetical order, 
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=36;
+int gl_manual_map_count=42;
 cmdhandler gl_manual_map[] = {
+{ "ftglBegin",                      gles_begin                          },
+{ "ftglColor4f",                    gles_color4f                        },
+{ "ftglEnd",                        gles_end                            },
+{ "ftglTexCoord2f",                 gles_texcoord2f                     },
+{ "ftglVertex2f",                   gles_vertex2f                       },
+{ "ftglVertex3f",                   gles_vertex3f                       },
 { "glBufferData",                   gl_bufferdata                       },
 { "glColorPointer",                 gl_colorpointer                     },
 { "glDrawElements",                 gl_drawelements                     },

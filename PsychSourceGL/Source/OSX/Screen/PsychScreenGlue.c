@@ -948,7 +948,16 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 {	
 	// First try standard, official Apple OS/X supported method:
 	int beampos = -1;
-	
+
+	// New style: Always use and return beamposition as measured by our own homegrown
+	// PsychtoolboxKernelDriver implementation, unless forcefully disabled via flag
+	// kPsychForceUseNativeBeamposQuery. This is because our own implementation is
+	// much more reliable, robust, precise and low-overhead as of OSX 10.8.
+	if (!(PsychPrefStateGet_ConserveVRAM() & kPsychForceUseNativeBeamposQuery) &&
+		((beampos = PsychOSKDGetBeamposition(screenNumber)) != -1)) {
+		return(beampos);
+	}
+
 	if (PsychPrefStateGet_ConserveVRAM() & kPsychDontUseNativeBeamposQuery) {
 		// OS/X native beamposition queries forcefully disabled!
 		// Try to use our own homegrown fallback solution:

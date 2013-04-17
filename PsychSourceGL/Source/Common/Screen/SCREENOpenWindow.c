@@ -606,6 +606,32 @@ PsychError SCREENOpenWindow(void)
 
     PsychTestForGLErrors();
 
+    // Homegrown frame-sequential strereo mode on a EGL backed window active?
+    if ((windowRecord->stereomode == kPsychFrameSequentialStereo) && (windowRecord->specialflags & kPsychIsEGLWindow)) {
+        // Detach the OpenGL context from window surface. The following PsychSetDrawingTarget()
+        // command will rebind the context as a first step, but it will not attach it to the
+        // windowing system framebuffer surface (== the associated EGLSurface) anymore due to
+        // the selected frame-sequential stereo mode on EGL. This will allow the background
+        // frame-sequential stereo swapper-thread to bind its context to the surface and all
+        // will be good. Rationale: With a EGL windowing system backend, only at most one context
+        // is allowed to attach to a EGL surface (window framebuffer) at a given time. Because the
+        // stereo thread needs to bind its context permanently to the surface to do its job, we
+        // must make sure going forward that we'll never ever bind our contexts from the master-thread
+        // to 'windowRecord's surface again, or bad things will happen:
+        PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
+        PsychOSUnsetGLContext(windowRecord);
+        windowRecord->specialflags |= kPsychSurfacelessContexts;
+        PsychSetDrawingTarget(windowRecord);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Preventing master-thread contexts from future binding to this windows (%i) backing surface.\n", windowRecord->windowIndex);
+
+        // TODO: Ideally we should check if KHR_surfaceless_context extension is supported,
+        // because otherwise this won't work and we should reject use of multi-threaded ops
+        // like frame-sequential stereo or async flips as unsupported on a given system.
+        // Doing this check is a bit difficult at the moment without querying the EGL
+        // extension string - we don't want to introduce a hard dependency on libEGL at
+        // this point of development...
+    }
+
     // Reset flipcounter and missed flip deadline counter to zero:
     windowRecord->flipCount = 0;
     windowRecord->nr_missed_deadlines = 0;
@@ -639,7 +665,7 @@ PsychError SCREENPanelFitter(void)
         "routine, e.g., PsychImaging() and its 'UsePanelFitter' setup code.\n\n";
     static char seeAlsoString1[] = "OpenWindow";
 
-    PsychWindowRecordType   *windowRecord;    
+    PsychWindowRecordType   *windowRecord;
     double* outParams;
     int*    newParams;
     int     count, i;
@@ -663,7 +689,18 @@ PsychError SCREENPanelFitter(void)
     if (PsychAllocInIntegerListArg(2, FALSE, &count, &newParams)) {
         if (count != 8) PsychErrorExitMsg(PsychError_user, "'newParams' must be a vector with 8 integer elements.");
         for (i = 0; i < count; i++) windowRecord->panelFitterParams[i] = newParams[i];
+
+        // Fallback path and problematic new config setting?
+        if (!(windowRecord->gfxcaps & kPsychGfxCapFBOBlit) && (PsychPrefStateGet_Verbosity() > 1) &&
+            (windowRecord->panelFitterParams[0] != 0 || windowRecord->panelFitterParams[1] != 0 ||
+             windowRecord->panelFitterParams[2] != (int) PsychGetWidthFromRect(windowRecord->clientrect) ||
+             windowRecord->panelFitterParams[3] != (int) PsychGetHeightFromRect(windowRecord->clientrect))) {
+            // Fallback path for panelFitter in use and sourceRegion is not == full clientRect. This is an
+            // unsupported setting with the fallback, which will cause wrong results. Warn user:
+            printf("PTB-WARNING: Selected a non-default srcRegion in Screen('PanelFitter'). This is not supported when\n");
+            printf("PTB-WARNING: the fallback path for the panel fitter is in use. Expect distorted visual stimuli!\n");
+        }
     }
-    
+
     return(PsychError_none);
 }

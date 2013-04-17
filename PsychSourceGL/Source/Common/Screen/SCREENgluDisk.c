@@ -3,9 +3,10 @@
   
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu				awi
+		mario.kleiner@tuebingen.mpg.de		mk
   
-	PLATFORMS:
+    PLATFORMS:
 	
 		All.
 
@@ -13,8 +14,7 @@
   
 		10/10/03  awi		Created.  It's experimental   
 		2/25/05		awi		Added call to PsychUpdateAlphaBlendingFactorLazily().  Drawing now obeys settings by Screen('BlendFunction').
- 
-  
+   
 	TO DO:
 
 */
@@ -24,7 +24,8 @@
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('gluDisk', windowPtr, color, x, y [,size]);";
 static char synopsisString[] = 
-	"Draw a point at the specified location";
+	"Draw a point at the specified location (x,y) in specified 'color' "
+    "with radius 'size'.";
 static char seeAlsoString[] = "FrameRect";	
 
 PsychError SCREENgluDisk(void)  
@@ -71,12 +72,18 @@ PsychError SCREENgluDisk(void)
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
-	glPushMatrix();
-	glTranslated(*xPosition,*yPosition,0);
-	diskQuadric=gluNewQuadric();
-	gluDisk(diskQuadric, 0, dotSize, 30, 30);
-	gluDeleteQuadric(diskQuadric);
-	glPopMatrix();
+
+    if (PsychIsGLClassic(windowRecord)) {
+        glPushMatrix();
+        glTranslated(*xPosition,*yPosition,0);
+        diskQuadric=gluNewQuadric();
+        gluDisk(diskQuadric, 0, dotSize, 30, 30);
+        gluDeleteQuadric(diskQuadric);
+        glPopMatrix();
+    }
+    else {
+        PsychDrawDisc(windowRecord, (float) *xPosition, (float) *yPosition, 0, (float) dotSize, 30, 1, 1, 0, 360);
+    }
 
 	// Mark end of drawing op. This is needed for single buffered drawing:
 	PsychFlushGL(windowRecord);

@@ -182,6 +182,9 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % explanation of this mandatory parameter. The setting before 22nd
 % September 2010 for all PTB-3 versions was 0 (==zero).
 %
+% You can query the mode for an onscreen window 'win' by a call to:
+% mode = BitsPlusPlus('GetColorConversionMode', win);
+%
 %
 % Notes for both Mono++ and Color++ mode:
 %
@@ -351,6 +354,7 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 %  3.01.2010 Some bugfixes to DataPixx support. (MK)
 % 12.01.2013 Make compatible with PTB panelfitter. (MK)
 % 13.03.2013 Make compatible with CRS Bits# video display system. (MK)
+% 15.04.2013 Add mode = BitsPlusPlus('GetColorConversionMode', win); (MK)
 
 global GL;
 
@@ -385,6 +389,9 @@ persistent tlockXOffset;
 
 % Opmode for color conversion/buffer sampling in Color++ / C48 mode:
 persistent colorConversionMode;
+
+% Vector of cached per-window colorConversionMode:
+persistent colorConversionModeWin;
 
 if nargin < 1
     error('You must specify a command in argument "cmd"!');
@@ -434,6 +441,7 @@ if isempty(validated)
     devbits = 14;
     checkGPUEncoders = 0;
     colorConversionMode = [];
+    colorConversionModeWin = [];
     bitsSharpPort = [];
     refCount = 0;
 end
@@ -610,9 +618,18 @@ if strcmpi(cmd, 'OpenBits#')
             bitsSharpPortname = deblank(fileContentsWrapped);
             fprintf('BitsPlusPlus: Connecting to Bits# device via serial port [%s], as provided by configuration file [%s].\n', bitsSharpPortname, configfile);
         else
-            % No: Do the guess-o-matic dance: Fail if it doesn't work:
-            bitsSharpPortname = FindSerialPort([], 1, 0);
-            fprintf('BitsPlusPlus: Connecting to Bits# device via auto-detected serial port [%s].\n', bitsSharpPortname);
+            % No: Do the guess-o-matic dance: Fail softly if it doesn't work:
+            try
+                % Try to find proper serial port:
+                bitsSharpPortname = FindSerialPort([], 1, 0);
+                fprintf('BitsPlusPlus: Connecting to Bits# device via auto-detected serial port [%s].\n', bitsSharpPortname);
+            catch
+                lerr = psychlasterror('reset');
+                disp(lerr.message);
+                fprintf('BitsPlusPlus: Failed to find the Bits# device! Is it connected and ready? See diagnostics above. Continuing without Bits# support.\n');
+                win = 0;
+                return;
+            end
         end
     else
         fprintf('BitsPlusPlus: Connecting to Bits# device via serial port [%s], as provided by usercode.\n', bitsSharpPortname);
@@ -883,6 +900,16 @@ if strcmpi(cmd, 'SetColorConversionMode')
     return;
 end
 
+if strcmpi(cmd, 'GetColorConversionMode')
+    % Return the mode of operation for color conversion in Color++ / C48 mode.
+    if nargin < 2 || isempty(arg) || ~isa(arg, 'double') || (Screen('WindowKind', arg) ~= 1)
+        error('%s: "GetColorConversionMode" called without valid onscreen window handle.', drivername);
+    end
+
+    win = colorConversionModeWin(arg);
+    return;
+end
+
 if strcmpi(cmd, 'TestGPUEncoders')
     % Perform check of GPU identity gamma tables and encoders during next
     % 'OpenWindowXXX' call in Datapixx mode or Bits# mode. This is a one-shot,
@@ -1085,6 +1112,9 @@ if strcmpi(cmd, 'OpenWindowBits++')
     
     % Reset validation flag after first run:
     validated = 0;
+
+    % Set colorConversionMode for this window to safe "undefined" default:
+    colorConversionModeWin(win) = -1;
     
     % Ready!
     return;
@@ -1337,10 +1367,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
             % Build the shader:
             shSrc = sprintf('uniform sampler2DRect overlayImage; float getMonoOverlayIndex(vec2 pos) { return(texture2DRect(overlayImage, pos * vec2(%f, %f)).r); }', sampleX, sampleY);
 
-            % Create Offscreen window for the overlay. It has the same size as
-            % the onscreen window, but only 8 bpc fixed depth and a completely black
-            % background -- fully transparent by default.
-            overlaywin = Screen('OpenOffscreenWindow', win, 0, [], 8);
+            % Create Offscreen window for the overlay. It has the same size
+            % as the onscreen window, but only 8 bpc fixed depth and a
+            % completely black background -- fully transparent by default.
+            % The specialflags 32 setting protects the overlay offscreen
+            % window from accidental batch-deletion by usercode calls to
+            % Screen('Close'):
+            overlaywin = Screen('OpenOffscreenWindow', win, 0, [], 8, 32);
 
             % Retrieve low-level OpenGl texture handle to the window:
             overlaytex = Screen('GetOpenGLTexture', win, overlaywin);
@@ -1595,7 +1628,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     validated = 0;
 
     % Reset colorConversionMode after opening the window. It is a one-shot
-    % parameter:
+    % parameter, but not before storing a cached copy in the per-window
+    % vector:
+    if ~isempty(colorConversionMode)
+        colorConversionModeWin(win) = colorConversionMode;
+    else
+        colorConversionModeWin(win) = -1;
+    end
     colorConversionMode = [];
     
     % Ready!
@@ -1885,7 +1924,7 @@ function scanline = BitsSharpGetScanline(bitsSharpPort, lineNr, nrPixels)
     % Cut away header:
     rawline = rawline(length('#GetVideoLine;')+1:end);
     if isempty(rawline)
-        warning('BitsSharpGetScanline: Empty pixelline returned!');
+        warning('BitsSharpGetScanline: Empty pixelline returned!'); %#ok<WNTAG>
         scanline = [];
         return;
     end
@@ -1895,7 +1934,7 @@ function scanline = BitsSharpGetScanline(bitsSharpPort, lineNr, nrPixels)
     rawline(rawline == ';') = ' ';
     scanline = sscanf(rawline, '%d');
     if (length(scanline) ~= 3 * nrPixels)
-        warning('BitsSharpGetScanline: Incomplete pixelline %s with only %i elements (less than %i) returned!', rawline, length(scanline), 3 * nrPixels);
+        warning('BitsSharpGetScanline: Incomplete pixelline %s with only %i elements (less than %i) returned!', rawline, length(scanline), 3 * nrPixels); %#ok<WNTAG>
         scanline = [];
     else
         scanline = uint8(reshape(scanline, 3, nrPixels));

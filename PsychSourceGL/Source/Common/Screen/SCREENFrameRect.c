@@ -3,12 +3,12 @@
 
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+	Allen.Ingling@nyu.edu			awi 
+	mario.kleiner@tuebingen.mpg.de	mk
 
 	PLATFORMS:	
-
-		Only OS X for now.
-
+	
+	All.
 
 	HISTORY:
 
@@ -62,11 +62,11 @@ PsychError SCREENFrameRect(void)
 	PsychErrorExit(PsychCapNumInputArgs(4));   //The maximum number of inputs
 	PsychErrorExit(PsychCapNumOutputArgs(0));  //The maximum number of outputs
 
-	// Get tweakable correction factor for framerect:
-	lf = PsychPrefStateGet_FrameRectCorrection();
-
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(1, kPsychArgRequired, &windowRecord);
+
+	// Get tweakable correction factor for framerect: Not an option on non-classic GL anymore.
+	lf = (PsychIsGLClassic(windowRecord)) ? PsychPrefStateGet_FrameRectCorrection() : -1;
 	
 	// Query, allocate and copy in all vectors...
 	numRects = 4;
@@ -77,7 +77,7 @@ PsychError SCREENFrameRect(void)
 	
 	// The negative position -3 means: xy coords are expected at position 3, but they are optional.
 	// NULL means - don't want a size's vector.
-	PsychPrepareRenderBatch(windowRecord, -3, &numRects, &xy, 2, &nc, &mc, &colors, &bytecolors, 4, &nrsize, &penSizes);
+	PsychPrepareRenderBatch(windowRecord, -3, &numRects, &xy, 2, &nc, &mc, &colors, &bytecolors, 4, &nrsize, &penSizes, FALSE);
 
 	// Default rect is fullscreen:
 	PsychCopyRect(rect, windowRecord->clientrect);
@@ -123,7 +123,7 @@ PsychError SCREENFrameRect(void)
 		
 		j = (nrsize > 1) ? i : 0; 
 		
-		if (penSizes[j] != penSize) {
+        if (penSizes[j] != penSize) {
 			penSize = penSizes[j];
 			if (lf != -1) glLineWidth((GLfloat) penSize);
 		}
@@ -133,10 +133,10 @@ PsychError SCREENFrameRect(void)
 		if (lf == -1) {
 			// New style rendering: More robust against variations in GPU implementations:
 			fudge = penSize;
-			glRectd(rect[kPsychLeft], rect[kPsychTop], rect[kPsychRight], rect[kPsychTop] + fudge);
-			glRectd(rect[kPsychLeft], rect[kPsychBottom], rect[kPsychRight], rect[kPsychBottom] - fudge);
-			glRectd(rect[kPsychLeft], rect[kPsychTop]+fudge, rect[kPsychLeft]+fudge, rect[kPsychBottom]-fudge);
-			glRectd(rect[kPsychRight]-fudge, rect[kPsychTop]+fudge, rect[kPsychRight], rect[kPsychBottom]-fudge);
+            GLRECTd(rect[kPsychLeft], rect[kPsychTop], rect[kPsychRight], rect[kPsychTop] + fudge);
+			GLRECTd(rect[kPsychLeft], rect[kPsychBottom], rect[kPsychRight], rect[kPsychBottom] - fudge);
+			GLRECTd(rect[kPsychLeft], rect[kPsychTop]+fudge, rect[kPsychLeft]+fudge, rect[kPsychBottom]-fudge);
+			GLRECTd(rect[kPsychRight]-fudge, rect[kPsychTop]+fudge, rect[kPsychRight], rect[kPsychBottom]-fudge);
 		}
 		else {
 			// Old style: Has a couple of problems in corner cases. Left for now as reference...

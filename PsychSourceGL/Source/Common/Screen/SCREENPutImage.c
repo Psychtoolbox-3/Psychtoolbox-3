@@ -31,7 +31,8 @@
 static char useString[] =  "Screen('PutImage', windowPtr, imageArray [,rect])";
 //                                             1          2            3
 static char synopsisString[] =
-	"Copy the matrix \"imageArray\" to a window, slowly.\n"
+	"Copy the matrix \"imageArray\" to a window, very slowly.\n"
+    "This function is not (and will not ever get) supported on OpenGL-ES embedded graphics hardware.\n"
 	"\"rect\" is in window coordinates. The whole image is copied to \"rect\", scaling if "
 	"necessary. The rect default is the imageArray's rect, centered in the window. "
 	"The orientation of the array in the window is identical to that of Matlab's "
@@ -90,9 +91,19 @@ PsychError SCREENPutImage(void)
 			PsychErrorExitMsg(PsychError_user, "imageArray must be uint8 or double type");
 			break;
 	}
+
+    if (inputP != 1 && inputP != 3 && inputP != 4) {
+        PsychErrorExitMsg(PsychError_user, "Third dimension of image matrix must be 1, 3, or 4");
+    }
         
 	// Get the window and get the rect and stuff.
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+
+    // A no-go on OES:
+    if (PsychIsGLES(windowRecord)) {
+        PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Screen('PutImage') is not supported on OpenGL-ES embedded graphics hardware. Use 'MakeTexture' and 'DrawTexture' instead.");
+    }
+
 	PsychGetRectFromWindowRecord(windowRect, windowRecord);
 	if (PsychCopyInRectArg(3, FALSE, positionRect)) {
 		if (IsPsychRectEmpty(positionRect)) {
@@ -100,9 +111,6 @@ PsychError SCREENPutImage(void)
 		}
 		positionRectWidth  = (int) PsychGetWidthFromRect(positionRect);
 		positionRectHeight = (int) PsychGetHeightFromRect(positionRect);
-		if (inputP != 1 && inputP != 3 && inputP != 4) {
-			PsychErrorExitMsg(PsychError_user, "Third dimension of image matrix must be 1, 3, or 4");
-		}
 		if (positionRectWidth != inputN  || positionRectHeight != inputM) {
 			// Calculate the zoom factor.
 			xZoom = (GLfloat)   positionRectWidth  / (GLfloat) inputN;

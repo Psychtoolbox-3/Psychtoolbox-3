@@ -88,7 +88,7 @@ end
 
 % For quick texture mipmap creation, the hardware needs to support
 % framebuffer object extensions...
-if ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_framebuffer_object'))
+if ~isempty(findstr(glGetString(GL.EXTENSIONS), '_framebuffer_object'))
     % Automatic, fast, hardware based creation of mipmap texture resolution
     % pyramids supported on this system. Use it to quickly create the
     % texture mipmap object:
@@ -140,7 +140,11 @@ end
 
 % Setup magnification and minification filters:
 glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_MAG_FILTER,GL.LINEAR); %  scale linearly when rendered image bigger than texture
-glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_MIN_FILTER,GL.LINEAR_MIPMAP_LINEAR); %  scale linearly + mipmap when rendered image smalled than texture
+if ~IsGLES
+    glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_MIN_FILTER,GL.LINEAR_MIPMAP_LINEAR); %  scale linearly + mipmap when rendered image smalled than texture
+else
+    glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_MIN_FILTER,GL.LINEAR);
+end
 
 % Set wrapping behaviour to repeat infinite in any direction:
 glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_WRAP_S,GL.REPEAT);
@@ -267,8 +271,9 @@ zpos=0;
 while 1
     % Check keyboard:
     [isdown secs keycode]=KbCheck;
-    if isdown
-        if keycode(escape)
+    [mox, moy, buttons]=GetMouse;
+    if isdown || any(buttons)
+        if keycode(escape) || any(buttons)
             % Exit loop, and thereby the demo.
             break;
         end
@@ -319,7 +324,7 @@ while 1
     % moving textured layers.
 
     % Draw lowest layer of groundplane in uniform color:
-    glColor4fv(texcolor(1,:));
+    glColor4f(texcolor(1,1), texcolor(1,2), texcolor(1,3), texcolor(1,4));
     glDisable(GL.TEXTURE_2D);
     glBlendFunc(GL.ONE,GL.ZERO);
     glBegin(GL.QUADS);
@@ -352,7 +357,7 @@ while 1
     rotpos=rotpos+rotspeed;
     if (rotpos>360.0) rotpos=rotpos-360.0; end
     if (rotpos<-360.0) rotpos=rotpos+360.0; end
-    glRotated(rotpos,0.0,1.0,0.0);
+    glRotatef(rotpos,0.0,1.0,0.0);
 
     % Update layer scalings and layer order:
     for i=0:4

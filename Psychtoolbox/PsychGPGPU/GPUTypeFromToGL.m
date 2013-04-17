@@ -1,6 +1,14 @@
 function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj, keepmapped, mapflags)
 % outObj = GPUTypeFromToGL(cmd, inObj [, glObjType][, outObj][, keepmapped][, mapflags])
 %
+% Note: Calling this command requires calling the following command first
+% to initialize Psychtoolbox GPU computing support:
+%
+% PsychImaging('AddTask', 'General', 'UseGPGPUCompute', 'GPUmat');
+%
+% Supported 'cmd' commands:
+% -------------------------
+%
 % if cmd is zero, then convert an OpenGL object of type glObjType,
 % referenced by handle inObj into a GPU object and return it in outObj. If
 % the optional outObj is provided as input argument, try to recycle it --
@@ -111,16 +119,24 @@ function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj, keepmapped, map
 
 % History:
 % 30.01.2013  mk  Written.
+% 15.04.2013  mk  Require use of PsychImaging(..., 'UseGPGPUCompute', ...);
 %
+
 global GL;
 persistent initialized;
 
-if isempty(initialized)
-    % Start/Initialize GPUmat GPU computing toolkit if not already started:
-    if ~GPUstart(1)
-        GPUstart;
-    end
+% This global variable signals if a GPGPU compute api is enabled, and which
+% one. It gets initialized by PsychImaging() if usercode requests GPGPU
+% compute support: 0 = None, 1 = GPUmat.
+global psych_gpgpuapi;
 
+if isempty(initialized)
+    % Make sure GPGPU computing got enabled by PsychImaging and GPU api
+    % type 1, the GPUmat toolbox, is in use:
+    if isempty(psych_gpgpuapi) || (psych_gpgpuapi ~= 1)
+        error('GPGPU computing via GPUmat toolbox not enabled! Aborted.');
+    end
+    
     if isempty(GL)
         InitializeMatlabOpenGL([], [], 1);
     end

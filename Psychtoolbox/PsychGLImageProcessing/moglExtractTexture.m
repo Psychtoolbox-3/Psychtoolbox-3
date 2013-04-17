@@ -319,7 +319,7 @@ if strcmpi(cmd, 'CreateContext')
     % channel encodes t-coord of 2D texture coordinate, blue encodes a
     % foreground/background flag, alpha encodes z-buffer depths.
     [ctx.silhouetteWidth, ctx.silhouetteHeight] = RectSize(ctx.rect);
-    ctx.silhouetteBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.silhouetteWidth, ctx.silhouetteHeight], 128);
+    ctx.silhouetteBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.silhouetteWidth, ctx.silhouetteHeight], 128, 32);
 
     % Retrieve OpenGL texture handle for the sihouetteBuffer:
     ctx.silhouetteTexture = Screen('GetOpenGLTexture', ctx.parentWin, ctx.silhouetteBuffer);
@@ -339,12 +339,12 @@ if strcmpi(cmd, 'CreateContext')
     % Again a 32bpc float offscreen window FBO, but the resolution is
     % chosen per user spec to be fine enough in texture coordinate space to
     % match the size of the extracted texture map:
-    ctx.trackingBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 128);
+    ctx.trackingBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 128, 32);
 
     % Final buffer with extraced texture image. This one will get filled
     % by the texture extraction shader. A RGBA8 texture format is
     % sufficient, therefore we allocate a standard 32 bit surface:
-    ctx.OutTextureBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 32);
+    ctx.OutTextureBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 32, 32);
     
     % Load all our shaders - Need to do this only on original context
     % creation, as shaders are recycled across context reinits. However, we

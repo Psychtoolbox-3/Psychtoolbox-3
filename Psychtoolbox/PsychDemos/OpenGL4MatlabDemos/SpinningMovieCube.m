@@ -28,6 +28,7 @@ function SpinningMovieCube(moviename)
 % 16-Feb-2006 -- Modified for use with new MOGL (MK)
 % 05-Mar-2006 -- Cleaned up for public consumption (MK)
 % 23-Aug-2012 -- Adapt to PTB 3.0.10 file structure, cleanup. (MK)
+% 06-Apr-2013 -- Make compatible with OpenGL-ES1.1. (MK)
 
 % Assign default movie file, if none provided:
 if nargin < 1
@@ -123,7 +124,6 @@ global target;
 global tu
 global tv
 
-
 % Run playback loop until key pressed:
 while (1)
     % Fetch next video frame from movie file and return a Psychtoolbox
@@ -157,7 +157,7 @@ while (1)
 
     % Draw cube:
     glPushMatrix;
-    glRotated(theta,rotatev(1),rotatev(2),rotatev(3));
+    glRotatef(theta,rotatev(1),rotatev(2),rotatev(3));
     glClear;
         
     cubeface([ 4 3 2 1 ],texname(1));
@@ -213,18 +213,28 @@ global tv
 glEnable(target);
 glBindTexture(target,tx);
 glTexEnvfv(GL.TEXTURE_ENV,GL.TEXTURE_ENV_MODE,GL.MODULATE);
+% Setup filtering for the textures:
+glTexParameterfv(GL.TEXTURE_2D,GL.TEXTURE_MAG_FILTER,GL.NEAREST);
+glTexParameterfv(GL.TEXTURE_2D,GL.TEXTURE_MIN_FILTER,GL.NEAREST);
 
-% Draw the textured polygon with proper texture coordinates:
-glBegin(GL.POLYGON);
-glNormal3dv(n);
-glTexCoord3dv([ 0 0 ]);
-glVertex3dv(v(:,i(1)));
-glTexCoord3dv([ tu 0 ]);
-glVertex3dv(v(:,i(2)));
-glTexCoord3dv([ tu tv ]);
-glVertex3dv(v(:,i(3)));
-glTexCoord3dv([ 0 tv ]);
-glVertex3dv(v(:,i(4)));
+% Begin drawing of a new quad:
+glBegin(GL.QUADS);
+
+% Assign n as normal vector for this polygons surface normal:
+glNormal3f(n(1), n(2), n(3));
+
+% Define vertex 1 by assigning a texture coordinate and a 3D position:
+glTexCoord2f(0, 0);
+glVertex3f(v(1,i(1)),v(2,i(1)),v(3,i(1)));
+% Define vertex 2 by assigning a texture coordinate and a 3D position:
+glTexCoord2f(tu, 0);
+glVertex3f(v(1,i(2)),v(2,i(2)),v(3,i(2)));
+% Define vertex 3 by assigning a texture coordinate and a 3D position:
+glTexCoord2f(tu, tv);
+glVertex3f(v(1,i(3)),v(2,i(3)),v(3,i(3)));
+% Define vertex 4 by assigning a texture coordinate and a 3D position:
+glTexCoord2f(0, tv);
+glVertex3f(v(1,i(4)),v(2,i(4)),v(3,i(4)));
 glEnd;
 
 return

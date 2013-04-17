@@ -586,6 +586,10 @@ psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
     return(TRUE);
   }
 
+  // No-op if no X-Display connection handle is available because we are not running
+  // on a X11 based display backend:
+  if (!winRec->targetSpecific.privDpy) return(TRUE);
+
   // Rebuild needed. Do we have already a display list?
   if (winRec->textAttributes.DisplayList > 0) {
     // Yep. Destroy it...
@@ -611,13 +615,13 @@ psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
   for(i = 0; i < (int) strlen(fontname); i++) fontname[i]=tolower(fontname[i]);
 
   // Try to load font:
-  fontstruct = XLoadQueryFont(winRec->targetSpecific.deviceContext, fontname); 
+  fontstruct = XLoadQueryFont(winRec->targetSpecific.privDpy, fontname); 
 
   // Child-protection against invalid fontNames or unavailable/unknown fonts:
   if (fontstruct == NULL) {
     // Something went wrong...
     printf("Failed to load X11 font with name %s.\n\n", winRec->textAttributes.textFontName);
-    fontnames = XListFonts(winRec->targetSpecific.deviceContext, "*", 1000, &actual_count_return);
+    fontnames = XListFonts(winRec->targetSpecific.privDpy, "*", 1000, &actual_count_return);
     if (fontnames) {
       printf("Available X11 fonts are:\n\n");
       for (i=0; i<actual_count_return; i++) printf("%s\n", (char*) fontnames[i]);
@@ -665,7 +669,7 @@ psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
   // Release font and associated font info:
   XFreeFontInfo(NULL, fontstruct, 1);
   fontstruct=NULL;
-  XUnloadFont(winRec->targetSpecific.deviceContext, font);
+  XUnloadFont(winRec->targetSpecific.privDpy, font);
 
   // Our new font is ready to rock!
   return(TRUE);
@@ -1288,7 +1292,7 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 	// The functions in the plugin will be linked immediately and if successfull, made available
 	// directly for use within the code, with no need to dlsym() manually bind'em:
 	if (NULL == drawtext_plugin) {
-        while ((NULL == drawtext_plugin) && (retrycount < 2)) {
+        while ((NULL == drawtext_plugin) && (retrycount < ((PSYCH_SYSTEM == PSYCH_LINUX) ? 3 : 2))) {
             // Assign name to search for:
             // Assign name of plugin shared library based on target OS:
             #if PSYCH_SYSTEM == PSYCH_OSX
@@ -1296,9 +1300,23 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                 if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl.dylib");
                 if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl64.dylib");
             #else
-                // Linux:
-                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl.so.1");;
-                if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl64.so.1");;
+                // Linux: More machine architectures, also support for OpenGL-ES et al.:
+
+                // Try 32-Bit Intel, or Debian machine arch specific version first:
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+
+                // ARM 32-Bit has its own version suffix, unless provided by Debian:
+                #if defined(__arm__) || defined(__thumb__)
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s_arm.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+                #endif
+
+                // ARM 64-Bit has its own version suffix, unless provided by Debian:
+                #if defined(__aarch64__)
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s_arm64.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+                #endif
+
+                if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl%s.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+                if (retrycount == 2) sprintf(pluginName, "libptbdrawtext_ftgl%s64.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
             #endif
 
             // Try to auto-detect install location of plugin inside the Psychtoolbox/PsychBasic folder.

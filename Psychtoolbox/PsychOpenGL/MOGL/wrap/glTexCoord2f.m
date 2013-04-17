@@ -8,10 +8,16 @@ function glTexCoord2f( s, t )
 
 % 25-Mar-2011 -- created (generated automatically from header files)
 
+% ---protected---
+
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-moglcore( 'glTexCoord2f', s, t );
+if ~IsGLES
+    moglcore( 'glTexCoord2f', s, t );
+else
+    moglcore( 'ftglTexCoord2f', s, t );
+end
 
 return

@@ -21,7 +21,7 @@ function GPUFFTVideoCaptureDemo(usegpu, showfft, fwidth, roi, depth, deviceId, c
 %
 % Usage:
 %
-% GPUFFTVideoCaptureDemo([usegpu=1][, showfft=0][, fwidth=11][, roi=[0 0 640 480]][, depth][,deviceId=0][, cameraname])
+% GPUFFTVideoCaptureDemo([usegpu=1][, showfft=0][, fwidth=11][, roi=[0 0 640 480]][, depth=1][, deviceId=0][, cameraname])
 %
 % Parameters:
 %
@@ -52,7 +52,7 @@ function GPUFFTVideoCaptureDemo(usegpu, showfft, fwidth, roi, depth, deviceId, c
 showmask = 0;
 
 if nargin < 1 || isempty(usegpu)
-    usegpu = 0;
+    usegpu = 1;
 end
 
 if nargin < 2 || isempty(showfft)
@@ -97,14 +97,16 @@ AssertOpenGL;
 % Skip timing tests and calibrations for this demo:
 oldskip = Screen('Preference','SkipSyncTests', 2);
 
-% Make sure GPUmat is started:
-GPUstart;
+% Open onscreen window with black background on (external) screen,
+% enable GPGPU computing support:
+screenid = max(Screen('Screens'));
+
+PsychImaging('PrepareConfiguration');
+% We explicitely request the GPUmat based api:
+PsychImaging('AddTask', 'General', 'UseGPGPUCompute', 'GPUmat');
+win = PsychImaging('OpenWindow', screenid, 0);
 
 try
-    % Open onscreen window with black background on (external) screen:
-    screenid = max(Screen('Screens'));
-    win = Screen('OpenWindow', screenid, 0);
-    
     Screen('TextSize', win, 28);
     
     % Color or mono capture and processing?

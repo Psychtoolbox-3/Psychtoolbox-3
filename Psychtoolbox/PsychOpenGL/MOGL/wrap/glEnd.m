@@ -8,10 +8,16 @@ function glEnd
 
 % 25-Mar-2011 -- created (generated automatically from header files)
 
+% ---protected---
+
 if nargin~=0,
     error('invalid number of arguments');
 end
 
-moglcore( 'glEnd' );
+if ~IsGLES
+    moglcore( 'glEnd' );
+else
+    moglcore( 'ftglEnd' );
+end
 
 return

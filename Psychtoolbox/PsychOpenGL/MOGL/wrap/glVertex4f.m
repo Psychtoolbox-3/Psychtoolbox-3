@@ -8,10 +8,16 @@ function glVertex4f( x, y, z, w )
 
 % 25-Mar-2011 -- created (generated automatically from header files)
 
+% ---protected---
+
 if nargin~=4,
     error('invalid number of arguments');
 end
 
-moglcore( 'glVertex4f', x, y, z, w );
+if ~IsGLES
+    moglcore( 'glVertex4f', x, y, z, w );
+else
+    moglcore( 'ftglVertex4f', x, y, z, w );
+end
 
 return

@@ -340,9 +340,10 @@ count = 1;
 
 % Perform a flip to sync us to vbl and take start-timestamp in t:
 t(count) = Screen('Flip', windowPtr);
+buttons = 0;
 
 % Run until a key is pressed or nmax iterations have been done:
-while count < nmax
+while (count < nmax) && ~any(buttons)
     
     % Demonstrate how mouse cursor position (or any other physical pointing
     % device location on the actual display) can be remapped to the
@@ -352,7 +353,7 @@ while count < nmax
     % locations via Screen('DrawDots') below. At least one of the squares
     % locations should correspond to the location of the mouse cursor
     % image:
-    [x,y] = GetMouse(windowPtr);
+    [x,y, buttons] = GetMouse(windowPtr);
     [x,y] = RemapMouse(windowPtr, 'AllViews', x, y);
     
     % Select left-eye image buffer for drawing:

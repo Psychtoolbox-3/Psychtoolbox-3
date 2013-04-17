@@ -295,7 +295,7 @@ function tex = BuildDotTextures(w, maxms)
         end
         
         % Build texture from it and assign it to proper index in vector:
-        tex(ms) = Screen('MakeTexture', w, dotimage);
+        tex(ms) = Screen('MakeTexture', w, dotimage, [], 32);
         
         % Build next diameter's texture...
     end

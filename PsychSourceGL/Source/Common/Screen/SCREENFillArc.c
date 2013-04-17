@@ -36,7 +36,7 @@ PsychError SCREENDrawArc(void)
     static char synopsisString[] = 
         "Draw an arc inscribed within the rect. 'color' is the clut index (scalar "
         "or [r g b] triplet) that you want to poke into each pixel; default produces "
-	"black with the standard CLUT for this window's pixelSize. Default 'rect' is "
+        "black with the standard CLUT for this window's pixelSize. Default 'rect' is "
         "entire window. Angles are measured clockwise from vertical.";
     static char seeAlsoString[] = "FrameArc FillArc";	
 	
@@ -63,10 +63,10 @@ PsychError SCREENFrameArc(void)
     static char synopsisString[] = 
         "Draw an arc inscribed within the rect. 'color' is the clut index (scalar "
         "or [r g b] triplet) that you want to poke into each pixel; default produces "
-	"black with the standard CLUT for this window's pixelSize. Default 'rect' is "
+        "black with the standard CLUT for this window's pixelSize. Default 'rect' is "
         "entire window. Angles are measured clockwise from vertical. 'penWidth' and "
-        "'penHeight' are the width and height of the pen to use. On OS-X, penWidth must "
-        "equal penHeight and the 'penMode' argument is currently ignored.";
+        "'penHeight' are the width and height of the pen to use. penWidth must equal "
+        "penHeight and the 'penMode' argument is currently ignored.";
     static char seeAlsoString[] = "DrawArc FillArc";	
     
     //all sub functions should have these two lines
@@ -93,7 +93,7 @@ PsychError SCREENFillArc(void)
 	static char synopsisString[] = 
 		"Draw a filled arc inscribed within the rect. 'color' is the clut index (scalar "
 		"or [r g b a] triplet) that you want to poke into each pixel; default produces "
-	"black with the standard CLUT for this window's pixelSize. Default 'rect' is "
+        "black with the standard CLUT for this window's pixelSize. Default 'rect' is "
 		"entire window. Angles are measured clockwise from vertical.";
 	static char seeAlsoString[] = "DrawArc FrameArc";	
 	
@@ -175,20 +175,21 @@ void PsychRenderArc(unsigned int mode)
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color,  windowRecord);
 	
-	// Backup our modelview matrix:
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
+    if (PsychIsGLClassic(windowRecord)) {
+        // Backup our modelview matrix:
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
 	
-	// Position disk at center of rect:
-	glTranslated(cx, cy, 0);
+        // Position disk at center of rect:
+        glTranslated(cx, cy, 0);
 	
-	// Scale in order to fit to rect in case w!=h:
-	glScaled(1.0, -h/w, 1.0);
+        // Scale in order to fit to rect in case w!=h:
+        glScaled(1.0, -h/w, 1.0);
 	
-	// Draw filled partial disk:
-	diskQuadric=gluNewQuadric();
+        // Draw filled partial disk:
+        diskQuadric=gluNewQuadric();
 	
-	switch (mode) {
+        switch (mode) {
 		case 1: // One pixel thin arc: InnerRadius = OuterRadius - 1
 			gluPartialDisk(diskQuadric, (w/2) - 1.0, w/2, (int) w, 2, *startAngle, *arcAngle);
 			break;
@@ -198,13 +199,27 @@ void PsychRenderArc(unsigned int mode)
 		case 3: // Filled arc:
 			gluPartialDisk(diskQuadric, 0, w/2, (int) w, 1, *startAngle, *arcAngle);
 			break;
+        }
+	
+        gluDeleteQuadric(diskQuadric);
+	
+        // Restore old matrix:
+        glPopMatrix();
 	}
-	
-	gluDeleteQuadric(diskQuadric);
-	
-	// Restore old matrix:
-	glPopMatrix();
-	
+    else {
+        switch (mode) {
+		case 1: // One pixel thin arc: InnerRadius = OuterRadius - 1
+            PsychDrawDisc(windowRecord, (float) cx, (float) cy, (w/2) - 1.0, w/2, (int) w, (float) 1, (float) -h/w, (float) *startAngle, (float) *arcAngle);
+			break;
+		case 2: // dotSize thick arc:  InnerRadius = OuterRadius - dotsize
+            PsychDrawDisc(windowRecord, (float) cx, (float) cy, (dotSize < (w/2)) ? (w/2) - dotSize : 0, w/2, (int) w, (float) 1, (float) -h/w, (float) *startAngle, (float) *arcAngle);
+			break;
+		case 3: // Filled arc:
+            PsychDrawDisc(windowRecord, (float) cx, (float) cy, 0, w/2, (int) w, (float) 1, (float) -h/w, (float) *startAngle, (float) *arcAngle);
+			break;
+        }
+    }
+
 	// Mark end of drawing op. This is needed for single buffered drawing:
 	PsychFlushGL(windowRecord);
 	

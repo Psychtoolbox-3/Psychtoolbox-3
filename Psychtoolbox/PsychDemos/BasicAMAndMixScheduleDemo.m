@@ -32,8 +32,8 @@ escape = KbName('ESCAPE');
 InitializePsychSound(1);
 
 % Open real default [] soundcard as master device (+8) for playback only (+1), with
-% standard low-latency, high timing precision mode, 1 channel, 48kHz:
-nrchannels = 1;
+% standard low-latency, high timing precision mode, 2 channels, 48kHz:
+nrchannels = 2;
 freq = 48000;
 
 % Add 15 msecs latency on Windows, to protect against shoddy drivers:
@@ -65,6 +65,14 @@ pasound2 = PsychPortAudio('OpenSlave', pamaster, 1);
 sound1 = MakeBeep(500, 1.0, freq);
 sound2 = MakeBeep(750, 1.0, freq);
 sound3 = MakeBeep(1000, 1.0, freq);
+
+% Make sure we have always 2 channels stereo output.
+% Why? Because some low-end and embedded soundcards
+% only support 2 channels, not 1 channel, and we want
+% to be robust in our demos.
+sound1 = [sound1 ; sound1];
+sound2 = [sound2 ; sound2];
+sound3 = [sound3 ; sound3];
 
 % Create audio buffers prefilled with the 3 sounds:
 pabuffer1 = PsychPortAudio('CreateBuffer', [], sound1);
@@ -130,7 +138,7 @@ envelope1 = (1 + MakeBeep(8, 1, freq)) / 2;
 
 % Fill it into standard sound buffer of pamodulator1, instead of using
 % 'CreateBuffer', just for a change...
-PsychPortAudio('FillBuffer', pamodulator1, envelope1);
+PsychPortAudio('FillBuffer', pamodulator1, [envelope1; envelope1]);
 
 % We define a repeating schedule for the pamodulator1 as well. This time
 % only 2 slots. The first plays the 1 second AM modulation signal in our
@@ -180,7 +188,7 @@ envelope2 = sin((0:1/freq:1) * pi);
 
 % Fill it into standard sound buffer of pamodulator1, instead of using
 % 'CreateBuffer', just for a change...
-PsychPortAudio('FillBuffer', pamodulator1, envelope2);
+PsychPortAudio('FillBuffer', pamodulator1, [envelope2; envelope2]);
 
 % Clear and reset our 2-slot schedule:
 PsychPortAudio('UseSchedule', pamodulator1, 2);
@@ -233,7 +241,7 @@ KbStrokeWait;
 noise = 2 * rand(1, 5 * freq) - 1;
 
 % Into pasound2's standard buffer it goes...
-PsychPortAudio('FillBuffer', pasound2, noise);
+PsychPortAudio('FillBuffer', pasound2, [noise ; noise]);
 
 % Create a dedicated AM modulator for pasound2 as well:
 pamodulator2 = PsychPortAudio('OpenSlave', pasound2, 32);
@@ -245,7 +253,7 @@ envelope3 = 0.2 + 0.8 * sin((0:1/(freq*6):1) * pi);
 
 % Fill it into standard sound buffer of pamodulator2, instead of using
 % 'CreateBuffer', just for a change...
-PsychPortAudio('FillBuffer', pamodulator2, envelope3);
+PsychPortAudio('FillBuffer', pamodulator2, [envelope3 ; envelope3]);
 
 % Ok, we don't use any schedules for pasound2 and pamodulator2, we had that
 % already. Instead we just start both of them, set to infinite repeat. We
@@ -367,3 +375,4 @@ PsychPortAudio('Close');
 fprintf('Finished. Bye!\n');
 
 return;
+

@@ -62,6 +62,8 @@ static char synopsisString[] =
 	"correct. The biggest speedup is expected for creation of standard 8 bit integer textures from uint8 input matrices, "
 	"e.g., images from imread(), but also for 8 bit integer Luminance+Alpha and RGB textures from double format input matrices.\n"
     "A 'specialFlags' == 8 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
+    "A 'specialFlags' == 32 setting will prevent automatic closing of the texture if Screen('Close'); is called. Only "
+    "Screen('Close', textureIndex); would close the texture.\n"
 	"'floatprecision' defines the precision with which the texture should be stored and processed. Default value is zero, "
 	"which asks to store textures with 8 bit per color component precision, a suitable format for standard images read via "
 	"imread(). A non-zero value will store the textures color component values as floating point precision numbers, useful "
@@ -73,7 +75,7 @@ static char synopsisString[] =
 	"manufactured before the year 2007. If a value of 1 is provided, asking for 16 bit floating point textures, but the graphics "
 	"hardware does not support this, then PTB tries to allocate a 15 bit precision signed integer texture instead, assuming the "
 	"graphics hardware supports that. Such a texture is more precise than the 16 bit floating point texture it replaces, but can "
-	"not store values outside the range [-1.0; 1.0].\n"
+	"not store values outside the range [-1.0; 1.0]. On OpenGL-ES hardware, a 32 bit floating point texture is selected instead.\n"
 	"'textureOrientation' This optional argument labels textures with a special orientation. "
 	"Normally (value 0) a Matlab matrix is passed in standard Matlab column-major dataformat. This is efficient for drawing of "
 	"textures but not for processing them via Screen('TransformTexture'). Therefore textures need to be transformed on demand "
@@ -207,6 +209,15 @@ PsychError SCREENMakeTexture(void)
 		// without any benefit for precision.
 		PsychErrorExitMsg(PsychError_user, "Creation of a floating point precision texture requested, but uint8 matrix provided! Only double matrices are acceptable for this mode.");
 	}
+
+    // Float texture on OpenGL-ES requested?
+    if ((usefloatformat > 0) && PsychIsGLES(windowRecord)) {
+        // 32-bpc float textures supported? We can't do 16-bpc so we fail if 32 bpc is unsupported:
+        if (!(windowRecord->gfxcaps & kPsychGfxCapFPTex32)) PsychErrorExitMsg(PsychError_user, "Creation of a floating point precision texture requested, but this is not supported by your hardware!");
+
+        // Upgrade float format to 2 aka 32 bpc float, the only thing we can handle:
+        usefloatformat = 2;
+    }
 
     //Create a texture record.  Really just a window record adapted for textures.  
     PsychCreateWindowRecord(&textureRecord);						//this also fills the window index field.
@@ -590,6 +601,15 @@ PsychError SCREENMakeTexture(void)
 		for(ix=0; ix<iters; ix++, texturePointer_f++) if(fabs((double) *texturePointer_f) < 1e-9) { *texturePointer_f = 0.0; }
 	}
 
+    // On OpenGL-ES, 32 bpc floating point textures are selected via the GL_FLOAT type specifier, and
+    // internal format must be == external format == not defining resolution. External format is already
+    // properly set by common desktop/es HDR setup code, as is type spec, so we just need to make sure that
+    // internal format is consistent with external one:
+    // MK NOPE: Seems i misread the spec and float textures are treated identical to desktop OpenGL, so this
+    // is probably not needed, at least not on NVidia. Leave it here in case this is a NVidia peculiarity and
+    // my old interpretation was actually correct for any other hardware.
+    //    if ((usefloatformat == 2) && PsychIsGLES(windowRecord)) textureRecord->textureinternalformat = textureRecord->textureexternalformat;
+
     // The memory buffer now contains our texture data in a format ready to submit to OpenGL.
     
 	// Assign parent window and copy its inheritable properties:
@@ -663,7 +683,10 @@ PsychError SCREENMakeTexture(void)
     
     // specialFlags setting 8? Disable auto-mipmap generation:
     if (usepoweroftwo & 0x8) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;
-    
+
+    // A specialFlags setting of 32? Protect texture against deletion via Screen('Close') without providing a explicit handle:
+    if (usepoweroftwo & 32) textureRecord->specialflags |= kPsychDontDeleteOnClose;    
+
     if(PsychPrefStateGet_DebugMakeTexture()) 	//MARK #4
         StoreNowTime();
     

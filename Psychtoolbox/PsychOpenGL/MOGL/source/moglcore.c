@@ -188,16 +188,37 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         // Yes. Initialize GLEW, the GL Extension Wrangler Library. This will
         // auto-detect and dynamically link/bind all core OpenGL functionality
         // as well as all possible OpenGL extensions on OS-X, Linux and Windows.
-        err = glewInit();
+        err = GLEW_OK;
+        #ifdef LINUX
+        // Linux is special: If we use the Waffle backend for display system binding, then our display backend
+        // may be something else than GLX (e.g., X11/EGL, Wayland/EGL, GBM/EGL, ANDROID/EGL etc.), in which case
+        // glewInit() would not work and would crash hard. Detect if we're on classic Linux or Linux with X11/GLX.
+        // If so, execute glewInit(), otherwise call glewContextInit() - a routine which skips GLX specific setup,
+        // therefore only initializes the non-GLX parts. We need a hacked glew.c for this function to be available,
+        // as original upstream GLEW makes that function private (static):
+        if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx")) {
+            // Classic backend or GLX backend: The full show.
+            err = glewInit();
+        }
+        else {
+            // Non-GLX backend, probably EGL: Reduced show.
+            err = glewContextInit();
+        }
+        #else
+            // Other os'es: Always init GLEW:
+            err = glewInit();
+        #endif
+
         if (GLEW_OK != err) {
             // Failed! Something is seriously wrong - We have to abort :(
             printf("MOGL: Failed to initialize! Probably you called an OpenGL command *before* opening an onscreen window?!?\n");
             printf("GLEW reported the following error: %s\n", glewGetErrorString(err)); fflush(NULL);
             goto moglreturn;
         }
+
         // Success. Ready to go...
 		if (debuglevel > 1) {
-			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2012 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
+			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2013 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
             #ifdef WINDOWS
 			printf("On MS-Windows, we make use of the freeglut library, which is Copyright (c) 1999-2000 Pawel W. Olszta, licensed under compatible MIT/X11 license.\n");
             printf("The precompiled Windows binary DLL's have been kindly provided by http://www.transmissionzero.co.uk/software/freeglut-devel/ -- Thanks!\n");
@@ -211,9 +232,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         
 		#ifdef FREEGLUT
 		// FreeGlut must be initialized, otherwise it will emergency abort the whole application.
-		glutInit( &noargs, &dummyargp);
+		// However, we skip init if we're on a setup without GLX display backend, as this would
+		// abort us due to lack of GLX. On non-GLX we simply can't use FreeGlut at all.
+		if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx")) {
+			// GLX display backend - Init and use FreeGlut:
+			glutInit( &noargs, &dummyargp);
+		}
 		#endif
-		
+
+        // Running on a OpenGL-ES rendering api under Linux?
+        if (getenv("PSYCH_USE_GFX_BACKEND") && strstr(getenv("PSYCH_USE_GFX_BACKEND"), "gles")) {
+            // Yes. We emulate some immediate mode rendering commands, which aren't available
+            // in OpenGL Embedded Subset at all, via "our" own emulation code. This code emulates
+            // immediate mode on top of client vertex arrays and batch submission.
+            if (debuglevel > 1) {
+                printf("OpenGL-ES rendering API active: Emulating immediate mode rendering via David Petrie's ftglesGlue emulation code.\n");
+            }
+        }
+
 		// Register exit-handler: When flushing the mex-file, we free all allocated buffer memory:
 		mexAtExit(&mexExitFunction);
 		

@@ -126,6 +126,9 @@ private:
 	// Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine?
 	bool isDCE61(void);
 
+	// Is a given ATI/AMD GPU a DCE6.4 type ASIC, i.e., with the new display engine?
+	bool isDCE64(void);
+	
 public:
 	// IOService methods
 	virtual bool init(OSDictionary* dictionary = 0);

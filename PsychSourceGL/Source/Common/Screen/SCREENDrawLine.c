@@ -3,7 +3,8 @@
 
 	AUTHORS:
 
-	Allen.Ingling@nyu.edu		awi 
+	Allen.Ingling@nyu.edu           awi
+    mario.kleiner@tuebingen.mpg.de  mk
 
 	PLATFORMS:	
 
@@ -19,7 +20,6 @@
 	TO DO:
 
 */
-
 
 #include "Screen.h"
 
@@ -83,19 +83,27 @@ PsychError SCREENDrawLine(void)
 
     glGetFloatv(GL_LINE_WIDTH_RANGE, (GLfloat*) &linesizerange);
     if (penSize < linesizerange[0] || penSize > linesizerange[1]) {
-		printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
-			   penSize, linesizerange[0], linesizerange[1]);
-		PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
+        // Does ES-GPU only support a fixed line width of 1 pixel?
+        if ((linesizerange[0] == linesizerange[1]) && (linesizerange[0] <= 1) && PsychIsGLES(windowRecord)) {
+            // Yes. Not much point bailing on this, as it should be easily visible
+            // during testing of a studies code on a OpenGL-ES device.
+            penSize = 1;
+        }
+        else {
+            printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
+                   penSize, linesizerange[0], linesizerange[1]);
+            PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
+        }
 	}
 
-	glLineWidth((GLfloat)penSize);
+	glLineWidth((GLfloat) penSize);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
-	glBegin(GL_LINES);
-		glVertex2d((GLdouble)sX, (GLdouble)sY);
-		glVertex2d((GLdouble)dX, (GLdouble)dY);
-	glEnd();
+	GLBEGIN(GL_LINES);
+		GLVERTEX2f((GLfloat)sX, (GLfloat)sY);
+		GLVERTEX2f((GLfloat)dX, (GLfloat)dY);
+	GLEND();
 	
 	glLineWidth((GLfloat) 1);
 

@@ -68,13 +68,16 @@ static char synopsisString[] =
 	"the selectable depths are additionally 64 bits or 128 bits, corresponding to 16 bits or "
 	"32 bits floating point precision per color component. If 64 bits are selected but the "
 	"hardware does not support this in float precision, a 15 bit precision per color channel "
-	"signed integer format will be tried instead.\n"
+	"signed integer format will be tried instead. On OpenGL-ES hardware, only the 32 bpc float "
+    "type or 8 bit integer type is supported, therefore a pixelSize of more than 32 will always "
+    "get silently upgraded to 128 bits per pixel, if possible.\n"
 	"'specialFlags' optional parameter to set special properties, defaults to zero. "
     "If you set it to 1 then the offscreen window is created in GL_TEXTURE_2D format if possible. Use of "
     "GL_TEXTURE_2D format is currently not automatically compatible with use of specialFlags setting 2.\n"
     "If you set 'specialFlags' to 2 then the offscreen window will be drawn with especially high precision, see "
 	"specialFlags setting of 2 in help for Screen('DrawTexture') for more explanation.\n"
     "A 'specialFlags' == 8 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
+    "A 'specialFlags' == 32 will prevent automatic closing of the offscreen window by a call to Screen('Close');\n"
 	"'multiSample' optional number of samples to use for anti-aliased drawing: This defaults "
 	"to zero if omitted, ie., no anti-aliasing is performed when drawing into this offscreen "
 	"window. If you set a positive non-zero number of samples and your system supports "
@@ -206,6 +209,9 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Get the optional specialmode flag:
     PsychCopyInIntegerArg(5, FALSE, &specialFlags);
 
+    // OpenGL-ES only supports GL_TEXTURE_2D targets, so enforce these via flags setting 1:
+    if (PsychIsGLES(targetWindow)) specialFlags |= 1;
+
 	// This command converts whatever color we got into RGBA format:
     PsychCoerceColorMode(&color);
 
@@ -294,7 +300,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 				case 64:
 					fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->depth=64; usefloatformat = 1;
 					// Need fallback for lack of float 16 support?
-					if (!(targetWindow->gfxcaps & kPsychGfxCapFPTex16)) {
+					if (!(targetWindow->gfxcaps & kPsychGfxCapFPTex16) && !PsychIsGLES(targetWindow)) {
 						// Yes. Try 16 bit signed normalized texture instead:
 						if (PsychPrefStateGet_Verbosity() > 4)
 							printf("PTB-INFO:OpenOffscreenWindow: Code requested 16 bpc float precision, but this is unsupported. Trying to use 15 bit snorm precision instead.\n");
@@ -315,6 +321,17 @@ PsychError SCREENOpenOffscreenWindow(void)
 			}			
 		}
 		
+        // Floating point framebuffer on OpenGL-ES requested?
+        if (PsychIsGLES(targetWindow) && (usefloatformat > 0)) {
+            // Yes. We only support 32 bpc float framebuffers with alpha-blending. On less supportive hardware we fail:
+            if (!(targetWindow->gfxcaps & kPsychGfxCapFPTex32) || !(targetWindow->gfxcaps & kPsychGfxCapFPFBO32)) {
+                PsychErrorExitMsg(PsychError_user, "Sorry, the requested offscreen window color resolution of 32 bpc floating point is not supported by your graphics card. Game over.");
+            }
+
+            // Supported. Upgrade requested format to 32 bpc float, whatever it was before:
+            fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->depth=128; usefloatformat = 2;
+        }
+
 		// Do we need additional depth buffer attachments?
 		needzbuffer = (PsychPrefStateGet_3DGfx()>0) ? TRUE : FALSE;
 		
@@ -475,6 +492,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 	
     // specialFlags setting 8? Disable auto-mipmap generation:
     if (specialFlags & 0x8) windowRecord->specialflags |= kPsychDontAutoGenMipMaps;    
+
+    // A specialFlags setting of 32? Protect texture against deletion via Screen('Close') without providing a explicit handle:
+    if (specialFlags & 32) windowRecord->specialflags |= kPsychDontDeleteOnClose;    
 
     // Window ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(windowRecord);

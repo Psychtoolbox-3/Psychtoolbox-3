@@ -3,12 +3,12 @@
   
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu				awi
+		mario.kleiner@tuebingen.mpg.de		mk
   
-	PLATFORMS:
-		
+    PLATFORMS:
+	
 		All.
-    
 
 	HISTORY:
 	
@@ -19,13 +19,10 @@
 		10/12/04	awi		In useString: changed "SCREEN" to "Screen", and moved commas to inside [].
 		1/15/05		awi		Removed GL_BLEND setting a MK's suggestion.  
 		2/25/05		awi		Added call to PsychUpdateAlphaBlendingFactorLazily().  Drawing now obeys settings by Screen('BlendFunction').
-		
 
 	TO DO:
-  
 
 */
-
 
 #include "Screen.h"
 
@@ -53,12 +50,11 @@ static char synopsisString[] =
 static char seeAlsoString[] = "FrameOval";	
 
 PsychError SCREENFillOval(void)  
-{
-	
+{	
 	PsychRectType			rect;
 	double					numSlices, radius, xScale, yScale, xTranslate, yTranslate, rectY, rectX;
 	PsychWindowRecordType	*windowRecord;
-	psych_bool				isArgThere;
+	psych_bool				isArgThere, isclassic;
     double					*xy, *colors;
 	unsigned char			*bytecolors;
 	int						numRects, i, nc, mc, nrsize;
@@ -76,37 +72,38 @@ PsychError SCREENFillOval(void)
 
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+    isclassic = PsychIsGLClassic(windowRecord);
 
 	perfectUpToMaxDiameter = PsychGetWidthFromRect(windowRecord->clientrect);
 	if (PsychGetHeightFromRect(windowRecord->clientrect) < perfectUpToMaxDiameter) perfectUpToMaxDiameter = PsychGetHeightFromRect(windowRecord->clientrect);
 	PsychCopyInDoubleArg(4, kPsychArgOptional, &perfectUpToMaxDiameter);
 	
-	if ((perfectUpToMaxDiameter != perfectUpToMaxDiameterOld) || (windowRecord->fillOvalDisplayList == 0)) {
-		perfectUpToMaxDiameterOld = perfectUpToMaxDiameter;
+    if ((perfectUpToMaxDiameter != perfectUpToMaxDiameterOld) || (windowRecord->fillOvalDisplayList == 0)) {
+        perfectUpToMaxDiameterOld = perfectUpToMaxDiameter;
 
-		// Compute number of subdivisions (slices) to provide a perfect oval, i.e., one subdivision for each
-		// distance unit on the circumference of the oval.
-		numSlices=3.14159265358979323846 * perfectUpToMaxDiameter;
+        // Compute number of subdivisions (slices) to provide a perfect oval, i.e., one subdivision for each
+        // distance unit on the circumference of the oval.
+        numSlices = 3.14159265358979323846 * perfectUpToMaxDiameter;
 
-		// Destroy old display list so it gets rebuilt with the new numSlices setting:
-		if (windowRecord->fillOvalDisplayList != 0) {
-			glDeleteLists(windowRecord->fillOvalDisplayList, 1);
-			windowRecord->fillOvalDisplayList = 0;
-		}
-	}
+        // Destroy old display list so it gets rebuilt with the new numSlices setting:
+        if (isclassic && (windowRecord->fillOvalDisplayList != 0)) {
+            glDeleteLists(windowRecord->fillOvalDisplayList, 1);
+            windowRecord->fillOvalDisplayList = 0;
+        }
+    }
 
-	// Already cached display list for filled ovals for this windowRecord available?
-	if (windowRecord->fillOvalDisplayList == 0) {
-		// Nope. Create our prototypical filled oval:
-		// Generate a filled disk of that radius and subdivision and store it in a display list:
-		diskQuadric=gluNewQuadric();
-		windowRecord->fillOvalDisplayList = glGenLists(1);
-		glNewList(windowRecord->fillOvalDisplayList, GL_COMPILE);
-		gluDisk(diskQuadric, 0, 1, (int) numSlices, 1);
-		glEndList();	
-		gluDeleteQuadric(diskQuadric);
-		// Display list ready for use in this and all future drawing calls for this windowRecord.
-	}
+    // Already cached display list for filled ovals for this windowRecord available?
+    if (isclassic && (windowRecord->fillOvalDisplayList == 0)) {
+        // Nope. Create our prototypical filled oval:
+        // Generate a filled disk of that radius and subdivision and store it in a display list:
+        diskQuadric=gluNewQuadric();
+        windowRecord->fillOvalDisplayList = glGenLists(1);
+        glNewList(windowRecord->fillOvalDisplayList, GL_COMPILE);
+        gluDisk(diskQuadric, 0, 1, (int) numSlices, 1);
+        glEndList();
+        gluDeleteQuadric(diskQuadric);
+        // Display list ready for use in this and all future drawing calls for this windowRecord.
+    }
 
 	// Query, allocate and copy in all vectors...
 	numRects = 4;
@@ -117,13 +114,13 @@ PsychError SCREENFillOval(void)
 	
 	// The negative position -3 means: xy coords are expected at position 3, but they are optional.
 	// NULL means - don't want a size's vector.
-	PsychPrepareRenderBatch(windowRecord, -3, &numRects, &xy, 2, &nc, &mc, &colors, &bytecolors, 0, &nrsize, NULL);
+	PsychPrepareRenderBatch(windowRecord, -3, &numRects, &xy, 2, &nc, &mc, &colors, &bytecolors, 0, &nrsize, NULL, FALSE);
 
 	// Only up to one rect provided?
 	if (numRects <= 1) {
 		// Get the oval and draw it:
 		PsychCopyRect(rect, windowRecord->clientrect);
-		isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);	
+		isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);
 		if (isArgThere && IsPsychRectEmpty(rect)) return(PsychError_none);
 		numRects = 1;
 	}
@@ -133,7 +130,7 @@ PsychError SCREENFillOval(void)
 	}
 
 	// Draw all ovals (one or multiple):
-	for (i=0; i<numRects;) {
+	for (i = 0; i < numRects;) {
 		// Per oval color provided? If so then set it up. If only one common color
 		// was provided then PsychPrepareRenderBatch() has already set it up.
 		if (nc>1) {
@@ -162,15 +159,19 @@ PsychError SCREENFillOval(void)
 				xScale=rectX/rectY;
 				radius=rectY/2;
 			}
-						
-			// Draw: Set up position, scale and size via matrix transform:
-			glPushMatrix();
-			glTranslated(xTranslate,yTranslate,0);
-			glScaled(xScale * radius, yScale * radius, 1);
-			// Draw cached disk object (stored in display list):
-			glCallList(windowRecord->fillOvalDisplayList);
-			// Done.
-			glPopMatrix();
+
+            if (isclassic) {
+                // Draw: Set up position, scale and size via matrix transform:
+                glPushMatrix();
+                glTranslatef((float) xTranslate, (float) yTranslate, (float) 0);
+                glScalef((float) (xScale * radius), (float) (yScale * radius), (float) 1);
+                // Draw cached disk object (stored in display list):
+                glCallList(windowRecord->fillOvalDisplayList);
+                glPopMatrix();
+            }
+            else {
+                PsychDrawDisc(windowRecord, (float) xTranslate, (float) yTranslate, (float) 0, (float) radius, (int) numSlices, (float) xScale, (float) yScale, 0, 360);
+            }
 		}
 		
 		// Done with this one. Set up the next one, if any...

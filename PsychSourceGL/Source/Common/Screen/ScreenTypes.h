@@ -250,6 +250,19 @@ typedef struct {
 // Use old-style setup of the override_redirect flag for Linux X11 windows, as it was done until end of 2012?
 #define kPsychOldStyleOverrideRedirect (1 << 25)
 
+// Force use of native beamposition query mechanism instead
+// of our own homegrown solution, or no beampos query at all:
+// At least OSX 10.8.x is so broken that our own implementation
+// is always the better choice going forward. On Intel and AMD,
+// OSX native method is unsupported, on all platforms it is
+// deprecated. On NVidia when it "works", it is more noisy,
+// higher overhead and always slightly buggy. On NVidia with
+// at least GeForce-600 series and OSX 10.8, it is utterly
+// broken on anything but analog VGA CRT monitors.
+// This option allows to enforce use of the broken OSX
+// implementation, e.g., for testing or comparison purposes.
+#define kPsychForceUseNativeBeamposQuery (1 << 26)
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

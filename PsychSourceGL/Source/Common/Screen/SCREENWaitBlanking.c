@@ -240,11 +240,7 @@ PsychError SCREENWaitBlanking(void)
             PsychOSFlipWindowBuffers(windowRecord);
             
             // Wait for swap-completion, aka beginning of VBL:
-            glColor4f(0,0,0,0);
-            glBegin(GL_POINTS);
-            glVertex2i(10,10);
-            glEnd();
-            glFinish();
+            PsychWaitPixelSyncToken(windowRecord);
             
             // VBL happened - Take system timestamp:
             PsychGetAdjustedPrecisionTimerSeconds(&tvbl);

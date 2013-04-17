@@ -164,6 +164,13 @@
 %
 % The PsychtoolboxKernelDriver.kext - MIT license : Mario Kleiner.
 %
+% Screen on Linux, when compiled for multiple graphics and display
+% backends, typically on embedded devices, utilizes Chad Versaces
+% excellent Waffle display library, which is copyright and funded by
+% Intel, licensed to us under a compatible OSS license - see below for
+% exact licensing text: http://people.freedesktop.org/~chadversary/waffle/
+%
+%
 % PsychCV MEX file        - Individual source files BSD-3 or GPL v2+
 %                           license, see their source code for details.
 %                           Compiled MEX file GPL v2+ license. Various
@@ -1316,3 +1323,33 @@
 %
 % =========================================================================
 %
+% Full text of Waffle library license:
+% ====================================
+% Copyright 2012 Intel Corporation
+%
+% All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are met:
+%
+% - Redistributions of source code must retain the above copyright notice, this
+%   list of conditions and the following disclaimer.
+%
+% - Redistributions in binary form must reproduce the above copyright notice,
+%   this list of conditions and the following disclaimer in the documentation
+%   and/or other materials provided with the distribution.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+% DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+% FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+% DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+% SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+% CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+% OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+% OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+%
+% END OF TERMS AND CONDITIONS
+% 
+% =========================================================================

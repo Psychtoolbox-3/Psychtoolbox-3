@@ -21,7 +21,7 @@ function GPUFFTMoviePlaybackDemo(usegpu, showfft, fwidth, roi, depth, moviename)
 %
 % Usage:
 %
-% GPUFFTMoviePlaybackDemo([usegpu=1][, showfft=0][, fwidth=11][, roi][, depth][, moviename])
+% GPUFFTMoviePlaybackDemo([usegpu=1][, showfft=0][, fwidth=11][, roi][, depth=1][, moviename])
 %
 % Parameters:
 %
@@ -44,7 +44,7 @@ function GPUFFTMoviePlaybackDemo(usegpu, showfft, fwidth, roi, depth, moviename)
 showmask = 0;
 
 if nargin < 1 || isempty(usegpu)
-    usegpu = 0;
+    usegpu = 1;
 end
 
 if nargin < 2 || isempty(showfft)
@@ -85,14 +85,16 @@ AssertOpenGL;
 % Skip timing tests and calibrations for this demo:
 oldskip = Screen('Preference','SkipSyncTests', 2);
 
-% Make sure GPUmat is started:
-GPUstart;
+% Open onscreen window with black background on (external) screen,
+% enable GPGPU computing support:
+screenid = max(Screen('Screens'));
 
-try
-    % Open onscreen window with black background on (external) screen:
-    screenid = max(Screen('Screens'));
-    win = Screen('OpenWindow', screenid, 0);
-    
+PsychImaging('PrepareConfiguration');
+% We explicitely request the GPUmat based api:
+PsychImaging('AddTask', 'General', 'UseGPGPUCompute', 'GPUmat');
+win = PsychImaging('OpenWindow', screenid, 0);
+
+try    
     Screen('TextSize', win, 28);
     
     % Color or mono processing?
@@ -108,11 +110,9 @@ try
     
     % Open movie file:
     movie = Screen('OpenMovie', win, moviename);
-    
     Screen('SetMovieTimeIndex', movie, 0);
     
-    % Play at normal speed forward, looping, no sound:
-    %Screen('PlayMovie', movie, 1, 1, 0.0);
+    % Get first texture. Loop until you got it:
     tex = 0;
     while tex == 0
         tex = Screen('GetMovieImage', win, movie, 0);
@@ -213,6 +213,11 @@ try
             % Wait for next video image to arrive and retrieve a 'tex'ture
             % handle to it. Recylcle 'tex'ture from previous cycle, if any:
             tex = Screen('GetMovieImage', win, movie);
+            
+            % Break out of playback loop once end of movie is reached:
+            if tex <= 0
+                break;
+            end
             
             % Our video 'tex' is in 8 bit integer format, but GPUmat
             % needs single() format aka 32 bpc float. We convert the

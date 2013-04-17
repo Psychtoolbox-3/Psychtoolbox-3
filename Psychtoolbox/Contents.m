@@ -60,6 +60,7 @@
 % PsychFiles             - Process text files.
 % PsychGamma             - Fit monitor gamma functions.
 % PsychGLImageProcessing - Built-in image processing via graphics hardware.
+% PsychGPGPU             - General purpose accelerated computing on GPUs.
 % PsychHardware          - Interface to plug-in hardware.
 % PsychInitialize        - Initialize and deinitialize MATLAB
 % PsychMatlabTests       - Document the few bugs in Matlab 5.2.1.

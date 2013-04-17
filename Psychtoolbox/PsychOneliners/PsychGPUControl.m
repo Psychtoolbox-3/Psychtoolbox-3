@@ -165,7 +165,6 @@ return; %#ok<UNRCH>
 end
 
 function rc = executeRadeoncmd(cmdpostfix)
-    % Default to a return code of 1 for success:
     if IsOSX
         % A no-op on OS/X, as this is not supported at all.
         rc = 1;
@@ -184,11 +183,18 @@ function rc = executeRadeoncmd(cmdpostfix)
     doCmd = strcat('"', [PsychtoolboxRoot cmdprefix] ,'"');
 
     % Call final command, return its return status code:
-    rc = system([doCmd cmdpostfix]);
+    [rc, msg] = system([doCmd cmdpostfix]);
 
     % Code has it backwards 1 = success, 0 = failure. Remap to our
     % convention:
     rc = 1 - rc;
     
+    % Output potential status or error messages, unless it is a message
+    % that signals we are not executing on a AMD/ATI GPU with Catalyst
+    % driver, ie., that the whole thing was a no-op:
+    if isempty(strfind(msg, 'ADL library not found!'))
+        disp(msg);
+    end
+
     return;
 end

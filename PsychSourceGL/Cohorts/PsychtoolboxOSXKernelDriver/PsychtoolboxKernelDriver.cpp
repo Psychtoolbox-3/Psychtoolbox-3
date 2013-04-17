@@ -96,7 +96,20 @@ static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET,
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for December 2012 (last update e-mail patch / commit 21-Nov-2012). Will need updates for anything after start of 2013 */
+/* Mappings up to date for March 2013 (last update e-mail patch / commit 15-Mar-2013). Will need updates for anything after start of April 2013 */
+
+/* Is a given ATI/AMD GPU a DCE6.4 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE64(void)
+{
+    bool isDCE64 = false;
+
+    // Everything == OLAND is DCE6.4 -- This is part of the "Southern Islands" GPU family.
+
+    // OLAND in 0x66xx range:
+    if ((fPCIDeviceId & 0xFF00) == 0x6600) isDCE64 = true;
+
+    return(isDCE64);
+}
 
 /* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE61(void)
@@ -132,7 +145,10 @@ bool PsychtoolboxKernelDriver::isDCE6(void)
     
 	// All DCE-6.1 engines are also DCE-6:
 	if (isDCE61()) isDCE6 = true;
-    
+
+	// All DCE-6.4 engines are also DCE-6:
+	if (isDCE64()) isDCE6 = true;
+
 	return(isDCE6);
 }
 
@@ -285,8 +301,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		if (isDCE4() || isDCE5() || isDCE6()) {
             fRadeonLowlimit = 0x6df0;
 
-            // Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 (which still has only 2) or DCE-6.1 (4 heads), supports up to six display heads:
-            if (!isDCE41() && !isDCE61()) fNumDisplayHeads = 6;
+            // Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
+            if (!isDCE41() && !isDCE61() && !isDCE64()) fNumDisplayHeads = 6;
             
             // DCE-6.1 "Trinity" chip family supports 4 display heads:
             if (!isDCE41() && isDCE61()) fNumDisplayHeads = 4;

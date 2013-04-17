@@ -1094,7 +1094,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Use of CoreVideo is needed on 10.7 and later due to brokeness of the old method (thanks Apple!):
     if ((osMajor > 10) || (osMinor >= 7)) {
         useCoreVideoTimestamping = TRUE;
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Broken Apple OS/X 10.7 or later detected: Using CoreVideo timestamping instead of precise vbl-irq timestamping.\n");
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Deficient Apple OS/X 10.7 or later detected: Would use more fragile CoreVideo timestamping instead of precise vbl-irq timestamping\n");
+            printf("PTB-INFO: as fallback. Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual onset timestamping\n");
+            printf("PTB-INFO: or timing. See 'help PsychtoolboxKernelDriver' for instructions.\n");
+        }
     } else {
         useCoreVideoTimestamping = FALSE;
     }
@@ -1341,9 +1345,10 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Releasing CVDisplayLink for screen %i.\n", windowRecord->screenNumber);
             
             if (CVDisplayLinkIsRunning(cvDisplayLink[windowRecord->screenNumber])) CVDisplayLinkStop(cvDisplayLink[windowRecord->screenNumber]);
-            PsychYieldIntervalSeconds(0.020);
+            PsychYieldIntervalSeconds(0.1);
             CVDisplayLinkRelease(cvDisplayLink[windowRecord->screenNumber]);
             cvDisplayLink[windowRecord->screenNumber] = NULL;
+            PsychYieldIntervalSeconds(0.1);
 
             // Teardown shared data structure and mutex:
             PsychDestroyMutex(&(cvDisplayLinkData[windowRecord->screenNumber].mutex));

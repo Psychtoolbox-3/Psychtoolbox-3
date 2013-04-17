@@ -38,13 +38,19 @@ AssertOpenGL;
 % Skip timing tests and calibrations for this demo:
 oldskip = Screen('Preference','SkipSyncTests', 2);
 
-% Make sure GPUmat is started:
-GPUstart;
+% Open onscreen window with black background on (external) screen,
+% enable GPGPU computing support:
+screenid = max(Screen('Screens'));
 
-try 
-    % Open onscreen window with black background on (external) screen:
-    screenid = max(Screen('Screens'));
-    w = Screen('OpenWindow', screenid, 0);
+PsychImaging('PrepareConfiguration');
+% We explicitely request the GPUmat based api:
+PsychImaging('AddTask', 'General', 'UseGPGPUCompute', 'GPUmat');
+w = PsychImaging('OpenWindow', screenid, 0);
+
+try
+    Screen('TextSize', w, 28);
+    DrawFormattedText(w, 'Please be patient throughout the demo.\nSome benchmark steps are time intense...', 'center', 'center', 255);
+    Screen('Flip', w);
     
     % Read our beloved bunny image from filesystem:
     bunnyimg = imread([PsychtoolboxRoot 'PsychDemos/konijntjes1024x768.jpg']);
@@ -75,9 +81,9 @@ try
     dbunny = dbunny(:,:,2);
     
     % Show it pre-transform:
-%     close all;
-%     imshow(dbunny);
-%     title('Pre-FFT Bunny.');
+    close all;
+    imshow(dbunny);
+    title('Pre-FFT Bunny.');
     
     % Perform 2D-FFT in Matlab/Octave on CPU:
     f = fft2(dbunny);
@@ -98,36 +104,40 @@ try
     % frequency spectrum matches -- Don't do this at home (or for real research scripts)!
     mask = mask(2:end, 2:end);
     
-%     figure;
-%     imshow(mask);
-%     title('Gaussian low pass filter mask for FFT space filtering:');
-tic;
+    figure;
+    imshow(mask);
+    title('Gaussian low pass filter mask for FFT space filtering:');
 
-    for trials = 1:1000
-    % Low pass filter by point-wise multiply of fs with filter 'mask' in
-    % frequency space:
-    fs = fs .* mask;
+    tcpu = GetSecs;
     
-    % Invert shift of filtered fs:
-    f = ifftshift(fs);
-    
-    % Perform inverse 2D-FFT in Matlab/Octave on CPU:
-    b = ifft2(f);
+    for trials = 1:10
+        % Low pass filter by point-wise multiply of fs with filter 'mask' in
+        % frequency space:
+        fs = fs .* mask;
+        
+        % Invert shift of filtered fs:
+        f = ifftshift(fs);
+        
+        % Perform inverse 2D-FFT in Matlab/Octave on CPU:
+        b = ifft2(f);
     end
-elapsedcpu = toc
+    
+    tcpu = (GetSecs - tcpu) / trials;
+    fprintf('Measured per trial runtime of CPU FFT: %f msecs [n=%i trials].\n', tcpu * 1000, trials);
+    
     % Extract real component for display:
     r = real(b);
     
-%     figure;
-%     imshow(r);
-%     title('Post-FFT->Filter->IFFT Bunny.');
+    figure;
+    imshow(r);
+    title('Post-FFT->Filter->IFFT Bunny.');
     
     %% Perform FFT->Process->IFFT on GPU via GPUmat / CUDA:
     
     % First Show input image:
     Screen('DrawTexture', w, bunnytex);
     Screen('TextSize', w, 28);
-    DrawFormattedText(w, 'Original pre-FFT Bunny:', 'center', 40, [255 255 0]);
+    DrawFormattedText(w, 'Original pre-FFT Bunny:\nPress key to continue.', 'center', 40, [255 255 0]);
     Screen('Flip', w);
     KbStrokeWait(-1);
     
@@ -158,7 +168,7 @@ elapsedcpu = toc
     % then converte the image into a texture 'fftmag' and display it:
     fftmag = GPUTypeFromToGL(1, abs(FS)/100.0, [], [], 0);
     Screen('DrawTexture', w, fftmag);
-    DrawFormattedText(w, 'Amplitude spectrum post-FFT Bunny:', 'center', 40, [0 255 0]);
+    DrawFormattedText(w, 'Amplitude spectrum post-FFT Bunny:\nPress key to continue.', 'center', 40, [0 255 0]);
     Screen('Flip', w);
     KbStrokeWait(-1);
     
@@ -171,11 +181,12 @@ elapsedcpu = toc
     % transpose fixes this for our mask to match GPU format:
     FM = transpose(GPUsingle(mask));
     
+    % Measure execution time on GPU. The cudaThreadSynchronize() command
+    % makes sure we are actually measuring GPU timing with the GetSecs():
     cudaThreadSynchronize;
-    tic;
+    tgpu = GetSecs;
 
-    for trials = 1:1000
-        
+    for trials = 1:10
         % Filter the amplitude spectrum by point-wise multiply with filter FM:
         FS = FM .* FS;
         
@@ -187,7 +198,9 @@ elapsedcpu = toc
     end
     
     cudaThreadSynchronize;
-    elapsedgpu = toc
+    tgpu = (GetSecs - tgpu) / trials;
+    fprintf('Measured per trial runtime of GPU FFT: %f msecs [n=%i trials].\n', tgpu * 1000, trials);
+    fprintf('Speedup GPU vs. CPU: %f\n', tcpu / tgpu);
     
     % Extract real component for display:
     R = real(B);
@@ -202,7 +215,7 @@ elapsedcpu = toc
     
     % Show it:
     Screen('DrawTexture', w, tex);
-    DrawFormattedText(w, 'GPU-Processed Post-FFT->Filter->IFFT Bunny:', 'center', 40, [0 255 0]);
+    DrawFormattedText(w, 'GPU-Processed FFT->Filter->IFFT Bunny:\nPress key to continue.', 'center', 40, [0 255 0]);
     Screen('Flip', w);
     KbStrokeWait(-1);
     
@@ -233,8 +246,8 @@ end
 % Done.
 end
 
-% Documentation of another way of doing GPU accelerated FFT with
-% GPUmat:
+% Documentation of another, not yet tested, more complex and probably
+% higher performance, way of doing GPU accelerated FFT with GPUmat:
 %
 %         fftType = cufftType;
 %         fftDir  = cufftTransformDirections;
