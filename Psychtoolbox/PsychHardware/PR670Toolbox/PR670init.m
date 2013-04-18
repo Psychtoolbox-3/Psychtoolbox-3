@@ -29,7 +29,7 @@ if isempty(g_serialPort)
     % 1 stopbit, no handshake (aka FlowControl=none) already as
     % built-in defaults, so no need to pass them:
     oldverbo = IOPort('Verbosity', 2);
-    g_serialPort = IOPort('OpenSerialPort', portNumber);
+    g_serialPort = IOPort('OpenSerialPort', portNumber, 'Lenient');
     IOPort('Verbosity', oldverbo);
 end
 

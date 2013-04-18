@@ -54,6 +54,8 @@ function rc = PsychGPUControl(cmd, varargin)
 %                 blanks in path to executable.
 % 16.01.2011  mk  Add function to control desktop composition on Linux with
 %                 Compiz.
+% 18.04.2013  mk  Add use of 64-Bit ATIRadeonperf_Linux64 exe on 64-Bit Linux.
+%
 
 if nargin < 1
 	error('Subfunction command argument missing!');
@@ -172,10 +174,20 @@ function rc = executeRadeoncmd(cmdpostfix)
     end
 
     if IsLinux
+        % For 32-Bit Linux:
         cmdprefix = '/PsychContributed/ATIRadeonperf_Linux ';
     end
 
+    if IsLinux(1)
+        % For 64-Bit Linux: We have a dedicated 64-Bit executable, so we
+        % do not require installation of 32-Bit compatibility libraries on
+        % 64-Bit Linux systems just for our little exe here, as that would
+        % be wasteful:
+        cmdprefix = '/PsychContributed/ATIRadeonperf_Linux64 ';
+    end
+
     if IsWin
+        % For 32-Bit or 64-Bit Windows we always use a 32-Bit executable:
         cmdprefix = '/PsychContributed/ATIRadeonperf_Windows ';
     end
 
