@@ -1,5 +1,5 @@
-function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft)
-% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical][, vSpacing][, righttoleft])
+function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
+% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical][, vSpacing][, righttoleft][, winRect])
 %
 % Draws a string of text 'tstring' into Psychtoolbox window 'win'. Allows
 % some basic formatting. The text string 'tstring' may contain newline
@@ -32,12 +32,16 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % text string in right-to-left reading direction, e.g., for scripts which
 % read right to left
 %
-% The function employs window clipping by default. Text lines that are
-% detected as lying completely outside the 'win'dow will not be drawn, but
-% clipped away. This allows to draw multi-page text (multiple screen
-% heights) without too much loss of drawing speed. If you find the clipping
-% to interfere with text layout of exotic texts/fonts at exotic sizes and
-% formatting, you can define the global variable...
+% The optional argument 'winRect' allows to specify a [left top right bottom]
+% rectange, in which the text should be centered/placed etc. By default,
+% the rectangle of the whole 'win'dow is used.
+%
+% The function employs clipping by default. Text lines that are detected as
+% lying completely outside the 'win'dow or optional 'winRect' will not be
+% drawn, but clipped away. This allows to draw multi-page text (multiple
+% screen heights) without too much loss of drawing speed. If you find the
+% clipping to interfere with text layout of exotic texts/fonts at exotic
+% sizes and formatting, you can define the global variable...
 %
 % global ptb_drawformattedtext_disableClipping;
 % ... and set it like this ...
@@ -172,7 +176,12 @@ if nargin < 4 || isempty(sy)
     sy=0;
 end
 
-winRect = Screen('Rect', win);
+% Default rectangle for centering/formatting text is the client rectangle
+% of the 'win'dow, but usercode can specify arbitrary override as 11'th arg:
+if nargin < 11 || isempty(winRect)
+    winRect = Screen('Rect', win);
+end
+
 winHeight = RectHeight(winRect);
 
 if ischar(sy) && strcmpi(sy, 'center')
