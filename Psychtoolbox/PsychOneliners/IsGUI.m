@@ -6,8 +6,8 @@ function rc = IsGUI
 % Matlab's GUI is based on JAVA. Octave's GUI is based on the QT toolkit.
 %
 
-if IsOctave
-    rc = ~isempty(strfind(getenv('GNUTERM'), 'qt'));
+if IsOctave && exist('isguirunning', 'builtin')
+    rc = eval('isguirunning');
 else
     rc = psychusejava('desktop');
 end

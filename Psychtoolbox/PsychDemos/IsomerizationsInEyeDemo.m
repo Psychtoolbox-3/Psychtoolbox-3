@@ -13,29 +13,46 @@
 %               this is done, but the template may be useful someday.
 % 03/20/12 dhb  Update cal file for PTB 3.
 % 04/09/12 dhb  Add test of irradiance to troland conversion.
+% 04/27/13 dhb  More extensive comments.
 
-% Clear
+%% Clear
 clear all; close all;
 
-% Set some photoreceptor properties.
-% whatCalc = 'LivingDog';
+%% Set photoreceptor properties.
+%
+% The photoreceptors structure gets filled with
+% key parameters values (pupil size, eye length,
+% pre-retinal absorbance, etc.)
+%
+% The routine DefaultPhotoreceptors is a high level
+% call.  It fills in the 'source' fields and some
+% values according to high-level descriptor (e.g.,
+% ('LivingHumanFovea').  See help for that routine
+% for available options.
+%
+% The routine FillInPhotoreceptors fetches the actual
+% values for various fields, depending on the source.
+%
+% To get a feel for this, check what is in the photoreceptors
+% structure after the first call, and then after the second.
 whatCalc = 'LivingHumanFovea';
-
 photoreceptors = DefaultPhotoreceptors(whatCalc);
 photoreceptors = FillInPhotoreceptors(photoreceptors);
 
-% Define common wavelength sampling for this script.
+%% Define common wavelength sampling for this script.
+% 
+% S is [start delta nsamples] for the wavelengths in nm.
+% This is standard PTB convention.
 S = photoreceptors.nomogram.S;
 
-% Get light spectrum.  You can choose various
-% illustrative examples.
+%% Get light spectrum.  You can choose various illustrative examples.
+%
+% See cases of switch statement below for the options available.
 whichLight = 'fromMonitorRadiance';
-%whichLight = 'fromTrolands';
-
-% Here we'll start with a xenon arc lamp relative spectrum
 switch (whichLight)
 	% Convert from a specification of trolands and relative spectral power distribution.
 	% Computation to retinal irradiance is done two ways just for fun.
+    % Here we'll start with a xenon arc lamp relative spectrum
 	case 'fromTrolands',
 		trolands = 100;
         trolandType = 'Photopic';
@@ -71,7 +88,8 @@ switch (whichLight)
 		radianceWatts = SplineSpd(cal.S_device,sum(cal.P_device,2),S);
 		
 		% Find pupil area, needed to get retinal irradiance.  We compute
-		% pupil area based on the luminance of stimulus.  
+		% pupil area based on the luminance of stimulus according to the
+        % algorithm specified in the photoreceptors structure.
 		load T_xyz1931
 		T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
 		theXYZ = T_xyz*radianceWatts; theLuminance = theXYZ(2);
@@ -81,7 +99,7 @@ switch (whichLight)
 		irradianceWatts = RadianceToRetIrradiance(radianceWatts,S, ...
 			pupilAreaMM,photoreceptors.eyeLengthMM.value);
 
-	% This is here to match a parameterization the Brian Wandell supplied
+	% This light as well as some parameter tweaking are here to match a parameterization the Brian Wandell supplied
 	% to match what his code to do these computations produces.  Note also
 	% the mucking with the photoreceptors structure.  Wandell estimates
 	% L, M, S isomerizations/cone-sec of 16.5, 12.68, 2.27.
@@ -128,6 +146,7 @@ switch (whichLight)
 		irradianceWatts = RadianceToRetIrradiance(radianceWatts,S,pupilAreaMM,photoreceptors.eyeLengthMM.value );
 end
 
+%% Get retinal irradiance in quanta/[sec-um^2-wlinterval]
 irradianceQuanta = EnergyToQuanta(S,irradianceWatts);
 figure(2); clf; set(gcf,'Position',[100 400 700 300]);
 subplot(1,2,1); hold on
@@ -136,7 +155,7 @@ set(title('Light Spectrum'),'FontSize',14);
 set(xlabel('Wavelength (nm)'),'FontSize',12);
 set(ylabel('Quanta/sec-um^2-wlinterval'),'FontSize',12);
 
-% Do the work in toolbox function
+%% Do the work in toolbox function
 [isoPerConeSec,absPerConeSec,photoreceptors] = ...
 	RetIrradianceToIsoRecSec(irradianceWatts,S,photoreceptors);
 

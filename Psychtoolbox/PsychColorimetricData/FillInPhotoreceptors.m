@@ -12,9 +12,12 @@ function photoreceptors = FillInPhotoreceptors(photoreceptors)
 %   ... statements here to override default values ...
 %   photoreceptors = FillInPhotoreceptors;
 %
-% Computed fields that exist in the past structure override
+% Computed fields that exist in the passed structure override
 % passed values, with those computed last taking precedence
 % over those computed earlier.
+%
+% NOTES: The override rules are pretty tricky, and this code
+% should be improved to clarify.
 %
 % See also: DefaultPhotoreceptors, RetIrradianceToIsoRecSec
 %   IsomerizationsInEyeDemo, IsomerizationsInDishDemo 

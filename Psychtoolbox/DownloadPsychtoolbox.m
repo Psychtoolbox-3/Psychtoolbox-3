@@ -475,6 +475,10 @@ else
 	if IsOSX
 		svnpath = '';
 		
+		if isempty(svnpath) & exist('/opt/subversion/bin/svn', 'file') %#ok<AND2>
+			svnpath = '/opt/subversion/bin/';
+		end
+
 		if isempty(svnpath) & exist('/usr/bin/svn','file') %#ok<AND2>
 			svnpath='/usr/bin/';
 		end
@@ -485,10 +489,6 @@ else
 
 		if isempty(svnpath) & exist('/bin/svn','file') %#ok<AND2>
 			svnpath='/bin/';
-		end
-
-		if isempty(svnpath) & exist('/opt/subversion/bin/svn', 'file') %#ok<AND2>
-			svnpath = '/opt/subversion/bin/';
 		end
 
 		if isempty(svnpath) & exist('/opt/local/bin/svn', 'file') %#ok<AND2>

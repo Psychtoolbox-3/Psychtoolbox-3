@@ -62,7 +62,7 @@ function params=DaqAOutScan(daq,v,options)
 %             suggested by Peter Meilstrup in forum message 9221. There was an
 %             off-by-one bug present...
 
-AllHIDDevices = PsychHID('Devices');
+AllHIDDevices = PsychHIDDAQS;
 if strcmp(AllHIDDevices(daq).product(5:6),'16')
   error('It looks like you are trying to run DaqAOutScan from a USB-1608FS, but such devices have no analog outputs.');
 end

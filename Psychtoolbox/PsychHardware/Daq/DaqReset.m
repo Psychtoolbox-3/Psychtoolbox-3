@@ -37,7 +37,8 @@ function err=DaqReset(OldDaqIndex)
 
 fprintf('Resetting USB-1x08FS.\n');
 clear PsychHID; % flush current enumeration  (list of devices)
-devices=PsychHID('devices'); % enumerate again
+clear PsychHIDDAQS;
+devices=PsychHIDDAQS; % enumerate again
 daq=[];
 for k=1:length(devices)
   if length(devices(k).product)>=10
@@ -68,9 +69,10 @@ end
 err=Reset(NewDaqIndex);
 % fprintf('(Reestablishing communication: Flushing current enumeration. ');
 clear PsychHID; % flush current enumeration  (list of devices)
+clear PsychHIDDAQS;
 
 % fprintf('Re-enumerating. ... ');
-devices=PsychHID('devices'); % enumerate again
+devices=PsychHIDDAQS; % enumerate again
 
 % Not sure what the point of this next bit is since we don't do anything with
 % the information we acquire, but it seems harmless enough so I leave it in. --

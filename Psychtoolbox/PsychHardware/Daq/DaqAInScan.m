@@ -305,7 +305,7 @@ function [data,params]=DaqAInScan(daq,options)
 % Perform internal caching of list of HID devices to speedup call:
 persistent AllHIDDevices;
 if isempty(AllHIDDevices)
-    AllHIDDevices = PsychHID('Devices');
+    AllHIDDevices = PsychHIDDAQS;
 end
 
 if strcmp(AllHIDDevices(daq).product(5:6),'16')

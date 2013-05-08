@@ -17,40 +17,43 @@
 % Delori's spreadsheet is described in footnote 49 of Delori et al. (2007,
 % JOSA A, 24, pp.1250-1265).  That footnote indicates that the spreadsheet
 % will be shared as long as recipients accept full responsibility for its use.
-%
-% For each row of the input file, this routine uses PTB code to compute various
-% quantities and prints out comparisons with the values entered in the text
-% file.
-%
-% As of 3/3/13 (Notes from DHB):
-%   As of today (3/2/13) I have not received a response from my request to Delori
-%   for a copy.  I do have a version I received via Ed Pugh and Brian Wandell
-%   (OcLC_08.8.xls, revsion 1/10/08).  That is the version that was used for
-%   the values currently entered in the input file.   I believe this implements the
-%   MPE standard as described in the Delori et al. 2007 paper (ANSI Z136.1-2000) and
-%   this may differ from the Z136.1-2007 standard.  
-%
+% The version of Delori's spreadsheet used to get these numbers is 0cLC_0.9.9.
+
+% As of 5/1/13 (Notes from DHB):
 %   I am unable to get complete agreement between Delori's calculations and
 %   the PTB calculations.  But I get agreement for some wavelength, stimulus
 %   size, and stimulus duration choices.  To get agreement, this routine
 %   uses the effective pupil size formula from the Delori et al. 2007 paper
 %   when converting the limit to power in the pupil.
 %
-%   To get the degree of agreement I obtained, I also had to turn off
-%   the limiting cone aperture calculation that is described in Table 2 of the
-%   2007 standard.  This is controlled by a flag in the input file.
-%
 %   A key question in going from the number in the 2007 standard and retinal
 %   illuminant is what pupil size was assumed in the standard.  Delori et al.
 %   (2007) give a formula for this, which (I think) goes from the radiant
 %   power in light at the cornea overfilling the pupil to the pupil size. 
-%   See Eq. 8.  That is implemented in this test program.  
+%   See Eq. 8.  That is implemented in this test program.
+%
+%   To get the degree of agreement I obtained, I also had to turn off
+%   the limiting cone aperture calculation that is described in Table 2 of the
+%   2007 standard.  This is controlled by a flag in the input file.
 %
 %   Conversions to retinal illuminance done wtth the pupil diameter and
 %   eye length specified in the input file.  Delori et al. (2007) indicate
 %   that the standard assumes an eye length of 17 mm.  The calculation uses
 %   this to compute the allowable retinal illuminance, but if you think some
 %   other length is better, you can fill it in.
+%
+%   In the cases where I don't get agreement with the spreadsheet, the discrepancy
+%   arises in the value used for constant T2.  Delori's spreadsheet seems to use
+%   10000 for a 2 degree stimulus, but as I read the standard (Table 6, p. 76), this
+%   value has a maximum of 100 and a smaller value (21.83) for T2.  This matters when
+%   the thermal limit is controlling, for some stimulus durations.  Currently this
+%   happens for test conditions 3 and 6.  The code here
+%   reproduces what I get when I do the computations by hand.  See files in this
+%   directory
+%     MPEByHand_580_2deg_100sec.doc
+%     MPEByHand_700_2deg_20000sec.doc
+%   I have emailed Delori (on 5/2/13) to ask him about this.  And also about the
+%   limiting cone aperature calculation mentioned above.
 %
 % 2/27/13  dhb  Wrote it.
 
@@ -81,9 +84,9 @@ for i = 1:length(conditionStructs)
     fprintf('\t\tAssuming ANSI standard eye length of %0.1f mm\n',ansiEyeLengthMm);
     fprintf('\t\tAssuming ANSI pupil diameter of %0.1f mm\n',ansiPupilDiameterMm);
     if (CONELIMITFLAG)
-        fprintf('\t\tIncluding limiting cone angle part of photochemical limit calculation\n');
+        fprintf('\t\tIncluding limiting cone angle calculation\n');
     else
-        fprintf('\t\tExcluding limiting cone angle part of photochemical limit calculation\n');
+        fprintf('\t\tExcluding limiting cone angle calculation\n');
     end
     
     % Get comparison values from Delori spreadsheet.  These need to be computed
@@ -161,6 +164,7 @@ for i = 1:length(conditionStructs)
     % what Delori's spreadsheet reports for the same numbers
     MPECb = AnsiZ136MPEComputeCb(wavelengthNm);
     MPECe = AnsiZ136MPEComputeCe(stimulusDiameterDegrees);
+    MPRT2 = AnsiZ136MPEComputeT2(stimulusDiameterDegrees);
     MPECa = AnsiZ136MPEComputeCa(wavelengthNm);
     if (wavelengthNm >= 1050)
         MPECc = AnsiZ136MPEComputeCc(wavelengthNm);
@@ -177,6 +181,7 @@ for i = 1:length(conditionStructs)
     AnsiZ136MPEPrintConditionalComparison('\tUsing Cb %0.2f','%0.2f',MPECb,deloriMPECb,false);
     AnsiZ136MPEPrintConditionalComparison('\tUsing Ce %0.2f','%0.2f',MPECe,deloriMPECe,false);
     AnsiZ136MPEPrintConditionalComparison('\tUsing Ct %0.2f','%0.2f',MPECt,deloriMPECt,false);
+    AnsiZ136MPEPrintConditionalComparison('\tUsing T2 %0.2f','%0.2f',MPET2,deloriMPET2,false);
     AnsiZ136MPEPrintConditionalComparison('\tMPE power in pupil limit %0.3g mWatts','%0.3g',MPELimitPowerInPupilMWatts,deloriMPEPowerInPupilMWatts,false);
     AnsiZ136MPEPrintConditionalComparison('\tMPE retinal illuminance limit computed as %0.3g Watts/cm2','%0.3g',MPELimitRetinalIlluminanceWattsPerCm2,deloriMPERetinalIrradianceWattsPerCm2,false);
     fprintf('\tLimit - Stimulus log10 difference: %0.1f log10 units\n',log10(MPELimitRetinalIlluminanceWattsPerCm2)-log10(retinalIlluminanceWattsPerCm2));

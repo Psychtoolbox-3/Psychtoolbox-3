@@ -40,7 +40,7 @@ if Screen('WindowKind', win) ~= 1
 end
 
 winfo = Screen('GetWindowInfo', win);
-if winfo.StereoMode ~= 1
+if ~ismember(winfo.StereoMode, [1,11])
     % No frame-sequential mode, no point in having sync lines -> No operation.
     fprintf('SetStereoBlueLineSyncParameters: Info: Provided onscreen window is not switched to frame-sequential stereo mode. Call ignored.\n');
     return;

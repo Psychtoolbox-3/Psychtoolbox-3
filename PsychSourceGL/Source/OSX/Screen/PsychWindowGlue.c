@@ -1095,9 +1095,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     if ((osMajor > 10) || (osMinor >= 7)) {
         useCoreVideoTimestamping = TRUE;
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Deficient Apple OS/X 10.7 or later detected: Would use more fragile CoreVideo timestamping instead of precise vbl-irq timestamping\n");
-            printf("PTB-INFO: as fallback. Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual onset timestamping\n");
-            printf("PTB-INFO: or timing. See 'help PsychtoolboxKernelDriver' for instructions.\n");
+            printf("PTB-INFO: Deficient Apple OS/X 10.7 or later detected: Would use fragile CoreVideo timestamping as fallback,\n");
+            printf("PTB-INFO: if beamposition timestamping would not work. Will try to use beamposition timestamping if possible.\n");
+            if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
+                printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual onset timestamping\n");
+                printf("PTB-INFO: or timing. See 'help PsychtoolboxKernelDriver' for instructions.\n");
+            }
         }
     } else {
         useCoreVideoTimestamping = FALSE;

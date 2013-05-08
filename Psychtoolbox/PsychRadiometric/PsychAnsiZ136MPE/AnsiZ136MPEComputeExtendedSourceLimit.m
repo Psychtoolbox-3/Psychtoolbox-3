@@ -28,6 +28,7 @@ function [MPELimitIntegratedRadiance_JoulesPerCm2Sr, ...
 if (nargin < 4 || isempty(CONELIMITFLAG))
     CONELIMITFLAG = true;
 end
+
 %% Convert angle to mrad and get T2
 stimulusSizeMrad = DegToMrad(stimulusSizeDeg);
 stimulusAreaDeg2 = (pi/4)*stimulusSizeDeg^2;

@@ -192,49 +192,53 @@ while (adjustMode ~= 0)
         % top-left
         dots(:,1) = centeredDots(:,1) + xmid*ones(nDots,1);
         dots(:,2) = centeredDots(:,2) + ymid*ones(nDots,1);
-
-        % Fill to black
-        Screen('FillRect', scal.windowPtr, colorBlack);
-
-        % Reference texture assigned to draw as backdrop?
-        if isfield(scal, 'refTex')
-            % Seems so. Double-check and draw it, if ok:
-            if scal.refTex
-                Screen('DrawTexture', scal.windowPtr, scal.refTex, [], Screen('Rect', scal.refTex));
+        
+        % Loop across stereo buffers
+        for view = 0:sign(scal.stereoMode)
+            Screen('SelectStereoDrawbuffer', scal.windowPtr, view);
+            
+            % Fill to black
+            Screen('FillRect', scal.windowPtr, colorBlack);
+            
+            % Reference texture assigned to draw as backdrop?
+            if isfield(scal, 'refTex')
+                % Seems so. Double-check and draw it, if ok:
+                if scal.refTex
+                    Screen('DrawTexture', scal.windowPtr, scal.refTex, [], Screen('Rect', scal.refTex));
+                end
+            end
+            
+            % Update dot diameters
+            % Set all dots to default diameter
+            dotDiamArray = [];
+            dotDiamArray = zeros(size(dots,1), 1) + dotDiam;
+            xGlobalCalibDots = size(scal.XCALIBDOTS, 1);
+            xCurrDots = size(dots, 1);
+            if xGlobalCalibDots ~= dots
+                % Adjusting fitting dots, a center dot may not be selected.
+                %  Draw a crosshair at the center instead.
+                %bvlDrawCrosshair(windowPtr, x, y [,size] [,color])
+                bvlDrawCrosshair(scal.windowPtr, xmax, ymax, selectedDotDiam * 2, dotColor);
+            else
+                % Make the center dot larger so user can line up with screen
+                % center.
+                indexCenterDot = round(length(dots(:,1)) / 2);
+                dotDiamArray(indexCenterDot) = selectedDotDiam;
+            end
+            
+            
+            % Draw dots
+            Screen('DrawDots', scal.windowPtr, transpose(dots), dotDiamArray, dotColor, [0 0], dotStyle);
+            % HideCursor;
+            
+            % Show help text if requested:
+            if fShowHelptext
+                helptxt = ['GLOBAL MODE:\nFinish calibration by pressing ESCape key\nToggle help text by pressing SPACE key\nChange selected global parameters via Cursor arrow keys\n' ...
+                    'Select global parameter change mode via right mouse button\nChange parameter step size via middle mouse button\n' ...
+                    'Switch to local adjustment mode via left mouse button.\n'];
+                DrawFormattedText(scal.windowPtr, helptxt, 30, 30, [255 255 0]);
             end
         end
-        
-        % Update dot diameters
-        % Set all dots to default diameter
-        dotDiamArray = [];
-        dotDiamArray = zeros(size(dots,1), 1) + dotDiam;
-        xGlobalCalibDots = size(scal.XCALIBDOTS, 1);
-        xCurrDots = size(dots, 1);
-        if xGlobalCalibDots ~= dots
-            % Adjusting fitting dots, a center dot may not be selected.
-            %  Draw a crosshair at the center instead.
-            %bvlDrawCrosshair(windowPtr, x, y [,size] [,color])
-            bvlDrawCrosshair(scal.windowPtr, xmax, ymax, selectedDotDiam * 2, dotColor);
-        else
-            % Make the center dot larger so user can line up with screen
-            % center.
-            indexCenterDot = round(length(dots(:,1)) / 2);
-            dotDiamArray(indexCenterDot) = selectedDotDiam;
-        end
-
-
-        % Draw dots
-        Screen('DrawDots', scal.windowPtr, transpose(dots), dotDiamArray, dotColor, [0 0], dotStyle);
-       % HideCursor; 
-
-        % Show help text if requested:
-        if fShowHelptext
-            helptxt = ['GLOBAL MODE:\nFinish calibration by pressing ESCape key\nToggle help text by pressing SPACE key\nChange selected global parameters via Cursor arrow keys\n' ...
-                'Select global parameter change mode via right mouse button\nChange parameter step size via middle mouse button\n' ...
-                'Switch to local adjustment mode via left mouse button.\n'];            
-            DrawFormattedText(scal.windowPtr, helptxt, 30, 30, [255 255 0]);
-        end
-       
 
         % Check for input
         if bMiddleMouseDown || bRightMouseDown

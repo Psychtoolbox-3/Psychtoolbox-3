@@ -18,7 +18,7 @@ function err=DaqBlinkLED(daq)
 % to speedup call:
 persistent TheDevices;
 if isempty(TheDevices)
-    TheDevices = PsychHID('Devices');
+    TheDevices = PsychHIDDAQS;
 end
 
 % Default reportId for 1x08FS devices is 64:

@@ -13,16 +13,17 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 % See also:  FillInPhotoreceptors, RetIrradianceToIsoRecSec
 %  IsomerizationsInEyeDemo, IsomerizationsInDishDemo, ComputeCIEConeFundamentals. 
 %
+% NOTES: Should probably update the parameters for LivingHumanFovea so that
+% they produce the Stockman-Sharpe fundamentals.  This should be pretty
+% straightforward, now that all the pieces are implemented as via ComputeCIEConeFundamentals. 
+%
 % 7/25/03  dhb  Wrote it.
 % 12/04/07 dhb  Added dog parameters
 % 8/14/11  dhb  Added fieldSizeDegrees and ageInYears fields to photoreceptors for LivingHumanFovea case.
 %               These defaults match the CIE standard.
 % 4/20/12  dhb  Add LivingHumanMelanopsin
 % 5/10/12  dhb  Changed name for LivingHumanMelanopsin to postpend Tsujimura2010
-%
-% NOTES: Should probably update the parameters for LivingHumanFovea so that
-% they produce the Stockman-Sharpe fundamentals.  This should be pretty
-% straightforward, now that all the pieces are implemented as via ComputeCIEConeFundamentals. 
+
 
 % Default
 if (nargin < 1 || isempty(kind))

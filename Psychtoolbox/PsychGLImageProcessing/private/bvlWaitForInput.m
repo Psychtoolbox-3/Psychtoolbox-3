@@ -74,7 +74,7 @@ while (fCurrTime < fEndTime)
 
     % Check state for entire keyboard
     % iKeyCode is an array of size 256
-    [iKeyIsDown, fSecs, iKeyboardCodes] = KbCheck;
+    [iKeyIsDown, fSecs, iKeyboardCodes] = KbCheck(-1);
 
     % Handle keyboard input
     if iKeyIsDown

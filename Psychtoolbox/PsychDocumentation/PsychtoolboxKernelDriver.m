@@ -71,6 +71,12 @@
 % cd /System/Library/Extensions/
 % sudo unzip /PathToPsychtoolbox/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver32Bit.kext.zip
 %
+% "PathToPsychtoolbox" must be replaced with the path to the Psychtoolbox folder, e.g., if your
+% Psychtoolbox is installed under /Users/kleinerm/Psychtoolbox, then the above command would
+% look like this:
+%
+% sudo unzip /Users/kleinerm/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver32Bit.kext.zip
+%
 % For 64-Bit OSX kernel:
 % ----------------------
 %
@@ -78,6 +84,12 @@
 %
 % cd /System/Library/Extensions/
 % sudo unzip /PathToPsychtoolbox/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver64Bit.kext.zip
+%
+% "PathToPsychtoolbox" must be replaced with the path to the Psychtoolbox folder, e.g., if your
+% Psychtoolbox is installed under /Users/kleinerm/Psychtoolbox, then the above command would
+% look like this:
+%
+% sudo unzip /Users/kleinerm/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver64Bit.kext.zip
 %
 %
 % On modern OSX systems, this will automatically load the driver after a
