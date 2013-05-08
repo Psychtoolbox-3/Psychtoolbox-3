@@ -31,7 +31,7 @@ function err=DaqDOut(daq,port,data)
 % to speedup call:
 persistent TheDevices;
 if isempty(TheDevices)
-    TheDevices = PsychHID('Devices');
+    TheDevices = PsychHIDDAQS;
 end
 
 % Denis(?) commented these out.  Don't know why.  For speed, I would guess.

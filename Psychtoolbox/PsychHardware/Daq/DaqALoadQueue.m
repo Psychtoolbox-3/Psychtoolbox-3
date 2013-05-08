@@ -76,7 +76,7 @@ function err=DaqALoadQueue(daq,channel,range)
 % 4/15/05 dgp Wrote it.
 % 1/8/08  mpr created behavior appropriate for 1608
 
-devices = PsychHID('Devices');
+devices = PsychHIDDAQS;
 
 if strcmp(devices(daq).product(5:6),'16')
   Is1608 = 1;

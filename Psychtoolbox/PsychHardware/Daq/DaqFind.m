@@ -20,6 +20,7 @@ if isempty(daq)
     if TryAgain > 0
       BeenToDaqFind = 1;
       clear PsychHID;
+      clear PsychHIDDAQS;
       daq = DaqFind;
       if isempty(daq)
         error('Did not find daq after clearance; are you sure it is connected?');

@@ -35,7 +35,7 @@ end
 % Flag to get DaqAIn to return raw digital responses
 UnCal=1;
 
-AllHIDDevices = PsychHID('Devices');
+AllHIDDevices = PsychHIDDAQS;
 if isempty(strfind(AllHIDDevices(daq).product,'1608'))
   error(sprintf(['It appears that you are not using a USB-1608FS.  If that is correct, then you \n' ...
                  'should modify DaqCalibrateAIn if you want to use the function for your device.\n']));

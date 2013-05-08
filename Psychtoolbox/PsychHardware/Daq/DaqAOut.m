@@ -18,7 +18,7 @@ function err=DaqAOut(daq,channel,v)
 % 	error('"channel" must be 0 or 1.');
 % end
 
-AllHIDDevices = PsychHID('Devices');
+AllHIDDevices = PsychHIDDAQS;
 if strcmp(AllHIDDevices(daq).product(5:6),'16')
   error('It looks like you are trying to run DaqAOut from a USB-1608FS, but such devices have no analog outputs.');
 end

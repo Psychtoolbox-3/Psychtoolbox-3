@@ -17,7 +17,7 @@ function err=DaqCInit(daq)
 % to speedup call:
 persistent TheDevices;
 if isempty(TheDevices)
-    TheDevices = PsychHID('Devices');
+    TheDevices = PsychHIDDAQS;
 end
 
 if ~nargin || isempty(daq)

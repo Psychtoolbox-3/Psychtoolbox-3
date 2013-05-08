@@ -10,7 +10,7 @@ function err=DaqAOutStop(daq)
 % 4/15/05 dgp Wrote it.
 % 1/10/08 mpr glanced at it; made same changes as in DaqAOut.
 
-AllHIDDevices = PsychHID('Devices');
+AllHIDDevices = PsychHIDDAQS;
 if strcmp(AllHIDDevices(daq).product(5:6),'16')
   error('It looks like you are trying to run DaqAOutStop from a USB-1608FS, but such devices have no analog outputs.');
 end

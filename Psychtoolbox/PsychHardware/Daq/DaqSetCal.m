@@ -24,7 +24,7 @@ function err=DaqSetCal(daq,on)
 % 4/15/05 dgp Wrote it.
 % 1/10/08 mpr updated it for USB-1608FS
 
-AllHIDDevices = PsychHID('Devices');
+AllHIDDevices = PsychHIDDAQS;
 if ~isempty(strfind(AllHIDDevices(daq).product,'1608'))
 	AcceptableStates = 0:4;
 else

@@ -19,7 +19,7 @@ function data=DaqGetAll(daq)
 % 1/13/08   mpr   swept through and tried to make terminology conistent
 %                   with that of other daq functions
 
-AllHIDDevices = PsychHID('Devices');
+AllHIDDevices = PsychHIDDAQS;
 if ~isempty(strfind(AllHIDDevices(daq).product,'1608'))
   Is1608=1;
 else
