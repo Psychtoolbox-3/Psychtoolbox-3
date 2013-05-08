@@ -1730,7 +1730,7 @@ dwmdontcare:
 	 }
 
     // Finally, show our new window:
-    ShowWindow(hWnd, SW_SHOW);
+    if (windowLevel != -1) ShowWindow(hWnd, SW_SHOW);
 
 	// Following settings enforce the onscreen window being and staying the
 	// foreground window with keyboard focus. However they interfere with our

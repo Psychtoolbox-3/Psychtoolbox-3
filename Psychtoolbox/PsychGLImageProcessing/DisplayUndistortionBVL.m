@@ -1,6 +1,6 @@
-function [scal] = DisplayUndistortionBVL(caliboutfilename, screenid, xnum, ynum, referenceImage)
-% [scal] = DisplayUndistortionBVL([caliboutfilename] [, screenid] [, xnum=37] [, ynum=27] [, referenceImage])
-% [scal] = DisplayUndistortionBVL([caliboutfilename] [, calibinfilename])
+function [scal] = DisplayUndistortionBVL(caliboutfilename, screenid, xnum, ynum, referenceImage, stereomode)
+% [scal] = DisplayUndistortionBVL([caliboutfilename][, screenid][, xnum=37][, ynum=27][, referenceImage=None][, stereomode=0])
+% [scal] = DisplayUndistortionBVL([caliboutfilename][, calibinfilename])
 %
 % Geometric display calibration procedure for undistortion of distorted
 % displays. Needs graphics hardware with basic support for the PTB imaging
@@ -83,6 +83,9 @@ function [scal] = DisplayUndistortionBVL(caliboutfilename, screenid, xnum, ynum,
 % use this if you want to use this routine not to undistort a physical
 % display, but want to undistort an existing image, e.g., create a proper
 % calibration file for the ImageUndistortionDemo routine.
+%
+% 'stereomode' Optional stereo mode for display of calibration. Defaults to
+% zero, i.e., monoscopic display.
 %
 % 2. After startup, the script will display a grid of mostly evenly spaced
 % points onscreen. The points will not be perfectly aligned to a grid due
@@ -174,6 +177,9 @@ function [scal] = DisplayUndistortionBVL(caliboutfilename, screenid, xnum, ynum,
 %           Output files are now stored in a subfolder of
 %           PsychtoolboxConfigDir, with a name that encodes screenid and
 %           resolution by default.
+%
+% 05/03/13  Add optional stereomode parameter to select other display modes
+%           than monoscopic display for calibration. (MK)
 
 % Running on PTB-3? Abort otherwise:
 AssertOpenGL;
@@ -249,6 +255,11 @@ if ~isempty(screenid)
         
         % Assign screenid from scal:
         screenid = scal.screenNumber;
+        
+        if isfield(scal, 'stereoMode')
+            % Assign stereo mode from scal:
+            stereomode = scal.stereoMode;
+        end
     end
 else
     % No 'screenid' provided: No calibration input file and no screenid:
@@ -275,12 +286,23 @@ if isempty(screenid)
         screenid = scrns;
     end    
 end
-    
+
+if ~exist('stereomode', 'var')
+    stereomode = [];
+end
+
+if isempty(stereomode)
+    stereomode = 0;
+end
+
 % At this point, screenid contains the final screenid for the screen to
 % calibrate.
 % Assign it to scal struct. This will create 'scal' if it doesn't exist
 % yet, or override its screenid in some cases:
 scal.screenNumber = screenid;
+
+% Ditto for stereoMode:
+scal.stereoMode = stereomode;
 
 % Fetch screen resolution: This is just used to build default output file
 % name if none provided:
@@ -315,7 +337,8 @@ oldsynclevel = Screen('Preference', 'SkipSyncTests', 2);
 oldverbosity = Screen('Preference', 'Verbosity', 1);
 
 % Open the onscreen window for calibration on screen screenid:
-[scal.windowPtr, screenrect] = Screen('OpenWindow', scal.screenNumber, 0);
+[scal.windowPtr, screenrect] = Screen('OpenWindow', scal.screenNumber, 0, [], [], [], scal.stereoMode);
+
 if isfield(scal, 'rect')
     % rect defined. Check for match with current screens rect:
     if sum(screenrect - scal.rect)~=0,

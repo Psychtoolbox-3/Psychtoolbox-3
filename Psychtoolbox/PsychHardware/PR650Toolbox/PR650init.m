@@ -53,9 +53,9 @@ end
 
 if g_useIOPort
 	if enableHandshaking
-		handshakeCode = 'Lenient FlowControl=Hardware ';
+		handshakeCode = 'Lenient DontFlushOnWrite=1 FlowControl=Hardware ';
 	else
-		handshakeCode = 'Lenient FlowControl=None ';
+		handshakeCode = 'Lenient DontFlushOnWrite=1 FlowControl=None ';
 	end
 
 	% Only open if we haven't already.

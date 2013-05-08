@@ -937,11 +937,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (useX11) XSync(dpy, False);
 
     // Show our new window:
-    waffle_window_show(window);
+    if (windowLevel != -1) waffle_window_show(window);
 
     if (useX11) {
         // Spin-Wait for it to be really mapped:
-        while (0) {
+        while (windowLevel != -1) {
             XEvent ev;
             XNextEvent(dpy, &ev);
             if (ev.type == MapNotify) break;

@@ -913,12 +913,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // non-zero window levels:
     if (windowLevel > 0) {
         XMapRaised(dpy, win);
-    } else {
+    } else if (windowLevel != -1) {
         XMapWindow(dpy, win);
     }
     
     // Spin-Wait for it to be really mapped:
-    while (1) {
+    while (windowLevel != -1) {
         XEvent ev;
         XNextEvent(dpy, &ev);
         if (ev.type == MapNotify)
