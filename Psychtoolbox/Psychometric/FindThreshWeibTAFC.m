@@ -8,7 +8,7 @@ function threshold = FindThreshWeibTAFC(pCorrect,alpha,beta)
 %
 % 8/25/94		dhb, ccc 		New name, fixed comments
 
-if (pCorrect <= 0.0 | pCorrect > 1.0)
+if (pCorrect <= 0.0 || pCorrect > 1.0)
   error('pCorrect is out of bounds');
 end
 

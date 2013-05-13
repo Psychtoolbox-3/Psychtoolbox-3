@@ -67,7 +67,7 @@ if nargin < 3
     halffloat = 0;
 end
 
-if size(hdrImage,1)<1 | size(hdrImage,2)<1
+if size(hdrImage,1)<1 || size(hdrImage,2)<1
    error('Passed ''hdrImage'' does not have required minimum width x height of at least 1 by 1 pixels.');
 end
 

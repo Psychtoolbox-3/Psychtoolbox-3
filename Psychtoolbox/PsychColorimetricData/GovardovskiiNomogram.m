@@ -62,7 +62,7 @@ T_absorbance = zeros(nT,nWls);
 
 for i = 1:nT
     theMax = lambdaMax(i);
-    if (theMax > lmaxLow & theMax < lmaxHigh)
+    if (theMax > lmaxLow && theMax < lmaxHigh)
         
         % alpha-band polynomial
         %

@@ -21,14 +21,14 @@ usefreqi = 2*pi*freqi/nRowPixels;
 usefreqj = 2*pi*freqj/nColPixels;
 
 % Handle zero frequency case
-if (usefreqj == 0 & usefreqi ~= 0)
+if (usefreqj == 0 && usefreqi ~= 0)
 	sinx = ones(size(x));
 else
 	sinx = sin(usefreqj*x);
 end
 
 % Handle zero frequency case
-if (usefreqi == 0 & usefreqj ~= 0)
+if (usefreqi == 0 && usefreqj ~= 0)
 	siny = ones(size(y));
 else
 	siny = sin(usefreqi*y);

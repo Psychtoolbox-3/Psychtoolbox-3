@@ -19,7 +19,7 @@ function rmse = ComputeRMSE(data,predict,SUPRESS_WARNING)
 %          dhb  Added mechanism to suppress the warning message.
 
 % Warning about misnomer of routine.
-if (nargin < 3 | isempty(SUPRESS_WARNING))
+if (nargin < 3 || isempty(SUPRESS_WARNING))
     SUPRESS_WARNING = 0;
 end
 if (~SUPRESS_WARNING)

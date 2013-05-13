@@ -101,7 +101,7 @@ switch length(daq)
         end
       end
       numTries = numTries+1;
-      if numTries > 1 & ~TheLEDBlinked
+      if numTries > 1 && ~TheLEDBlinked
         ConfirmInfo('It should have blinked.  Since it didn''t and there were no obvious errors I will bail and let you work on it.');
         return;
       end
@@ -167,7 +167,7 @@ switch length(daq)
         end
       end
       numTries = numTries+1;
-      if numTries > 1 & ~TheLEDBlinked
+      if numTries > 1 && ~TheLEDBlinked
         ConfirmInfo('I don''t know why this didn''t work.  I hope you do because I am bailing!');
         return;
       end
@@ -231,7 +231,7 @@ end
 % fprintf(['\n** NOT RESPONDING? If your %s is not responding, try quitting and\n'...
 %     '** restarting MATLAB. Denis found that this reliably restored normal\n'...
 %     '** communication for his device.\n'],devices(daq(1)).product);
-if strcmp(devices(daq(1)).product,'USB-1208FS') | strcmp(devices(daq(1)).product,'PMD-1208FS') | strcmp(devices(daq(1)).product,'USB-1408FS')  
+if strcmp(devices(daq(1)).product,'USB-1208FS') || strcmp(devices(daq(1)).product,'PMD-1208FS') || strcmp(devices(daq(1)).product,'USB-1408FS')  
   fprintf(['\n'...
       '** WIRING THE PINS OF THE USB-1208FS (and presumably -1408FS)\n'...
       '**    For the analog i/o test, please connect both channels of analog\n'...
@@ -538,7 +538,7 @@ else % if Is1608 (DaqDIn test)
   data=DaqDIn(daq(1));
   if ~isempty(data)
     fprintf('DaqDIn: %3d %3d.\n',data);
-    if length(data) ~= 2 | ~all(data == [a b])
+    if length(data) ~= 2 || ~all(data == [a b])
       disp('Mismatch between what I read and what I wrote.  I will stop to let you investigate.');
       return;
     else

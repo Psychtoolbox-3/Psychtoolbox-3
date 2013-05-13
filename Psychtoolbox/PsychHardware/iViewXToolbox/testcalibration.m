@@ -58,7 +58,7 @@ try
     %   WaitSecs(2);
     while KbCheck; end
     tEnd=GetSecs+2;
-    while ~KbCheck & GetSecs<tEnd, end
+    while ~KbCheck && GetSecs<tEnd, end
 
     Screen('CloseAll');
     fprintf('\nEnd of demo.\n');

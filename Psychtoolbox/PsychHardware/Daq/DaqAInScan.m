@@ -362,7 +362,7 @@ end
 if Is1608
     channelRangeOk = 0;
 else
-    channelRangeOk=~isempty(options.channel) & ~isempty(options.range);
+    channelRangeOk=~isempty(options.channel) && ~isempty(options.range);
 end
 if ~isfield(options,'FirstChannel')
     if Is1608
@@ -378,7 +378,7 @@ if ~isfield(options,'LastChannel')
         options.LastChannel=[];
     end
 end
-FirstLastOk=~isempty(options.FirstChannel) & ~isempty(options.LastChannel);
+FirstLastOk=~isempty(options.FirstChannel) && ~isempty(options.LastChannel);
 if FirstLastOk==channelRangeOk
     error('Please specify either options.channel and options.range OR options.FirstChannel and options.LastChannel.');
 end

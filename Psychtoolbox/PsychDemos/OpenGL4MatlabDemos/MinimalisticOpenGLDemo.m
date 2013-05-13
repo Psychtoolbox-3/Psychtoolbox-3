@@ -148,11 +148,11 @@ if isempty(doAccumulate)
     doAccumulate = 0;
 end
 
-if (doAccumulate >= 2) & (imagingPipeline == 0) %#ok<AND2>
+if (doAccumulate >= 2) && (imagingPipeline == 0)
     error('You must set the imagingPipeline flag to 1 if you set doAccumulate to 2!');
 end
 
-if (doAccumulate == 1) & (imagingPipeline > 0) %#ok<AND2>
+if (doAccumulate == 1) && (imagingPipeline > 0)
     error('You must set the imagingPipeline flag to 0 if you set doAccumulate to 1!');
 end
 
@@ -319,7 +319,7 @@ while KbCheck; end;
 % Now we draw a solid, spinning textured sphere of radius 1.0.
 
 if ~checkerBoardTexture
-    % Prepare texture to by applied to the sphere: Load & create it from an image file:
+    % Prepare texture to by applied to the sphere: Load and create it from an image file:
     myimg = imread([PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/earth_512by256.jpg']);
 else
     % Apply regular checkerboard pattern as texture:
@@ -459,7 +459,7 @@ if doAccumulate
     blurf = 0.9;
 
     % Fast Offscreenwindow/FBO/alpha-blending based method on modern GPU's?
-    if (doAccumulate == 2) & (imagingPipeline > 0) %#ok<AND2>
+    if (doAccumulate == 2) && (imagingPipeline > 0)
         % Yes: Perform one-time setup of pipeline:
         
         Screen('EndOpenGL', win);

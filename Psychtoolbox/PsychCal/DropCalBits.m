@@ -21,7 +21,7 @@ function cal = DropCalBits(cal,whichScreen,forceBits)
 % Get hardware dac level.  Note that the application
 % code should use LoadClut, not SetClut, to access
 % full bit depth.
-if (nargin > 2 & ~isempty(forceBits))
+if (nargin > 2 && ~isempty(forceBits))
 	hardwareBits = forceBits;
 else
 	hardwareBits = Screen(whichScreen,'Preference','DACBits');

@@ -90,7 +90,7 @@ try
     [wW, wH]=WindowSize(w);
 	% wW=wRect(3);
 	% wH=wRect(4);
-	 if ix>wW | iy>wH
+	 if ix>wW || iy>wH
         disp('Image size exceeds screen size');
         disp('Image will be cropped');
     end
@@ -244,7 +244,7 @@ try
         end
         
         % We only redraw if gazepos. has changed:
-        if (mx~=mxold | my~=myold)            
+        if (mx~=mxold || my~=myold)            
             % Compute position and size of source- and destinationrect and
             % clip it, if necessary...
             myrect=[mx-ms my-ms mx+ms+1 my+ms+1]; % center dRect on current mouseposition
@@ -276,7 +276,7 @@ try
                 % This is done by weighting each color value of each pixel
                 % with the corresponding alpha-value in the backbuffer
                 % (GL_DST_ALPHA).
-                if mode == 1 | mode == 3
+                if mode == 1 || mode == 3
                     Screen('BlendFunction', w, GL_DST_ALPHA, GL_ZERO);
                     Screen('DrawTexture', w, nonfoveatex, [], ctRect);
                 end
@@ -286,7 +286,7 @@ try
                 % done by weighting each color value with one minus the
                 % corresponding alpha-value in the backbuffer
                 % (GL_ONE_MINUS_DST_ALPHA).
-                if mode == 2 | mode == 3
+                if mode == 2 || mode == 3
                     Screen('BlendFunction', w, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
                     Screen('DrawTexture', w, foveatex, sRect, dRect);
                 end
@@ -335,7 +335,7 @@ try
         WaitSecs(0.001);
 
         % Abort demo on keypress our mouse-click:
-        if KbCheck | find(buttons) % break out of loop
+        if KbCheck || find(buttons) % break out of loop
             break;
         end;
     end;

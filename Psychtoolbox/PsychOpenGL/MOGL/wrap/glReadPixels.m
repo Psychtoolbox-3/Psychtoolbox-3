@@ -50,11 +50,11 @@ end
 % check format and type
 global GL
 
-if x < 0 | y<0 %#ok<OR2>
+if x < 0 || y<0
     error('Invalid (negative) (x,y) offset passed to glReadPixels.');
 end;
 
-if width <= 0 | height<=0 %#ok<OR2>
+if width <= 0 || height<=0
     error('Invalid (negative or zero) (width, height) passed to glReadPixels.');
 end;
 

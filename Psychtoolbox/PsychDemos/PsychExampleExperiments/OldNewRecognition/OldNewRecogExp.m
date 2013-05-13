@@ -112,7 +112,7 @@ testfilename  = 'testlist.txt';                            % test list
 
 % check for existing result file to prevent accidentally overwriting
 % files from a previous subject/session (except for subject numbers > 99):
-if subNo<99 & fopen(datafilename, 'rt')~=-1
+if subNo<99 && fopen(datafilename, 'rt')~=-1
     fclose('all');
     error('Result data file already exists! Choose a different subject number.');
 else
@@ -261,7 +261,7 @@ try
                 % during test phase, subjects can response
                 % before stimulus terminates
                 if ( phase==2 ) % if test phase
-                    if ( KeyCode(oldresp)==1 | KeyCode(newresp)==1 )
+                    if ( KeyCode(oldresp)==1 || KeyCode(newresp)==1 )
                         break;
                     end
                     [KeyIsDown, endrt, KeyCode]=KbCheck;
@@ -286,7 +286,7 @@ try
             end
             
             if ( phase==2 ) % test phase
-                while ( KeyCode(oldresp)==0 & KeyCode(newresp)==0 )
+                while ( KeyCode(oldresp)==0 && KeyCode(newresp)==0 )
                     [KeyIsDown, endrt, KeyCode]=KbCheck;
                      WaitSecs(0.001);
                 end
@@ -302,7 +302,7 @@ try
                 ac=0;
                 % code correct if old-response with old stimulus,
                 % new-response with new stimulus, or study phase
-                if ( (KeyCode(oldresp)==1 & objtype(trial)==1) | (KeyCode(newresp)==1 & objtype(trial)==2) )
+                if ( (KeyCode(oldresp)==1 && objtype(trial)==1) || (KeyCode(newresp)==1 && objtype(trial)==2) )
                     ac=1;
                 end
             end

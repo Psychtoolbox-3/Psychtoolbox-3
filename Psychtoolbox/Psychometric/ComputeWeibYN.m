@@ -26,13 +26,13 @@ end
 [nInputs, nCol] = size(x);
 
 % Case:  nAlpha == nBeta == 1 ~= nCol
-if (nAlpha == nBeta & nAlpha == 1)
+if (nAlpha == nBeta && nAlpha == 1)
   % disp('Single parameter case');
   z = (x./alpha).^beta;
   pyes = ( 1.0 - exp( - z ) );
 
 % Case:  nAlpha == nBeta == nCol
-elseif (nAlpha == nBeta & nAlpha == nCol)
+elseif (nAlpha == nBeta && nAlpha == nCol)
   % disp('Vector parameter case');
   for (i=1:nCol)
     z = (x(:,i)./alpha(i)).^beta(i);

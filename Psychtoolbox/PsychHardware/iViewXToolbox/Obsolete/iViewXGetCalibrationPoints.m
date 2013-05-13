@@ -23,7 +23,7 @@ if ~isempty(ivx.window)
     [w, h]=WindowSize(ivx.window);
     %fprintf([mfilename ' 1\n']);
 
-    if ivx.calScreenSize(1)~=w | ivx.calScreenSize(2)~=h
+    if ivx.calScreenSize(1)~=w || ivx.calScreenSize(2)~=h
         fprintf('Warning: actual screen size does not match calibration settings\n');
         fprintf('Actual: width: % 5d, Height: % 5d\n', w, h);
         fprintf('Calibr: width: % 5d, Height: % 5d\n', ivx.calScreenSize(1), ivx.calScreenSize(2));
@@ -40,7 +40,7 @@ size(ivx.absCalPos,1)<1
 size(ivx.absCalPos,2)~=2
 
 % check if the position table exists and is of correct size
-if ~isfield(ivx, 'absCalPos') | isempty(ivx.absCalPos) | size(ivx.absCalPos,1)<1 | size(ivx.absCalPos,2)~=2
+if ~isfield(ivx, 'absCalPos') || isempty(ivx.absCalPos) || size(ivx.absCalPos,1)<1 || size(ivx.absCalPos,2)~=2
     txt=[ mfilename ': something is wrong with calibration point pixel values.'];
     error(txt);
 end

@@ -9,7 +9,7 @@ function alpha = FindAlphaWeibTAFC(pCorrect,threshold,beta)
 %
 % 8/25/94		dhb, ccc		Wrote it.
 
-if (pCorrect <= 0.0 | pCorrect > 1.0)
+if (pCorrect <= 0.0 || pCorrect > 1.0)
   error('pCorrect is out of bounds');
 end
 

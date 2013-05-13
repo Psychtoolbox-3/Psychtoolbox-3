@@ -53,7 +53,7 @@ fprintf([resultStrings{failFlag3 + 1} '\n']);
 
 fprintf('    4. Testing accuracy of OpenGL multiplication between 0 and 1:         '); 
 [multMaximumError, multRoundTypeStr, multIndependentFlag]=AlphaMultiplicationAccuracyTest(screenNumber);
-didPass= multMaximumError < 1 & multIndependentFlag;
+didPass= multMaximumError < 1 && multIndependentFlag;
 fprintf([resultStrings{~didPass + 1} '\n']);
 fprintf(['        Maximum descrepancy between MATLAB double and OpenGL integer multiplication: ' num2str(multMaximumError) '\n']);         
 if strcmp(multRoundTypeStr,  'round')

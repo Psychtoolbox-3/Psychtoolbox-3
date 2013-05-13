@@ -23,11 +23,11 @@ end
 
 
 if isempty(rc)
-     rc = streq(computer,'MAC') | streq(computer, 'MACI') | streq(computer, 'MACI64') | ~isempty(strfind(computer, 'apple-darwin'));
+     rc = streq(computer,'MAC') || streq(computer, 'MACI') || streq(computer, 'MACI64') || ~isempty(strfind(computer, 'apple-darwin'));
 end
 
 if isempty(rc64)
-     rc64 = rc & ~isempty(strfind(computer, '64'));
+     rc64 = rc && ~isempty(strfind(computer, '64'));
 end
 
 if is64 == 0

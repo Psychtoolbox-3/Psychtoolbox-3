@@ -51,7 +51,7 @@ try
     Screen('Flip', theWindow);
     while (1)
         [x,y,buttons] = GetMouse(whichScreen);
-        if buttons(1) | KbCheck
+        if buttons(1) || KbCheck
           break;
         end
     end
@@ -71,7 +71,7 @@ try
         if ~buttons(1)
             break;
         end
-        if (x ~= theX | y ~= theY)
+        if (x ~= theX || y ~= theY)
             [numPoints, two]=size(thePoints);
             for i= 1:numPoints-1
                 Screen(theWindow,'DrawLine',128,thePoints(i,1),thePoints(i,2),thePoints(i+1,1),thePoints(i+1,2));

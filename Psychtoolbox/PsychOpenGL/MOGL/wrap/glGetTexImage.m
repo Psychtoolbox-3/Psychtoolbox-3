@@ -48,7 +48,7 @@ end;
 width = glGetTexLevelParameteriv(target, level, GL.TEXTURE_WIDTH);
 height = glGetTexLevelParameteriv(target, level, GL.TEXTURE_HEIGHT);
 
-if width <=0 | height<=0
+if width <=0 || height<=0
     error('Invalid (negative or zero) size of texture image object.');
 end
 

@@ -135,7 +135,7 @@ end
 s = PsychPortAudio('GetStatus', pahandle);
 
 % Stay in a little loop until keypress:
-while ~KbCheck & ((length(recordedaudio) / s.SampleRate) < maxsecs)
+while ~KbCheck && ((length(recordedaudio) / s.SampleRate) < maxsecs)
     % Wait a second...
     WaitSecs(1);
     

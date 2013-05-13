@@ -145,7 +145,7 @@ mymax =     max(max(maskblob(:,:,transLayer)))
                 end;
 
                 % Update display if there is anything to update:
-                if (tex>0 | tex2>0)
+                if (tex>0 || tex2>0)
                     % We use clearmode=1, aka don't clear on flip. This is
                     % needed to avoid flicker...
                     vbl=Screen('Flip', win, 0, 0);
@@ -155,32 +155,32 @@ mymax =     max(max(maskblob(:,:,transLayer)))
             % Check for abortion:
             abortit=0;
             [keyIsDown,secs,keyCode]=KbCheck;
-            if (keyIsDown==1 & keyCode(esc))
+            if (keyIsDown==1 && keyCode(esc))
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(space))
+            if (keyIsDown==1 && keyCode(space))
                 % Exit while-loop: This will load the next movie...
                 while KbCheck; end;
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(right))
+            if (keyIsDown==1 && keyCode(right))
                 angle = angle + 1;
             end;
 
-            if (keyIsDown==1 & keyCode(left))
+            if (keyIsDown==1 && keyCode(left))
                 angle = angle - 1;
             end;
 
-            if (keyIsDown==1 & keyCode(up))
+            if (keyIsDown==1 && keyCode(up))
                 alpha = alpha + 0.01;
                 if alpha > 1
                     alpha = 1;
                 end
             end;
 
-            if (keyIsDown==1 & keyCode(down))
+            if (keyIsDown==1 && keyCode(down))
                 alpha = alpha - 0.01;
                 if alpha < 0
                     alpha = 0;
@@ -228,7 +228,7 @@ mymax =     max(max(maskblob(:,:,transLayer)))
                 end;
 
                 % Update display if there is anything to update:
-                if (tex>0 | tex2>0)
+                if (tex>0 || tex2>0)
                     % We use clearmode=1, aka don't clear on flip. This is
                     % needed to avoid flicker...
                     vbl=Screen('Flip', win, 0, 0);
@@ -238,33 +238,33 @@ mymax =     max(max(maskblob(:,:,transLayer)))
             % Check for abortion:
             abortit=0;
             [keyIsDown,secs,keyCode]=KbCheck;
-            if (keyIsDown==1 & keyCode(esc))
+            if (keyIsDown==1 && keyCode(esc))
                 % Set the abort-demo flag.
                 abortit=2;
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(space))
+            if (keyIsDown==1 && keyCode(space))
                 % Exit while-loop: This will load the next movie...
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(right))
+            if (keyIsDown==1 && keyCode(right))
                 angle = angle + 1;
             end;
 
-            if (keyIsDown==1 & keyCode(left))
+            if (keyIsDown==1 && keyCode(left))
                 angle = angle - 1;
             end;
 
-            if (keyIsDown==1 & keyCode(up))
+            if (keyIsDown==1 && keyCode(up))
                 alpha = alpha + 0.01;
                 if alpha > 1
                     alpha = 1;
                 end
             end;
 
-            if (keyIsDown==1 & keyCode(down))
+            if (keyIsDown==1 && keyCode(down))
                 alpha = alpha - 0.01;
                 if alpha < 0
                     alpha = 0;

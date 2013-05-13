@@ -37,7 +37,7 @@ function cellRects=ArrangeRects(n,objectRect,windowRect,rightToLeft);
 if nargin<3 || nargin>4 
     error('Usage: cellRects=ArrangeRects(n,objectRect,windowRect,[rightToLeft]);'); 
 end
-if size(objectRect,2)~=4 | size(windowRect,2)~=4
+if size(objectRect,2)~=4 || size(windowRect,2)~=4
 	error('Wrong size rect argument. Usage: cellRects=ArrangeRects(n,objectRect,windowRect,[rightToLeft]);'); 
 end
 if nargin<4
@@ -69,7 +69,7 @@ for y=1:ny;
 		cellRect=SetRect(0,0,cellWidth,cellHeight);
 		cellRect=OffsetRect(cellRect,windowRect(RectLeft),windowRect(RectTop));
 		cellRect=OffsetRect(cellRect,(x-1)*cellWidth,(y-1)*cellHeight);
-		if(y<ny | ( x-1>=floor(empties/2) & nx-x>=ceil(empties/2) ) )
+		if(y<ny || ( x-1>=floor(empties/2) && nx-x>=ceil(empties/2) ) )
 			cellRects(i,:)=cellRect;
 			i=i+1;
 			if(i>n)break;end;

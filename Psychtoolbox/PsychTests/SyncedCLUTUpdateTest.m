@@ -119,7 +119,7 @@ try
         i=i+1;
 
         % Abort after 1000 iterations or on a key-press:
-        if KbCheck | (i>1000)
+        if KbCheck || (i>1000)
             break;
         end;
     end;

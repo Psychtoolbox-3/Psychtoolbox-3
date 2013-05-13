@@ -48,7 +48,7 @@ else
     end
 end
 
-while down & (secs < untilTime) %#ok<AND2>
+while down && (secs < untilTime)
     [down, secs, keyincode] = KbCheck(varargin{:});
     if down
         keycode = keycode + keyincode;

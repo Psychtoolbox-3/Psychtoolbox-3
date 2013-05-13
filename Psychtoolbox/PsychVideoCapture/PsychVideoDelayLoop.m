@@ -542,7 +542,7 @@ if strcmp(cmd, 'RunLoop')
         dstrect = CenterRect(ROI, Screen('Rect', win));
     end
 
-    if mirrored>0 | upsidedown>0 %#ok<OR2>
+    if mirrored>0 || upsidedown>0
         % Setup transformation for our image.
         Screen('glPushMatrix', win);
         [hw hh] = RectCenter(dstrect);
@@ -601,7 +601,7 @@ if strcmp(cmd, 'RunLoop')
     while (tonset - tstart) < aborttimeout
         % Calling KbCheck is expensive (often more than 1 millisecond). We avoid it,
         % if onlinecontrol is disabled and no abort keys are set.
-        if ~isempty(abortkeys) | onlinecontrol %#ok<OR2>
+        if ~isempty(abortkeys) || onlinecontrol
             % Check for keypress:
             [down secs keycode] = KbCheck;
             
@@ -665,11 +665,11 @@ if strcmp(cmd, 'RunLoop')
         [tex cts nrdropped]=Screen('GetCapturedImage', win, grabber, 1, recycledtex);
 
         % Frame dropped during this capture cycle?
-        if nrdropped > 0 & verbose > 1 %#ok<AND2>
+        if nrdropped > 0 && verbose > 1
             fprintf('Frame dropped: %i, %f\n', capturecount, (cts-oldcts)*1000);
         end;
 
-        if (cts < oldcts & oldcts~=tstart & verbose >0) %#ok<AND2>
+        if (cts < oldcts && oldcts~=tstart && verbose >0)
             fprintf('BUG! TIMESTAMP REVERSION AT FRAME %i, DELTA = %f !!!\n', capturecount, (cts-oldcts)*1000);
         end;
 
@@ -722,7 +722,7 @@ if strcmp(cmd, 'RunLoop')
                 timestamps(3, readcount) = timestamps(2, readcount) + camlatency;
             end;
 
-            if (recordframes>0) & (privateMod(readcount, recordframes)==0) %#ok<AND2>
+            if (recordframes>0) && (privateMod(readcount, recordframes)==0)
                 captexscount = captexscount + 1;
                 captexs(1, captexscount) = tex;
                 captexs(2, captexscount) = tonset;
@@ -743,7 +743,7 @@ if strcmp(cmd, 'RunLoop')
     % Done with video feedback loop. Shutdown video capture:
     rc.telapsed = GetSecs - tstart;
 
-    if mirrored>0 | upsidedown>0 %#ok<OR2>
+    if mirrored>0 || upsidedown>0
         % Undo image transforms:
         Screen('glPopMatrix', win);
     end;

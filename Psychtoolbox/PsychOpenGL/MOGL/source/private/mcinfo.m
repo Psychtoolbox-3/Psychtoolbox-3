@@ -171,7 +171,7 @@ for j=1:numel(funcp.argin.args),
 		end
 
 		% if pointer is not void, and is const, then typecast argument
-		if ~isempty(mcast) & ~thisallocate, %#ok<AND2>
+		if ~isempty(mcast) && ~thisallocate,
 			M.mogl_in{end+1}=sprintf('%s(%s)',mcast,funcp.argin.args(j).argname);
 		else
 			M.mogl_in{end+1}=sprintf('%s',funcp.argin.args(j).argname);

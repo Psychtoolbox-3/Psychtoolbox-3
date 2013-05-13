@@ -357,11 +357,11 @@ for trial = 1:10
     fprintf('---> Input delay time is %f milliseconds.\n', dt);
         
     % Valid measurement? Must be between 0 and 100 msecs to be considered:
-    if (dt > -100) & (dt < 100) %#ok<AND2>
+    if (dt > -100) && (dt < 100)
         tdelay = [tdelay dt]; %#ok<AGROW>
     end
     
-    if modality == 3 | modality == 4 %#ok<OR2>
+    if modality == 3 || modality == 4
         % Store raw box timestamp as well:
         tdelay2(end, 2) = tOnset; %#ok<AGROW>
     end

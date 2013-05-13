@@ -8,26 +8,26 @@ function ivx=iviewxinitdefaults(window, points, host, port)
 % 020105    fwc changed name to 'iviewxinitdefaults' for consistency
 %               setting calibrationpoints is now done in seperate function
 
-if exist('window', 'var') & ~isempty(window)
+if exist('window', 'var') && ~isempty(window)
     ivx.window=window;
 else
     ivx.window=[];
 end
 
-if exist('points', 'var') & ~isempty(points)
+if exist('points', 'var') && ~isempty(points)
     ivx.nCalPoints=points;
 else
     ivx.nCalPoints=9;
 end
 
-if exist('host', 'var') & ~isempty(host)
+if exist('host', 'var') && ~isempty(host)
     ivx.host=host;
 else
     % ivx.host='localhost';
     ivx.host='192.168.1.2';
 end
 
-if exist('port', 'var') & ~isempty(port)
+if exist('port', 'var') && ~isempty(port)
     ivx.port=port;
 else
     ivx.port=4444;

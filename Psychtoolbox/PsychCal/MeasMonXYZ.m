@@ -36,7 +36,7 @@ usageStr = 'XYZ = MeasMonXYZ(window,settings,[syncMode],[whichMeterType])';
 if (nargin < 2 || nargin > 4 || nargout > 1)
 	error(usageStr);
 end
-if (size(window,1) ~= 1 | size(window,2) ~= 1)
+if (size(window,1) ~= 1 || size(window,2) ~= 1)
 	error(usageStr);
 end
 

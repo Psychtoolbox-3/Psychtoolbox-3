@@ -95,7 +95,7 @@ try
         tonset(i)=t1;
 
         % Abort after 1000 video refresh intervals or on a key-press:
-        if KbCheck | (i>1000)
+        if KbCheck || (i>1000)
             break;
         end;
     end;

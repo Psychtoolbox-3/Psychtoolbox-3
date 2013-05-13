@@ -7,7 +7,7 @@ function threshold = FindThreshWeibYN(pyes, alpha, beta)
 %
 %  threshold = alpha * pow( -1.0*log(1.0-pyes) , 1.0/beta );
 
-  if (pyes>=0.0 & pyes<1.0)
+  if (pyes>=0.0 && pyes<1.0)
     % ASSERTEND(pyes>=0.0 & pyes<1.0);
   end
 

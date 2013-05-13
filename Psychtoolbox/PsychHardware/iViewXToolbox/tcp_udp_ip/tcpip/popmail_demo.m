@@ -75,7 +75,7 @@ function popmail_demo(site,user,pass)
       s=block_readln(fid);
       
       % Don't display attachment lines and similar stuff.
-      if atflag==0 & b<100,
+      if atflag==0 && b<100,
         disp(s);
       end
       if strncmp(s,'Content-',8),

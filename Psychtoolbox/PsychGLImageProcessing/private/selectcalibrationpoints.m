@@ -1,7 +1,7 @@
 function [scal] = selectcalibrationpoints(scal)
 
-commandwindow
-pause(.5)
+commandwindow;
+pause(.5);
 
 % open window and check whether that window has the same resolution as the
 % one stored in the calibration data file
@@ -11,6 +11,6 @@ if sum(rect-scal.rect)~=0,
 end
 
 scal = bvlSelectFitPts(scal); % select the dots that will be fitted. The dots x and y coordinates will be stored in scal.FITDOTLIST
-eval(['save currentCalib[' num2str(scal.screenNumber) '].mat'])
-screen('closeall')
-showcursor
+eval(['save currentCalib[' num2str(scal.screenNumber) '].mat']);
+Screen('closeall');
+ShowCursor;

@@ -26,7 +26,7 @@ else
       error('Not enough input arguments.');
   else
       expression = varargin{1};
-      if ~isscalar(expression) | ~islogical(expression) %#ok<OR2>
+      if ~isscalar(expression) || ~islogical(expression)
           error('The condition input argument must be a scalar logical.');
       end
       

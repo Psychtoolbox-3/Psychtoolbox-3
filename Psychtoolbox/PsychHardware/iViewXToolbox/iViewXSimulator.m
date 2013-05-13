@@ -26,7 +26,7 @@ try
     while GetSecs<tEnd
 
         [keyIsDown,secs,keyCode] = KbCheck;
-        if 0 & 1==keyCode(ivx.modifierKey) & 1==keyCode(ivx.breakKey)
+        if 0 && 1==keyCode(ivx.modifierKey) && 1==keyCode(ivx.breakKey)
             break;
         end
 
@@ -38,7 +38,7 @@ try
 
         [data, ivx]=iViewX('receivedata', ivx);
 
-        if ~isempty(data) & data ~=-1
+        if ~isempty(data) && data ~=-1
             % data
             if strfind(data, 'ET_STR')
                 fprintf('Start Streaming\n');

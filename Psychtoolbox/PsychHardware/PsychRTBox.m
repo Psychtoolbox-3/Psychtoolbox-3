@@ -1517,7 +1517,7 @@ global rtbox_global;
                 fprintf(' Sigma (ms): %.2g\n',sd);
             end
             
-            if (sd > 0.5) & rtbox_info(id).verbosity > 1 %#ok<AND2>
+            if (sd > 0.5) && rtbox_info(id).verbosity > 1
                 fprintf(2,' The ratio may not be reliable. Try longer time for ClockTest.\n');
             end
 
@@ -1878,7 +1878,7 @@ function syncClocks(id)
     end
     
     % At least one sample with acceptable precision acquired?
-    if (minwin > rtbox_global.maxMinwinThreshold) | (ic < 1) %#ok<OR2>
+    if (minwin > rtbox_global.maxMinwinThreshold) || (ic < 1)
         % No, not even a single one! Set all results to "invalid"
         rtbox_info(id).sync=[inf, inf, inf];
         
@@ -2520,7 +2520,7 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
     while (tcurrent <= timeOut) && (minEvents > 0) && (tcurrent <= tInterTimeout)
 
         % Shall we repeat until all outstanding tokens acknowledged?
-        if untilAllAcknowledged && isempty(rtbox_info(handle).ackTokens) %#ok<AND2>
+        if untilAllAcknowledged && isempty(rtbox_info(handle).ackTokens)
             % Yes. And we're done:
             break;
         end
@@ -2889,7 +2889,7 @@ function openRTBox(deviceID, handle)
     % Retry device detection procedure up to a total of 2 times:
     % Sometimes a freshly connected RTBox has a little hickup at first try,
     % but it reliably works at the 2nd iteration:
-    while (trycount < 2) & (~deviceFound)     %#ok<AND2>
+    while (trycount < 2) && (~deviceFound)    
         % Scan each possible port if it is the response box:
         for ic=1:nPorts
             % Device file name of port to probe:
@@ -2970,7 +2970,7 @@ function openRTBox(deviceID, handle)
                 % ourselves or some other process:
                 rec.busy{end+1}=port; %#ok
 
-                if isempty(strfind(errmsg,'EPERM')) & isempty(strfind(errmsg,'EBUSY')) %#ok<AND2>
+                if isempty(strfind(errmsg,'EPERM')) && isempty(strfind(errmsg,'EBUSY'))
                     % No permission or busy error. Something else went
                     % wrong. Tell user:
                     RTboxWarn('openError', errmsg);

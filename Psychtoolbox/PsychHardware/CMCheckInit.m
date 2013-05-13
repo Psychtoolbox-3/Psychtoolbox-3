@@ -136,11 +136,11 @@ switch meterType
             end
             NumTries = 0;
             
-            while (isempty(status) || status == -1) & NumTries < DefaultNumberOfTries %#ok<AND2>
+            while (isempty(status) || status == -1) && NumTries < DefaultNumberOfTries
                 stat = PR650init(portNameIn);
                 status = sscanf(stat,'%f');
                 NumTries = NumTries+1;
-                if (isempty(status) || status == -1) & NumTries >= 3 %#ok<AND2>
+                if (isempty(status) || status == -1) && NumTries >= 3
                     if IsOSX
                         if ~g_useIOPort
                             evalc(['SerialComm(''close'',' int2str(portNameIn) ');']);

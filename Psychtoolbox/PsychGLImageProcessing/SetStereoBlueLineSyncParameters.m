@@ -85,7 +85,7 @@ lslot = Screen('HookFunction', win, 'Query', 'LeftFinalizerBlitChain', 'Builtin:
 rslot = Screen('HookFunction', win, 'Query', 'RightFinalizerBlitChain', 'Builtin:RenderStereoSyncLine');
 
 % Existing hookslots found?
-if (lslot ~= -1) & (rslot ~= -1) %#ok<AND2>
+if (lslot ~= -1) && (rslot ~= -1)
     % Yes. Need to recreate with new settings:
 
     % Destroy old ones:

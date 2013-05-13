@@ -83,7 +83,7 @@ else % if exist(TheDir,'dir')
   % [DirMade, DirMessage] = mkdir(TheDir);
   % but I've had problems (in OS 9) having mkdir fail when string passed is too
   % long.  I don't know if that has been fixed in other OS's, so this is safe:
-  if IsLinux & ~UsePsych
+  if IsLinux && ~UsePsych
     [DirMade, DirMessage] = mkdir(StringStart(1:(end-1)),'.Daqtoolbox');
   else      
     [DirMade, DirMessage] = mkdir(StringStart,'Daqtoolbox');

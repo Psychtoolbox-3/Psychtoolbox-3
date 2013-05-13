@@ -8,7 +8,7 @@ alpha = x(1);
 beta  = x(2);
 
 % Force really big error if alpha or beta <= 0
-if (alpha <= 0 | beta <= 0)
+if (alpha <= 0 || beta <= 0)
 	f = 1e25;
 	g = -1;
 	return;

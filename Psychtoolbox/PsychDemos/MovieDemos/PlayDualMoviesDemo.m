@@ -123,7 +123,7 @@ try
                 end;
 
                 % Update display if there is anything to update:
-                if (tex>0 | tex2>0)
+                if (tex>0 || tex2>0)
                     % We use clearmode=1, aka don't clear on flip. This is
                     % needed to avoid flicker...
                     vbl=Screen('Flip', win, 0, 1);
@@ -133,30 +133,30 @@ try
             % Check for abortion:
             abortit=0;
             [keyIsDown,secs,keyCode]=KbCheck;
-            if (keyIsDown==1 & keyCode(esc))
+            if (keyIsDown==1 && keyCode(esc))
                 % Set the abort-demo flag.
                 abortit=2;
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(space))
+            if (keyIsDown==1 && keyCode(space))
                 % Exit while-loop: This will load the next movie...
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(right))
+            if (keyIsDown==1 && keyCode(right))
                 % Advance movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) + 1);
                 Screen('SetMovieTimeIndex', movie2, Screen('GetMovieTimeIndex', movie2) + 1);
             end;
 
-            if (keyIsDown==1 & keyCode(left))
+            if (keyIsDown==1 && keyCode(left))
                 % Rewind movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) - 1);
                 Screen('SetMovieTimeIndex', movie2, Screen('GetMovieTimeIndex', movie2) - 1);
             end;
 
-            if (keyIsDown==1 & keyCode(up))
+            if (keyIsDown==1 && keyCode(up))
                 % Increase playback rate by 1 unit.
                 while KbCheck; WaitSecs(0.01); end;
                 if (keyCode(shift))
@@ -168,7 +168,7 @@ try
                 Screen('PlayMovie', movie2, rate, 1, 1.0);
             end;
 
-            if (keyIsDown==1 & keyCode(down))
+            if (keyIsDown==1 && keyCode(down))
                 % Decrease playback rate by 1 unit.
                 while KbCheck; WaitSecs(0.01); end;
                 if (keyCode(shift))

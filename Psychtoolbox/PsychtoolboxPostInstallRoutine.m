@@ -51,6 +51,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 09/14/2012 Cancel support for 32-Bit Octave on OSX. (MK)
 % 11/11/2012 More cleanup. E.g., don't warn about Octave > 3.2 anymore. (MK)
 % 04/16/2013 Use javaclasspath.txt instead of classpath.txt on R2013a and later. (MK)
+% 05/13/2013 Factor out Java classpath setup to call to PsychJaveTrouble(1). (MK)
 %
 
 fprintf('\n\nRunning post-install routine...\n\n');
@@ -530,137 +531,9 @@ end
 % If we're using Matlab then add the PsychJava stuff to the static
 % Java classpath.
 if ~IsOctave
-    try
-       % Figure out the PsychJava path we need to add to the static Java
-        % classpath.
-        path_PsychJava = [PsychtoolboxRoot, 'PsychJava'];
-
-        % Matlab 8.1 changes the rules about static java classpath. Lovely.
-        if verLessThan('matlab', '8.1')
-            % Legacy: Open up the classpath.txt file and find any PsychJava
-            % entries.  If they exist, remove them, and put the current one
-            % in the file.  This only allows on PsychJava to be on the
-            % path.
-            classpathFile = which('classpath.txt');
-        else
-            % Matlab version 8.1 (R2013a) or later. classpath.txt can't be
-            % used anymore. Now they want us to store static classpath
-            % definitions in a file called javaclasspath.txt inside the
-            % Matlab preference folder:
-            
-            % Try to find the file, if it already exists, e.g., inside the
-            % Matlab startup folder:
-            classpathFile = which('javaclasspath.txt');
-            
-            % Found it?
-            if isempty(classpathFile)
-                % Nope. So we try the preference folder.
-                % Retrieve path to preference folder. Create the folder if it
-                % doesn't already exist:
-                prefFolder = prefdir(1);
-                classpathFile = [prefFolder filesep 'javaclasspath.txt'];
-                if ~exist(classpathFile, 'file')
-                    fid = fopen(classpathFile, 'w');
-                    fclose(fid);
-                end
-            end
-        end
-        
-        % Define name of backup file:
-        bakclasspathFile = [classpathFile '.bak'];        
-        
-        if ~verLessThan('matlab', '7.14')
-            % New style method: (textread() is deprecated as of at least R2012a)
-            fid = fopen(classpathFile);
-            fileContentsWrapped = textscan(fid, '%s', 'delimiter', '\n');
-            fclose(fid);
-            fileContents = fileContentsWrapped{1};
-        else
-            fileContents = textread(classpathFile, '%s', 'delimiter', '\n'); %#ok<REMFF1>
-        end
-        j = 1;
-        newFileContents = {};
-        pathInserted = 0;
-        for i = 1:length(fileContents)
-            % Look for the first instance of PsychJava in the classpath and
-            % replace it with the new one.  All other instances will be
-            % ignored.
-            if isempty(strfind(fileContents{i}, 'PsychJava'))
-                newFileContents{j, 1} = fileContents{i}; %#ok<AGROW>
-                j = j + 1;
-            elseif ~isempty(strfind(fileContents{i}, 'PsychJava')) && ~pathInserted
-                newFileContents{j, 1} = path_PsychJava; %#ok<AGROW>
-                pathInserted = 1;
-                j = j + 1;
-            end
-        end
-
-        % If the PsychJava path wasn't inserted, then this must be a new
-        % installation, so we append it to the classpath.
-        if ~pathInserted
-            newFileContents{end + 1, 1} = path_PsychJava;
-        end
-
-        % Now compare to see if the new and old classpath are the same.  If
-        % they are, then there's no need to do anything.
-        updateClasspath = 1;
-        if length(fileContents) == length(newFileContents)
-            if strcmp(fileContents, newFileContents)
-                updateClasspath = 0;
-            end
-        end
-
-        if updateClasspath
-            % Make a backup of the old classpath.
-            clear madeBackup;
-
-            [s, w] = copyfile(classpathFile, bakclasspathFile, 'f');
-
-            if s==0
-                error(['Could not make a backup copy of Matlab''s JAVA static path definition file. ' ...
-                    'The system reports: ', w]);
-            end
-            madeBackup = 1; %#ok<NASGU>
-
-            % Write out the new contents.
-            FID = fopen(classpathFile, 'w');
-            if FID == -1
-                error('Could not open Matlab''s JAVA path definition file for write access.');
-            end
-            for i = 1:length(newFileContents)
-                fprintf(FID, '%s\n', newFileContents{i});
-            end
-            fclose(FID);
-
-            fprintf('\n\n');
-            disp('*** Matlab''s Static Java classpath definition file modified. You will have to restart Matlab to enable use of the new Java components. ***');
-            fprintf('\nPress RETURN or ENTER to confirm you read and understood the above message.\n');
-            pause;
-        end
-    catch
-        lerr = psychlasterror;
-        fprintf('Could not update the Matlab JAVA classpath file due to the following error:\n');
-        fprintf('%s\n\n', lerr.message);
-        fprintf('Probably you do not have sufficient access permissions for the Matlab application folder\n');
-        fprintf('or the file itself to change the file %s .\n\n', classpathFile);
-        fprintf('Please ask the system administrator to enable write-access to that file and its\n');        
-        fprintf('containing folder and then repeat the update procedure.\n');
-        fprintf('Alternatively, ask the administrator to add the following line:\n\n');
-        fprintf('%s\n\n', path_PsychJava);
-        fprintf('to the file: %s\n\n', classpathFile);        
-        fprintf('If you skip this step, Psychtoolbox will still be mostly functional, \n');
-        fprintf('but the Java-based commands ListenChar, CharAvail, GetChar and FlushEvents\n');
-        fprintf('on Linux, MacOS-X and MS-Windows in Java mode will not work well - or at all.\n');
-        fprintf('For more info see ''help PsychJavaTrouble''.\n\n');
-        fprintf('\nPress RETURN or ENTER to confirm you read and understood the above message.\n');
-        pause;
-
-        % Restore the old classpath file if necessary.
-        if exist('madeBackup', 'var')
-            [s, w] = copyfile(bakclasspathFile, classpathFile, 'f'); %#ok<*ASGLU,NASGU>
-        end
-    end
-end % if ~IsOctave
+    % Try to setup Matlab static Java class path:
+    PsychJavaTrouble(1);
+end
 
 % Check if Screen is functional:
 try

@@ -49,7 +49,7 @@ fitFundamentals = ComputeCIEConeFundamentals(staticParams.S,staticParams.fieldSi
             T_resid = log10(T_pred(index))-log10(T_targetQuantal(index));
             index1 = log10(T_targetQuantal(index)) > bigThresh;
             index2 = log10(T_targetQuantal(index)) <= bigThresh;
-            if ( any(isnan(T_resid(:))) | any(isinf(T_resid(:))) )
+            if ( any(isnan(T_resid(:))) || any(isinf(T_resid(:))) )
                 f = 1e6;
             else
                 f = 100*(bigWeight*mean(T_resid(index1).^2) + mean(T_resid(index2).^2));

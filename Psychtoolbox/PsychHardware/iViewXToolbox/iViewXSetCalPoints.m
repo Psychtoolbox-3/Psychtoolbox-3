@@ -2,26 +2,26 @@ function ivx=iviewxsetcalpoints(ivx, points, offset, scale)
 
 % set a number of iviewx default parameters
 
-if ~exist('ivx', 'var') | isempty(ivx)
+if ~exist('ivx', 'var') || isempty(ivx)
     error('iviewxsetcalpoints: please specify ''ivx'' structure holding defaults');
     return;
 end
 
 
-if exist('points', 'var') & ~isempty(points)
+if exist('points', 'var') && ~isempty(points)
     ivx.nCalPoints=points;
-elseif ~isfield(ivx, 'nCalPoints') | isempty(ivx.nCalPoints)
+elseif ~isfield(ivx, 'nCalPoints') || isempty(ivx.nCalPoints)
     ivx.nCalPoints=9;
 end
 
-if exist('offset', 'var') & ~isempty(offset)
+if exist('offset', 'var') && ~isempty(offset)
     ivx.calPointOffset=offset;
 else
     ivx.calPointOffset=[0 0];
 end
 
 
-if exist('scale', 'var') & ~isempty(scale)
+if exist('scale', 'var') && ~isempty(scale)
     ivx.calPointScale=scale;
 else
     ivx.calPointScale=[100 100];

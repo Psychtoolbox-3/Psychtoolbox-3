@@ -53,7 +53,7 @@ function [KeyPressed,EventTime] = FORPCheck()
         Devices = PsychHID('Devices');
 	% Loop through all KEYBOARD devices with the vendorID of FORP's vendor:
         for i=1:size(Devices,2)
-            if strcmp(Devices(i).usageName,'Keyboard') & ismember(Devices(i).vendorID, vendorIDs)
+            if strcmp(Devices(i).usageName,'Keyboard') && ismember(Devices(i).vendorID, vendorIDs)
                 psychtoolbox_forp_id=i;
                 break;
             end

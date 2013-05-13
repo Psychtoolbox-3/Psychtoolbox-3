@@ -19,7 +19,7 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid)
 %  while 1
 %    SetMouse(theX,theY);
 %    [checkX,checkY] = GetMouse;
-%    if (checkX==theX) & (checkY==theY)
+%    if (checkX==theX) && (checkY==theY)
 %	   break;
 %    end
 %  end

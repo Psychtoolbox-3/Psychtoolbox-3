@@ -138,7 +138,7 @@ try
     i=0;
 
     % Animationloop:
-    while (vbl < vblendtime) & ~KbCheck %#ok<AND2>
+    while (vbl < vblendtime) && ~KbCheck
 
         % Shift the grating by "shiftperframe" pixels per frame:
         xoffset = mod(i*shiftperframe,p);

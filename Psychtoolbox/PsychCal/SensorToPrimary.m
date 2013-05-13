@@ -22,13 +22,13 @@ function [primary] = SensorToPrimary(cal,sensor)
 % Get necessary calibration data
 M_linear_device = cal.M_linear_device;
 ambient_linear = cal.ambient_linear;
-if (isempty(M_linear_device) | isempty(ambient_linear))
+if (isempty(M_linear_device) || isempty(ambient_linear))
 	error('SetSensorColorSpace has not been called on calibration structure');
 end
 
 % Ambient corrections
 [ma,na] = size(ambient_linear);
-if (m ~= ma | na ~= 1)
+if (m ~= ma || na ~= 1)
   error('Incorrect dimensions for ambient');
 end
 sensora = sensor-ambient_linear*ones(1,n);

@@ -24,11 +24,11 @@ end
 
 
 if isempty(rc)
-     rc= streq(computer,'GLNX86') | streq(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
+     rc= streq(computer,'GLNX86') || streq(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 end
 
 if isempty(rc64)
-     rc64 = rc & ~isempty(strfind(computer, '64'));
+     rc64 = rc && ~isempty(strfind(computer, '64'));
 end
 
 if is64 == 0

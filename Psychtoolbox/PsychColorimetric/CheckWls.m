@@ -34,7 +34,7 @@ if (length(wls1)==length(wls2))
     errorRet = 0;
   end
 end
-if (errorRet==1) & ~quiet
+if (errorRet==1) && ~quiet
   disp('CheckWls: Wavelength descriptions are not consistent');
 end
 

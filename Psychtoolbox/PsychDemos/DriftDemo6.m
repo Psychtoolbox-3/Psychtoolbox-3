@@ -170,7 +170,7 @@ try
     i=0;
 
     % Animation loop: Run until timeout or keypress.
-    while (vbl < vblendtime) & ~KbCheck %#ok<AND2>
+    while (vbl < vblendtime) && ~KbCheck
         
         % Shift the grating by "shiftperframe" pixels per frame. We pass
         % the pixel offset 'yoffset' as a parameter to

@@ -196,7 +196,7 @@ try
             DrawFormattedText(win, ['Image: ' imagename ' : Zoom=' num2str(rscale) ' : Intensity scaling: ' num2str(sf) ' : ' quantized ], 0, 0, [0 255 0]);
 
             % Show selected ROI during zoom selection, if any:
-            if xright~=-1 & xbottom~=-1 & zoomset==1
+            if xright~=-1 && xbottom~=-1 && zoomset==1
                 Screen('FrameRect', win, [255 0 0], [srcleft srctop srcright srcbottom]);
             end
 

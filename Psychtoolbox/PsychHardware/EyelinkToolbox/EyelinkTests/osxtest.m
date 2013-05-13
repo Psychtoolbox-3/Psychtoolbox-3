@@ -64,7 +64,7 @@ Eyelink('WaitForModeReady', 500);  % time for mode change
     if key==el.TERMINATE_KEY
         break;
     end
-    if key~=el.JUNK_KEY & key ~= 0
+    if key~=el.JUNK_KEY && key ~= 0
         Eyelink('SendKeyButton', double(key), 0, 10);         
         if key == 'c'
            break;
@@ -75,7 +75,7 @@ pause(1.0);
 if key == 'c'  
     result= 1;
 	times = 0; 
-	while bitand(Eyelink('CurrentMode'), IN_TARGET_MODE) & (times < 1)
+	while bitand(Eyelink('CurrentMode'), IN_TARGET_MODE) && (times < 1)
 		if(~Eyelink('IsConnected'))
 			break;
 		end 
@@ -83,7 +83,7 @@ if key == 'c'
         if key==el.TERMINATE_KEY
             break;
         end
-        if key~=el.JUNK_KEY & key ~= 0
+        if key~=el.JUNK_KEY && key ~= 0
             Eyelink('SendKeyButton', double(key), 0, 10);         
 	%        fprintf('Eyelink key %s (%.1f)\n', key, GetSecs-start);
         end       
@@ -92,7 +92,7 @@ if key == 'c'
 		[result, x, y]= Eyelink('TargetCheck');
 	    gazeRect1=[x-7 y-7 x+8 y+8];
 	    gazeRect2=[x-4 y-4 x+4 y+4];
-        if (x~=missing & y~=missing)
+        if (x~=missing && y~=missing)
            Screen('FillRect',window,black);
            pause(0.05)
 %		   Screen('FillOval',window,white,gazeRect1);            
@@ -151,7 +151,7 @@ for I = 1:30 % loop till error or space bar is pressed
 		x = evt.gx(eye_used+1); % +1 as we're accessing MATLAB array
 		y = evt.gy(eye_used+1);
 		% do we have valid data and is the pupil visible?
-		if x~=-missing & y~=-missing & evt.pa(eye_used+1)>0
+		if x~=-missing && y~=-missing && evt.pa(eye_used+1)>0
 			% if data is valid, draw a rect on the Screen at current gaze position
 			% using PsychToolbox's Screen function
 			gazeRect=[x-7 y-7 x+8 y+8];

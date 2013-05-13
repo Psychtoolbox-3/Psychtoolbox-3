@@ -75,15 +75,15 @@ if nargin<3 || isempty(startEntry)
 	startEntry=0;
 end
 
-if startEntry<0 | startEntry>255
+if startEntry<0 || startEntry>255
 	error('startEntry %d must be in range 0 to %d',startEntry,255);
 end
 
-if max(clut(:))>2^bits-1 | min(clut(:))<0
+if max(clut(:))>2^bits-1 || min(clut(:))<0
 	error(sprintf('\"clut\" values must be in range 0 to %d',2^bits-1));
 end
 
-if size(clut,1)<1 | size(clut,1)>256-startEntry
+if size(clut,1)<1 || size(clut,1)>256-startEntry
     error('Number of rows of clut must be in range 1 to 256-startEntry');
 end
 

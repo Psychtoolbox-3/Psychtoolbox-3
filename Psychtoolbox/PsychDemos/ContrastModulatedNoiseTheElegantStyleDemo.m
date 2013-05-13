@@ -122,7 +122,7 @@ try
         % If staticnoise is set to 1 then we only generate the noise
         % texture once -- This way we can disentangle "noise creation
         % overhead" from actual drawing overhead:
-        if i==1 | staticnoise == 0
+        if i==1 || staticnoise == 0
             % Convert Matlab 'noisematrix' to 16 bpc floating point noise texture:
             noisetex = Screen('MakeTexture', win, noisematrix, [], [], 1);
         end

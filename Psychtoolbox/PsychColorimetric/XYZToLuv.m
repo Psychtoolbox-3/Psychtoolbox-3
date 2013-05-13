@@ -20,7 +20,7 @@ end
 
 % Check white point dimensions
 [m,n] = size(whiteXYZ);
-if ( m ~= 3 | n ~= 1)
+if ( m ~= 3 || n ~= 1)
   error('Array white is not a three vector')
 end
 

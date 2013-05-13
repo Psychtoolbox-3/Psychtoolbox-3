@@ -69,7 +69,7 @@ InitializePsychSound(1);
 % Provide some debug output:
 PsychPortAudio('Verbosity', 10);
 
-if (reqlatency == 0) & duplex
+if (reqlatency == 0) && duplex
     % Special case: Full-duplex mode with minimum latency. We bypass Matlab
     % by activating PsychPortAudios full-duplex monitoring mode. The driver
     % itself will feed back all captured sound to the outputs with lowest

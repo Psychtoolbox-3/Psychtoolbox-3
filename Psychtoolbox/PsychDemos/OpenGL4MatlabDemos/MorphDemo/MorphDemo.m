@@ -96,7 +96,7 @@ InitializeMatlabOpenGL(0,0);
 
 % Open a double-buffered full-screen window: Everything is left at default
 % settings, except stereomode:
-if dotson~=3 & dotson~=4 %#ok<AND2>
+if dotson~=3 && dotson~=4
    rect = [];
 else
    rect = [0 0 500 500];
@@ -389,27 +389,27 @@ while ((GetSecs - t) < 60)
     % Check for keyboard press:
     [KeyIsDown, endrt, KeyCode] = KbCheck;
     if KeyIsDown
-        if ( KeyIsDown==1 & KeyCode(closer)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(closer)==1 )
             zz=zz-0.1;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 & KeyCode(farther)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(farther)==1 )
             zz=zz+0.1;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 & KeyCode(rotateright)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(rotateright)==1 )
             ang=ang+1.0;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 & KeyCode(rotateleft)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(rotateleft)==1 )
             ang=ang-1.0;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 & KeyCode(quitkey)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(quitkey)==1 )
             break;
         end
     end

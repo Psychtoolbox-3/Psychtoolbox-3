@@ -182,7 +182,7 @@ end
         lagframes=0;
         ptsblack = pts;
         
-        while (tex>=0 & intensity < threshold)
+        while (tex>=0 && intensity < threshold)
             if texfetch>0
                 waitmode=1;
             else
@@ -196,7 +196,7 @@ end
         
             if tex>0
                lagframes=lagframes+1;
-               if texfetch>1 & intensity>=threshold
+               if texfetch>1 && intensity>=threshold
                   Screen('DrawTexture',win,tex,[],[],[],0);
                   tdelay = (Screen('Flip',win) - tonset) * 1000;
                end;

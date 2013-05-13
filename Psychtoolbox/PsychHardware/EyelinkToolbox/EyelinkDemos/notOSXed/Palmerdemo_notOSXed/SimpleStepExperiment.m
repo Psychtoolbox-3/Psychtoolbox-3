@@ -66,7 +66,7 @@ if npc*2*h.nconditions ~= h.ntrials
 	error('COUNTERBALANCING ERROR:  bad number of conditions'); end;
 
 npc = round(h.ntrials/2);	
-side = [ones(1,npc), repmat(2,1,npc)];	% fill w/ 1 & 2s
+side = [ones(1,npc), repmat(2,1,npc)];	% fill w/ 1 && 2s
 npc = round(h.ntrials/h.nconditions/2);	
 condition = [ones(1,npc),ones(1,npc)];	% hard code for more conditions
 
@@ -215,7 +215,7 @@ myerr = 0; eyefilename = '';
 [shortfilename, filepath] = uiputfile(h.filename, 'Data file name?');	
 cd(filepath);							% update current path
 		
-if isempty(shortfilename) | 0 == shortfilename	% if empty, exit program
+if isempty(shortfilename) || 0 == shortfilename	% if empty, exit program
 	fprintf('File name required.\n');
 	myerr = 1;
 	return

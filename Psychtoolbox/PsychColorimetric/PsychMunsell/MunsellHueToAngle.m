@@ -45,7 +45,7 @@ angle0 = (index+1)*360/10;
 
 % Now we need to interpolate between angle10 and angle0, depending on the
 % number passed in H1.
-if (H1 < 0 | H1 > 10)
+if (H1 < 0 || H1 > 10)
     error(sprintf('Illegal Munsell hue number passed: %s',H1));
 end
 angle = interp1([10 0],[angle10 angle0],H1,'linear');

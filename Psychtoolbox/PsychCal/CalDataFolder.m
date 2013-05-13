@@ -92,7 +92,7 @@ if (~isempty(calFileName))
     end
     allDirs = dir;
     for i = 1:length(allDirs)
-        if (allDirs(i).isdir & ~strcmp(allDirs(i).name,'xOld') & ~strcmp(allDirs(i).name,'Plots') & allDirs(i).name(1) ~= '.')
+        if (allDirs(i).isdir && ~strcmp(allDirs(i).name,'xOld') && ~strcmp(allDirs(i).name,'Plots') && allDirs(i).name(1) ~= '.')
             cd(allDirs(i).name);
             dirRet = dir([calFileName]);
             cd('..');

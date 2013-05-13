@@ -13,7 +13,7 @@ function [rect,dh,dv] = CenterRect(rect,fixedRect)
 if nargin~=2
 	error('Usage:  rect=CenterRect(rect,fixedRect)');
 end
-if size(rect,2)~=4 | size(fixedRect,2)~=4
+if size(rect,2)~=4 || size(fixedRect,2)~=4
 	error('Wrong size rect argument. Usage:  [rect,dh,dv] = CenterRect(rect,fixedRect)');
 end
 dv=(fixedRect(RectTop)+fixedRect(RectBottom)-rect(RectTop)-rect(RectBottom))/2;

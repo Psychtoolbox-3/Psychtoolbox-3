@@ -944,7 +944,7 @@ if strcmpi(cmd, 'SetOutputLineLevels')
     handle = checkHandle(varargin{1});
 
     opins = varargin{2};
-    if length(opins)~=8 | ~isnumeric(opins) %#ok<OR2>
+    if length(opins)~=8 || ~isnumeric(opins)
         error('You must provide an 8 element vector of output line levels!');
     end
 

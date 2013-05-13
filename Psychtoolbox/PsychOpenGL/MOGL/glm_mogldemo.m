@@ -102,7 +102,7 @@ while 1,
     % check for quit signal (keypress or mouse button)
     [xy,b]=glmGetMouse;
     k=max(glmGetKeys);
-    if b | k,
+    if b || k,
         break
     end
 

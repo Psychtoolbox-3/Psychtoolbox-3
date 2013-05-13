@@ -103,7 +103,7 @@ while 1  % loop till response
 	% Note that we don't use 'getkeyforeyelink' unless we don't need fine timing
 
 	[keyIsDown,secs,keyCode] = KbCheck; 
-	if keyCode(el.modifierkey) & keyCode(el.quitkey)   % alternative for cmd . which quits program directly
+	if keyCode(el.modifierkey) && keyCode(el.quitkey)   % alternative for cmd . which quits program directly
 		fprintf( '\nUser requested break.\n');
 		result=el.ABORT_EXPT;
 		return;

@@ -32,7 +32,7 @@ if PsychNumel(oldRect) == 4
         error('Wrong size rect argument. A single rect must be a 1-row 4 element vector!');
     end
     
-    if length(x)==1 & length(y)==1 %#ok<AND2>
+    if length(x)==1 && length(y)==1
         % Single rect, offset by a single (x,y) point:
         newRect(RectTop) = oldRect(RectTop) + y;
         newRect(RectBottom) = oldRect(RectBottom) + y;
@@ -40,7 +40,7 @@ if PsychNumel(oldRect) == 4
         newRect(RectRight) = oldRect(RectRight) + x;
     else
         % Single rect, but multiple points:
-        if ~all(size(x) == size(y)) | size(x,2)~=1 %#ok<OR2>
+        if ~all(size(x) == size(y)) || size(x,2)~=1
             error('Wrong format of x or y in multipoint case: x and y must be 1-column vectors of matching size!');
         else
             % x and y are one column vectors with size(x,1) rows/elements.

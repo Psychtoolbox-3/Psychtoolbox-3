@@ -196,7 +196,7 @@ try
 	% Close the on- and off-screen windows
 	Screen('CloseAll');
 	
-	if round(frames1)==0 & round(frames2)==0
+	if round(frames1)==0 && round(frames2)==0
 		s=sprintf('Success! The movie was shown twice. Both showings were frame-accurate.');
 	else
 		s=sprintf('The movie was shown twice, running over by %.0f frames in the first and %.0f frames in the second showing.',frames1,frames2);
@@ -205,7 +205,7 @@ try
 	fprintf('%s\n',WrapString(s));
 	
 	doPlotInput=input('Plot frame intervals [y/n]? ','s');
-	if streq(upper(doPlotInput), 'Y') | strcmp(upper(doPlotInput), 'YES')
+	if streq(upper(doPlotInput), 'Y') || strcmp(upper(doPlotInput), 'YES')
         plot(s2Diffs);
         xlabel('frame number');
         ylabel('interval (seconds)');
