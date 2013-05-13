@@ -113,7 +113,7 @@ try
 	    % fprintf('tex = %i  pts = %f nrpending = %i\n', tex, pts, nrpending);
 
             % Perform first-time setup of transformations, if needed:
-            if fullsize & (count == 0) %#ok<AND2>
+            if fullsize && (count == 0)
                 texrect = Screen('Rect', tex);
                 winrect = Screen('Rect', win);
                 sf = min([RectWidth(winrect) / RectWidth(texrect) , RectHeight(winrect) / RectHeight(texrect)]);

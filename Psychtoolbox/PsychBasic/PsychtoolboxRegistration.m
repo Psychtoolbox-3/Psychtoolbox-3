@@ -179,7 +179,7 @@ try
             % Use external helper-utility to try to query MAC address:
             macidcom = [PsychtoolboxRoot 'PsychContributed\macid '];
             [rc mac] = dos(macidcom);
-            if rc==0 & length(mac)>=12 %#ok<AND2>
+            if rc==0 && length(mac)>=12
                 % Worked on Windows: Reassemble MAC into our standard
                 % format:
                 mac = [mac(1) mac(2) ':' mac(3) mac(4) ':' mac(5) mac(6) ':' mac(7) mac(8) ':' mac(9) mac(10) ':' mac(11) mac(12)];

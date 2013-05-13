@@ -88,7 +88,7 @@ while 1  % loop till response
 	% Note that we don't use 'getkeyforeyelink' unless we don't need fine timing
 
 	[keyIsDown,secs,keyCode] = KbCheck; 
-	if keyCode(el.modifierkey) & keyCode(el.quitkey)  % alternative for cmd . which quits program directly
+	if keyCode(el.modifierkey) && keyCode(el.quitkey)  % alternative for cmd . which quits program directly
 		fprintf( '\nUser requested break.\n');
 		result=el.ABORT_EXPT;
 		return;
@@ -147,8 +147,8 @@ while 1  % loop till response
 				pupil=evt.pa(eyetracked);
 			end
 	
-       		if x~=el.MISSING_DATA & y~=el.MISSING_DATA & pupil>0  % pupil visisible? */
- 				if x~=oldx | y~=oldy % draw only if gaze moved
+       		if x~=el.MISSING_DATA && y~=el.MISSING_DATA && pupil>0  % pupil visisible? */
+ 				if x~=oldx || y~=oldy % draw only if gaze moved
  					currGazeRect = CenterRectOnPoint(gazeRect, x, y);
  					unRect=UnionRect(currGazeRect,oldGazeRect);
  					SCREEN(screenbuffer, 'FillRect', el.backgroundcolour, oldGazeRect );
@@ -157,7 +157,7 @@ while 1  % loop till response
  					oldGazeRect=currGazeRect;
  					oldx=x;
  					oldy=y;
- 				end % if x~=oldx | y~=oldy
+ 				end % if x~=oldx || y~=oldy
        		else
            		% fprintf('Missing data\n');     % just hide if in blink */
 				SCREEN( el.window, 'FillRect', el.backgroundcolour );  % clear display

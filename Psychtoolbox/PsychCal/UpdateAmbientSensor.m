@@ -20,7 +20,7 @@ function cal = UpdateAmbientSensor(cal,new_ambient_sensor,ADD)
 % 5/2/02    dhb, kr  Add ADD flag.
 
 % Primitive dimension check
-if (size(new_ambient_sensor,1) ~= size(cal.ambient_linear,1) | ...
+if (size(new_ambient_sensor,1) ~= size(cal.ambient_linear,1) || ...
   size(new_ambient_sensor,2) ~= size(cal.ambient_linear,2) )
 	error('Old and new ambient specifications are not of same dimension');
 end

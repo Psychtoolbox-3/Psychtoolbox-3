@@ -12,7 +12,7 @@ function newRect = ClipRect(a,b)
 if nargin~=2
 	error('Usage:  rect=ClipRect(a,b)');
 end
-if size(a,2)~=4 | size(b,2)~=4
+if size(a,2)~=4 || size(b,2)~=4
 	error('Wrong size rect argument. Usage:  rect=ClipRect(a,b)');
 end
 newRect=a;
@@ -20,6 +20,6 @@ newRect(RectTop)=max(a(RectTop),b(RectTop));
 newRect(RectBottom)=min(a(RectBottom),b(RectBottom));
 newRect(RectLeft)=max(a(RectLeft),b(RectLeft));
 newRect(RectRight)=min(a(RectRight),b(RectRight));
-if RectWidth(newRect)<0 | RectHeight(newRect)<0
+if RectWidth(newRect)<0 || RectHeight(newRect)<0
 	newRect=[0 0 0 0];
 end

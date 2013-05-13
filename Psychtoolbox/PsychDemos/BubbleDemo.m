@@ -92,7 +92,7 @@ try
     %     in maketexture
     [iy, ix, id]=size(imdata);
     [wW, wH]=WindowSize(w);
-    if ix>wW | iy>wH
+    if ix>wW || iy>wH
         disp('Image size exceeds screen size');
         disp('Image will be cropped');
     end
@@ -220,7 +220,7 @@ try
         end;
         
         % We only redraw if gazepos. has changed:
-        if (mx~=mxold | my~=myold)            
+        if (mx~=mxold || my~=myold)            
             % Compute position and size of source- and destinationrect and
             % clip it, if necessary...
             myrect=[mx-ms my-ms mx+ms+1 my+ms+1]; % center dRect on current mouseposition
@@ -277,7 +277,7 @@ try
         myold=my;
 
         % Abort demo on keypress our mouse-click:
-        if KbCheck | find(buttons) % break out of loop
+        if KbCheck || find(buttons) % break out of loop
             break;
         end;
     end;

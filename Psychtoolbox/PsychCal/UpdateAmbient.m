@@ -41,12 +41,12 @@ end
 oldP_ambient = cal.P_ambient;
 T_ambient = cal.T_ambient;
 S_ambient = cal.S_ambient;
-if (isempty(oldP_ambient) | isempty(T_ambient) | isempty(S_ambient))
+if (isempty(oldP_ambient) || isempty(T_ambient) || isempty(S_ambient))
 	error('Calibration structure does not contain ambient data');
 end
 [nOld,mOld] = size(oldP_ambient);
 [nNew,mNew] = size(newP_ambient);
-if (nOld ~= nNew | mOld ~= mNew)
+if (nOld ~= nNew || mOld ~= mNew)
 	error('Old and new ambient specifications are not in same units');
 end
 

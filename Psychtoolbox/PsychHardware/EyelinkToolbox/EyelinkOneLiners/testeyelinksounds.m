@@ -18,7 +18,7 @@ else
 end
 % if no default values are supplied open
 % a structure here
-if nargin==0 || (nargin==1 & isempty(el) )
+if nargin==0 || (nargin==1 && isempty(el) )
 	el=initeyelinkdefaults;
 end
 
@@ -40,7 +40,7 @@ if error3~=0
 	fprintf( '%s appears to be missing.\n', el.calibrationsuccesssound );
 end
 
-if error1~=0 | error2~=0 | error3~=0
+if error1~=0 || error2~=0 || error3~=0
 	fprintf( '\nOne or more of the sounds\n');
 	fprintf( '(specified in "initeyelinkdefaults.m")\n');
 	fprintf( 'appear to be missing.\n');

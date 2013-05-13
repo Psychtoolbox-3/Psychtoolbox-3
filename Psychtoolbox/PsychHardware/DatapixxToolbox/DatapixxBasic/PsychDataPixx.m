@@ -1272,7 +1272,7 @@ function syncresult = syncClocks
     end
     
     % At least one sample with acceptable precision acquired?
-    if (minwin > dpx.maxMinwinThreshold) | (ic < 1) %#ok<OR2>
+    if (minwin > dpx.maxMinwinThreshold) || (ic < 1)
         % No, not even a single one!
         if verbosity > 1
             fprintf('PsychDataPixx: Warning: On Box "%s", Clock sync failed due to confidence interval of best sample %f secs > allowable maximum %f secs.\n', dpx.ID, minwin, dpx.maxMinwinThreshold);

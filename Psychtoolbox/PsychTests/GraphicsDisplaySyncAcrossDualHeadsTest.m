@@ -125,7 +125,7 @@ for i=1:nrtrials
         end
     end
     
-    if (driftsync == 1) & (i > syncedattrial + 6000) %#ok<AND2>
+    if (driftsync == 1) && (i > syncedattrial + 6000)
         stoppedattrial = i %#ok<NASGU,NOPRT>
         drawnow;
         break;

@@ -68,7 +68,7 @@ if isempty(LUT)
     LUT = Screen('ReadNormalizedGammatable', windowPtr);
 else
     % Sanity check:
-    if ~( isnumeric(LUT) & (isscalar(LUT) | ((size(LUT,1) >= 1) & (size(LUT,2) == 3))) ) %#ok<OR2,AND2>
+    if ~( isnumeric(LUT) && (isscalar(LUT) || ((size(LUT,1) >= 1) && (size(LUT,2) == 3))) )
         sca;
         error('LoadIdentityClut: Loaded data from config file is not a valid LUT! Not a numeric matrix or less than 1 row, or not 3 columns!');
     end

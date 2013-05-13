@@ -92,11 +92,11 @@ end
 
 % Called from runtime system periodically to perform watchdog-cycle:
 % Any windows open? Otherwise we got nothing to do...
-if (~isempty(Screen('Windows'))) & (heartbeatinterval > -1) %#ok<AND2>
+if (~isempty(Screen('Windows'))) && (heartbeatinterval > -1)
     % Yes. Need to watchdog'em:
     [isdown tnow keycodes] = KbCheck(-1);
     
-    if (tnow > panicdeadline) & (heartbeatinterval > 0) %#ok<AND2>
+    if (tnow > panicdeadline) && (heartbeatinterval > 0)
         % Timeout: Close screens.
 
         % Disable ourselves:

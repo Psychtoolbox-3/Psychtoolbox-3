@@ -5,12 +5,12 @@ function [result, ivx]=iViewXCalibrate(ivx)
 result=1;
 
 try
-    if ~exist('ivx', 'var') | isempty(ivx)
+    if ~exist('ivx', 'var') || isempty(ivx)
         txt=[ mfilename ' requires a structure with iViewX default values as input.'];
         error(txt);
     end
 
-    if ~isfield(ivx, 'absCalPos') | isempty(ivx.absCalPos) | size(ivx.absCalPos,1)<1 | size(ivx.absCalPos,2)~=2
+    if ~isfield(ivx, 'absCalPos') || isempty(ivx.absCalPos) || size(ivx.absCalPos,1)<1 || size(ivx.absCalPos,2)~=2
         txt=[ mfilename ': something is wrong with calibration point pixel values.'];
         error(txt);
     end
@@ -28,7 +28,7 @@ try
     i=0;
     while 1
         [keyIsDown,secs,keyCode] = KbCheck;
-        if keyCode(ivx.modifierKey) & keyCode(ivx.breakKey),
+        if keyCode(ivx.modifierKey) && keyCode(ivx.breakKey),
             result=-1;
             ivx.stop=1;
             break;
@@ -59,7 +59,7 @@ try
         tEnd=GetSecs+ivx.calPaceSecs;
         while GetSecs<tEnd
             [keyIsDown,secs,keyCode] = KbCheck;
-            if keyCode(ivx.modifierKey) & keyCode(ivx.breakKey),
+            if keyCode(ivx.modifierKey) && keyCode(ivx.breakKey),
                 ivx.stop=1;
                 result=-1;
                 break;

@@ -95,7 +95,7 @@ RestrictKeysForKbCheck(KbName('ESCAPE'));
 
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
-if ismember(stereoMode, [4,5]) & IsWin
+if ismember(stereoMode, [4,5]) && IsWin
 	screenid = 0;
 end
 

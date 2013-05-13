@@ -46,7 +46,7 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % end
 %
 % % Test if the second mouse button is pressed.
-% if length(buttons)>=2 & buttons(2)
+% if length(buttons)>=2 && buttons(2)
 %   fprintf('Someone''s pressing the second button!\n');
 % end
 %

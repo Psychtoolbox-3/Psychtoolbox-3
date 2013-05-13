@@ -29,7 +29,7 @@ function ReturnFigh = ConfirmInfo(TheQuestion,ButtonString,HowLongToWait)
 %                           space does not overrun number of spaces
 
 DoModal = 1;
-if nargin < 3 | isempty(HowLongToWait)
+if nargin < 3 || isempty(HowLongToWait)
   HowLongToWait = Inf;
 end
 
@@ -44,7 +44,7 @@ elseif isnan(HowLongToWait)
 	HowLongToWait = Inf;
 end
 
-if nargin < 2 | isempty(ButtonString)
+if nargin < 2 || isempty(ButtonString)
 	ButtonString = 'Okay';
 end	
 
@@ -93,7 +93,7 @@ if TextExt(1) < 0
 	SpaceLocs = find(TheQuestion == 32);
   
   if TextExt(3) > 3
-    while TextExt(3) > 3 & get(th,'FontSize') > 8
+    while TextExt(3) > 3 && get(th,'FontSize') > 8
       set(th,'FontSize',get(th,'FontSize')-1);
       TextExt = get(th,'Extent');
     end
@@ -118,7 +118,7 @@ if TextExt(1) < 0
     TheQuestion(SpaceLocs(SpaceEnd-1)) = NLChar;
     set(th,'String',TheQuestion);
     TextExt = get(th,'Extent');
-    while TextExt(3) > 0.95 & get(th,'FontSize') > 8
+    while TextExt(3) > 0.95 && get(th,'FontSize') > 8
       set(th,'FontSize',get(th,'FontSize')-1);
       TextExt = get(th,'Extent');
     end
@@ -126,7 +126,7 @@ if TextExt(1) < 0
       error('Question too large!');
     end
   elseif TextExt(3) > 2
-    while TextExt(3) > 2 & get(th,'FontSize') > 8
+    while TextExt(3) > 2 && get(th,'FontSize') > 8
       set(th,'FontSize',get(th,'FontSize')-1)
       TextExt = get(th,'Extent');
     end
@@ -145,7 +145,7 @@ if TextExt(1) < 0
     TheQuestion(SpaceLocs(SpaceEnd-1)) = NLChar;
     set(th,'String',TheQuestion);
     TextExt = get(th,'Extent');
-    while TextExt(3) > 0.95 & get(th,'FontSize') > 8
+    while TextExt(3) > 0.95 && get(th,'FontSize') > 8
       set(th,'FontSize',get(th,'FontSize')-1);
       TextExt = get(th,'Extent');
     end
@@ -170,7 +170,7 @@ if TextExt(1) < 0
 			set(th,'String',TheQuestion);
 			TextExt = get(th,'Extent');
 			EndSpace = length(SpaceLocs);
-			while TextExt(3) > 0.95 & EndSpace > SpaceEnd
+			while TextExt(3) > 0.95 && EndSpace > SpaceEnd
 				TheQuestion(SpaceLocs(EndSpace)) = ' ';
 				EndSpace = EndSpace-1;
 				TheQuestion(SpaceLocs(EndSpace)) = NLChar;

@@ -34,7 +34,7 @@ try
     mytext = '';
     tl = fgets(fd);
     lcount = 0;
-    while (tl~=-1) & (lcount < 48)
+    while (tl~=-1) && (lcount < 48)
         mytext = [mytext tl];
         tl = fgets(fd);
         lcount = lcount + 1;

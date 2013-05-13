@@ -57,7 +57,7 @@ try
     i=0;
     k=0;
     data=[];
-    while ~KbCheck & GetSecs<tEnd;
+    while ~KbCheck && GetSecs<tEnd;
         %         stat=pnet(udp,'status');
         %if stat>=0 fprintf('Stat: %d\n', stat); end
         % Wait/Read udp packet to read buffer

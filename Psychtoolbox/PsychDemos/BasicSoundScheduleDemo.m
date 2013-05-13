@@ -231,7 +231,7 @@ while 1
             end
         else
             % Space key pressed and engine stopped?
-            if keyCode(keyspace) & (s.Active == 0) %#ok<AND2>
+            if keyCode(keyspace) && (s.Active == 0)
                 % Reset schedule to ready state, and restart sound playback of
                 % the whole current schedule:
                 PsychPortAudio('UseSchedule', pahandle, 3);
@@ -245,7 +245,7 @@ while 1
         end
     else
         % No key pressed. Give some feedback to user:
-        if (s.Active == 0) & (notprinted == 1) %#ok<AND2>
+        if (s.Active == 0) && (notprinted == 1)
             fprintf('Audio playback paused: Press key F1 to F10 or any letter key for a sound, SPACE for replay, or any other key to quit.\n');
             notprinted = 0;
         end

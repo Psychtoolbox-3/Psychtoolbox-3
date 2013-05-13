@@ -103,19 +103,19 @@ tend=GetSecs + interClickSecs;
 
 while GetSecs < tend
     % If already down, wait for release...
-    while any(buttons) & GetSecs < tend %#ok<AND2>
+    while any(buttons) && GetSecs < tend
         [xd,yd,buttons] = GetMouse([], mouseDev);
         if (nice>0), WaitSecs('YieldSecs', rtwait); end;
     end;
 
     % Wait for a press or timeout:
-    while ~any(buttons) & GetSecs < tend %#ok<AND2>
+    while ~any(buttons) && GetSecs < tend
         [xd,yd,buttons] = GetMouse([], mouseDev);
         if (nice>0), WaitSecs('YieldSecs', rtwait); end;    
     end;
 
     % Mouse click or timeout?
-    if any(buttons) & GetSecs < tend %#ok<AND2>
+    if any(buttons) && GetSecs < tend
         % Mouse click. Count it.
         clicks=clicks+1;
         % Extend timeout for the next mouse click:

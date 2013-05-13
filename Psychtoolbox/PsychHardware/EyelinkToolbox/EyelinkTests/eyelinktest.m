@@ -16,7 +16,7 @@ while 1
         fprintf('getkeyforeyelinkOSX timed-out.\n');
         break;
     end
-    if key~=el.JUNK_KEY & key ~= 0
+    if key~=el.JUNK_KEY && key ~= 0
         fprintf('Eyelink key %s (%.1f)\n', key, GetSecs-start);
     end
 end

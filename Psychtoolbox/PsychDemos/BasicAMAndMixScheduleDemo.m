@@ -209,7 +209,7 @@ while 1
     status = PsychPortAudio('GetStatus', pasound1);
     % Every 6th slot corresponds again to the 1st tone, and it needs to be
     % playing that is status.Active:
-    if (mod(status.SchedulePosition, 6) == 0) & (status.Active) %#ok<AND2>
+    if (mod(status.SchedulePosition, 6) == 0) && (status.Active)
         % Got it! The status.startTime now corresponds to the start of the
         % current 3-tone-sequence:
         break;
@@ -269,7 +269,7 @@ while 1
     status = PsychPortAudio('GetStatus', pasound1);
     % Every 6th slot corresponds again to the 1st tone, and it needs to be
     % playing that is status.Active:
-    if (mod(status.SchedulePosition, 6) == 0) & (status.Active) %#ok<AND2>
+    if (mod(status.SchedulePosition, 6) == 0) && (status.Active)
         % Got it! The status.startTime now corresponds to the start of the
         % current 3-tone-sequence:
         break;
@@ -327,7 +327,7 @@ while 1
     status = PsychPortAudio('GetStatus', pasound1);
     % Every 6th slot corresponds again to the 1st tone, and it needs to be
     % playing that is status.Active:
-    if (mod(status.SchedulePosition, 6) == 0) & (status.Active) %#ok<AND2>
+    if (mod(status.SchedulePosition, 6) == 0) && (status.Active)
         % Got it! The status.startTime now corresponds to the start of the
         % current 3-tone-sequence:
         break;

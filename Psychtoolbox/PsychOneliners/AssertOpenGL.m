@@ -62,29 +62,33 @@ function AssertOpenGL
 % 03/24/12  mk      Add do_braindead_shortcircuit_evaluation() to avoid
 %                   warnings on Octave 3.6 and later.
 % 09/05/12  mk      Disable shortcircuit operator warning.
+% 05/13/13  mk      Reenable short-circuit-operator warnings for Octave, as
+%                   they shouldn't be needed anymore with our fixed M-Files.
 
 % Ok, we sneak this in here, because we don't know a better place for it:
-if IsOctave
-    % If we're running on a Octave version which supports this...
-    if exist('do_braindead_shortcircuit_evaluation', 'builtin')
-        % ... we enable Matlab-style short-circuit operator evaluation,
-        % ie., treat & and | operators as if they are && and || operators,
-        % if they are used in if and while statements and the conditions do
-        % evaluate into logical expressions with a simple scalar truth
-        % value.
-        %
-        % This is a hack to silence interpreter warnings and get compatible
-        % behaviour. A better fix would be to fix all our M-Files to avoid
-        % use of & and |, but this would make ptb completely untestable on
-        % Matlab versions prior R2007a for MK. As long as we claim to
-        % support pre-R2007a at least to some degree, we should be able to
-        % run at least some basic correctness tests:
-        do_braindead_shortcircuit_evaluation(1);
-        
-        % Disable associated Octave warning:
-        warning('off', 'Octave:possible-matlab-short-circuit-operator');
-    end
-end
+% Disable this workaround for now. All M-Files presumably have been fixed,
+% so no need for it. Leave disabled code here in case we overlooked something.
+% if IsOctave
+%     % If we're running on a Octave version which supports this...
+%     if exist('do_braindead_shortcircuit_evaluation', 'builtin')
+%         % ... we enable Matlab-style short-circuit operator evaluation,
+%         % ie., treat & and | operators as if they are && and || operators,
+%         % if they are used in if and while statements and the conditions do
+%         % evaluate into logical expressions with a simple scalar truth
+%         % value.
+%         %
+%         % This is a hack to silence interpreter warnings and get compatible
+%         % behaviour. A better fix would be to fix all our M-Files to avoid
+%         % use of & and |, but this would make ptb completely untestable on
+%         % Matlab versions prior R2007a for MK. As long as we claim to
+%         % support pre-R2007a at least to some degree, we should be able to
+%         % run at least some basic correctness tests:
+%         do_braindead_shortcircuit_evaluation(1);
+% 
+%         % Disable associated Octave warning:
+%         warning('off', 'Octave:possible-matlab-short-circuit-operator');
+%     end
+% end
 
 % We put the detection code into a try-catch-end statement: The old Screen command on windows
 % doesn't have a 'Version' subfunction, so it would exit to Matlab with an error.

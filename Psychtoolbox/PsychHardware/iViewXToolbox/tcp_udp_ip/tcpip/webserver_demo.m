@@ -31,7 +31,7 @@ function www_sql()
 function www_read_do(con)
   str='';
   start_time=now;
-  while length(str)==0 & tcpip_status(con)>=10 & now-start_time < 10,
+  while length(str)==0 && tcpip_status(con)>=10 && now-start_time < 10,
     str=tcpip_readln(con,1000);
   end
   if length(str)==0,

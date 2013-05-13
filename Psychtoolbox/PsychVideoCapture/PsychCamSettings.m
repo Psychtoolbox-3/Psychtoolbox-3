@@ -158,7 +158,7 @@ end
 
 if strcmp(cmd, 'IsKnownCamera')
      % Return 1, if this camera is known to the script.
-     rc = IsFirei | IsA602f;
+     rc = IsFirei || IsA602f;
      return;
 end
 
@@ -320,7 +320,7 @@ if ~isempty(strfind(cmd, 'ExposureTime'))
      end
 end
 
-if (IsA602f || IsFirei) && (~isempty(strfind(cmd, 'Exposure')) | ~isempty(strfind(cmd, 'Shutter')))
+if (IsA602f || IsFirei) && (~isempty(strfind(cmd, 'Exposure')) || ~isempty(strfind(cmd, 'Shutter')))
      % These settings are ignored on the Unibrain Fire-i and Basler A 602f.
      % They either control ExposureTime - for which we have a nice function -
      % or they control special settings...     
@@ -407,15 +407,15 @@ function rc = DoFireICamExposureTime(grabber, inval)
    end
 
    % Need to map returned rawval into meaningful value:
-   if rawval >= 0 & rawval <= 128
+   if rawval >= 0 && rawval <= 128
       rc = rawval * 0.000016; % Stepping of 16 microsecs.
    end
    
-   if rawval > 128 & rawval <= 192
+   if rawval > 128 && rawval <= 192
       rc = 128 * 0.000016 + (rawval-128) * 0.000032; % Stepping of 32 microsecs.
    end
 
-   if rawval > 192 & rawval <= 384
+   if rawval > 192 && rawval <= 384
       rc = 128 * 0.000016 + (192-128) * 0.000032 + (rawval-192) * 0.000064; % Stepping of 64 microsecs.
    end
 

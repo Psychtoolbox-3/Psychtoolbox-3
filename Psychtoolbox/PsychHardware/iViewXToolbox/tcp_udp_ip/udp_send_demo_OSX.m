@@ -30,11 +30,11 @@ function udp_send_demo(fun,host,port)
 %
 
 
-if ~exist('fun', 'var') | isempty(fun),
+if ~exist('fun', 'var') || isempty(fun),
    myval=round(1+rand*69);
    fun=['sin(0:0.1:' num2str(myval)  ')./(1:0.1:' num2str(myval+1) ')']; end
-if ~exist('host', 'var') | isempty(host), host='localhost'; end
-if ~exist('port', 'var') | isempty(port), port='3333'; end
+if ~exist('host', 'var') || isempty(host), host='localhost'; end
+if ~exist('port', 'var') || isempty(port), port='3333'; end
 
 data=evalin('caller',fun);
 udp=pnet('udpsocket',1111);

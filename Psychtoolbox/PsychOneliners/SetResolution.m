@@ -38,12 +38,12 @@ function oldRes=SetResolution(screenNumber,width,height,hz,pixelSize)
 % 6/7/02  dgp Hz value of NaN matches NaN.
 % 9/23/07 mk  Adapted for Psychtoolbox-3.
 
-if nargin<2 | nargin>5
+if nargin<2 || nargin>5
 	error(sprintf('%s\n%s','USAGE: oldRes=SetResolution(screenNumber,width,height,[hz],[pixelSize])',...
 	                   '           oldRes=SetResolution(screenNumber,res)'));
 end
 
-if screenNumber<0 | screenNumber>max(Screen('Screens'))
+if screenNumber<0 || screenNumber>max(Screen('Screens'))
 	error(sprintf('Invalid screenNumber %d.',screenNumber));
 end
 
@@ -61,7 +61,7 @@ if isempty(hz)
 	hz=oldRes.hz;
 end
 
-if nargin==2 & isa(width,'struct')
+if nargin==2 && isa(width,'struct')
 	res=width;
 	if isfield(res,'width')
 		width=res.width;
@@ -77,11 +77,11 @@ if nargin==2 & isa(width,'struct')
 	end
 end
 
-if ~exist('height','var')  | isempty(height) | ~isfinite(height)
+if ~exist('height','var')  || isempty(height) || ~isfinite(height)
 	error('height (in pixels) must be specified.');
 end
 
-if ~exist('width','var') | isempty(width) | ~isfinite(width)
+if ~exist('width','var') || isempty(width) || ~isfinite(width)
 	error('width (in pixels) must be specified.');
 end
 
@@ -97,7 +97,7 @@ if isempty(resIndex)
 end
 
 nres = res(resIndex(1));
-if isempty(pixelSize) | ~isfinite(pixelSize)
+if isempty(pixelSize) || ~isfinite(pixelSize)
     nres.pixelSize = [];
 else
     nres.pixelSize = pixelSize;

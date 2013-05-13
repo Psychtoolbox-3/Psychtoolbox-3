@@ -298,7 +298,7 @@ EyelinkUpdateDefaults(el);
 
 
 % % Window assigned?
-% if ~isempty(el.window) & ~isempty(el.callback) %#ok<AND2>
+% if ~isempty(el.window) && ~isempty(el.callback)
 %     % Yes. Assign it to our dispatch callback:
 % %     EyelinkDispatchCallback(el);
 %     PsychEyelinkDispatchCallback(el);

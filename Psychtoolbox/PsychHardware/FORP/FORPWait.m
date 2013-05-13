@@ -58,7 +58,7 @@ function [KeyPressed,EventTime] = FORPWait(TimeToWait)
     end
 
     deadline = GetSecs + TimeToWait;
-    while (deadline > GetSecs) & isempty(KeyPressed)
+    while (deadline > GetSecs) && isempty(KeyPressed)
         [KeyPressed,EventTime] = FORPCheck;
     end
     return;

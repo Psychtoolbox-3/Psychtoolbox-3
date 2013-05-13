@@ -49,7 +49,7 @@ function [key, el]=EyelinkGetKey(el)
 		error( 'USAGE: [key, el]=EyelinkGetKey(el)' );
 	end
 
-	%if exist('el.getkeytime', 'var') & ~isempty( el.getkeytime )
+	%if exist('el.getkeytime', 'var') && ~isempty( el.getkeytime )
 	if GetSecs-el.getkeytime<el.getkeyrepeat  % to prevent too rapid repeats of this function?
 		return;
 	end
@@ -73,13 +73,13 @@ function [key, el]=EyelinkGetKey(el)
 	end
 
 
-	if keyCodes(el.modifierkey) & keyCodes( el.quitkey )
+	if keyCodes(el.modifierkey) && keyCodes( el.quitkey )
 		key=el.TERMINATE_KEY;
 		return;
 	end
 
 	el.getkeytime=secs;
-	if ~isfield( el, 'keysCached') | isempty(el.keysCached) | el.keysCached==0
+	if ~isfield( el, 'keysCached') || isempty(el.keysCached) || el.keysCached==0
 		el;
 		error( 'Please call el=EyelinkInitDefaults before calling EyelinkGetKey' );
 	end
@@ -182,7 +182,7 @@ function [key, el]=EyelinkGetKey(el)
 	%     key=key(1); % take only first one in case more keys were pressed
 	key=KbName(key(1)); % convert to a character, potential problem: KbName does not translate all keys to actual ascii characters.
 	key=double(key(1)); % some keyNames have two characters (e.g. 8*);
-	if key >=hex2dec('20') & key < hex2dec('7F') % only return  printable chars (0x20..0x7F)
+	if key >=hex2dec('20') && key < hex2dec('7F') % only return  printable chars (0x20..0x7F)
 		modifyKey;
 		return;
 	end

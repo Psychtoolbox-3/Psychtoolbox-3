@@ -18,7 +18,7 @@ while 1
         fprintf('EyelinkGetKey timed-out.\n');
         break;
     end
-    if key~=el.JUNK_KEY & key ~= 0
+    if key~=el.JUNK_KEY && key ~= 0
         key;
         fprintf('Eyelink key %d\t%s (%.1f)\n', key, char(key), GetSecs-start);
     end

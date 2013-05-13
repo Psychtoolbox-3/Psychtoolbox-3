@@ -16,4 +16,4 @@ end
 if size(a,2)~=4
 	error('Wrong size rect argument. Usage:  isEmpty = IsEmptyRect(a)');
 end
-isEmpty=RectWidth(a)<=0 | RectHeight(a)<=0;
+isEmpty=RectWidth(a)<=0 || RectHeight(a)<=0;

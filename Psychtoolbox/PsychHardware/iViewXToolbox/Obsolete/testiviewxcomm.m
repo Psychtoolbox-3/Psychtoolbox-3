@@ -57,7 +57,7 @@ try
         end
         % check if subject decides to break off calibration or experiment
         [keyIsDown,secs,keyCode] = KbCheck;
-        if keyCode(ivx.modifierKey) & keyCode(ivx.breakKey),
+        if keyCode(ivx.modifierKey) && keyCode(ivx.breakKey),
             % break off experiment
             result=-1;
             ivx.stop=1;
@@ -71,7 +71,7 @@ try
             iViewX('break', ivx);
             return;
         end
-        if ivx.dummymode==1 & keyCode(ivx.modifierKey) & keyCode(ivx.nextCalPointKey), % break off calibration
+        if ivx.dummymode==1 && keyCode(ivx.modifierKey) && keyCode(ivx.nextCalPointKey), % break off calibration
             i=i+1;
             if i>ivx.nCalPoints;
                 return

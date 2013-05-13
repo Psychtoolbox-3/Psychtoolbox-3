@@ -179,7 +179,7 @@ latmode = 4;
 % Provide some debug output:
 PsychPortAudio('Verbosity', 10);
 
-if (reqlatency == 0) & duplex %#ok<AND2>
+if (reqlatency == 0) && duplex
     % Special case: Full-duplex mode with minimum latency. We bypass Matlab
     % by activating PsychPortAudios full-duplex monitoring mode. The driver
     % itself will feed back all captured sound to the outputs with lowest
@@ -332,7 +332,7 @@ end
 % not up to the task / overloaded for the requested latency settings.
 % 'capturestart' contains the estimated time when the first returned audio
 % sample hit the microphone / line-in connector:
-if (size(audiodata, 2) < headroom * s.BufferSize) | (offset~=0) | (overflow > 0) %#ok<OR2>
+if (size(audiodata, 2) < headroom * s.BufferSize) || (offset~=0) || (overflow > 0)
     fprintf('WARNING: SOUND ONSET TIMING SCREWED!! THE SYSTEM IS NOT UP TO THE TASK/OVERLOADED!\n');
     fprintf('Realsize samples %i < Expected size %i? Or offset %i ~= 0 ? Or overflow %i > 0 ?\n', size(audiodata, 2), headroom * s.BufferSize, offset, overflow);
     timingfailed = 1;
@@ -479,7 +479,7 @@ while ~KbCheck
     xruns = s1.XRuns + s2.XRuns;
     
     % Any dropouts or other audible artifacts?
-    if ((overrun + underflow + xruns) > 0) & (timingfailed == 0) %#ok<AND2>
+    if ((overrun + underflow + xruns) > 0) && (timingfailed == 0)
         if verbose > 0
             fprintf('WARNING: SOUND DROPOUTS! THE SYSTEM IS NOT UP TO THE TASK/OVERLOADED!\n');
             fprintf('Run %i: Overruns of capture buffer: %i. Underruns of audio output buffer: %i. Hardware xruns = %i\n', tc, overrun, underflow, xruns);

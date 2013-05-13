@@ -60,14 +60,14 @@ try
         i=0;
         k=0;
         data=[];
-        while ~KbCheck & GetSecs<tEnd;
+        while ~KbCheck && GetSecs<tEnd;
 
 %             if mod(i,500)==0 fprintf('%d\n',i); end
 %             i=i+1;
 %             [data, ivx]=iViewX('receivedata', ivx);
             [data, ivx]=iViewXComm('receive', ivx);
             % data
-            if ~isempty(data) & data~=-1
+            if ~isempty(data) && data~=-1
                 if 1==strfind(data, 'ET_SPL') % spooled data
                     mygaze=str2num(data(8:end));
                     %                    fprintf('%d\t%d\t%d\t%d\n', k, mydata(1), mydata(2), mydata(3));

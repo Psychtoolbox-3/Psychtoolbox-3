@@ -19,7 +19,7 @@ function [result, ivx]=iViewX(cstr, ivx, params)
 
 result=-1;
 
-if ~exist('cstr', 'var') | isempty(cstr)
+if ~exist('cstr', 'var') || isempty(cstr)
     %     txt=[ mfilename ' requires a command string as input.'];
     %     error(txt);
     help iViewX
@@ -32,12 +32,12 @@ switch lower(cstr)
         return
 end
 
-if ~exist('ivx', 'var') | isempty(ivx)
+if ~exist('ivx', 'var') || isempty(ivx)
     txt=[ mfilename ' requires a structure with iViewX default values as input.'];
     error(txt);
 end
 
-if ~exist('params', 'var') | isempty(params)
+if ~exist('params', 'var') || isempty(params)
     params=[];
 end
 

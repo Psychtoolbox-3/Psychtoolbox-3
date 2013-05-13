@@ -122,7 +122,7 @@ try
         % If staticnoise is set to 1 then we only generate the noise
         % textures once -- This way we can disentangle "noise creation
         % overhead" from actual drawing overhead:
-        if i==1 | staticnoise == 0
+        if i==1 || staticnoise == 0
             % Generate a noisesize x noisesize matrix of random noise, mean zero,
             % stddev 1.0:
             noisematrix = randn(noisesize) * 255;

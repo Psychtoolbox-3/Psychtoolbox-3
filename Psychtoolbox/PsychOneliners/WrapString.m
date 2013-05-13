@@ -29,7 +29,7 @@ if nargin<2
     maxLineLength=[];
 end
 
-if isempty(maxLineLength) | isnan(maxLineLength) %#ok<OR2>
+if isempty(maxLineLength) || isnan(maxLineLength)
 	maxLineLength=74;
 end
 

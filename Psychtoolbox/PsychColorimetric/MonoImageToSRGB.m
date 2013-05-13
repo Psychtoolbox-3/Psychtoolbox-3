@@ -15,7 +15,7 @@ function rgbImage = MonoImageToSRGB(monoImage,xy,SCALE)
 % 6/15/11  dhb, ms  Wrote it.
 
 % Set default
-if (nargin < 3 | isempty(SCALE))
+if (nargin < 3 || isempty(SCALE))
     SCALE = 1;
 end
 

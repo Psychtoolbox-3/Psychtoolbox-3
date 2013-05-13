@@ -22,7 +22,8 @@ end
 spd = [];
 if ~isempty(rawspd)
     C = textscan(rawspd, '%d,%f', 'HeaderLines', 1);
-    wls = C{1}; spd = C{2};
+    wls = double(C{1});
+    spd = double(C{2});
     
     if isempty(wls) || isempty(spd)
         return

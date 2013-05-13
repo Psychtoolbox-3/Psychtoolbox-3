@@ -20,7 +20,7 @@ function ROC = NormalROC(logbetas,us,vars,un,varn)
 
 % Set up room for answer
 [mbetas,null] = size(logbetas);
-if ( mbetas == 1 & null ~= 1)
+if ( mbetas == 1 && null ~= 1)
   logbetas = logbetas';
   mbetas = null;
 end

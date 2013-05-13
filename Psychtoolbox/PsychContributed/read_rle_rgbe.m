@@ -18,7 +18,7 @@ fid = fopen(filename,'r');
 
 %read the magic number
 tline = fgetl(fid);
-if length(tline)<3 | tline(1:2) ~= '#?'
+if length(tline)<3 || tline(1:2) ~= '#?'
     error('invalid header');
 end
 fileinfo.identifier = tline(3:end);
@@ -76,7 +76,7 @@ for scanline=1:num_scanlines
 %         fprintf('scanline = %d\n',scanline);
 %     end
 %     
-    if (data(dp) ~= 2) | (data(dp+1) ~= 2)% | (bitget(data(dp+2),8)~=1)
+    if (data(dp) ~= 2) || (data(dp+1) ~= 2)% || (bitget(data(dp+2),8)~=1)
         error('this file is not run length encoded');
     end
     

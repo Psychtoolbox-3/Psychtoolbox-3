@@ -70,7 +70,7 @@ while 1 % loop till error or space bar is pressed
 			x = evt.gx(eye_used+1); % +1 as we're accessing MATLAB array
 			y = evt.gy(eye_used+1);
 			% do we have valid data and is the pupil visible?
-			if x~=el.MISSING_DATA & y~=el.MISSING_DATA & evt.pa(eye_used+1)>0
+			if x~=el.MISSING_DATA && y~=el.MISSING_DATA && evt.pa(eye_used+1)>0
 				% if data is valid, draw a circle on the screen at current gaze position
 				% using PsychToolbox's SCREEN function
 				gazeRect=[ x-7 y-7 x+8 y+8];

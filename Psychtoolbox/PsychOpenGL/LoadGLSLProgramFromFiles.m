@@ -138,7 +138,7 @@ for i=1:length(filenames)
     shadername = char(filenames(i));
     % We only load the shader if its name does not end in tilde or .asv,
     % because that would mean it is a Matlab- or emacs backup file...
-    if (shadername(end)~='~') & (isempty(strfind(shadername, '.asv'))) %#ok<AND2>
+    if (shadername(end)~='~') && (isempty(strfind(shadername, '.asv')))
        % Load, compile and link the shader:
        if debug < 3
            shdebug = 1;

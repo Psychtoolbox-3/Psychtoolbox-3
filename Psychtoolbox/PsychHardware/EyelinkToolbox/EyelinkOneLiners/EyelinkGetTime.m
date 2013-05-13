@@ -21,7 +21,7 @@ if ~exist('maxwait', 'var')
     maxwait = [];
 end
 
-if isempty(maxwait) | maxwait <= 0 %#ok<OR2>
+if isempty(maxwait) || maxwait <= 0
 	usemaxwait=0; % do not timeout
 else
 	usemaxwait=1;
@@ -40,7 +40,7 @@ if Eyelink('isconnected') == el.connected   % readtime doesn't work in dummymode
 			return;
 		end
 	
-		if (usemaxwait==1) & (GetSecs-start>maxwait)	%#ok<AND2> % repeat until available or timeout
+		if (usemaxwait==1) && (GetSecs-start>maxwait) % repeat until available or timeout
 			fprintf('EyelinkGetTime: timeout of time request');
 			return;
 		end

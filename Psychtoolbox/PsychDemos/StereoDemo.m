@@ -78,7 +78,7 @@ try
     % as target screen: This will open a window that spans multiple
     % monitors on multi-display setups, which is usually what one wants
     % for this mode.
-    if IsWin & (stereoMode==4 | stereoMode==5)
+    if IsWin && (stereoMode==4 || stereoMode==5)
        scrnNum = 0;
     end
 
@@ -159,11 +159,11 @@ try
     while ~KbCheck
         % Compute dot positions and offsets for this frame:
         center = center + [xvel yvel];
-        if center(1) > xmax | center(1) < -xmax
+        if center(1) > xmax || center(1) < -xmax
             xvel = -xvel;
         end
 
-        if center(2) > ymax | center(2) < -ymax
+        if center(2) > ymax || center(2) < -ymax
             yvel = -yvel;
         end
 

@@ -9,7 +9,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % program, checking for all required resources and privileges before it
 % starts.
 %
-% CAUTION: Psychtoolbox *will not work* with GNU/Octave on Microsoft, or
+% CAUTION: Psychtoolbox *will not work* with GNU/Octave on MS-Windows, or
 % with 32-Bit Octave on OSX, as support for these setups has been cancelled
 % for the 3.0.10 series.
 %
@@ -309,10 +309,10 @@ end
 
 % Check OS
 IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
-IsOSX = ~isempty(strfind(computer, 'MAC')) | ~isempty(strfind(computer, 'apple-darwin'));
-IsLinux = strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
+IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
+IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~IsWin & ~IsOSX & ~IsLinux
+if ~IsWin && ~IsOSX && ~IsLinux
     os = computer;
     if strcmp(os,'MAC2')
         os = 'Mac OS9';
@@ -329,7 +329,7 @@ end
 v = ver('matlab');
 if ~isempty(v)
     v = v(1).Version; v = sscanf(v, '%i.%i.%i');
-    if (v(1) < 7) | ((v(1) == 7) & (v(2) < 4)) %#ok<AND2,OR2>
+    if (v(1) < 7) || ((v(1) == 7) && (v(2) < 4))
         % Matlab version < 7.4 detected. This is no longer
         % supported by current PTB beta. Redirect to the last
         % functional PTB for such ancient Matlab's:
@@ -475,23 +475,23 @@ else
 	if IsOSX
 		svnpath = '';
 		
-		if isempty(svnpath) & exist('/opt/subversion/bin/svn', 'file') %#ok<AND2>
+		if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
 			svnpath = '/opt/subversion/bin/';
 		end
 
-		if isempty(svnpath) & exist('/usr/bin/svn','file') %#ok<AND2>
+		if isempty(svnpath) && exist('/usr/bin/svn','file')
 			svnpath='/usr/bin/';
 		end
 
-		if isempty(svnpath) & exist('/usr/local/bin/svn','file') %#ok<AND2>
+		if isempty(svnpath) && exist('/usr/local/bin/svn','file')
 			svnpath='/usr/local/bin/';
 		end
 
-		if isempty(svnpath) & exist('/bin/svn','file') %#ok<AND2>
+		if isempty(svnpath) && exist('/bin/svn','file')
 			svnpath='/bin/';
 		end
 
-		if isempty(svnpath) & exist('/opt/local/bin/svn', 'file') %#ok<AND2>
+		if isempty(svnpath) && exist('/opt/local/bin/svn', 'file')
 			svnpath = '/opt/local/bin/';
 		end
 
@@ -591,7 +591,7 @@ fprintf('Good. Your privileges suffice for the requested installation into folde
 
 % Delete old Psychtoolbox
 skipdelete = 0;
-while (exist('Psychtoolbox','dir') | exist(fullfile(targetdirectory,'Psychtoolbox'),'dir')) & (skipdelete == 0)
+while (exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolbox'),'dir')) && (skipdelete == 0)
     fprintf('Hmm. You already have an old Psychtoolbox folder:\n');
     p=fullfile(targetdirectory,'Psychtoolbox');
     if ~exist(p,'dir')
@@ -725,7 +725,7 @@ fprintf('%s\n',checkoutcommand);
 fprintf('Downloading. It''s nearly 100 MB, which can take many minutes. \nAlas there may be no output to this window to indicate progress until the download is complete. \nPlease be patient ...\n');
 fprintf('If you see some message asking something like "accept certificate (p)ermanently, (t)emporarily? etc."\n');
 fprintf('then please press the p key on your keyboard, possibly followed by pressing the ENTER key.\n\n');
-if IsOSX | IsLinux
+if IsOSX || IsLinux
     [err]=system(checkoutcommand);
     result = 'For reason, see output above.';
 else
@@ -735,7 +735,7 @@ end
 % MK: Pointless fallbacks disabled, as GitHub only supports https protocol, so a
 % failure of the first try is game over.
 %
-% if err & (downloadmethod < 1)
+% if err && (downloadmethod < 1)
 %     % Failed! Let's retry it via http protocol. This may work-around overly
 %     % restrictive firewalls or otherwise screwed network proxies:
 %     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
@@ -744,7 +744,7 @@ end
 %     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
 %     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
 %     fprintf('%s\n\n',checkoutcommand);
-%     if IsOSX | IsLinux
+%     if IsOSX || IsLinux
 %         [err]=system(checkoutcommand);
 %         result = 'For reason, see output above.';
 %     else
@@ -752,7 +752,7 @@ end
 %     end    
 % end
 % 
-% if err & (downloadmethod > 0)
+% if err && (downloadmethod > 0)
 %     % Failed! Let's retry it via https protocol. This may work-around overly
 %     % restrictive firewalls or otherwise screwed network proxies:
 %     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
@@ -761,7 +761,7 @@ end
 %     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
 %     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
 %     fprintf('%s\n\n',checkoutcommand);
-%     if IsOSX | IsLinux
+%     if IsOSX || IsLinux
 %         [err]=system(checkoutcommand);
 %         result = 'For reason, see output above.';
 %     else
@@ -807,7 +807,7 @@ end
 % fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
 %     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
 % try
-%     if IsOSX | IsLinux
+%     if IsOSX || IsLinux
 %         [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
 %     else
 %         [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.

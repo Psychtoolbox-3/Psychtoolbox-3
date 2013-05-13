@@ -99,7 +99,7 @@ for repcount=1:10
         
         if (tex>0)
             % Perform first-time setup of transformations, if needed:
-            if fullsize & (count == 0) %#ok<AND2>
+            if fullsize && (count == 0)
                 texrect = Screen('Rect', tex);
                 winrect = Screen('Rect', win);
                 sf = min([RectWidth(winrect) / RectWidth(texrect) , RectHeight(winrect) / RectHeight(texrect)]);

@@ -6,15 +6,15 @@ result=1;
 absdcpos=[];
 try
 
-    if ~exist('ivx', 'var') | isempty(ivx)
+    if ~exist('ivx', 'var') || isempty(ivx)
         txt=[ mfilename ' requires a structure with iViewX default values as input.'];
         error(txt);
     end
 
-    if 1==exist('pos', 'var') & ~isempty(pos)
+    if 1==exist('pos', 'var') && ~isempty(pos)
         % if pos is supplied, we take the default value, but we first do
         % some checks
-        if size(pos,1)==1 & size(pos,2)==2
+        if size(pos,1)==1 && size(pos,2)==2
             if 1==IsInRect(pos(1,1), pos(1,2), Screen('Rect', ivx.window))
                 absdcpos=pos;
             else
@@ -27,7 +27,7 @@ try
 
     if isempty(absdcpos)
         % we take default value if no value is found yet
-        if ~isfield(ivx, 'absDCPos') | isempty(ivx.absDCPos) | size(ivx.absDCPos,1)~=1 | size(ivx.absCalPos,2)~=2
+        if ~isfield(ivx, 'absDCPos') || isempty(ivx.absDCPos) || size(ivx.absDCPos,1)~=1 || size(ivx.absCalPos,2)~=2
             txt=[ mfilename ': something is wrong with default driftcorrection point pixel values.'];
             error(txt);
         else
@@ -46,7 +46,7 @@ try
     i=0;
     while 1
         [keyIsDown,secs,keyCode] = KbCheck;
-        if keyCode(ivx.modifierKey) & keyCode(ivx.breakKey),
+        if keyCode(ivx.modifierKey) && keyCode(ivx.breakKey),
             result=-1;
             ivx.stop=1;
             break;
@@ -77,7 +77,7 @@ try
         tEnd=GetSecs+ivx.calPaceSecs;
         while GetSecs<tEnd
             [keyIsDown,secs,keyCode] = KbCheck;
-            if keyCode(ivx.modifierKey) & keyCode(ivx.breakKey),
+            if keyCode(ivx.modifierKey) && keyCode(ivx.breakKey),
                 ivx.stop=1;
                 result=-1;
                 break;

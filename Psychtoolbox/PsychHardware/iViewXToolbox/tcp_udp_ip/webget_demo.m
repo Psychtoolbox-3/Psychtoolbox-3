@@ -30,7 +30,7 @@ if 1,
   pnet(con,'setreadtimeout',0.1); %Change timeout
   hdrstr=''; hdr='';
   %Remove header
-  while length(hdrstr) | length(hdr)==0,
+  while length(hdrstr) || length(hdr)==0,
     stat=pnet(con,'status');
     hdrstr=pnet(con,'readline');
     hdr=sprintf('%s%s\n',hdr,hdrstr);

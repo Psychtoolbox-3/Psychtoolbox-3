@@ -160,7 +160,7 @@ try
         end;
         
         [mx, my, buttons]=GetMouse(screenNumber);
-        if KbCheck | any(buttons) % break out of loop
+        if KbCheck || any(buttons) % break out of loop
             break;
         end;
         

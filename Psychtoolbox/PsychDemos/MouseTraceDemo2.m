@@ -52,7 +52,7 @@ try
         if ~buttons(1)
             break;
         end
-        if (x ~= theX | y ~= theY) %#ok<OR2>
+        if (x ~= theX || y ~= theY)
             thePoints = [thePoints ; x y]; %#ok<AGROW>
             [numPoints, two]=size(thePoints);
             % Only draw the most recent line segment: This is possible,

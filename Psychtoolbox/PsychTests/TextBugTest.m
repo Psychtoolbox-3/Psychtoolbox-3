@@ -46,7 +46,7 @@ try
 
         for i=1:2
             %create the texture and draw it.
-            if drawTextureFlag & ( (i==1 & drawOrder==textureFirst) | (i==2 & ~(drawOrder==textureFirst))) 
+            if drawTextureFlag && ( (i==1 && drawOrder==textureFirst) || (i==2 && ~(drawOrder==textureFirst))) 
                 textureRectSize=100;
                 textureRectOrigin=[0 0 textureRectSize textureRectSize];
                 textureRect=OffsetRect(textureRectOrigin, 0, 0);
@@ -58,7 +58,7 @@ try
             end %if
 
             %create the text and draw it
-            if drawTextFlag ( (i==1 & ~(drawOrder==textureFirst)) | (i==2 & drawOrder==textureFirst))
+            if drawTextFlag ( (i==1 && ~(drawOrder==textureFirst)) || (i==2 && drawOrder==textureFirst))
                 Screen('TextFont',w, 'Courier');
                 Screen('TextSize',w, 50);
                 Screen('TextStyle', w, 0);

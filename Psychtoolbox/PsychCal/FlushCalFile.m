@@ -35,7 +35,7 @@ end
 file=fopen(filename);
 
 % If not, make sure to try secondary directory.
-if (file == -1 & (nargin < 3 || isempty(dir)))
+if (file == -1 && (nargin < 3 || isempty(dir)))
 	useDir = CalDataFolder(1);
 	if (nargin < 1 || isempty(filespec))
 		filename = [useDir 'default.mat'];

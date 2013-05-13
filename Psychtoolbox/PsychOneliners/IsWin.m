@@ -23,11 +23,11 @@ end
 
 
 if isempty(rc)
-     rc=streq(computer,'PCWIN') | streq(computer,'PCWIN64') | streq(computer, 'i686-pc-mingw32');
+     rc=streq(computer,'PCWIN') || streq(computer,'PCWIN64') || streq(computer, 'i686-pc-mingw32');
 end
 
 if isempty(rc64)
-     rc64 = rc & ~isempty(strfind(computer, '64'));
+     rc64 = rc && ~isempty(strfind(computer, '64'));
 end
 
 if is64 == 0

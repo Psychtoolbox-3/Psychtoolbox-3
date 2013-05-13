@@ -184,7 +184,7 @@ if ~ischar(whichDriver)
     error('"whichDriver" or "whichDriver.name" is not a driver name string!');
 end
 
-if isempty(driverNSlots) & ~isempty(driverBpc)
+if isempty(driverNSlots) && ~isempty(driverBpc)
     driverNSlots = 2^driverBpc;
 end
 
@@ -255,7 +255,7 @@ switch (whichDriver)
         uniqueValsA = length(unique(theInImage));
         uniqueValsB = length(unique(theIntImage));
 
-        if (uniqueValsA~=uniqueValsB) | (uniqueValsA~=driverNSlots)
+        if (uniqueValsA~=uniqueValsB) || (uniqueValsA~=driverNSlots)
             fprintf('Ouch! Number of unique test samples in different images is not the same! Bug in test code?!?\n');
             fprintf('Input to GPU (float) = %i, Input to CPU (uint32) = %i, Reference Expected (nr. slots) = %i\n', uniqueValsA, uniqueValsB, driverNSlots);
             error('Mismatch in unique values count! Likely a bug in this test code!');

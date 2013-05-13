@@ -46,7 +46,7 @@ texin = Screen('GetOpenGLTexture', win, inputtex);
 Screen('BeginOpenGL', win);
 
 % Use 
-if glGetIntegerv(GL.MAX_COLOR_ATTACHMENTS_EXT)<2 | singlefbo==0
+if glGetIntegerv(GL.MAX_COLOR_ATTACHMENTS_EXT)<2 || singlefbo==0
     singlefbo=0;
 else
     singlefbo=1;

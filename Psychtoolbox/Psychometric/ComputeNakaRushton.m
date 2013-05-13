@@ -54,7 +54,7 @@ if (any(contrast < 0))
 end
 
 % Handle really weird parameter values
-if (sigma < 0 | exponent < 0 | exponent1 < 0)
+if (sigma < 0 || exponent < 0 || exponent1 < 0)
     response = -1*ones(size(contrast));
 else
 

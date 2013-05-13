@@ -58,7 +58,7 @@ function versionString=AppleVersion(gestaltString)
 
 
 b=eval('Gestalt(gestaltString)','[]');
-if isempty(b) | b==-5551
+if isempty(b) || b==-5551
 	versionString='';
 	return
 end

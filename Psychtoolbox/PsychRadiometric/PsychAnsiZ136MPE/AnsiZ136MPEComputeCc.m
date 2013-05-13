@@ -16,11 +16,11 @@ function Cc = AnsiZ136MPEComputeCc(stimulusWavelengthNm)
 %% Implement formula.
 if (stimulusWavelengthNm < 1050)
     error('Cc not defined for wavelengths less than 1050 nm');
-elseif (stimulusWavelengthNm >=  1050 & stimulusWavelengthNm < 1150)
+elseif (stimulusWavelengthNm >=  1050 && stimulusWavelengthNm < 1150)
     Cc = 1;
-elseif (stimulusWavelengthNm >= 1150 & stimulusWavelengthNm < 1200)
+elseif (stimulusWavelengthNm >= 1150 && stimulusWavelengthNm < 1200)
     Cc = 10^(18*(stimulusWavelengthNm/1000 - 1.150));
-elseif (stimulusWavelengthNm >=  1200 & stimulusWavelengthNm < 1400)
+elseif (stimulusWavelengthNm >=  1200 && stimulusWavelengthNm < 1400)
     Cc = 8;
 else
     error('Cc not defined for wavelengths greater than or equal to 1400 nm');

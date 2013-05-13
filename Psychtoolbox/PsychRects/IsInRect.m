@@ -7,8 +7,8 @@ function inside = IsInRect(x,y,rect)
 
 % 3/5/97  dhb  Wrote it.
 
-if (x >= rect(RectLeft) & x <= rect(RectRight) & ...
-		y >= rect(RectTop) & y <= rect(RectBottom) )
+if (x >= rect(RectLeft) && x <= rect(RectRight) && ...
+		y >= rect(RectTop) && y <= rect(RectBottom) )
 	inside = 1;
 else
 	inside = 0;

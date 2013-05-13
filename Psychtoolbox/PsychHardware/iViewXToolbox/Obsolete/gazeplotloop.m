@@ -11,7 +11,7 @@ y=400;
 
 mag=8;
 
-while ~KbCheck & Getsecs<tEnd
+while ~KbCheck && Getsecs<tEnd
     x=x+round(-1*mag+rand*2*mag);
     y=y+round(-1*mag+rand*2*mag);
     

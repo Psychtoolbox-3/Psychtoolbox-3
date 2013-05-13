@@ -160,7 +160,7 @@ stddev=30;
             % Compute noiseimg noise image matrix with Matlab:
             % Normally distributed noise with mean 128 and stddev. 50, each
             % pixel computed independently:
-            if (count==0 | validate < 2) noiseimg=(50*randn(rectSize, rectSize) + 128); end
+            if (count==0 || validate < 2) noiseimg=(50*randn(rectSize, rectSize) + 128); end
 
             % Validation enabled?
             if validate == 1

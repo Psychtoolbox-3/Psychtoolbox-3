@@ -16,11 +16,11 @@ function Ca = AnsiZ136MPEComputeCa(stimulusWavelengthNm)
 %% Implement formula.
 if (stimulusWavelengthNm < 400)
     error('Ca not defined for wavelengths less than 400 nm');
-elseif (stimulusWavelengthNm >=  400 & stimulusWavelengthNm < 700)
+elseif (stimulusWavelengthNm >=  400 && stimulusWavelengthNm < 700)
     Ca = 1;
-elseif (stimulusWavelengthNm >=  700 & stimulusWavelengthNm < 1050)
+elseif (stimulusWavelengthNm >=  700 && stimulusWavelengthNm < 1050)
     Ca = 10^(2*(stimulusWavelengthNm/1000-0.700));
-elseif (stimulusWavelengthNm >= 1050 & stimulusWavelengthNm < 1400)
+elseif (stimulusWavelengthNm >= 1050 && stimulusWavelengthNm < 1400)
     Ca = 5;
 else
     error('Ca not defined for wavelengths greater than or equal to 1400 nm');

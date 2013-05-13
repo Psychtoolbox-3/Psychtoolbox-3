@@ -117,7 +117,7 @@ else
 	f = 1;
 	while (1)
 		theLine = fgetl(fid);
-		if (isempty(theLine) | theLine == -1)
+		if (isempty(theLine) || theLine == -1)
 			break;
 		end
 		theIndex = 1;

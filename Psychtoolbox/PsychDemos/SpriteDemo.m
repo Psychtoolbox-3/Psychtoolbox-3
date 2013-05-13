@@ -88,7 +88,7 @@ try
         Screen('Flip', window);
         
         % Animate the sprite only when the mouse is moving.
-        if (previousX ~= mX) | (previousY ~= mY)
+        if (previousX ~= mX) || (previousY ~= mY)
             spriteFrameIndex = spriteFrameIndex + 1;
             if spriteFrameIndex > numberOfSpriteFrames
                 spriteFrameIndex = 1;

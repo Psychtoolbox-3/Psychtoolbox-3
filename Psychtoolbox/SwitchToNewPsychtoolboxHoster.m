@@ -46,7 +46,7 @@ end
 
 % Assume no switch needed:
 doSwitch = 0;
-if (a ~= 0) | isempty(b) %#ok<OR2>
+if (a ~= 0) || isempty(b)
     % On failure to detect source URL, assume switch is not needed. This is
     % a tradeoff. Without it, we could fail miserably when called from
     % SetupPsychtoolbox on a system where the working copy is stripped of

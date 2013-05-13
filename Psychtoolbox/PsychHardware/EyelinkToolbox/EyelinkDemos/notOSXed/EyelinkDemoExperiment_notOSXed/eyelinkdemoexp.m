@@ -152,7 +152,7 @@ for trial=1:ntrials
 		return;
 	end;
 
-	if 1 & trial==1
+	if 1 && trial==1
 		trialresult = simpletrialdemo(el, trial); % RUN THE TRIAL
 	else
 		trialresult = realtimedemo(el, trial); % RUN THE TRIAL

@@ -15,7 +15,7 @@ cmd=which('setupdate.sh');
 if nargin>0,
 
     % check argument
-    if ~isreal(newstate) | (newstate~=0 & newstate~=1),
+    if ~isreal(newstate) || (newstate~=0 && newstate~=1),
         error('usage:  glmSetUpdate( [ 0 1 ] )');
     end
 
@@ -29,7 +29,7 @@ end
 
 % if there's a return argument, or no input arguments, then check number of
 % update processes running
-if nargout>0 | nargin==0,
+if nargout>0 || nargin==0,
     
     % check number of 'update' processes running
     [status,stdout]=unix(cmd);

@@ -74,7 +74,7 @@ if fastpath == 0
         singlefbo = 1;
     end;
 
-    if w~=h | w<2 | mod(w,2)>0
+    if w~=h || w<2 || mod(w,2)>0
         error('Invalid size of input texture: Needs to be even, width = height and at least 2 pixels wide.');
     end;
 
@@ -85,7 +85,7 @@ if fastpath == 0
     fw = glGetTexLevelParameteriv(GL.TEXTURE_RECTANGLE_EXT, 0, GL.TEXTURE_WIDTH);
     fh = glGetTexLevelParameteriv(GL.TEXTURE_RECTANGLE_EXT, 0, GL.TEXTURE_HEIGHT);
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
-    if fw < w/2 | fh < h/2
+    if fw < w/2 || fh < h/2
         error('Pingpong FBO 1 is too small for reduce operation!');
     end;
 
@@ -97,7 +97,7 @@ if fastpath == 0
         fw = glGetTexLevelParameteriv(GL.TEXTURE_RECTANGLE_EXT, 0, GL.TEXTURE_WIDTH);
         fh = glGetTexLevelParameteriv(GL.TEXTURE_RECTANGLE_EXT, 0, GL.TEXTURE_HEIGHT);
         glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
-        if fw < w/2 | fh < h/2
+        if fw < w/2 || fh < h/2
             error('Pingpong FBO 2 is too small for reduce operation!');
         end;
     end;

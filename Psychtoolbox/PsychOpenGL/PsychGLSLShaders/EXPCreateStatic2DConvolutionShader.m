@@ -83,7 +83,7 @@ kernelw = size(kernel,1);
 kernelh = size(kernel,2);
 
 % We only want odd sized kernels of at least 3x3, e.g., 3x3, 5x5, 7x7, ...
-if kernelw < 1 | kernelh < 1 | mod(kernelw,2)~=1 | mod(kernelh,2)~=1
+if kernelw < 1 || kernelh < 1 || mod(kernelw,2)~=1 || mod(kernelh,2)~=1
     error('CreateStatic2DConvolutionShader: Only odd-sized kernels of at least size 3x3 supported!');
 end;
 

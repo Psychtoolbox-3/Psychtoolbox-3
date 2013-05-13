@@ -117,7 +117,7 @@ while(~feof(listfid)),
     % C interface function (input arguments, return arguments, etc.)
     [M,C]=mcinfo(funcp);
 
-    if (overwrite > 0) | (exist([ funcp.fname '.m'], 'file')~= 2) %#ok<OR2>
+    if (overwrite > 0) || (exist([ funcp.fname '.m'], 'file')~= 2)
         % (re)create M-file wrapper
         fprintf(1, 'creating M-File wrapper.\n');
         mwrite(funcp,M,openal);

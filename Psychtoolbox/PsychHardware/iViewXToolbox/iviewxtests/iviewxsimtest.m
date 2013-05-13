@@ -38,7 +38,7 @@ try
         while GetSecs<tEnd
 
             [keyIsDown,secs,keyCode] = KbCheck;
-            if 1==keyCode(ivx.modifierKey) & 1==keyCode(ivx.breakKey)
+            if 1==keyCode(ivx.modifierKey) && 1==keyCode(ivx.breakKey)
                 break;
             end
             [data, ivx]=iViewXComm('receive', ivx);

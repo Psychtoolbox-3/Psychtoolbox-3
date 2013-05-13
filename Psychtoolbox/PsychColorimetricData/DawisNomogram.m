@@ -48,11 +48,11 @@ wlsum = wls/1000;
 
 for i = 1:nT
 	theMax = lambdaMax(i);
-	if (theMax >= lmaxLow(1) & theMax <= lmaxHigh(1))
+	if (theMax >= lmaxLow(1) && theMax <= lmaxHigh(1))
 		which = 1;
-	elseif (theMax > lmaxLow(2) & theMax <= lmaxHigh(2))
+	elseif (theMax > lmaxLow(2) && theMax <= lmaxHigh(2))
 		which = 2;
-	elseif (theMax > lmaxLow(3) & theMax <= lmaxHigh(3))
+	elseif (theMax > lmaxLow(3) && theMax <= lmaxHigh(3))
 		which = 3;
 	else
 		error(sprintf('Lambda Max %g not in range of nomogram\n',theMax));

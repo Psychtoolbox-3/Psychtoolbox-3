@@ -213,7 +213,7 @@ while treceived < tEnd
     [pktdata, treceived] = IOPort('Read', myport, 0, maxReadQuantum);
     
     % Empty data packet?
-    if isempty(pktdata) | ~any(pktdata) %#ok<OR2>
+    if isempty(pktdata) || ~any(pktdata)
         % All zeroes or an empty packet. We stop here.
         fprintf('Empty packet received (all zeros) --> END OF DATA FETCH\n');
         % Break out of loop:

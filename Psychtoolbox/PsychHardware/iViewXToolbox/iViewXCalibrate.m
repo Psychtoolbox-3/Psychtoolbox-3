@@ -5,7 +5,7 @@ function [result, ivx]=iViewXCalibrate(ivx)
 result=1;
 
 try
-    if ~exist('ivx', 'var') | isempty(ivx)
+    if ~exist('ivx', 'var') || isempty(ivx)
         txt=[ mfilename ' requires a structure with iViewX default values as input.'];
         error(txt);
     end
@@ -34,7 +34,7 @@ try
     klaar=0;
     while klaar==0
         [keyIsDown,secs,keyCode] = KbCheck;
-        if 1==keyCode(ivx.modifierKey) & 1==keyCode(ivx.breakKey)
+        if 1==keyCode(ivx.modifierKey) && 1==keyCode(ivx.breakKey)
             result=-1;
             return;
             break;
@@ -47,7 +47,7 @@ try
         end
         [data, ivx]=iViewX('receivedata', ivx);
 
-        if ~isempty(data) & data ~=-1
+        if ~isempty(data) && data ~=-1
             
 %             data
             
@@ -109,7 +109,7 @@ try
                 return
             end
             [keyIsDown,secs,keyCode] = KbCheck;
-            if 1==keyCode(ivx.modifierKey) & 1==keyCode(ivx.breakKey)
+            if 1==keyCode(ivx.modifierKey) && 1==keyCode(ivx.breakKey)
                 % stop program altogether
                 result=-1;
                 iViewX('break', ivx);
@@ -134,7 +134,7 @@ try
                 allowManAccept=1; % we only accept manually if key has been released in between
             end
 
-            if keyCode(ivx.calAcceptKey) & allowManAccept==1, % manually accept calibration point
+            if keyCode(ivx.calAcceptKey) && allowManAccept==1, % manually accept calibration point
                 iViewX('accept', ivx);
                 allowManAccept=0;
             end
@@ -143,7 +143,7 @@ try
 
             data;
 
-            if ~isempty(data) & data ~=-1
+            if ~isempty(data) && data ~=-1
                 % data
                 if strfind(data, 'ET_CHG')
                     pt=str2num(data(8:end));

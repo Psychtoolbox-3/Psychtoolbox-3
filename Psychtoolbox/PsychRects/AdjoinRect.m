@@ -11,7 +11,7 @@ function r=AdjoinRect(r,fixedRect,fixedSide)
 if nargin~=3
 	error('Usage: rect=AdjoinRect(rect,fixedRect,fixedSide)');
 end
-if size(r,2)~=4 | size(fixedRect,2)~=4
+if size(r,2)~=4 || size(fixedRect,2)~=4
 	error('Wrong size rect argument. Usage:  rect=AdjoinRect(rect,fixedRect,fixedSide)');
 end
 

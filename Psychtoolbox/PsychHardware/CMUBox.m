@@ -227,7 +227,7 @@ if strcmpi(cmd, 'GetEvent')
     % Repeat until forceful abortion via break as long as either waiting
     % for new events is requested, or - in non-blocking mode - new status
     % bytes from the box are available to parse:
-    while (waitEvent > 0) | (IOPort('BytesAvailable', box.port) >= 9) %#ok<OR2>
+    while (waitEvent > 0) || (IOPort('BytesAvailable', box.port) >= 9)
 
         % Wait blocking for at least one status packet of 9 bytes from box:
         [inpkt, t, err] = IOPort('Read', box.port, 1, 9);
@@ -264,14 +264,14 @@ if strcmpi(cmd, 'GetEvent')
 
         % Special case for Bitwhacker emulation: Filter out codes 10 and
         % 13, as well as 0 as they're an artifact of the emulation:
-        if box.useBitwhacker & ismember(data, [0, 10, 13]) %#ok<AND2>
+        if box.useBitwhacker && ismember(data, [0, 10, 13])
             continue;
         end
         
         % Timestamps at least 0.5 msecs apart and no more than 2 msecs
         % apart? This window should be sufficient for the CMU and PST box
         % in all streaming modes:
-        if (t - box.oldTime < 0.0005) | (box.deltaScan < 0.0005) | ((box.deltaScan > 0.002) & (box.Streaming > 0)) %#ok<AND2,OR2>
+        if (t - box.oldTime < 0.0005) || (box.deltaScan < 0.0005) || ((box.deltaScan > 0.002) && (box.Streaming > 0))
             % Too close to each other! Timestamp is not reliable!
             tTrouble = 1;
             fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs, ScanInterval %f msecs.\n', 1000 * (t - box.oldTime), 1000 * box.deltaScan); 
@@ -322,7 +322,7 @@ if strcmpi(cmd, 'GetEvent')
             end
             
             % Should we discard "release" events and this is one?
-            if (box.norelease == 0) | (data ~= 0) %#ok<OR2>
+            if (box.norelease == 0) || (data ~= 0)
                 % Nope. Either no release event or don't discard'em.
                 % Build 'evt' struct and return:                
 
@@ -691,7 +691,7 @@ if strcmpi(cmd, 'Open')
         IOPort('Read', box.port, 0);
     end
     
-    if box.type == 3 | box.type == 2 %#ok<OR2>
+    if box.type == 3 || box.type == 2
         % Calibrate inter-byte-interval:
         if box.type == 3
             % PST box: Enable streaming:
@@ -743,7 +743,7 @@ if strcmpi(cmd, 'Open')
             % If this is Windows, or if the results seem implausible for the
             % CMU box, ie., more than 0.1 msecs off the expected 1.0 msec, then
             % we simply hard-code dt to 1.0 msec.
-            if IsWin | (box.dt < 0.0009) | (box.dt > 0.0011) %#ok<OR2>
+            if IsWin || (box.dt < 0.0009) || (box.dt > 0.0011)
                 % CMU Box: Assume 1 msec per sample:
                 box.dt = 1/1000;
             end

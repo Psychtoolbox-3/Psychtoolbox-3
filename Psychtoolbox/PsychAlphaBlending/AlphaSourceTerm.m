@@ -30,10 +30,10 @@ function newSourceMat=AlphaSourceTerm(sourceFactorStr, sourceMat, destinationMat
 
 sourceMatDims=size(sourceMat);
 destinationMatDims=size(destinationMat);
-if length(sourceMatDims) ~= 3 |  sourceMatDims(3) ~= 4                     
+if length(sourceMatDims) ~= 3 ||  sourceMatDims(3) ~= 4                     
     error('Argument ''sourceMat'' must be a matrix with dimensions [x,y,4]');
 end
-if length(destinationMatDims) ~= 3 |  destinationMatDims(3) ~= 4                     
+if length(destinationMatDims) ~= 3 ||  destinationMatDims(3) ~= 4                     
     error('Argument ''destinationMat'' must be a matrix with dimensions [x,y,4]');
 end
 sourceMatAlphaPlane=sourceMat(:,:,4);

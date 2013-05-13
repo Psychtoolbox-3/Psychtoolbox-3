@@ -70,7 +70,7 @@ else
 end
 image1=Screen(w,'GetImage');
 [y,x]=find(image1(:,:,1));
-if isempty(y) | isempty(x)
+if isempty(y) || isempty(x)
 	bounds=[0 0 0 0];
 else	
 	bounds=SetRect(min(x)-1,min(y)-1,max(x),max(y));
