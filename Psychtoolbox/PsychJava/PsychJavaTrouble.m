@@ -128,6 +128,10 @@ if ~IsOctave
                 % doesn't already exist:
                 prefFolder = prefdir(1);
                 classpathFile = [prefFolder filesep 'javaclasspath.txt'];
+                if ~exist(classpathFile, 'file')
+                    fid = fopen(classpathFile, 'w');
+                    fclose(fid);
+                end
             end
         end
         
@@ -137,11 +141,11 @@ if ~IsOctave
         if ~verLessThan('matlab', '7.14')
             % New style method: (textread() is deprecated as of at least R2012a)
             fid = fopen(classpathFile);
-            fileContentsWrapped = textscan(fid, '%s');
+            fileContentsWrapped = textscan(fid, '%s', 'delimiter', '\n');
             fclose(fid);
             fileContents = fileContentsWrapped{1};
         else
-            fileContents = textread(classpathFile, '%s'); %#ok<REMFF1>
+            fileContents = textread(classpathFile, '%s', 'delimiter', '\n'); %#ok<REMFF1>
         end
         
         j = 1;
