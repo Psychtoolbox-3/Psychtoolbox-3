@@ -189,7 +189,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         // auto-detect and dynamically link/bind all core OpenGL functionality
         // as well as all possible OpenGL extensions on OS-X, Linux and Windows.
         err = GLEW_OK;
-        #ifdef LINUX
+        #ifdef PTB_USE_WAFFLE
         // Linux is special: If we use the Waffle backend for display system binding, then our display backend
         // may be something else than GLX (e.g., X11/EGL, Wayland/EGL, GBM/EGL, ANDROID/EGL etc.), in which case
         // glewInit() would not work and would crash hard. Detect if we're on classic Linux or Linux with X11/GLX.
@@ -205,7 +205,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
             err = glewContextInit();
         }
         #else
-            // Other os'es: Always init GLEW:
+            // Other os'es, or Linux without Waffle backend: Always init GLEW:
             err = glewInit();
         #endif
 
