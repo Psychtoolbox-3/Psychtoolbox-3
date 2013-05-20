@@ -27,10 +27,23 @@ function ReturnFigh = ConfirmInfo(TheQuestion,ButtonString,HowLongToWait)
 %                           figure is modal)
 %          3/31/08    mpr   added check to make sure search for appropriate
 %                           space does not overrun number of spaces
+%          5/20/13    mk Add text only fallback for Octave and non-GUI.
 
 DoModal = 1;
 if nargin < 3 || isempty(HowLongToWait)
   HowLongToWait = Inf;
+end
+
+% Provide text fallback for non-GUI mode or Octave:
+if ~IsGUI || IsOctave
+  fprintf('%s\nPress any key to continue.\n', TheQuestion);
+  [secs, keyCode] = KbStrokeWait (-1, GetSecs + HowLongToWait);
+  if any(keyCode)
+    ReturnFigh = 1;
+  else
+    ReturnFigh = 0;
+  end
+  return;
 end
 
 ThisVersion = version;

@@ -66,7 +66,7 @@ function v=DaqAIn(daq,channel,range,UnCal)
 % Perform internal caching of list of HID devices to speedup call:
 persistent devices;
 if isempty(devices)
-    devices = PsychHID('Devices');
+    devices = PsychHIDDAQS;
 end
 
 if nargin < 4 || isempty(UnCal)

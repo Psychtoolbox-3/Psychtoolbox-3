@@ -77,6 +77,19 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % threading. By default, Frame+Slice threading will be used.
 %
 %
+% Debugging of USB based functions:
+% ---------------------------------
+%
+%
+% PsychTweak('LibUSBDebug', verbosity);
+%
+% -- Select level of verbosity for low-level debug output of USB functions.
+% This currently sets the debug level of libusb-1.0 based functions, e.g,
+% PsychHID, PsychKinectCore, some videocapture functions and others.
+% Possible values: 0 = Silence (default), 1 = Errors, 2 = Errors +
+% Warnings, 3 = Errors + Warnings + Info messages.
+%
+%
 % MS-Windows only tweaks:
 % -----------------------
 %
@@ -222,6 +235,20 @@ if strcmpi(cmd, 'ScreenVerbosity')
     end
     
     setenv('PSYCH_SCREEN_VERBOSITY', sprintf('%i', round(val)));
+    return;
+end
+
+if strcmpi(cmd, 'LibUSBDebug')
+    if length(varargin) < 1
+        error('Must provide an initial LibUSBDebug level.');
+    end
+    
+    val = varargin{1};
+    if ~isnumeric(val) || ~isscalar(val)
+        error('Must provide a single integer as argument!');
+    end
+    
+    setenv('LIBUSB_DEBUG', sprintf('%i', round(val)));
     return;
 end
 

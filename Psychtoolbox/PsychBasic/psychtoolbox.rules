@@ -45,7 +45,4 @@ ATTR{manufacturer}=="VPixx", MODE="0666"
 ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
 
 # Enable non-root access of libusb to the USB-HID DAQ devices supported by the DAQ toolbox:
-BUS=="usb", SYSFS{idVendor}=="09db", SYSFS{idProduct}=="0076", MODE="0666"
-BUS=="usb", SYSFS{idVendor}=="09db", SYSFS{idProduct}=="007d", MODE="0666"
-BUS=="usb", SYSFS{idVendor}=="09db", SYSFS{idProduct}=="0082", MODE="0666"
-BUS=="usb", SYSFS{idVendor}=="09db", SYSFS{idProduct}=="00a1", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="09db", MODE="0666"

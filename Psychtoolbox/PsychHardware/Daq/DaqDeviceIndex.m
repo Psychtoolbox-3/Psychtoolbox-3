@@ -7,17 +7,17 @@ function daq = DaqDeviceIndex(DeviceName, IShouldWarn)
 % of tweaking to make it really work. Search the Psychtoolbox forum for
 % corresponding messages...
 %
-% TECHNICAL NOTE: When we call PsychHID('Devices'), each USB-1208FS box
-% presents itself as four HID "devices" sharing the same serial number. They
+% TECHNICAL NOTE: When we call PsychHID('Devices'), each USB-1208FS/1408FS
+% box presents itself as four HID "devices" sharing the same serial number. They
 % are interfaces 0,1,2,3. They usually appear in reverse order in the
-% device list. Nearly all the USB-1208FS commands use only interface 0, so
+% device list. Nearly all the commands use only interface 0, so
 % we will select that one to represent the whole. All our Daq routines
 % expect to receive just the interface 0 device as a passed designator. The
 % few routines that need to access the other interfaces do so
 % automatically.
 %
-% ADDENDUM: The above statement is correct for the 1208FS, not for the 1608FS
-% and I don't know about the 1408FS.  Number of Devices found by PsychHID for a
+% ADDENDUM: The above statement is correct for the 1208FS and the 1408FS,
+% not for the 1608FS. Number of Devices found by PsychHID for a
 % 1608FS and Leopard varies from five to seven with little rhyme or reason.  It
 % appears that the correct number of interfaces is seven.  As with the 1208FS,
 % most communication is through interface 0.  However, when acquiring data
@@ -61,10 +61,9 @@ function daq = DaqDeviceIndex(DeviceName, IShouldWarn)
 %             each instance of multiple identical DAQ devices to
 %             disambiguate if user connects multiple devices of same model.
 %             Bits of cleanup and refactoring.
-
-% Flag to try to ensure that user sees warning exactly once and only if we
-% have reason to believe they need to see it.
-WarningFor1408 = 1;
+% 5/20/13 mk Verify correct enumeration of devices with a USB-1408FS device
+%              on 10.5 Leopard, 10.7 Lion, Linux, and Windows-7. Remove 1408FS
+%              "untested" warnings. It is tested now.
 
 if nargin < 2 || isempty(IShouldWarn)
     IShouldWarn=1;
@@ -84,19 +83,6 @@ else
     % Validate given DeviceName against list of supported devices:
     switch DeviceName
         case {'PMD-1208FS','USB-1208FS','PMD-1408FS','USB-1408FS'}
-            if ~isempty(strfind(DeviceName,'1408'))
-                fprintf(['\n\nWarning: This code has not been tested with a USB-1408FS.\n' ...
-                    'You should check the number of outputs.\n\n' ...
-                    'Also know that the screw terminals on the 1408FS are the \n' ...
-                    'same as those on the 1208FS except that terminal 16 is \n' ...
-                    'listed as "2.5 V" instead of "CAL".  Not having either of \n' ...
-                    'these devices, I didn''t investigate farther.  If you test\n' ...
-                    'a 1408 here, you should probably edit DaqDeviceIndex and \n' ...
-                    'DaqTest indicating that the device works; fix the code if\n' ...
-                    'need be to make that statement true. -- mpr\n\n']);
-                % Been there; done that!
-                WarningFor1408=0;
-            end
         case {'PMD-1608FS','USB-1608FS'}
         case {'PMD-1024LS','USB-1024LS'}
         otherwise
@@ -189,20 +175,7 @@ for k=1:length(devices)
             % Windows, and indirectly detecting it by the number of outputs on OS/X:
             if (devices(k).outputs > NumOutputs) || (devices(k).interfaceID == 0)
                 daq(end+1) = k;
-            end
-            
-            if ~isempty(strfind(devices(k).product,'1408')) && WarningFor1408
-                fprintf(['\n\nWarning: This code has not been tested with a USB-1408FS.\n' ...
-                    'You should check the number of outputs.\n\n' ...
-                    'Also know that the screw terminals on the 1408FS are the \n' ...
-                    'same as those on the 1208FS except that terminal 16 is \n' ...
-                    'listed as "2.5 V" instead of "CAL".  Not having either of \n' ...
-                    'these devices, I didn''t investigate farther.  If you test\n' ...
-                    'a 1408 here, you should probably edit DaqDeviceIndex and \n' ...
-                    'DaqTest indicating that the device works; fix the code if\n' ...
-                    'need be to make that statement true. -- mpr\n\n']);
-                WarningFor1408=0;
-            end
+            end            
         end % if ~isempty(NumOutputs)
     else % if ~AcceptAlternateNames
         if streq(devices(k).product,DeviceName)
