@@ -23,11 +23,12 @@ function UserResponse = TwoStateQuery(TheQuestion,TheChoices)
 %           9/29/06 mpr   repainted buttons in version 7
 %           1/14/07 mpr   undid previoius fix because button color bug is almost
 %                             fixed
+%          5/20/13    mk Add text only fallback for Octave and non-GUI.
 
 if nargin < 2 || isempty(TheChoices)
 	TheChoices{1} = 'Yes';
 	TheChoices{2} = 'No';
-elseif length(TheChoices) ~= 2 | ~iscell(TheChoices)
+elseif length(TheChoices) ~= 2 || ~iscell(TheChoices)
 	warning('I don''t like the choices I received.  Am substituting unadulterated originals.');
 	disp('But for kicks, this is what I was passed:');
 	TheChoices
@@ -38,6 +39,21 @@ end
 UnderScoreSpots = find(TheQuestion == '_');
 for k=length(UnderScoreSpots):-1:1
 	TheQuestion = [TheQuestion(1:(UnderScoreSpots(k)-1)) '\' TheQuestion(UnderScoreSpots(k):end)];
+end
+
+% Provide text fallback for non-GUI mode or Octave:
+if ~IsGUI || IsOctave
+  fprintf('%s\n', TheQuestion);
+  fprintf('0 = %s\n', TheChoices{2});
+  fprintf('1 = %s\n', TheChoices{1});
+  answer = input('Choose your answer: ','s');
+  if isempty(answer) || (answer~='0' && answer~='1')
+    UserResponse = -1;
+  else
+      UserResponse = sscanf(answer, '%i');
+  end
+  
+  return;
 end
 
 FigPos = [300 600];
@@ -65,7 +81,7 @@ if TextExt(1) < 0
 	else
 		set(th,'String',sprintf('%s\n%s',TheQuestion(1:(SpaceLocs(MinInd)-1)),TheQuestion((SpaceLocs(MinInd)+1):end)));
 	end
-	while TextExt(1) < 0 & get(th,'FontSize') > 8
+	while TextExt(1) < 0 && get(th,'FontSize') > 8
 		set(th,'FontSize',get(th,'FontSize')-1);
 		TextExt = get(th,'Extent');
 		% I should create an error if font size does get down to 8, but I don't expect it ever to happen, so I'm not

@@ -34,10 +34,12 @@
 %
 % LINUX: If you want to use these functions without the need to run
 % Matlab or Octave as root user (i.e., without need for root login or the
-% sudo command), please copy the file Psychtoolbox/PsychHardware/60-mcc.rules
-% into the folder /etc/udev/rules.d/ on your system. This one time copy will
-% require administrator privileges, but after that, any user should be able
-% to use the USB DAQ devices without special permissions.
+% sudo command), you have to run the script PsychLinuxConfiguration once.
+% This happens automatically during invocation of DownloadPsychtoolbox,
+% UpdatePsychtoolbox, or SetupPsychtoolbox, but if you didn't install
+% Psychtoolbox by one of these means, you'll need to run it manually.
+% Then after unplugging and replugging your device, non-root access should
+% work.
 %
 % Denis Pelli, 30 April 2005.
 %
@@ -55,8 +57,7 @@
 % Mickey P. Rowe, 10 January 2008.
 %
 % From August 2011 on, these functions should also work on MS-Windows and
-% GNU/Linux, due to the availability of PsychHID for these platforms. The
-% support is so far untested though.
+% GNU/Linux, due to the availability of PsychHID for these platforms.
 %
 % Mario Kleiner, 15 August 2011.
 %
