@@ -615,6 +615,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (TRUE) {
 	// Use playbin2:
 	theMovie = gst_element_factory_make ("playbin2", "ptbmovieplaybackpipeline");
+	if (theMovie == NULL) {
+		printf("PTB-ERROR: Failed to create GStreamer playbin2 element! Your GStreamer installation is\n");
+		printf("PTB-ERROR: incomplete or damaged and misses at least the gst-plugins-base set of plugins!\n");
+		PsychErrorExitMsg(PsychError_system, "Opening the movie failed. GStreamer configuration problem.");
+	}
 
 	// Assign name of movie to play:
 	g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
@@ -737,9 +742,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // converting them into PTB OpenGL textures:
     if (!videosink) videosink = gst_element_factory_make ("appsink", "ptbsink0");
     if (!videosink) {
-	printf("PTB-ERROR: Failed to create video-sink appsink ptbsink!\n");
-	PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
-	PsychErrorExitMsg(PsychError_system, "Opening the movie failed. Reason hopefully given above.");
+        printf("PTB-ERROR: Failed to create video-sink appsink ptbsink! Your GStreamer installation is\n");
+        printf("PTB-ERROR: incomplete or damaged and misses at least the gst-plugins-base set of plugins!\n");        
+        PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+        PsychErrorExitMsg(PsychError_system, "Opening the movie failed. Reason hopefully given above.");
     }
 
     movieRecordBANK[slotid].videosink = videosink;
