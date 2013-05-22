@@ -1480,6 +1480,10 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		if (fboInternalFormat==0) return(TRUE);
 	}
 
+	// Initialize target storage size to use size "as is", as a safe default:
+	twidth = width;
+	theight = height;
+
 	// Standard path w/o multisampling? --> Setup and or bind texture as color attachment:
 	if (multisample <= 0) {
 		// Is there already a texture object defined for the color attachment?
@@ -1936,7 +1940,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                     if (GL_FRAMEBUFFER_COMPLETE_EXT != fborc && 0 != fborc) {
                         // Nope. Our trick doesn't work, this hardware won't let us attach a stencil buffer at all. Remove it
                         // and live with a depth-buffer only setup.
-                        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil % renderbuffer attachment failed! Detaching stencil buffer...\n", (multisample > 0) ? "multisample" : "");                        
+                        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil %s renderbuffer attachment failed! Detaching stencil buffer...\n", (multisample > 0) ? "multisample" : "");                        
                         glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, 0);
                         glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
                         (*fbo)->stexid = 0;
