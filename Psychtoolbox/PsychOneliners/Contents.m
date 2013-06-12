@@ -79,7 +79,8 @@
 %   PsychGPUControl         - Control low-level operating parameters of certain supported GPU's.
 %   PsychNumel              - Drop-in replacement for numel() on old Matlab versions that don't support it.
 %   PsychtoolboxRoot        - Robust way to get path to Psychtoolbox folder, even if renamed.
-%   RemoveSVNPaths          - Removes .svn folders from the path.
+%   RemoveMatchingPaths     - Removes folders that contain a given string from the path.
+%   RemoveSVNPaths          - Removes ".svn" folders from the path.
 %   Replace                 - Perform exact Replace on strings or numeric arrays.
 %   Resolute                - Cuts from and adds to a matrix to make it the specified dimensions.
 %   RestoreCluts            - Restore original CLUT's for all monitors from backups made during LoadIdentityClut().

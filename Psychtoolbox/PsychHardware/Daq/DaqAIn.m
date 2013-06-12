@@ -6,7 +6,7 @@ function v=DaqAIn(daq,channel,range,UnCal)
 % "DeviceIndex" is a small integer, the array index specifying which HID
 %     device in the array returned by PsychHID('Devices') is interface 0
 %     of the desired Daq device.
-% "channel" (0 to 15) selects any of various single-ended or differential 
+% "channel" (0 to 15) selects any of various single-ended or differential
 %     measurements.
 %     "channel" Measurement
 %      0        0-1 (differential)
@@ -62,6 +62,9 @@ function v=DaqAIn(daq,channel,range,UnCal)
 % 12/2x/07-1/x/08  mpr   modified to work with USB-1608FS and changed some
 %                           terminology; particularly did away with "sign" name
 %                           conflict ("sign" is a Matlab function)
+% 6/07/13 mk  Try to make it more robust: Retry on no-date received, proper
+%             error handling with error abort on error instead of silent
+%             failure returning NaN. Cleanup.
 
 % Perform internal caching of list of HID devices to speedup call:
 persistent devices;
@@ -70,108 +73,132 @@ if isempty(devices)
 end
 
 if nargin < 4 || isempty(UnCal)
-  UnCal=0;
+    UnCal=0;
 end
 
 if strcmp(devices(daq).product(5:6),'16')
-  Is1608=1;
-  MaxChannelID = 7;
+    Is1608=1;
+    MaxChannelID = 7;
 else
-  Is1608=0;
-  MaxChannelID = 15;
-  % ignore range input for single-ended measurements
-  if channel > 7
-    range=0;
-  end
+    Is1608=0;
+    MaxChannelID = 15;
+    % ignore range input for single-ended measurements
+    if channel > 7
+        range=0;
+    end
 end
 
-err1=PsychHID('ReceiveReports',daq);
-err2=PsychHID('ReceiveReportsStop',daq);
-[reports,err]=PsychHID('GiveMeReports',daq);
-if ~ismember(channel,0:MaxChannelID)
-    error(sprintf('DaqAIn: "channel" must be an integer 0 to %d.',MaxChannelID));
+% Receive and flush all stale reports from device or in receive queue:
+err = PsychHID('ReceiveReports',daq);
+if err.n
+    error('DaqAIn ReceiveReports error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
 end
+
+err = PsychHID('ReceiveReportsStop',daq);
+if err.n
+    error('DaqAIn ReceiveReportsStop error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+end
+
+[reports,err] = PsychHID('GiveMeReports',daq);
+if err.n
+    error('DaqAIn GiveMeReports error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+end
+
+if ~ismember(channel,0:MaxChannelID)
+    error('DaqAIn: "channel" must be an integer 0 to %d.',MaxChannelID);
+end
+
 if ~ismember(range,0:7)
     error('DaqAIn: "range" must be an integer 0 to 7.');
 end
-err3=PsychHID('SetReport',daq,2,16,uint8([16 channel range])); % Read analog input
-if err.n
-    fprintf('DaqAIn SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
-end
-err4=PsychHID('ReceiveReports',daq);
-[report,err5]=PsychHID('GetReport',daq,1,16,3); % Get report
 
+% Send analog measurement request to device:
+err = PsychHID('SetReport',daq,2,16,uint8([16 channel range]));
 if err.n
-    fprintf('DaqAIn GetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+    error('DaqAIn SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
 end
-err6=PsychHID('ReceiveReportsStop',daq);
 
-if length(report)==3
-  if Is1608
+% Enable reception of data from device and retry reception until a valid
+% non-empty report of 3 Bytes size arrives:
+report = [];
+while isempty(report) || length(report)~=3
+    err = PsychHID('ReceiveReports',daq);
+    if err.n
+        error('DaqAIn ReceiveReports-II error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+    end
+    [report,err] = PsychHID('GetReport',daq,1,16,3); % Get report
+    if err.n
+        error('DaqAIn GetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+    end
+end
+
+% Ok, got a non-empty report of length 3 as expected. Stop reception:
+err = PsychHID('ReceiveReportsStop',daq);
+if err.n
+    error('DaqAIn ReceiveReportsStop-II error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+end
+
+if Is1608
     vmax = [10 5 2.5 2 1.25 1 0.625 0.3125];
 
     RawValue = double(report(3))*256 + double(report(2));
     v = vmax(range+1)*(RawValue/32768-1);
     if UnCal
-      return; 
+        return;
     else
-      DaqPrefsDir = DaqtoolboxConfigDir;
-      if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
-        DaqVars = load([DaqPrefsDir filesep 'DaqPrefs']);
-        if isfield(DaqVars,'CalData')
-          CalData = DaqVars.CalData;
-          GoodIndices = find(CalData(:,1) == channel & CalData(:,2) == range);
-          if ~isempty(GoodIndices)
-            TheDays = CalData(GoodIndices,end);
-            ThisDay = datenum(date);
-            [DaysSinceLast,BestIndex] = min(ThisDay-TheDays);
-            AllThatDay = find(TheDays == TheDays(BestIndex));
-            MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
+        DaqPrefsDir = DaqtoolboxConfigDir;
+        if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
+            DaqVars = load([DaqPrefsDir filesep 'DaqPrefs']);
+            if isfield(DaqVars,'CalData')
+                CalData = DaqVars.CalData;
+                GoodIndices = find(CalData(:,1) == channel & CalData(:,2) == range);
+                if ~isempty(GoodIndices)
+                    TheDays = CalData(GoodIndices,end);
+                    ThisDay = datenum(date);
+                    [DaysSinceLast,BestIndex] = min(ThisDay-TheDays);
+                    AllThatDay = find(TheDays == TheDays(BestIndex));
+                    MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
 
-            if DaysSinceLast > 30
-              warning(sprintf('Calibration of this channel has not been performed since %s!!', ...
-                      datestr(TheDays(BestIndex))));
-            end
+                    if DaysSinceLast > 30
+                        warning('Psychtoolbox:Daq:outdatedCalibration', 'Calibration of this channel has not been performed since %s!!', ...
+                            datestr(TheDays(BestIndex)));
+                    end
 
-            v = polyval(MostRecentPolyFit,v);
-            return;
-          end
-        end % if isfield(DaqVars,'CalData')
-      end % if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
+                    v = polyval(MostRecentPolyFit,v);
+                    return;
+                end
+            end % if isfield(DaqVars,'CalData')
+        end % if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
     end % if UnCal
-      
-    warning(sprintf(['It looks like this channel has not yet been calibrated.  In my\n' ...
-                     'tests, uncalibrated values could be off by as much as 15%%!']));
-  else
+
+    warning('Psychtoolbox:Daq:missingCalibration', ['It looks like this channel has not yet been calibrated. In my\n' ...
+        'tests, uncalibrated values could be off by as much as 15%%!']);
+else
     % Mapping table value -> voltage for differential gains:
     vmax=[20 10 5 4 2.5 2 1.25 1];
 
     RawReturn = double(report(2:3))*[1; 256];
     if channel < 8
-      % combined two-bytes of report make a 2's complement 12-bit value
-      DigitalValue = bitshift(RawReturn,-4);
-      if bitget(DigitalValue,12)
-        DigitalValue = -bitcmp(DigitalValue,12)-1;
-      end
+        % combined two-bytes of report make a 2's complement 12-bit value
+        DigitalValue = bitshift(RawReturn,-4);
+        if bitget(DigitalValue,12)
+            DigitalValue = -bitcmp(DigitalValue,12)-1;
+        end
     else
-      % range needs to be zero above during call to PsychHID('SetReport',... but
-      % must be 1 to get scale below.
-      range=1;
-      % combined two-bytes of report make a 2's complement 11-bit value
-      if RawReturn > 32752
-        DigitalValue = -2048;
-      elseif RawReturn > 32736
-        DigitalValue = 2047;
-      else
-        DigitalValue = bitand(4095,bitshift(RawReturn,-3))-2048;
-      end
+        % range needs to be zero above during call to PsychHID('SetReport',... but
+        % must be 1 to get scale below.
+        range=1;
+        % combined two-bytes of report make a 2's complement 11-bit value
+        if RawReturn > 32752
+            DigitalValue = -2048;
+        elseif RawReturn > 32736
+            DigitalValue = 2047;
+        else
+            DigitalValue = bitand(4095,bitshift(RawReturn,-3))-2048;
+        end
     end
-    
+
     v=vmax(range+1)*DigitalValue/2047;
-  end    
-else
-%   fprintf('length(report) %d\n',length(report));
-    v=NaN;
 end
 
 return;

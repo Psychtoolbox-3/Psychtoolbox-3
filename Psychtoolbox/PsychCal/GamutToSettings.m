@@ -1,7 +1,7 @@
 function settings = GamutToSettings(cal, gamut)
 % settings = GamutToSettings(cal, gamut)
 %
-% Find the best integer device settings to produce
+% Find the best device settings to produce
 % the passed linear device coordinates.
 % 
 % The passed coordinates should be in the range [0,1].

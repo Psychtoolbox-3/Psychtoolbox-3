@@ -15,6 +15,8 @@ function directory=CalDataFolder(forceDemo,calFileName,calDir)
 % them, returns that.  Skips subdirs called 'xOld', 'Plots', and those
 % that begin with '.'.
 %
+% calFileName can either have .mat postpended or not.
+%
 % If calDir is passed as a string, that is used as the directory, with
 % the subdir searching as above.
 %
@@ -28,6 +30,10 @@ function directory=CalDataFolder(forceDemo,calFileName,calDir)
 % 3/7/08   mpr  changed documentation to make it consistent (apparently
 %               "forceDemo" used to be "alt"
 % 4/2/13   dhb  Add calFileName and associated behavior.
+% 6/2/13   dhb  Make this properly return subfolder containing calibration file
+%               if .mat is not postpended.
+% 6/10/13  dhb  Fix buglet introduced 6/2/13 -- need to handle empty calFileName (thanks to MS for
+%               identifying the problem and the fix.
 
 % Set forceDemo flag
 if (nargin < 1 || isempty(forceDemo))
@@ -35,6 +41,11 @@ if (nargin < 1 || isempty(forceDemo))
 end
 if (nargin < 2 || isempty(calFileName))
     calFileName = [];
+end
+
+% Postpend .mat if necessary
+if (~isempty(calFileName) && ~strcmp(calFileName(end-3:end),'.mat'))
+    calFileName = [calFileName '.mat'];
 end
 
 % If dir is passed we just use that.  Otherwise
@@ -94,7 +105,7 @@ if (~isempty(calFileName))
     for i = 1:length(allDirs)
         if (allDirs(i).isdir && ~strcmp(allDirs(i).name,'xOld') && ~strcmp(allDirs(i).name,'Plots') && allDirs(i).name(1) ~= '.')
             cd(allDirs(i).name);
-            dirRet = dir([calFileName]);
+            dirRet = dir(calFileName);
             cd('..');
             if (~isempty(dirRet))
                 if (foundOne)
