@@ -7,6 +7,7 @@ function SaveCalFile(cal, filespec, dir)
 % If filespec is not passed, then it saves to default.mat
 % in the CalData folder.  If filespec is an integer, saves
 % to screenN.mat.  If filespec is a string, saves to string.mat.
+% You can also pass the name with the training .mat already there.
 %
 % Saves to existing file if it is found, otherwise creates a
 % new calibration file.
@@ -17,7 +18,7 @@ function SaveCalFile(cal, filespec, dir)
 % 6/6/96   dgp  Use CalibrationsFolder.
 % 7/25/96  dgp  Use CalDataFolder.
 % 8/4/96   dhb  More flexible filename interface.
-% 8/21/97	 dhb  Rewrite for cell array convention.
+% 8/21/97  dhb  Rewrite for cell array convention.
 % 8/25/97  dhb, pbe  Fix bug in cell array handling.
 % 8/26/97  dhb  Make saving code parallel LoadCalFile.
 % 5/18/99  dhb  Add optional directory arg.
@@ -27,13 +28,18 @@ function SaveCalFile(cal, filespec, dir)
 %               in cases where cal file location is expilcitly passed.
 % 4/2/13   dhb  Updated for subdir searching logic.
 % 4/12/13  dhb  Make this save to cal file folder when file doesn't yet exist.
+% 6/2/13   dhb  More robust about whether passed filespec contains the trailing '.mat'.
 
 % Set the filename
 if nargin < 2 || isempty(filespec)
 	filespec = 'default';
 	filename = ['default.mat'];
 elseif ischar(filespec)
-	filename = [filespec '.mat'];
+	if (~strcmp(filespec(end-3:end),'.mat'))
+        filename = [filespec '.mat'];
+    else
+        filename = filespec;
+    end
 else
 	filename = [sprintf('screen%d.mat',filespec)];
 end
@@ -41,7 +47,6 @@ end
 if nargin < 3 || isempty(dir)
 	dir = CalDataFolder(0,filename);
 end
-
 
 % Load the file to get older calibrations
 [oldCal, oldCals, fullFilename] = LoadCalFile(filespec, [], dir);
@@ -55,4 +60,3 @@ else
     eval(['save ' QuoteString(fullFilename) ' cals']);
 end
 
-% Save the file

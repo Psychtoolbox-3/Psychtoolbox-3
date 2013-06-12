@@ -8,7 +8,8 @@ function [cal, cals, fullFilename] = LoadCalFile(filespec, whichCal, dir)
 %
 % If no argument is given, loads from file default.mat.  If
 % an integer N is passed, loads from file screenN.mat.  If
-% a string S is given, loads from S.mat.
+% a string S is given, loads from S.mat.  You can pass the
+% trailing .mat as well and it will still work.
 %
 % If whichCal is specified, the whichCal'th calibration
 % in the file is returned.  If whichCal > nCals, an
@@ -40,6 +41,7 @@ function [cal, cals, fullFilename] = LoadCalFile(filespec, whichCal, dir)
 % 5/18/99  dhb  Added dir argument.
 % 8/15/00  dhb  Modify to handle local/demo cal directories.
 % 4/2/13   dhb  Updated for subdir searching logic.
+% 6/2/13   dhb  More robust about whether passed filespec contains the trailing '.mat'.
 
 % Get whichCal
 if nargin < 2 || isempty(whichCal)
@@ -50,7 +52,11 @@ end
 if (nargin < 1 || isempty(filespec))
 	filename = ['default.mat'];
 elseif (ischar(filespec))
-	filename = [filespec '.mat'];
+    if (~strcmp(filespec(end-3:end),'.mat'))
+        filename = [filespec '.mat'];
+    else
+        filename = filespec;
+    end
 else
 	filename = [sprintf('screen%d.mat', filespec)];
 end

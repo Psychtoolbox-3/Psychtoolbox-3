@@ -23,6 +23,7 @@ function same = DescribeMonCal(cal,file,whichScreen)
 % 9/29/08  dhb, tyl, ijk Update for OS/X, current computer stuff.
 %                    Comparison of computer name skipped, because it seems to vary with login. 
 % 6/24/11  dhb       Dump out gamma fit type and exponents if gamma function was fit with a simple power function.
+% 5/28/13  dhb       Change output printed format to make it easier to paste into Doku wiki.
 
 % Default args
 if (nargin < 2 || isempty(file))
@@ -39,20 +40,20 @@ if (~isfield(cal,'describe'))
 end
 
 fprintf('Calibration:\n');
-fprintf(file,'\tComputer: %s\n',cal.describe.computer);
-fprintf(file,'\tScreen: %d\n',cal.describe.whichScreen);
-fprintf(file,'\tMonitor: %s\n',cal.describe.monitor);
-fprintf(file,'\tVideo driver: %s\n',cal.describe.driver);
-fprintf(file,'\tDac size: %g\n',cal.describe.dacsize);
-fprintf(file,'\tFrame rate: %g hz\n',cal.describe.hz);
-fprintf(file,'\tCalibration performed by %s\n',cal.describe.who);
-fprintf(file,'\tCalibration performed on %s\n',cal.describe.date);
-fprintf(file,'\tCalibration program: %s\n',cal.describe.program);
-fprintf(file,'\tComment: %s\n',cal.describe.comment);
-fprintf(file,'\tCalibrated device has %g primaries\n',cal.nDevices);
-fprintf(file,'\tGamma fit type %s\n',cal.describe.gamma.fitType);
+fprintf(file,'  * Computer: %s\n',cal.describe.computer);
+fprintf(file,'  * Screen: %d\n',cal.describe.whichScreen);
+fprintf(file,'  * Monitor: %s\n',cal.describe.monitor);
+fprintf(file,'  * Video driver: %s\n',cal.describe.driver);
+fprintf(file,'  * Dac size: %g\n',cal.describe.dacsize);
+fprintf(file,'  * Frame rate: %g hz\n',cal.describe.hz);
+fprintf(file,'  * Calibration performed by %s\n',cal.describe.who);
+fprintf(file,'  * Calibration performed on %s\n',cal.describe.date);
+fprintf(file,'  * Calibration program: %s\n',cal.describe.program);
+fprintf(file,'  * Comment: %s\n',cal.describe.comment);
+fprintf(file,'  * Calibrated device has %g primaries\n',cal.nDevices);
+fprintf(file,'  * Gamma fit type %s\n',cal.describe.gamma.fitType);
 if (strcmp(cal.describe.gamma.fitType,'simplePower'))
-    fprintf(file,'\tSimple power gamma exponents are: %0.2f, %0.2f, %0.2f\n',...
+    fprintf(file,'  * Simple power gamma exponents are: %0.2f, %0.2f, %0.2f\n',...
         cal.describe.gamma.exponents(1),cal.describe.gamma.exponents(2),cal.describe.gamma.exponents(3));
 end
 fprintf(file,'\n');
@@ -67,23 +68,23 @@ if (~isempty(whichScreen))
     hz = Screen('NominalFrameRate',whichScreen);
     same = 1;
     fprintf('Current configuration:\n');
-    fprintf(file,'\tComputer: %s\n',computer);
+    fprintf(file,'  * Computer: %s\n',computer);
     if (~streq(computer,cal.describe.computer))
         %same = 0;
     end
-    fprintf(file,'\tScreen: %d\n',whichScreen);
+    fprintf(file,'  * Screen: %d\n',whichScreen);
     if (whichScreen ~= cal.describe.whichScreen)
         save = 0;
     end
-    fprintf(file,'\tVideo driver: %s\n',driver);
+    fprintf(file,'  * Video driver: %s\n',driver);
     if (~streq(driver,cal.describe.driver))
         same = 0;
     end
-    fprintf(file,'\tDac size: %g\n',dacsize);
+    fprintf(file,'  * Dac size: %g\n',dacsize);
     if (dacsize ~= cal.describe.dacsize)
         same = 0;
     end
-    fprintf(file,'\tFrame rate: %g hz\n',hz);
+    fprintf(file,'  * Frame rate: %g hz\n',hz);
     if (abs(hz-cal.describe.hz) > 0.5)
         same = 0;
     end

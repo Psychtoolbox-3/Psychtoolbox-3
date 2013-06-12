@@ -1880,7 +1880,14 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
             // Non-zero stexid marks that we've created a packed depth+stencil renderbuffer above:
             if ((*fbo)->stexid) {
                 // Attach combined z + stencil buffer:
-                glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);                
+                if (glewIsSupported("GL_ARB_framebuffer_object")) {
+                    // New style: Get two attachments for one call:
+                    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
+                } else {
+                    // Old style (also OES): Use two separate calls:
+                    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
+                    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
+                }
             }
             else {
                 // Attach z-buffer only:

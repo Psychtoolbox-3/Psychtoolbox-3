@@ -22,6 +22,7 @@ function theStructs = ReadStructsFromText(filename)
 % 08/22/07  dhb         This was modified on disk but not commented our uploaded to SVN repository.
 % 4/26/12   dhb         Squeeze '/' out of field names too.
 % 5/31/12   dhb         Squeeze '*' out of field names too.
+% 6/7/13    dhb         Suppress uninteresting warning on str2num.
 
 % Open the file
 fid = fopen(filename);
@@ -99,7 +100,9 @@ if ~IsOctave
 			% because the str2num function calls eval on its input which
 			% will cause it to execute.
 			if isempty(which(values{j})) && isempty(which(strtok(values{j})))
+                oldWarn = warning('off','MATLAB:namelengthmaxexceeded');
 				convertedValue = str2num(values{j}); %#ok<ST2NM>
+                warning(oldWarn.state,'MATLAB:namelengthmaxexceeded');
 			end
 
 			% If the value successfully converted, overwrite what was
