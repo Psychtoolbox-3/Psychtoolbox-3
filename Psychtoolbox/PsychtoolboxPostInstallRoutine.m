@@ -584,6 +584,10 @@ try
             fprintf('LD_PRELOAD=/usr/lib/libGLESv1_CM.so octave\n');
             fprintf('This is a workaround for a small bug in octave for Nexus-7, which would cause Screen()\n');
             fprintf('to crash shortly after opening an onscreen window.\n\n');
+            fprintf('\n');
+            fprintf('If you run PTB on the Nexus7 make sure you do not use the "Unity" desktop since\n');
+            fprintf('this might lead to unforeseen problems. Use a desktop without 3D desktop compositor instead.\n');
+            fprintf('E.g. install and use XFCE (sudo apt-get install xfce4).\n');            
         end
     end
 

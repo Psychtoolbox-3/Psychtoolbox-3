@@ -1412,7 +1412,7 @@ void PsychErrMsgTxt(char *s)
 	#endif
 	
 	// Call the Matlab- or Octave error printing and error handling facilities:
-	mexErrMsgTxt((s) ? s : "See error message printed above.");
+	mexErrMsgTxt((s && (strlen(s) > 0)) ? s : "See error message printed above.");
 }
 
 
