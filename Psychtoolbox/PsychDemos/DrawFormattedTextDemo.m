@@ -7,7 +7,7 @@
 %
 % Press any key to cycle through different demo displays.
 %
-% see also: PsychDemosOSX, Screen DrawText?, DrawSomeTextDemo
+% see also: PsychDemos, Screen DrawText?, DrawSomeTextDemo
 
 % 10/16/06    mk     Wrote it.
 
@@ -34,8 +34,8 @@ try
     mytext = '';
     tl = fgets(fd);
     lcount = 0;
-    while (tl~=-1) && (lcount < 48)
-        mytext = [mytext tl];
+    while lcount < 48
+        mytext = [mytext tl]; %#ok<*AGROW>
         tl = fgets(fd);
         lcount = lcount + 1;
     end
@@ -53,8 +53,7 @@ try
     Screen('FrameRect', w, 0, bbox);
 
     Screen('Flip',w);
-    KbWait;
-    while KbCheck; end;
+    KbStrokeWait;
     
     % Draw text again, this time with unlimited line length:
     [nx, ny, bbox] = DrawFormattedText(w, mytext, 10, 10, 0);
@@ -64,9 +63,28 @@ try
 
     Screen('DrawText', w, 'Top-Left aligned, width unconstrained: Hit any key to continue.', nx, ny, [255, 0, 0, 255]);
     Screen('Flip',w);
-    KbWait;
-    while KbCheck; end;
+    KbStrokeWait;
 
+    % Draw text again, this time with unlimited line length and
+    % right-aligned, and with reversed text direction right-to-left:
+    [nx, ny, bbox] = DrawFormattedText(w, mytext, 'right', 10, 0, [], [], [], [], 1, bbox);
+    
+    % Show computed text bounding box:
+    Screen('FrameRect', w, 0, bbox);
+
+    Screen('DrawText', w, 'Top-Right aligned, reversed text direction, width unconstrained: Hit any key to continue.', bbox(RectLeft), ny, [255, 0, 0, 255]);
+    Screen('Flip',w);
+    KbStrokeWait;
+    
+    [nx, ny, bbox] = DrawFormattedText(w, mytext, 'right', 10, 0, [], [], [], [], 0, bbox);
+    
+    % Show computed text bounding box:
+    Screen('FrameRect', w, 0, bbox);
+
+    Screen('DrawText', w, 'Top-Right aligned, width unconstrained: Hit any key to continue.', bbox(RectLeft), ny, [255, 0, 0, 255]);
+    Screen('Flip',w);
+    KbStrokeWait;
+    
     % Now horizontally and vertically centered:
     [nx, ny, bbox] = DrawFormattedText(w, mytext, 'center', 'center', 0);
     
@@ -75,8 +93,7 @@ try
 
     Screen('DrawText', w, 'Centered: Hit any key to continue.', nx, ny, [255, 0, 0, 255]);
     Screen('Flip',w);
-    KbWait;
-    while KbCheck; end;
+    KbStrokeWait;
 
     % Now vertically centered:
     [nx, ny, bbox] = DrawFormattedText(w, mytext, 10, 'center', 0);
@@ -86,8 +103,7 @@ try
 
     Screen('DrawText', w, 'Vertically centered: Hit any key to continue.', nx, ny, [255, 0, 0, 255]);
     Screen('Flip',w);
-    KbWait;
-    while KbCheck; end;
+    KbStrokeWait;
 
     Screen('TextSize',w, 22);    
     winHeight = RectHeight(Screen('Rect', w));
@@ -124,7 +140,7 @@ try
     
     % End of demo, close window:
     Screen('CloseAll');
-catch
+catch %#ok<*CTCH>
     % This "catch" section executes in case of an error in the "try"
     % section []
     % above.  Importantly, it closes the onscreen window if it's open.
