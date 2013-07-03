@@ -34,7 +34,7 @@ try
     % Child protection
     AssertOpenGL;
     background=[128, 128, 128];
-
+    
     % Open onscreen window:
     screen=max(Screen('Screens'));
     win = Screen('OpenWindow', screen, background);
@@ -42,7 +42,7 @@ try
     % Initial display and sync to timestamp:
     Screen('Flip',win);
     abortit = 0;
-        
+    
     % Return full list of movie files from directory+pattern:
     moviefiles=dir(moviename);
     for i=1:size(moviefiles,1)
@@ -56,29 +56,29 @@ try
     iteration = 1;
     moviename=moviefiles(mod(iteration, size(moviefiles,1))+1).name;
     [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
-
+    
     % Start playback of movie. This will start
     % the realtime playback clock and playback of audio tracks, if any.
     % Play 'movie', at a playbackrate = 1, with 1.0 == 100% audio volume.
     Screen('PlayMovie', movie, rate, 0, 1.0);
-
+    
     prefetched=0;
     newmovie = -1;
-
+    
     % Endless loop, runs until ESC key pressed:
     while (abortit<2)
         % Show basic info about movie:
         fprintf('ITER=%i::', iteration);
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
-
+        
         i=0;
-
+        
         % Get moviename of next file:
         iteration=iteration + 1;
         moviename=moviefiles(mod(iteration, size(moviefiles,1))+1).name;
-
+        
         t1 = GetSecs;
-
+        
         % Playback loop: Fetch video frames and display them...
         while(1)
             i=i+1;
@@ -95,28 +95,28 @@ try
                     % We exit the loop and prepare next movie:
                     break;
                 end;
-
+                
                 if (tex>0)
                     % Yes. Draw the new texture immediately to screen:
                     Screen('DrawTexture', win, tex);
-
+                    
                     % Update display:
                     Screen('Flip', win);
-
+                    
                     % Release texture:
                     Screen('Close', tex);
                 end;
             end;
-
+            
             % Check for abortion by user:
             abortit=0;
-            [keyIsDown,secs,keyCode]=KbCheck;
+            [keyIsDown,secs,keyCode]=KbCheck; %#ok<ASGLU>
             if (keyIsDown==1 && keyCode(esc))
                 % Set the abort-demo flag.
                 abortit=2;
                 break;
             end;
-
+            
             % We start background loading of the next movie 0.5 seconds
             % after start of playback of the current movie:
             if prefetched==0 && pts > 0.5
@@ -126,7 +126,7 @@ try
                 Screen('OpenMovie', win, moviename, 1);
                 prefetched=1;
             end;
-
+            
             % If asynchronous load of next movie has been started already
             % and we are less than 0.5 seconds from the end of the current
             % movie, then we try to finish the async load operation and
@@ -149,13 +149,13 @@ try
                 prefetched=2;
             end;
         end;
-    
+        
         telapsed = GetSecs - t1 %#ok<NOPRT,NASGU>
         finalcount=i %#ok<NOPRT,NASGU>
         
         % Done with old movie. Stop its playback:
         Screen('PlayMovie', movie, 0);
-
+        
         % Close movie object:
         Screen('CloseMovie', movie);
         
@@ -188,10 +188,10 @@ try
     
     % Close screens.
     Screen('Close', win);
-
+    
     % Done.
     return;
-catch
+catch %#ok<CTCH>
     % Error handling: Close all windows and movies, release all ressources.
     Screen('CloseAll');
 end;

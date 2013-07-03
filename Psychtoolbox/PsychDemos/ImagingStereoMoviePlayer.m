@@ -27,14 +27,13 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % The left image is centered on the screen, the right images position can
 % be moved by moving the mouse cursor to align for inter-eye distance.
 %
-% Press any key to quit the viewer.
+% Press any key to quit the player.
 
 % History:
 % 11.11.2007 Written (MK)
+% 17.06.2013 Cleaned up (MK)
 
 AssertOpenGL;
-
-benchmark=0;
 
 if nargin < 1
     error('You must at least provide the name of the movie file for stereo pair.');
@@ -56,10 +55,6 @@ if isempty(imaging)
     imaging = 1;
 end
 
-if imaging > 0
-    imaging = kPsychNeedFastBackingStore;
-end
-
 if nargin < 4
     anaglyphmode = [];
 end
@@ -76,7 +71,13 @@ if isempty(screenid)
     screenid = max(Screen('Screens'));
 end
 
-[win, winRect] = Screen('OpenWindow', screenid, 0, [], [], [], stereoMode, [], imaging);
+if imaging
+    PsychImaging('PrepareConfiguration');
+    PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+    [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], stereoMode);
+else
+    [win, winRect] = Screen('OpenWindow', screenid, 0, [], [], [], stereoMode);
+end
 modestr = [];
 
 if imaging
@@ -97,7 +98,7 @@ if imaging
         otherwise
             %error('Unknown stereoMode specified.');
     end
-
+    
     if stereoMode > 5 && stereoMode < 10
         switch anaglyphmode
             case 0,
@@ -118,26 +119,11 @@ if imaging
             otherwise
                 error('Invalid anaglyphmode specified!');
         end
-
+        
         overlay = SetAnaglyphStereoParameters('CreateMonoOverlay', win);
         Screen('TextSize', overlay, 24);
         DrawFormattedText(overlay, ['Loading file: ' moviefile ], 0, 0, [255 255 0]);
     end
-end
-
-% Low level benchmarking of performance of anaglyph conversion:
-if benchmark
-    while KbCheck; end;
-    count = 0;
-    t1=Screen('Flip', win);
-    while ~KbCheck
-        count = count + 1;
-        Screen('Flip', win,[],0,2);
-    end
-    t2=Screen('Flip', win);
-    avg = (t2 - t1) / count * 1000 %#ok<NOPRT,NASGU>
-    sca;
-    return;
 end
 
 % Initial flip:
@@ -166,15 +152,15 @@ end
 try
     % Playback loop: Run until keypress or error:
     while ~KbCheck && tex~=-1
-
+        
         % Fetch next image from movie:
         tex = Screen('GetMovieImage', win, movie, 1);
-
+        
         % Valid image to draw?
         if tex>0
             % Query mouse position:
             x = GetMouse(win);
-
+            
             % Setup drawing regions based on size of first frame:
             if isempty(imgrect)
                 imgrect = Screen('Rect', tex) ;
@@ -183,16 +169,16 @@ try
                 sf = min([RectWidth(winRect)/RectWidth(imglrect) , RectHeight(winRect)/RectHeight(imglrect)]);
                 dstrect = ScaleRect(imglrect,sf,sf);
             end
-
+            
             % Left eye image == left half of movie texture:
             Screen('SelectStereoDrawBuffer', win, 0);
             Screen('DrawTexture', win, tex, imglrect, CenterRect(dstrect, winRect));
-
+            
             Screen('SelectStereoDrawBuffer', win, 1);
             % Draw right image centered on mouse position -- mouse controls image
             % offsets:
             Screen('DrawTexture', win, tex, imgrrect, CenterRectOnPoint(dstrect, x, y));
-
+            
             % Show at next retrace:
             Screen('Flip', win);
             
@@ -202,23 +188,22 @@ try
         end
         % Next frame...
     end
-
+    
     % Done with playback:
-
+    
     % Show mouse cursor:
     ShowCursor;
-
+    
     % Stop and close movie:
     Screen('PlayMovie', movie, 0);
     Screen('CloseMovie', movie);
-
+    
     % Close screen:
     Screen('CloseAll');
-
+    
     return;
-
-catch
-    ShowCursor;
-    Screen('CloseAll');
+    
+catch %#ok<CTCH>
+    sca;
     psychrethrow(psychlasterror);
 end

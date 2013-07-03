@@ -856,8 +856,10 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
         SE_Channels = find(channel > 7);
         
         data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
-        [NegativeDiffs,DCs] = find(data(:,DiffChannels) > 2048);
-        data(NegativeDiffs,DiffChannels(DCs)) = -bitcmp(data(NegativeDiffs,DiffChannels(DCs)),12)-1;
+        
+		ix = data(:,DiffChannels) > 2048;
+        data(ix) = -bitcmp(data(ix),12)-1;
+		
         SE_Data = data(:,SE_Channels);
         
         OverflowInds = find(SE_Data > 32752);

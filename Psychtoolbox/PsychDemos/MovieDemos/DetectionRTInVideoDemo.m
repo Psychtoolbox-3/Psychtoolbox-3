@@ -27,7 +27,7 @@ function DetectionRTInVideoDemo(moviename, timeOfEvent, trials)
 %
 % An alternative approach would be to preload the whole movie into textures:
 % The whole movie gets read into PTB textures before start of trial. Then
-% you show the textures in quick succession like in MovieDemoOSX. The
+% you show the textures in quick succession like in MovieDemo. The
 % advantage of that approach is exact control over display timing and
 % display order: You can show frames in any order you like at any rate you
 % like (and that your hardware likes). Disadvantage would be: Longer trial
@@ -40,6 +40,7 @@ function DetectionRTInVideoDemo(moviename, timeOfEvent, trials)
 % 12/19/05  mk  Wrote it.
 % 02/03/06  mk  Adapted for use on Windows.
 % 03/11/12  mk  Cleanup.
+% 06/17/13  mk  Cleanup.
 
 if nargin < 1
     % Default movie is our own disc collision movie:
@@ -65,7 +66,7 @@ KbName('UnifyKeyNames');
 % Query keycodes for ESCAPE key and Space key:
 esc=KbName('ESCAPE');
 space=KbName('space');
-            
+
 try
     % Child protection: Make sure we run on the OSX / OpenGL Psychtoolbox.
     % Abort if we don't:
@@ -73,25 +74,21 @@ try
     
     % Background color will be a grey one:
     background=[128, 128, 128];
-
+    
     % Open onscreen window. We use the display with the highest number on
     % multi-display setups:
     screen=max(Screen('Screens'));
     
-    % This will open a screen with default settings, aka black background,
-    % fullscreen, double buffered with 32 bits color depth:
-    win = Screen('OpenWindow', screen);
+    % This will open a screen with background color 'background':
+    win = Screen('OpenWindow', screen, background);
     
     % Hide the mouse cursor:
     HideCursor;
     
-    % Clear screen to background color:
-    Screen('FillRect', win, background);
-    
     % Show instructions...
     tsize=30;
     Screen('TextSize', win, tsize);
-    [x, y]=Screen('DrawText', win, 'Collision detection fake experiment.',40, 100);
+    [x, y]=Screen('DrawText', win, 'Collision detection fake experiment.',40, 100); %#ok<*ASGLU>
     [x, y]=Screen('DrawText', win, 'Press ESC-ape key to abort anytime.', 40, y + 10 + tsize);
     [x, y]=Screen('DrawText', win, 'Press SPACE key when you see the discs colliding', 40, y + 10 + tsize);
     Screen('DrawText', win, 'Press any key to start the experiment...', 40, y + 10 + tsize);
@@ -107,7 +104,7 @@ try
     
     % Wait a second...
     WaitSecs(1);
-
+    
     % Main trial loop: Do 'trials' trials...
     for i=1:trials
         % Open the moviefile and query some infos like duration, framerate,
@@ -146,7 +143,7 @@ try
             % Arrival of textures is automatically synchronized to the
             % audio track and to real-world time. If the video display loop
             % can't keep up with the flow of time and the soundtrack,
-            % quicktime will automatically skip/drop frames to keep video
+            % the engine will automatically skip/drop frames to keep video
             % in sync with audio as good as possible. If the pts of a new
             % texture is greater than the 'timeOfEvent' then you'll know
             % that this texture will show the visual target event as soon
@@ -171,7 +168,7 @@ try
                 % screen: This should be accurate in the sub-millisecond
                 % range.
                 vbl=Screen('Flip', win);
-                % Is this the event video frame we've been waiting for? 
+                % Is this the event video frame we've been waiting for?
                 if (onsettime==-1 && pts >= timeOfEvent)
                     % Yes: This is the first frame with a pts timestamp that is
                     % equal or greater than the timeOfEvent, so 'vbl' is
@@ -221,15 +218,15 @@ try
                         reactiontime=secs - onsettime;
                     end;
                 end;
-             
-             end;
+                
+            end;
         end; % ...of display loop...
         
         % Stop movie playback, in case it isn't already stopped. We do this
         % by selection of a playback rate of zero: This will also return
         % the number of frames that had to be dropped to keep audio, video
         % and realtime in sync.
-        droppedcount = Screen('PlayMovie', movie, 0, 0, 0);        
+        droppedcount = Screen('PlayMovie', movie, 0, 0, 0);
         if (droppedcount > 0.2*framecount)
             % Over 20% of all frames skipped?!? Playback problems! We
             % reject this trial...
@@ -269,20 +266,19 @@ try
         if (rejecttrial==4)
             fprintf('Trial %i rejected. Way too many skips in movie playback!!!\n', i);
         end;
-
+        
         % Wait for subject to release keys:
         KbReleaseWait;
         
     end; % Trial done. Next trial...
-        
+    
     % Done with the experiment. Close onscreen window and finish.
     ShowCursor;
     Screen('CloseAll');
     fprintf('Done. Bye!\n');
     return;
-catch
+catch %#ok<CTCH>
     % Error handling: Close all windows and movies, release all ressources.
-    ShowCursor;
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end;
