@@ -1,5 +1,5 @@
-function retIrradiance_PowerPerArea = radRadianceAndPupilAreaEyeLengthToRetIrradiance(radiance_PowerPerAreaSr,radianceS,pupilArea,eyeLength)
-% retIrradiance_PowerPerArea = radRadianceAndPupilAreaEyeLengthToRetIrradiance(radiance_PowerPerAreaSr,radianceS,pupilArea,eyeLength)
+function retIrradiance_PowerPerArea = RadianceAndPupilAreaEyeLengthToRetIrradiance(radiance_PowerPerAreaSr,radianceS,pupilArea,eyeLength)
+% retIrradiance_PowerPerArea = RadianceAndPupilAreaEyeLengthToRetIrradiance(radiance_PowerPerAreaSr,radianceS,pupilArea,eyeLength)
 %
 % Perform the geometric calculations necessary to convert a measurement of source
 % radiance to corresponding retinal irradiance. 
@@ -20,7 +20,7 @@ function retIrradiance_PowerPerArea = radRadianceAndPupilAreaEyeLengthToRetIrrad
 % This conversion does not take absorption in the eye into account,
 % as this is more conveniently foldeded into the spectral absorbtance.
 %
-% See also: PsychRadiometric, radRetIrradianceAndPupilAreaEyeLengthToRadiance, PupilAreaFromLum, EyeLength.
+% See also: PsychRadiometric, RetIrradianceAndPupilAreaEyeLengthToRadiance, PupilAreaFromLum, EyeLength.
 %
 % 3/6/13  dhb  Wrote it.
 

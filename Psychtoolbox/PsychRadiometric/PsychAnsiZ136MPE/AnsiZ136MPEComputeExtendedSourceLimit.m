@@ -49,25 +49,25 @@ elseif (stimulusWavelengthNm >= 400 && stimulusWavelengthNm < 700)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 1.5*Ce*1e-8;
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= 1e-11 && stimulusDurationSec < 1e-9)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 2.7*Ce*(stimulusDurationSec^0.75);
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= 1e-9 && stimulusDurationSec < 18*1e-6)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 5*Ce*1e-7;
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= 18*1e-6 && stimulusDurationSec < 0.7)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 1.8*Ce*(stimulusDurationSec^0.75)*(1e-3);
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec; 
     elseif (stimulusDurationSec >= 0.7 && stimulusDurationSec < T2Sec)
         % In this range, we compute thermal limit, and compare it to the photochemical limit.  We
@@ -82,7 +82,7 @@ elseif (stimulusWavelengthNm >= 400 && stimulusWavelengthNm < 700)
             MPELimitCornealRadiantExposure_JoulesPerCm2 = MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2;
         end
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= T2Sec && stimulusDurationSec < 3e4)
         % In this range, we compute thermal limit, and compare it to the photochemical limit.  We
@@ -96,7 +96,7 @@ elseif (stimulusWavelengthNm >= 400 && stimulusWavelengthNm < 700)
             MPELimitCornealIrradiance_WattsPerCm2 = MPEPhotochemicalCornealIrradiance_WattsPerCm2;
         end
         MPELimitCornealRadiantExposure_JoulesPerCm2 = MPELimitCornealIrradiance_WattsPerCm2*stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     else
         error('Limit not yet implemented for exposures greater than 3*10^4 seconds');
@@ -110,29 +110,29 @@ elseif (stimulusWavelengthNm >= 700 && stimulusWavelengthNm < 1050)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 1.5*Ca*Ce*1e-8;
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= 1e-11 && stimulusDurationSec < 1e-9)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 2.7*Ca*Ce*(stimulusDurationSec^0.75);
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= 1e-9 && stimulusDurationSec < 18*1e-6)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 5*Ca*Ce*1e-7;
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= 18*1e-6 && stimulusDurationSec < T2Sec)
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 1.8*Ca*Ce*(stimulusDurationSec^0.75)*(1e-3);
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= T2Sec && stimulusDurationSec < 3e4)
         MPELimitCornealIrradiance_WattsPerCm2 = 1.8*Ca*Ce*(T2Sec^(-0.25))*(1e-3);
         MPELimitCornealRadiantExposure_JoulesPerCm2 = MPELimitCornealIrradiance_WattsPerCm2*stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     else
         error('Limit not yet implemented for exposures greater than 3*10^4 seconds');
@@ -147,30 +147,30 @@ elseif (stimulusWavelengthNm >= 1050 && stimulusWavelengthNm < 1400)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 1.5*Cc*Ce*1e-7;
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= 1e-11 && stimulusDurationSec < 1e-9)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 27*Cc*Ce*(stimulusDurationSec^0.75);
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= 1e-9 && stimulusDurationSec < 50*1e-6)
         % At this duration, limit s directly specified
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 5*Cc*Ce*1e-6;
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
 
     elseif (stimulusDurationSec >= 50*1e-6 && stimulusDurationSec < T2Sec)
         MPELimitCornealRadiantExposure_JoulesPerCm2 = 9*Cc*Ce*(stimulusDurationSec^0.75)*(1e-3);
         MPELimitCornealIrradiance_WattsPerCm2 = MPELimitCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= T2Sec && stimulusDurationSec < 3e4)
         MPELimitCornealIrradiance_WattsPerCm2 = 9*Cc*Ce*(T2Sec^(-0.25))*(1e-3);
         MPELimitCornealRadiantExposure_JoulesPerCm2 = MPELimitCornealIrradiance_WattsPerCm2*stimulusDurationSec;
-        MPELimitRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPELimitRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPELimitCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPELimitIntegratedRadiance_JoulesPerCm2Sr = MPELimitRadiance_WattsPerCm2Sr*stimulusDurationSec;
     else
         error('Limit not yet implemented for exposures greater than 3*10^4 seconds');

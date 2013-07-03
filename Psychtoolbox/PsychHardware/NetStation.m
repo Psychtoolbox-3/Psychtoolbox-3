@@ -1,4 +1,4 @@
-function [status error] = NetStation(varargin)
+function [status, error] = NetStation(varargin)
 %
 % NetStation - Basic control of the EGI/NetStation EEG recording system via
 % TCP/IP network connection. (See http://www.egi.com)
@@ -6,6 +6,9 @@ function [status error] = NetStation(varargin)
 % This function was developed and contributed to Psychtoolbox by Gergely Csibra, 2006-2008.
 % Code is based on Rick Gilmore's routines, 2005. Thanks!
 % Code adapted to PCs (and Macs with Intel architecture) by Zhao Fan, 2008.
+% This function was modified by Matt Mollison to accommodate sending more
+%   than just int16s to Net Station (logical, int8, int16, int32, single,
+%   double, and char).
 %
 %
 % General syntax
@@ -52,7 +55,7 @@ function [status error] = NetStation(varargin)
 % 			"duration"	The duration of the event IN SECONDS.
 % 						Default: 0.001.
 % 			"keycode"	The 4-char code of a key (e.g., 'tria').
-% 			"keyvalue"	The integer value of the key (>=-32767 <=32767)
+% 			"keyvalue"	The value of the key (any number or string)
 % 			The keycode-keyvalue pairs can be repeated arbitrary times.
 %
 %   Uses a modified version of the TCP/UDP/IP Toolbox 2.0.5, a third party GPL'ed
@@ -97,7 +100,7 @@ else
                 if nargin > 2
                     port = varargin{3};
                 end
-                c = pnet( 'tcpconnect', NetStationHostName, port )
+                c = pnet( 'tcpconnect', NetStationHostName, port );
                 if(c < 0)
                     status = 3;
                 else
@@ -165,7 +168,9 @@ else
                     status=0;
                     n=n+1;
                 end
-                if n>=100 warning('\nNetStation synchronization did not succeed within %.1f ms\nSynchronizatoin accuracy is %.1f ms\n',NSSynchLimit,df); end
+                if n>=100
+                    warning('\nNetStation synchronization did not succeed within %.1f ms\nSynchronizatoin accuracy is %.1f ms\n',NSSynchLimit,df);
+                end
                 %fprintf('synch: %.1f ms at the %ith attempt\n',df,n-1);
             end
         case 'startrecording'
@@ -214,8 +219,8 @@ else
                 if isnumeric(duration)
                     if duration > 120
                         duration=.001;
-                    else
-                        duration= duration;
+                    %else
+                    %    duration= duration;
                     end
                 end
 
@@ -225,11 +230,73 @@ else
                 else
                     keyn=0;
                 end
-                send(NSIDENTIFIER,'D',uint16(15+keyn*12),int32(start*1000),uint32(duration*1000),event(1:4),int16(0),uint8(keyn));
+                
+                nbytes_total = 0;
                 for k=1:keyn
-                    id=[char(varargin{(k-1)*2+5}) '    '];
-                    val=int16(varargin{k*2+4});
-                    send(NSIDENTIFIER,id(1:4),'shor',uint16(2),val(1));
+                    % Net Staiton GES Hardware Technical Manual Appendix G
+                    val = cell2mat(varargin((k * 2) + 4));
+                    
+                    % I don't understand it, but these 10 extra bytes need
+                    % to be counted
+                    extraBytes = 10;
+                    
+                    if isa(val,'logical')
+                        % will convert to int8 because NS expects 1-byte
+                        % booleans but reads as int8
+                        nbytes = 1 + extraBytes;
+                    elseif isa(val,'int8')
+                        % will convert to int16 because NS expects 2-byte
+                        % short signed integers and you should use logical
+                        % true/false if you meant to have boolean data
+                        nbytes = 2 + extraBytes;
+                    elseif isa(val,'int16')
+                        nbytes = 2 + extraBytes;
+                    elseif isa(val,'int32')
+                        nbytes = 4 + extraBytes;
+                    elseif isa(val,'single')
+                        nbytes = 4 + extraBytes;
+                    elseif isa(val,'double')
+                        nbytes = 8 + extraBytes;
+                    elseif isa(val,'char')
+                        % strings get sent as single-byte characters, as
+                        % explained in pnet.m
+                        nbytes = length(val) + extraBytes;
+                    end
+                    nbytes_total = nbytes_total + nbytes;
+                end
+                send(NSIDENTIFIER,'D',uint16(15 + nbytes_total),int32(start*1000),uint32(duration*1000),event(1:4),int16(0),uint8(keyn));
+                
+                for k=1:keyn
+                    id=[char(varargin{(k-1)*2+5}), '    '];
+                    
+                    % Net Staiton GES Hardware Technical Manual Appendix G
+                    val = cell2mat(varargin((k * 2) + 4));
+                    
+                    if isa(val,'logical')
+                        val = int8(val);
+                        dtype = 'bool';
+                        nbytes = 1;
+                    elseif isa(val,'int8')
+                        val = int16(val);
+                        dtype = 'shor';
+                        nbytes = 2;
+                    elseif isa(val,'int16')
+                        dtype = 'shor';
+                        nbytes = 2;
+                    elseif isa(val,'int32')
+                        dtype = 'long';
+                        nbytes = 4;
+                    elseif isa(val,'single')
+                        dtype = 'sing';
+                        nbytes = 4;
+                    elseif isa(val,'double')
+                        dtype = 'doub';
+                        nbytes = 8;
+                    elseif isa(val,'char')
+                        dtype = 'TEXT';
+                        nbytes = length(val);
+                    end
+                    send(NSIDENTIFIER,id(1:4),dtype,uint16(nbytes),val);
                 end
 
                 rep=receive(NSIDENTIFIER,1); %#ok<NASGU>
@@ -283,7 +350,7 @@ switch status
     case 6
         errstr='NS event: Unsuccessful';
     case 7
-        errstr='Unknown NetStation command'
+        errstr='Unknown NetStation command';
     otherwise
         errstr='NS unknown error';
 end

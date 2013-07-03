@@ -15,10 +15,10 @@ if nargin~=4,
     error('invalid number of arguments');
 end
 
-if ~strcmp(class(nurb),'uint32'),
-	error([ 'argument ''nurb'' must be a pointer coded as type uint32 ' ]);
+if ~isa(nurb,'double')
+	error('argument ''nurb'' must be a pointer coded as type double');
 end
 
-moglcore( 'gluPwlCurve', nurb, count, moglsingle(data), stride, type );
+moglcore( 'gluPwlCurve', nurb, count, single(data), stride, type );
 
 return

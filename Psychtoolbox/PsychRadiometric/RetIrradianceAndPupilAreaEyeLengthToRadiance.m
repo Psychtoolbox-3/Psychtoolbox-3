@@ -1,5 +1,5 @@
-function radiance_PowerPerAreaSr = radRetIrradianceAndPupilAreaEyeLengthToRadiance(irradiance_PowerPerArea,irradianceS,pupilArea,eyeLength)
-% radiance_PowerPerAreaSr = radRetIrradianceAndPupilAreaEyeLengthToRadiance(irradiance_PowerPerArea,irradianceS,pupilArea,eyeLength)
+function radiance_PowerPerAreaSr = RetIrradianceAndPupilAreaEyeLengthToRadiance(irradiance_PowerPerArea,irradianceS,pupilArea,eyeLength)
+% radiance_PowerPerAreaSr = RetIrradianceAndPupilAreaEyeLengthToRadiance(irradiance_PowerPerArea,irradianceS,pupilArea,eyeLength)
 %
 % Perform the geometric calculations necessary to convert a measurement of retinal
 % irradiance to the source radiance that would produce it.
@@ -23,14 +23,14 @@ function radiance_PowerPerAreaSr = radRetIrradianceAndPupilAreaEyeLengthToRadian
 % This conversion does not take absorption in the eye into account,
 % as this is more conveniently foldeded into the spectral absorbtance.
 %
-% See also: PsychRadiometric, radRadianceAndPupilAreaEyeLengthToRetIrradiance, PupilAreaFromLum, EyeLength.
+% See also: PsychRadiometric, RadianceAndPupilAreaEyeLengthToRetIrradiance, PupilAreaFromLum, EyeLength.
 %
 % 3/6/13  dhb  Wrote it.
 
 
 % Define factor to convert radiance spectrum to retinal irradiance
 % and apply this in the opposite direction.  See
-% radRadianceAndPupilAreaEyeLengthToRetIrradiance for the
+% RadianceAndPupilAreaEyeLengthToRetIrradiance for the
 % conversion logic.
 conversionFactor = pupilArea/(eyeLength^2);
 radiance_PowerPerAreaSr = irradiance_PowerPerArea/conversionFactor;

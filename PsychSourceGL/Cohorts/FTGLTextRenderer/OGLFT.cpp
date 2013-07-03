@@ -35,6 +35,7 @@
 #include <qregexp.h>
 #endif
 #endif
+#include <freetype/ftbitmap.h>
 
 namespace OGLFT {
 
@@ -3538,7 +3539,7 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 
       for ( int p = 0; p < bitmap.pitch; p++ ) {
 
-	*inverse_ptr++ = *bitmap_ptr++;
+          *inverse_ptr++ = *bitmap_ptr++;
       }
 
       inverse_ptr += ( ( *width + 7 ) / 8 - bitmap.pitch );
@@ -3568,6 +3569,13 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 	
     if ( error != 0 )
       return;
+
+    // Double-Check that glyph bitmaps are 1bpp format, otherwise we'd crash. No-Op if this requirement is violated:
+    if (face->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_MONO) {
+        printf("libptbdrawtext_ftgl: ERROR: Tried to draw text character without anti-aliasing, but source font does not\n");
+        printf("libptbdrawtext_ftgl: ERROR: contain glyph bitmaps in 1 bpp mono format as required! Operation aborted.\n");
+        return;
+    }
 
     TextureInfo texture_info;
 
@@ -3762,11 +3770,13 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
       GLubyte* bitmap_ptr = &bitmap.buffer[bitmap.pitch * ( bitmap.rows - r - 1 )];
 
       for ( int p = 0; p < bitmap.width; p++ ) {
-	*inverse_ptr++ = 0xff;
-	*inverse_ptr++ = *bitmap_ptr++;
+          *inverse_ptr++ = 0xff;
+          *inverse_ptr++ = *bitmap_ptr++;
       }
 
-      inverse_ptr += 2 * ( *width - bitmap.pitch );
+      // MK: use bitmap.width instead of bitmap.pitch, as i think .pitch is a bug
+      // and just worked by accident due to usually .pitch == .width.
+      inverse_ptr += 2 * ( *width - bitmap.width );
     }
 
     return inverse;
@@ -3806,7 +3816,32 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     // Texture maps have be a power of 2 in size (is 1 a power of 2?), so
     // pad it out while flipping it over
     int width, height;
-    GLubyte* inverted_pixmap = invertPixmap( face->glyph->bitmap, &width, &height );
+    GLubyte* inverted_pixmap;
+    
+    // MK: We can only handle 8bpp grayscale bitmaps. If this bitmap isn't 8bpp,
+    // convert it on the fly to keep going:
+    if (face->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) {
+        // Input bitmap is not 8bpp = 1 Byte per pixel anti-aliased grayscale image
+        // as we expect. We need to convert it into 8bpp bitmaps without (aka 1 Byte) alignment:
+        FT_Bitmap bitmap;
+        
+        // Initialize target temporary bitmap:
+        FT_Bitmap_New( &bitmap );
+        
+        // Convert into temporary 8 bpp 'bitmap', with a 1 Byte alignment, ie. no alignment:
+        if (0 != FT_Bitmap_Convert( OGLFT::Library::instance(), &(face->glyph->bitmap), &bitmap, 1 )) return;
+        
+        // Pass it to our inverter:
+        inverted_pixmap = invertPixmap( bitmap, &width, &height );
+        
+        // Release temporary bitmap:
+        FT_Bitmap_Done( OGLFT::Library::instance(), &bitmap );
+    }
+    else {
+        // Input bitmap is 8bpp = 1 Byte per pixel anti-aliased grayscale image.
+        // This is what we expect, so go for it:
+        inverted_pixmap = invertPixmap( face->glyph->bitmap, &width, &height );
+    }
 
     glPushAttrib( GL_PIXEL_MODE_BIT );
     glPixelTransferf( GL_RED_SCALE, foreground_color_[R] - background_color_[R] );

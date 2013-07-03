@@ -94,7 +94,7 @@ if (stimulusSizeMrad > 11)
         end
         MPEPhotochemicalRadiance_WattsPerCm2Sr = MPEPhotochemicalIntegratedRadiance_JoulesPerCm2Sr/stimulusDurationSec;
         MPEPhotochemicalCornealIrradiance_WattsPerCm2 = ...
-            radRadianceAndDegrees2ToCornIrradiance(MPEPhotochemicalRadiance_WattsPerCm2Sr,stimulusAreaDeg2);
+            RadianceAndDegrees2ToCornIrradiance(MPEPhotochemicalRadiance_WattsPerCm2Sr,stimulusAreaDeg2);
         MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2 = MPEPhotochemicalCornealIrradiance_WattsPerCm2*stimulusDurationSec;
     elseif (stimulusDurationSec >= 1e4 && stimulusDurationSec < 3e4)
         limitingConeAngleMrad = AnsiZ136MPEComputeLimitingConeAngle(stimulusDurationSec);
@@ -105,7 +105,7 @@ if (stimulusSizeMrad > 11)
         end
         MPEPhotochemicalIntegratedRadiance_JoulesPerCm2Sr = MPEPhotochemicalRadiance_WattsPerCm2Sr*stimulusDurationSec;
         MPEPhotochemicalCornealIrradiance_WattsPerCm2 = ...
-            radRadianceAndDegrees2ToCornIrradiance(MPEPhotochemicalRadiance_WattsPerCm2Sr,stimulusAreaDeg2);
+            RadianceAndDegrees2ToCornIrradiance(MPEPhotochemicalRadiance_WattsPerCm2Sr,stimulusAreaDeg2);
         MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2 = MPEPhotochemicalCornealIrradiance_WattsPerCm2*stimulusDurationSec;
     else
         error('Limit not yet implemented for exposures greater than 3*10^4 seconds and size greater than 11 mrad');
@@ -129,12 +129,12 @@ else
     elseif (stimulusDurationSec >= 0.7 && stimulusDurationSec < 100)
         MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2 = Cb * 10^-2;
         MPEPhotochemicalCornealIrradiance_WattsPerCm2 = MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2/stimulusDurationSec;
-        MPEPhotochemicalRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPEPhotochemicalCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPEPhotochemicalRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPEPhotochemicalCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPEPhotochemicalIntegratedRadiance_JoulesPerCm2Sr = MPEPhotochemicalRadiance_WattsPerCm2Sr*stimulusDurationSec;
     elseif (stimulusDurationSec >= 100 && stimulusDurationSec < 3e4)
         MPEPhotochemicalCornealIrradiance_WattsPerCm2 = Cb * 10^-4;
         MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2 = MPEPhotochemicalCornealIrradiance_WattsPerCm2*stimulusDurationSec;
-        MPEPhotochemicalRadiance_WattsPerCm2Sr = radCornIrradianceAndDegrees2ToRadiance(MPEPhotochemicalCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
+        MPEPhotochemicalRadiance_WattsPerCm2Sr = CornIrradianceAndDegrees2ToRadiance(MPEPhotochemicalCornealIrradiance_WattsPerCm2,stimulusAreaDeg2);
         MPEPhotochemicalIntegratedRadiance_JoulesPerCm2Sr = MPEPhotochemicalRadiance_WattsPerCm2Sr*stimulusDurationSec;
     else
         error('Limit not yet implemented for exposures greater than 3*10^4 seconds and size greater than 11 mrad');

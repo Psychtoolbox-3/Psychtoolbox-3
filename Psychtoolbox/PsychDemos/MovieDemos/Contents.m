@@ -1,13 +1,6 @@
 % Psychtoolbox:PsychDemos:MovieDemos
 %
-% Demos demonstrating use of the Quicktime and GStreamer movie playback
-% functions. Quicktime is the default engine on 32-Bit OS/X. It is only
-% available on 32-Bit OS/X. GStreamer is the default engine on Linux,
-% Windows, and 64-Bit OS/X.
-%
-% All demos work with the GStreamer engine. Most demos also work with
-% Quicktime, although Quicktime is deprecated and will no longer be
-% improved any further.
+% Demos demonstrating use of the GStreamer movie playback functions.
 %
 % Read the help for the corresponding Screen subfunctions for infos.
 %

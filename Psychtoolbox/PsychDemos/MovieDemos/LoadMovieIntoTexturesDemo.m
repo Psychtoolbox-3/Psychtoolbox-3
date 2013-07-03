@@ -59,9 +59,6 @@ function LoadMovieIntoTexturesDemo(moviename, fromTime, toTime, indexisFrames, b
 % functionality and flexibility, but helpful if highest performance is a
 % requirement.
 %
-% The following options are only available if the GStreamer movie playback
-% engine is used, instead of Apple's legacy Quicktime implementation:
-%
 % pixelFormat - Format of video texture to create: 1 = Luminance/Grayscale
 % only, 2 = Luminance+Alpha, 3 = RGB color, 4 = RGBA, 5 = YUV-422 packed
 % pixel, 6 = YUV-I420 planar format. 5 and 6 = Y8-Y800 planar luminance
@@ -90,6 +87,7 @@ function LoadMovieIntoTexturesDemo(moviename, fromTime, toTime, indexisFrames, b
 % 02/03/06  mk  Adapted for use on Windows.
 % 09/03/09  mk  Add support for frameindex seeking instead of timeindex.
 % 30/06/12  mk  Add benchmarking support for new GStreamer modes.
+% 17/06/13  mk  Cleanup for QT removal.
 
 % Child protection: Make sure we run on the OSX / OpenGL Psychtoolbox.
 % Abort if we don't:

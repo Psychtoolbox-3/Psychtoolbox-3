@@ -17,10 +17,10 @@ function irradianceWattsPerUm2 = RadianceToRetIrradiance(radianceWattsPerM2Sr,ra
 % This conversion does not take absorption in the eye into account,
 % as this is more conveniently foldeded into the spectral absorbtance.
 %
-% See also: radRadianceAndPupilAreaEyeLengthToRetIrradiance, radPupilAreaFromLum, EyeLength, RetIrradianceToRadiance.
+% See also: RadianceAndPupilAreaEyeLengthToRetIrradiance, radPupilAreaFromLum, EyeLength, RetIrradianceToRadiance.
 %
 % Note: This routine is now obsolete, as it mixes radiometric and unit conversions.  Preferred is to
-% use radRadianceAndPupilAreaEyeLengthToRetIrradiance and then take charge of your units in your
+% use RadianceAndPupilAreaEyeLengthToRetIrradiance and then take charge of your units in your
 % calling code.
 %
 % 7/10/03  dhb  Wrote it.
@@ -38,7 +38,7 @@ CHECKAGAINSTOLDCODE = 1;
 radianceWattsPerMm2Sr = radianceWattsPerM2Sr*1e-6;
 
 %% Convert to ret irradiance
-irradianceWattsPerMm2 = radRadianceAndPupilAreaEyeLengthToRetIrradiance(radianceWattsPerMm2Sr,radianceS,pupilAreaMm2,eyeLengthMm);
+irradianceWattsPerMm2 = RadianceAndPupilAreaEyeLengthToRetIrradiance(radianceWattsPerMm2Sr,radianceS,pupilAreaMm2,eyeLengthMm);
 
 %% Convert irradiance units to uM2.
 irradianceWattsPerUm2 = irradianceWattsPerMm2*1e-6;

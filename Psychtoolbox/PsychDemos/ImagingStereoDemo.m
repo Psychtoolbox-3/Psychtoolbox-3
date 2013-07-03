@@ -71,11 +71,11 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie)
 % 'usedatapixx' If provided and set to a non-zero value, will setup a
 % connected VPixx DataPixx device for stereo display.
 %
-% 'writeMovie' If provided and set to a non-zero value will write a
-% Quicktime movie file 'MyTestMovie.mov' into the current working directory
-% which captures the full performance of this demo. A setting of 1 will
-% only write video, a setting of 2 will also write an audio track with
-% a sequence of ten successive beep tones of 1 sec duration.
+% 'writeMovie' If provided and set to a non-zero value, will write a movie
+% file 'MyTestMovie.mov' into the current working directory which captures
+% the full performance of this demo. A setting of 1 will only write video,
+% a setting of 2 will also write an audio track with a sequence of ten
+% successive beep tones of 1 sec duration.
 %
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
@@ -194,7 +194,7 @@ if stereoMode == 102
     PsychImaging('AddTask', 'General', 'SideBySideCompressedStereo');
 end
 
-fitSize = [RectWidth(Screen('Rect', scrnNum))*2, RectHeight(Screen('Rect', scrnNum))*1];
+%fitSize = [RectWidth(Screen('Rect', scrnNum))*2, RectHeight(Screen('Rect', scrnNum))*1];
 %PsychImaging('AddTask', 'General', 'UsePanelFitter', fitSize, 'Aspect');
 
 % Consolidate the list of requirements (error checking etc.), open a
@@ -296,20 +296,22 @@ Screen('Flip', windowPtr);
 % Maximum number of animation frames to show:
 nmax = 100000;
 
-% Optionally create a Quicktime movie file 'MyTestMovie.mov' in the
-% current directory. The file will record a movie of this performance
-% with video frames of size 512 x 512 pixels at a framerate of 60fps.
+% Optionally create a movie file 'MyTestMovie.mov' in the current
+% directory. The file will record a movie of this performance with video
+% frames of size 512 x 512 pixels at a framerate of 30 fps.
 if writeMovie
     if writeMovie > 1
-        if ~IsOSX(1)
-            % Add a sound track to the movie: 2 channel stereo, 48 kHz:
-            % We raise video quality to 50% for decent looking movies.
-            movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000 Videoquality=0.5');
-        else
-            % Same, but for 64-Bit OSX, where the default codec does not
-            % work due to too old GStreamer version. Use XVid instead:
-            movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.avi', 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000:CodecType=VideoCodec=xvidenc profile=244 max-key-interval=10 bitrate=9708400 quant-type=1');
-        end
+        % Add a sound track to the movie: 2 channel stereo, 48 kHz:
+        %
+        % We raise video quality to 50% for decent looking movies.
+        % Setting Videoquality is not strictly needed, as the default
+        % encoder at default settings will create good looking video, but
+        % we do it anyway, just to show you how.
+        %
+        % For more optional settings and a description of the syntax of the
+        % optional 'movieOptions' string, read "help VideoRecording".
+        movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000 Videoquality=0.5');
+        
         % Create a sequence of 10 tones, each of 1 second duration, each 100 Hz higher
         % than its predecessor. Each of the two stereo channels gets a slightly different sound:
         for freq=100:100:1000
@@ -318,17 +320,33 @@ if writeMovie
         nmax = 300;
     else
         % Only video, no sound:
-        % We raise video quality to 50% for decent looking movies.
+        % We raise video quality to 50% for decent looking movies. See
+        % comments in if-branch for more details about codec settings.
         movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 30, ':CodecSettings=Videoquality=0.5');
     end
     
-    % Other examples of codec settings:
+    % Other examples of valid and more low-level codec settings to allow
+    % tighter control over the process:
     %
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 key-int-max=30 bitrate=20000 profile=3');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 bitrate=20000 profile=3');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc AddAudioTrack');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 320, 240, 30, ':CodecType=VideoCodec=xvidenc profile=244 max-key-interval=10 bitrate=9708400 quant-type=1');
+    %
+    %        The lowest level, and most flexible, way to control movie
+    %        writing is by specifying a so called "gst-launch line". You
+    %        can find examples of gst-launch lines by searching the
+    %        internet. If you run with Screen('Preference','Verbosity', 5),
+    %        then Screen's debug output will also print out the launch line
+    %        used by the system, so you can learn how to build valid launch
+    %        lines for this function, take them as working baseline
+    %        examples, and then tweak them to your needs. Be aware though
+    %        that error checking and error handling is minimal with launch
+    %        lines. Often all you'll get if something goes wrong is a
+    %        somewhat cryptic error message, or botched movie files, or a
+    %        hang of Matlab/Octave.
+    %
     %        A full gst-launch style gstreamer launch line with everything
     %        manually controlled. This for Flash video encoding (.flv):
     %        movie = Screen('CreateMovie', windowPtr, ['MyTestMovie.flv'], 512, 512, 30, 'gst-launch appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps="video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, alpha_mask=(int)-16777216, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)512, height=(int)512, framerate=30/1" ! videorate ! ffmpegcolorspace ! ffenc_flv ! ffmux_flv ! filesink name=ptbfilesink async=0 location="MyTestMovie.flv"');

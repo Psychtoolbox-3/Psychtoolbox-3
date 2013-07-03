@@ -73,6 +73,7 @@
 %    MouseTraceDemo3         - Like MouseTraceDemo2, but faster, and for multiple mice.
 %    MouseTraceDemo4         - Like MouseTraceDemo2, but faster on modern hardware.
 %    MovieDemo               - Animation without offscreen windows.
+%    MovieDemos              - Subfolder: Demos on how to use movie playback.
 %    MovingLineDemo          - Shows some horizontally moving lines to demonstrate flat panel display artifacts.
 %    NomogramDemo            - Compute photoreceptor nomograms.
 %    OldNewRecogExp          - A full old-new recognition experiment.
@@ -81,7 +82,6 @@
 %    ProceduralGarboriumDemo - Same as GarboriumDemo, just with procedural gabor drawing.
 %    ProceduralNoiseDemo     - Demo for fast drawing of noise patches via procedural texturing.
 %    PsychRTBoxDemo          - Demonstrates basic use of the RTBox reaction time button response box.
-%    QuicktimeDemos          - Subfolder: Demos on how to use Quicktime movie playback.
 %    ReceivingTriggerFromSerialPortDemo - Template for asynchronous trigger collection and timestamping from serial port.
 %    RenderDemo              - Render CIE xyY as a color patch.
 %    SadowskiDemo            - Shows the "Sadowski" color afterimage effect.

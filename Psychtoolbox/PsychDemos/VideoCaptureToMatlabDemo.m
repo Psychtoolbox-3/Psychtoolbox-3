@@ -1,8 +1,14 @@
-function VideoCaptureToMatlabDemo
+function VideoCaptureToMatlabDemo(deviceIndex)
+% VideoCaptureToMatlabDemo([deviceIndex])
+%
 % Minimalistic demo on how to capture video data and return it in a
 % Matlab/Octave matrix:
 
 AssertOpenGL;
+
+if nargin < 1
+    deviceIndex = [];
+end
 
 try
     % Open a minimalistic window (only 10 x 10 pixels). This is needed
@@ -11,7 +17,7 @@ try
     win=Screen('OpenWindow', 0, 0, [0 0 10 10]);
 
     % Open videocapture device:
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480]);
+    grabber = Screen('OpenVideoCapture', win, deviceIndex, [0 0 640 480]);
     % Start capture with requested 30 fps:
     Screen('StartVideoCapture', grabber, 30, 1);
 

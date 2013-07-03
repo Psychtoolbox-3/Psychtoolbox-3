@@ -1,5 +1,5 @@
-function radiance_PowerPerSrArea = radCornIrradianceAndDegrees2ToRadiance(cornealIrradiance_PowerPerArea,stimulusAreaDegrees2)
-% radiance_PowerPerSrArea = radCornIrradianceAndDegrees2ToRadiance(cornealIrradiance_PowerPerArea,stimulusAreaDegrees2)
+function radiance_PowerPerSrArea = CornIrradianceAndDegrees2ToRadiance(cornealIrradiance_PowerPerArea,stimulusAreaDegrees2)
+% radiance_PowerPerSrArea = CornIrradianceAndDegrees2ToRadiance(cornealIrradiance_PowerPerArea,stimulusAreaDegrees2)
 %
 % Convert the corneal irradiance of a stimulus to radiance, given that we know the area of the stimulus in degrees2.
 % The routine assumes that the stimulus is rectangular with linear subtense sqrt(stimulusAreaDegrees2).
@@ -12,7 +12,7 @@ function radiance_PowerPerSrArea = radCornIrradianceAndDegrees2ToRadiance(cornea
 % where units are the relavant units of length.  Although we don't have stimulusSizeUnits and stimulusDistanceUnits,
 % these turn out to cancel out under the small angle approximation.
 %
-% See also: radRadianceAndDistanceAreaToCornIrradiance, radRadianceAndDegrees2ToCornIrradiance
+% See also: RadianceAndDistanceAreaToCornIrradiance, RadianceAndDegrees2ToCornIrradiance
 %
 % 2/22/13  dhb  Wrote it.
 
@@ -21,6 +21,6 @@ stimulusSizeDegrees = sqrt(stimulusAreaDegrees2);
 stimulusSizeRadians = deg2rad(stimulusSizeDegrees);
 
 % This routine just inverts the simple relation derived in the comments to
-%   radRadianceAndDegrees2ToCornIrradiance
+%   RadianceAndDegrees2ToCornIrradiance
 radiance_PowerPerSrArea = cornealIrradiance_PowerPerArea/(stimulusSizeRadians^2);
 
