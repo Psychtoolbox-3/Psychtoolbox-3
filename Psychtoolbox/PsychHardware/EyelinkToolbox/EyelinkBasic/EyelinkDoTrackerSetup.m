@@ -41,7 +41,7 @@ end
 % else we continue with the old version
 
 
-Eyelink('Command', 'heuristic_filter = ON');
+% Eyelink('Command', 'heuristic_filter = ON');
 Eyelink( 'StartSetup' );		% start setup mode
 Eyelink( 'WaitForModeReady', el.waitformodereadytime );  % time for mode change
 

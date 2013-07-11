@@ -1227,7 +1227,7 @@ void PsychSaveEncodingPresetsForElement(GstElement* element, const char* preset_
     }
     
     // Handling of elements which are bins, ie., containers for other elements:
-    it = gst_bin_iterate_all_by_interface(element, GST_TYPE_PRESET); // Retrieve all plugins in element with GstPreset interface:
+    it = gst_bin_iterate_all_by_interface(GST_BIN(element), GST_TYPE_PRESET); // Retrieve all plugins in element with GstPreset interface:
 
     // Iterate over eligible plugins:
     while (it && !done) {

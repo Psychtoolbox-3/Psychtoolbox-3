@@ -24,14 +24,14 @@
 #ifndef PSYCH_IS_INCLUDED_Psych
 #define PSYCH_IS_INCLUDED_Psych
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 #define __USE_UNIX98 1
 
 //can include this alone
 #include "PsychConstants.h"
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 //if using any of below include Psych.h
 #include "MiniBox.h"

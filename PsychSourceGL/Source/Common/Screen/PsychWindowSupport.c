@@ -1030,7 +1030,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       }
       
       // Check if a beamposition of -1 is returned: This would indicate that beamposition queries
-      // are not available on this system: This always happens on Linux as that feature is unavailable.
+      // are not available on this system:
       if ((-1 != ((int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber))) && (i!=12345)) {
 	// Switch to RT scheduling for timing tests:
 	PsychRealtimePriority(true);
@@ -1056,7 +1056,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
 			if (i < -1) printf("\nPTB-WARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a negative value %i)\n", i);
           
-          if ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !((*windowRecord)->gfxcaps & kPsychOpenMLDefective)) {
+          if ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
               printf("PTB-WARNING: However, this probably doesn't really matter on your setup for most purposes, as i can use OpenML\n");
               printf("PTB-WARNING: timestamping instead, which is even more precise. Only few applications need beampos queries in this case.\n");
           }
@@ -1581,7 +1581,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         
         // Only warn user and flash the warning triangle if we can't use OpenML timestamping because it is disabled or broken.
         // If OpenML timestamping is available then beamposition queries are not needed anyway, so no reason to make a big fuss...
-		if((PsychPrefStateGet_Verbosity() > 1) && ((PsychPrefStateGet_VBLTimestampingMode() != 4) || ((*windowRecord)->gfxcaps & kPsychOpenMLDefective))){		
+		if((PsychPrefStateGet_Verbosity() > 1) && ((PsychPrefStateGet_VBLTimestampingMode() != 4) || ((*windowRecord)->specialflags & kPsychOpenMLDefective))){		
 			printf("\n\n");
 			printf("----- ! PTB - WARNING: SYNCHRONIZATION TROUBLE ! ----\n\n");
 			printf("One or more internal checks (see Warnings above) indicate that\n");
@@ -2026,7 +2026,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 	// Get a handle to our info structs: These pointers must not be NULL!!!
 	PsychWindowRecordType*	windowRecord = (PsychWindowRecordType*) windowRecordToCast;
 	PsychFlipInfoStruct*	flipRequest	 = windowRecord->flipInfo;
-	psych_bool useOpenML = (windowRecord->gfxcaps & kPsychOpenMLDefective) ? FALSE : TRUE;
+	psych_bool useOpenML = (windowRecord->specialflags & kPsychOpenMLDefective) ? FALSE : TRUE;
 	
 	// Try to lock, block until available if not available:
 	if ((rc=PsychLockMutex(&(flipRequest->performFlipLock)))) {
@@ -4066,7 +4066,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     int fallthroughcount=0;
     double* samples = NULL;
     int maxlogsamples = 0;
-    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->gfxcaps & kPsychOpenMLDefective));
+    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->specialflags & kPsychOpenMLDefective));
 
     // Child protection: We only work on double-buffered onscreen-windows...
     if (windowRecord->windowType != kPsychDoubleBufferOnscreen) {

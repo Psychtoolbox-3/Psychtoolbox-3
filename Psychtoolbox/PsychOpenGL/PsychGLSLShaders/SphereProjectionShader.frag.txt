@@ -77,7 +77,7 @@ void main()
     }
 
     /* Set all undefined (outside input image) pixels to black background color. */
-    if (texinpos.x < 0.0 || texinpos.x > inSize.x || texinpos.y < 0.0 || texinpos.y > inSize.y) {
+    if (texinpos.x < 0.0 || texinpos.x >= inSize.x || texinpos.y < 0.0 || texinpos.y >= inSize.y || texinpos.x != texinpos.x || texinpos.y != texinpos.y) {
         gl_FragColor = vec4(0.0);
     }
     else

@@ -1,6 +1,8 @@
 function fhndl = MinExpEntStair
 % Minimum Expected Entropy Staircase
 %
+% Caution: Currently only works with Matlab, not with GNU/Octave!
+%
 % The staircase gives suggestions for which probe value to test next,
 % choosing the probe that will provide the most information (based on the
 % principle of minimum entropy = maximally unambiguous probability
@@ -152,6 +154,13 @@ function fhndl = MinExpEntStair
 % of the different staircase functions.
 
 % Copyright (c) 2011 by DC Niehorster and JA Saunders
+
+% The demo and MinExpEntStair use nested functions internally, something
+% not supported by Octave, so this is a no-go unless somebody rewrites this
+% stuff:
+if IsOctave
+    error('Sorry, this function does not yet work on GNU/Octave.');
+end
 
 % private member variables
 probeset    = [];           % possible probe values to be tested

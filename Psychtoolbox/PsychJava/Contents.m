@@ -9,10 +9,10 @@
 % help Psychtoolbox     % For an overview, triple-click me & hit enter.
 %
 %  
-%    AddPsychJavaPaths                 - Add PsychtoolboxJava to the MATLAB's Java path.  
+%    AddPsychJavaPath                  - Add PsychtoolboxJava to the MATLAB's Java path.  
 %    GetCharJava                       - Java underpinnings of GetChar. Use GetChar instead.
+%    PsychJavaSwingCleanup             - Clean up some internal Java stuff.
 %    PsychJavaTrouble                  - Help and trouble-shooter for problems with PsychJava.
 %    JavaTimeToGetSecs                 - Convert Java System.currentTimeMillis() to GetSecs.
 %    psychusejava                      - Drop in replacement for usejava on unsupported platforms.
-
-
+%

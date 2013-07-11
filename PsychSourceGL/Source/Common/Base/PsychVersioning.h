@@ -31,7 +31,7 @@
 //these are all constants defined only for reporting versioning.  They are returned by Module('Version')
 #define PSYCHTOOLBOX_MAJOR_VERSION				3
 #define PSYCHTOOLBOX_MINOR_VERSION				0
-#define PSYCHTOOLBOX_POINT_VERSION				10
+#define PSYCHTOOLBOX_POINT_VERSION				11
 //If you fork my source please change this name.  - awi 
 #define PSYCHTOOLBOX_PROJECT_NAME				"OpenGL Psychtoolbox"
 #if PSYCH_SYSTEM == PSYCH_OSX

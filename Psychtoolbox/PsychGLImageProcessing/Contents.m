@@ -48,7 +48,6 @@
 % DisplayUndistortionCSV        - Import ASCII data file with geometric display calibration for NVidia "Warp API".
 % DisplayUndistortionHalfCylinder - Interactive geometric display calibration for half-cylinder or spherical projections.
 % DisplayUndistortionSphere     - Interactive geometric display calibration for spherical projections.
-% HookProcessingChains          - Documentation about hook chains and their options.
 % ImagingStereoDemo             - Counterpart to StereoDemo, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.
 % MakeTextureDrawShader         - Create GLSL shader for use with Screen('DrawTexture') and Screen('MakeTexture')

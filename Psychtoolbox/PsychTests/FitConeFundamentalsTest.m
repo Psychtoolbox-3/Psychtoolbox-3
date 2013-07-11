@@ -22,6 +22,14 @@
 % 8/11/11  dhb  Wrote it.
 % 8/14/11  dhb  Clean up and add comments.
 
+% Doesn't work on octave due to lack of function 'fmincon' from the
+% Matlab Optimization toolbox (see https://savannah.gnu.org/bugs/?35333)
+% and due to use of nested function FitConesFun():
+if IsOctave
+    fprintf('Sorry, this test does not yet work on GNU/Octave.\n');
+    return;
+end
+
 %% Clear
 clear; close all;
 

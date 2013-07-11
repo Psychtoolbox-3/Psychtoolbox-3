@@ -1,6 +1,22 @@
 function oldPriority=Priority(newPriority)
-
 % oldPriority=Priority([newPriority])
+%
+% Query and optionally set the execution priority of your script to
+% 'newPriority' and switch from non-realtime to realtime scheduling (for
+% 'newPriority' values greater than zero).
+%
+% Higher priority levels will reduce the chance of other running
+% applications and system processes interfering with the execution timing
+% of your script, or reduce the severity of interference. However, various
+% factors influence the timing behaviour of your computer and its hardware,
+% so while use of Priority() is one step to ensure good timing, it is not
+% the only required step. The PsychDocumentation subfolder of your
+% distribution as well as the Psychtoolbox Wiki contain various documents
+% with tips on how to improve system timing behaviour. All else being
+% equal, the Linux operating system should provide best possible timing
+% behaviour out of the box, with various possibilities to tweak and tune the
+% system for even better timing behaviour. Mac OSX is the second best
+% choice for precise timing.
 %
 % OS X: ___________________________________________________________________
 %
@@ -15,7 +31,7 @@ function oldPriority=Priority(newPriority)
 % of CPU time to stay within the limits specified by the priority value.
 % The consequence of failing to restrict the CPU time to the limits
 % specified by the priority values is that OS X will demote MATLAB back to
-% priority 0.  You can check to see if this has happened by calling
+% priority 0. You can check to see if this has happened by calling
 % Priority with no arguments.
 %
 % Within a script there are two ways to limit MATLAB's use of CPU time:
@@ -49,36 +65,6 @@ function oldPriority=Priority(newPriority)
 % no longer match the true frame period. Therefore you should change the
 % priority level after changing the video mode and not before. 
 %
-% MacOS-X version before 10.4.7: __________________________________________
-%
-% Because the OS X update process causes setjmp calls within MATLAB to
-% delay for up to about 13ms, Priority kills the system update process when
-% setting any priority greater than 0.  Priority will restart the update
-% proceess when setting priority back to 0, but only if it was Priority
-% itself which killed the update process.  If update was already killed
-% when Priority was set to a level greater than 0 then priority will not
-% restart the update process when restoring priority to 0. You can use
-% KillUpdateProcess and StartUpdateProcess to kill and restart the update
-% process  without using Prioirity.  Because killing and starting the
-% update process sometimes requires that an adminstrator password be
-% entered in the MATLAB command window,  you might prefer not kill and
-% restart  with every call to Priority, but instead to do this only at the
-% beginning and end of a MATLAB session by using KillUpdateProcess and
-% StartUpdateProcess.
-%
-% MacOS-X version 10.4.7 and later: _______________________________________
-%
-% Due to improvements in the realtime behaviour of OS-X 10.4.7 and later,
-% it is no longer neccessary to kill the update process. If Priority()
-% detects such an OS version, it will not kill update anymore. This
-% provides an over hundred-fold speedup in the execution of Priority(). If
-% you think that timing gets worse on your system, you can check the timing
-% by running the test command 'TestMATLABTimingOSX'. If you rather want
-% Priority to kill the update process on 10.4.7 and later, please create a
-% file with the name 'AlwaysKillUpdate' in the Psychtoolbox root folder to
-% enforce killing of the update process. The content of the file does not
-% matter at all.
-%
 %
 % WINDOWS: ________________________________________________________________
 % 
@@ -87,40 +73,54 @@ function oldPriority=Priority(newPriority)
 % levels 0, 1, and 2. Level 0 is "normal priority level", level 1 is "high
 % priority level", and level 2 is "real time priority level". Combined with
 % thread priority levels, they determine the absolute priority level of the
-% matlab  thread. Threads are executed in a "round robin" fashion on
+% Psychtoolbox threads. Threads are executed in a "round robin" fashion on
 % Windows, with the  lower priority threads getting cpu time slice only
-% when no higher priority thread  is ready to execute. Currently, no tests
-% had been done to see what tasks are pre-empted by setting the Matlab
+% when no higher priority thread is ready to execute. Currently, no tests
+% have been done to see what tasks are pre-empted by setting the Matlab
 % process to real-time priority. It does seem to block keyboard input,
 % though, so for example if you have a clut animation going on at priority
 % level 2, then the force-quit key combo (Ctrl-Alt-Delete) does not  work.
 % However, the keyboard inputs are still sent to the message queue, so
 % GetChar or GetClicks still work if they are also called at priority level
 % 2.
+%
+% Typically you will not want to choose a higher priority than 1 unless you
+% know exactly what you're doing.
 % 
 % LINUX: __________________________________________________________________
+%
+% To enable use of Priority(), you must run the script
+% PsychLinuxConfiguration at least once and follow its instructions.
+% Normally the script will get executed automatically by our installer if
+% you got Psychtoolbox via DownloadPsychtoolbox or UpdatePsychtoolbox.
+% However, if you got Psychtoolbox directly from the package manager of
+% your Linux distribution or from the NeuroDebian repositories, it may be
+% neccessary to execute the PsychLinuxConfiguration function manually.
 %
 % GNU/Linux supports priority levels between 0 and 99. Zero means standard
 % non-realtime timesharing operation -- Play fair with all other
 % applications. Increasing values greater than zero mean realtime mode: The
-% Matlab/Octave process is scheduled in round robin realtime mode with a
-% priority corresponding to the given number - higher means better, but
-% also more likelihood of interfering with system processes. Try to stick
-% to a level of 1 unless you know what you're doing!
+% Matlab/Octave process is scheduled in realtime mode with a priority
+% corresponding to the given number - higher means better, but also more
+% likelihood of interfering with system processes. Try to stick to a level
+% of 1 unless you have reason to go higher. Level one is usually
+% sufficient, unless you run other realtime applications on the same
+% machine in parallel and want to prioritize Psychtoolbox relative to those
+% applications.
 %
 % In realtime mode, PTB will also try to lock down all of Matlab/Octaves
 % memory into physical RAM, preventing it from being paged out to disk by
 % the virtual memory manager. If it works, it's great! However, the amount
 % of lockable memory is restricted to max. 50% of installed RAM memory on
-% a standard Linux setup, so if Matlab/Octave/your experiment would need
+% some older Linux setups, so if Matlab/Octave/your experiment would need
 % more than 50% of available system memory, this will fail. PTB will output
 % an informative warning in this case, but continue otherwise unaffected.
 % Realtime scheduling will be still effective, you'll just lose the bonus
 % of memory locking.
 %
-% Be careful not to create any uninterruptible infinite loops in your code
-% when running realtime, otherwise your system may lock up, reqiring a
-% hard reboot!
+% On old single processor computers, be careful not to create any
+% uninterruptible infinite loops in your code when running realtime,
+% otherwise your system may lock up, requiring a hard reboot!
 % _________________________________________________________________________
 %
 % see also OS X:    Rush
@@ -169,9 +169,8 @@ function oldPriority=Priority(newPriority)
 %                anymore in that case as it isn't necessary anymore.
 % 5/15/07   mk   Priority.dll on Windoze replaced by code in this M-File.
 % 6/01/09   mk   Enable Priority() support for OS/X + Octave-3.
-
-persistent killUpdateNotNeeded;
-persistent didPriorityKillUpdate;
+% 7/10/13   mk   Remove handling of update process, as we no longer support
+%                OSX versions < 10.6, so no need to kill/restart updated.
 
 if ~isempty(getenv('PSYCH_IN_VM'))
    % Running inside Virtual machine. We no-op. Everything else has potential
@@ -205,27 +204,6 @@ if IsLinux
 end;
 
 if IsOSX
-    if isempty(killUpdateNotNeeded)
-        % Check if this is MacOS-X 10.4.7 or later. We don't need to kill
-        % the update process anymore if that is the case.
-        c = Screen('Computer');
-        osrelease = sscanf(c.kern.osrelease, '%i.%i.%i');
-
-        if (osrelease(1)==8 && osrelease(2)>=7) || (osrelease(1)>=9)
-            % OS-X 10.4.7 or later -> No need to kill update.
-            killUpdateNotNeeded = 1;
-        else
-            % Pre 10.4.7 system -> Play safe and kill update.
-            killUpdateNotNeeded = 0;
-        end
-
-        % Override for the scared.
-        if exist('AlwaysKillUpdate', 'file')>0
-            % Detected a veto file created by the user. We do kill update.
-            killUpdateNotNeeded = 0;
-        end
-    end
-    
     %Get the current settings.
     [flavorNameString, priorityStruct] = MachGetPriorityFlavor;
     if strcmp('THREAD_STANDARD_POLICY', flavorNameString)
@@ -245,8 +223,7 @@ if IsOSX
             oldPriority=min(oldPriorityRatio * 10, 9);
         end
     end
-    
-    
+
     %if no new setting is given then return
     if nargin==0
         return
@@ -261,25 +238,6 @@ if IsOSX
     
     %if the priority level calls for time constraint priority...
     if newPriority > 0
-        if isempty(didPriorityKillUpdate)
-            didPriorityKillUpdate = 0;
-        end
-
-        % Need to kill update process?
-        if (killUpdateNotNeeded > 0)
-            % Nope. This is a 10.47 or later system...
-            tempWasKilledByUs = 0;
-        else
-            % Yes. Try to kill it, if it isn't already dead.
-            tempWasKilledByUs=KillUpdateProcess;
-        end
-        
-        if isnan(tempWasKilledByUs)
-            error('Failed to raise priority because the simplepsychtoolboxsetup.sh script had not been run.  Run simplepsychtoolboxsetup.sh and try again.');
-        else
-            didPriorityKillUpdate=tempWasKilledByUs + didPriorityKillUpdate;
-        end
-        
         % Find the frame periods.  FrameRate returns the nominal frame rate, which
         % for LCD displays is 0.  We assume 60 in that case.
         defaultFrameRate=60;    %Hz
@@ -305,14 +263,8 @@ if IsOSX
     else    %priority==0
         %restore standard priority
         MachSetStandardPriority;
-        
-        %restore the update process if it was Priority which killed it.  
-        if didPriorityKillUpdate        
-            StartUpdateProcess;
-            didPriorityKillUpdate=0;
-        end
     end
-end;
+end
 
 % Microsoft Windows?
 if IsWin

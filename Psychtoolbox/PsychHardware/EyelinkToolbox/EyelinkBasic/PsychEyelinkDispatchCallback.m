@@ -442,28 +442,33 @@ switch(s)
         v=el.drift_correction_target_beep(2);
         d=el.drift_correction_target_beep(3);
     case 'calibration_failed_beep'
-        doBeep=1;
+%         doBeep=1;
+        doBeep=el.feedbackbeep;
         f=el.calibration_failed_beep(1);
         v=el.calibration_failed_beep(2);
         d=el.calibration_failed_beep(3);
     case 'calibration_success_beep'
-        doBeep=1;
+%         doBeep=1;
+        doBeep=el.feedbackbeep;
         f=el.calibration_success_beep(1);
         v=el.calibration_success_beep(2);
         d=el.calibration_success_beep(3);
     case 'drift_correction_failed_beep'
-        doBeep=1;
+%         doBeep=1;
+        doBeep=el.feedbackbeep;
         f=el.drift_correction_failed_beep(1);
         v=el.drift_correction_failed_beep(2);
         d=el.drift_correction_failed_beep(3);
     case 'drift_correction_success_beep'
-        doBeep=1;
+%         doBeep=1;
+        doBeep=el.feedbackbeep;
         f=el.drift_correction_success_beep(1);
         v=el.drift_correction_success_beep(2);
         d=el.drift_correction_success_beep(3);
     otherwise
         % some defaults
-        doBeep=1;
+%         doBeep=1;
+        doBeep=el.feedbackbeep;
         f=500;
         v=0.5;
         d=1.5;

@@ -3,7 +3,7 @@ function [alpha,beta,thresh50] = FitWeibYN(inputs,nYes,nNo,alpha0,beta0,numFunCa
 %
 % Fits a Weibull function to the passed yes-no data.
 %
-% Requires the optimization toolbox.
+% Requires the optimization toolbox. Doesn't work with Octave yet.
 %
 % INPUTS:
 %   inputs    Input levels

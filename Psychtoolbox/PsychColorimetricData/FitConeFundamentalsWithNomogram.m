@@ -5,6 +5,13 @@ function [params,fitFundamentals,fitError] = FitConeFundamentalsWithNomogram(T_t
 %
 % 8/4/03  dhb  Wrote it.
 
+% Doesn't work on octave due to lack of function 'fmincon' from the
+% Matlab Optimization toolbox (see https://savannah.gnu.org/bugs/?35333)
+% and due to use of nested function FitConesFun():
+if IsOctave
+    error('Sorry, this function does not yet work on GNU/Octave.');
+end
+
 % Convert initial parameter struct to parameter list
 x0 = FitConesParamsToList(params0);
 
@@ -23,7 +30,7 @@ end
 % Search to find best fit
 options = optimset('fmincon');
 options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','active-set');
-if (IsCluster && matlabpool('size') > 1)
+if (exist('IsCluster') && IsCluster && matlabpool('size') > 1) %#ok<EXIST>
     options = optimset(options,'UseParallel','always');
 end
 x = fmincon(@FitConesFun,x0,[],[],[],[],vlb,vub,[],options);

@@ -28,15 +28,16 @@ close all;
 
 Priority(MaxPriority(0));
 
-fprintf('Testing keyboard polling interval... Type fast for 10 seconds!!\n');
+fprintf('\n\nTesting keyboard polling interval... Type fast for 10 seconds!!\n');
 ListenChar(2);
 [secs, oldKeyCode] = KbReleaseWait;
 
 tend = secs + 10;
+tsample = [];
 i=0;
 
 while GetSecs < tend
-    [downstate tchange keyCode] = KbCheck;
+    [downstate tchange keyCode] = KbCheck; %#ok<ASGLU>
     
     if ~isequal(keyCode, oldKeyCode)
         oldKeyCode = keyCode;
@@ -46,18 +47,18 @@ while GetSecs < tend
 end
 
 ListenChar(0);
-
 Beeper;
-
 KbReleaseWait;
 
-nbins = ceil(max(diff(tsample)*1000));
-hist(diff(tsample)*1000, nbins);
-title('Distribution of delta between detected keyboard events - msecs:');
-fprintf('Testing mouse polling interval... Press mouse buttons wildly for 10 seconds!!\n');
+if i == 0
+    fprintf('\n\nYou did not press any keys as requested. Very uncooperative! Skipping.\n');
+else
+    nbins = ceil(max(diff(tsample)*1000));
+    hist(diff(tsample)*1000, nbins);
+    title('Distribution of delta between detected keyboard events - msecs:');
+end
 
-figure;
-
+fprintf('\n\nTesting mouse polling interval... Press mouse buttons wildly for 10 seconds!!\n');
 tsample = [];
 i = 0;
 
@@ -78,12 +79,15 @@ end
 
 Beeper;
 
-KbReleaseWait;
-
-xxx=diff(tsample)*1000;
-nbins = ceil(max(xxx));
-hist(xxx, nbins);
-title('Distribution of delta between detected mouse events - msecs:');
+if i == 0
+    fprintf('\n\nYou did not press any mouse buttons as requested. Very uncooperative! Skipping.\n');
+else
+    figure;
+    xxx=diff(tsample)*1000;
+    nbins = ceil(max(xxx));
+    hist(xxx, nbins);
+    title('Distribution of delta between detected mouse events - msecs:');
+end
 
 Priority(0);
 

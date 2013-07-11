@@ -16,12 +16,8 @@
   DESCRIPTION:
   
   Open a named movie file from the filesystem, create and initialize a corresponding movie object
-  and return a handle to it to MATLAB space.
+  and return a handle to it.
  
-  On OS-X and Windows, all movie/multimedia handling functions are implemented via the Apple Quicktime API,
-  version 7 or later. On Linux we use GStreamer: We need at least the gstreamer core library and base plugin
-  set installed for it to work, but more plugins never hurt.
-  
   TO DO:
 
 */
@@ -31,8 +27,8 @@
 static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1]);";
 static char synopsisString[] = 
 		"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
-        "return a handle 'moviePtr' on success.\nOn OS-X and Windows, media files are handled by use of "
-        "Apples Quicktime-7 API. On Linux, and optionally Windows, the GStreamer multimedia framework is used. "
+        "return a handle 'moviePtr' on success.\n"
+        "This function requires the GStreamer multi-media framework to be installed on your system.\n"
         "The following movie properties are optionally returned: 'duration' Total duration of movie in seconds. "
         "'fps' Video playback framerate, assuming a linear spacing of videoframes in time. There may "
         "exist exotic movie formats which don't have this linear spacing. In that case, 'fps' would "
@@ -40,16 +36,14 @@ static char synopsisString[] =
         "'width' Width of the images contained in the movie. 'height' Height of the images.\n"
         "'count' Total number of videoframes in the movie. Determined by counting, so querying 'count' "
         "can significantly increase the execution time of this command.\n"
-		"'aspectRatio' Pixel aspect ratio of pixels in the video frames. Typically 1.0 for square pixels. "
-		"Aspect ratio is only detected with the GStreamer playback engine. Quicktime always returns 1.0.\n"
+		"'aspectRatio' Pixel aspect ratio of pixels in the video frames. Typically 1.0 for square pixels.\n"
         "If you want to play multiple movies in succession with lowest possible delay inbetween the movies "
         "then you can ask PTB to load a movie in the background while another movie is still playing: "
         "Call this function with the 'async' flag set to 1. This will initiate the background load operation. "
         "After some sufficient time has passed, you can call the 'OpenMovie' function again, this time with "
-        "the 'async' flag set to zero. Now the function will return a valid movie handle for playback. Background "
-        "loading of movies currently does only work well with movies that don't have sound, unless you use Linux.\n"
-        "If you use the GStreamer playback engine and all your movies have exactly the same format and only differ "
-        "in duration and content, but not in image size, color depth or format, or fps, then you can also use "
+        "the 'async' flag set to zero. Now the function will return a valid movie handle for playback.\n"
+        "If all your movies have exactly the same format and only differ "
+        "in duration and content, but not in image size, color depth, encoding format, or fps, then you can also use "
         "an aync setting of 2 and provide the 'moviePtr' handle of an already opened movie in the 'preloadSecs' "
         "parameter. This will queue the movie 'moviefile' as a successor to the currently playing moviefile in "
         "'moviePtr'. Queuing movies this way is more efficient than async flag setting 1, although also more "
@@ -60,16 +54,14 @@ static char synopsisString[] =
 		"control yourself by proper comparison of movie presentation timestamps and GetSecs or Screen('Flip') timestamps. "
 		"The advantage is, that after start of playback the playback engine can internally predecode and buffer up to "
 		"'preloadSecs' seconds worth of video and audio data. This may allow complex movies to play more smoothly or "
-		"at higher framerates. This option is only supported with the GStreamer playback engine.\n"
-		"'preloadSecs' This optional parameter allows to ask Screen() to load at least the first 'preloadSecs' "
-		"seconds of the movie into system RAM. By default, with Quicktime playback, the first second of the "
-		"movie file is loaded into RAM. This potentially allows for more stutter-free playback, but your mileage "
+		"at higher framerates.\n"
+		"'preloadSecs' This optional parameter allows to ask Screen() to buffer at least up to 'preloadSecs' "
+		"seconds of the movie. This potentially allows for more stutter-free playback, but your mileage "
 		"may vary, depending on movie format, storage medium and lots of other factors. In most cases, the default "
-		"setting is perfectly sufficient. The special setting -1 means: Load whole movie into RAM. Caution: Long "
-		"movies may cause your system to run low on memory and have disastrous effects on playback performance! "
-		"Also, the exact type of buffering applied depends a lot on the movie playback engine and movie format, ie., "
-		"what the parameter exactly does can be different for Quicktime vs. GStreamer, but it always affects the "
-		"buffering behaviour and capacity of buffering in some meaningful way.\n"
+		"setting is perfectly sufficient. The special setting -1 means: Try to buffer the whole movie. Caution: Long "
+		"movies may cause your system to run low on memory or disc space and have disastrous effects on playback performance! "
+		"Also, the exact type of buffering applied depends a lot on the movie playback engine and movie format, "
+		"but it usually affects the buffering behaviour and capacity of buffering in some meaningful way.\n"
 		"'specialFlags1' Optional flags, numbers to be added together: 1 = Use YUV video decoding instead of RGBA, if "
 		"supported by movie codec and GPU - May be more efficient. 2 = Don't decode and use sound - May be more efficient. "
 		"On Linux you may need to specify a setting of 2 if you try to use movie playback at the same time as "
@@ -82,6 +74,13 @@ static char synopsisString[] =
         "deferred until needed, ie. it would get skipped if you would just draw the texture regularly. If you know "
         "already that you want to use the texture with one of the given functions, manually triggering the conversion "
         "via this flag may be a bit more efficient - or convenient if you want to use your own GLSL shaders.\n"
+        "The optional flags 32, 64 and 128 influence how looped playback is performed if usercode requests such "
+        "repetitive playback via Screen('PlayMovie', ...) with the 'loop' flag set to one. Different strategies exist "
+        "to handle different quirks with some movie file formats and encodings and some versions of GStreamer: A flag "
+        "of 32 requests looped playback via gapless reloading of the movie instead of rewinding it to the start. A flag "
+        "of 64 uses so called segment seeks for rewinding, a flag of 128 asks to flush the video pipeline during rewinding. "
+        "Your mileage with these looping strategies will differ, but usually the default settings are good enough for most "
+        "purposes.\n"
         "'pixelFormat' optional argument specifying the pixel format of decoded video frames. Not all possible valid "
         "values are supported by all video codecs, graphics cards and operating systems. If an unsupported format is "
         "requested, Screen() will try to choose the closest matching format that meets or exceeds the specified format, "
@@ -105,16 +104,11 @@ static char synopsisString[] =
         "computer. A number n greater zero asks the codec to use at most n threads for decoding. The most safe choice is "
         "to not specify this parameter - this should work even with problematic movie formats. If you need higher playback "
         "performance, e.g., for high resolution video or high framerate playback, you should set the parameter to zero to "
-        "leave the optimal choice to the video codec. This should work flawlessly with well encoded high quality movie files "
+        "allow the optimal choice to the video codec. This should work flawlessly with well encoded high quality movie files "
         "and can provide a significant performance boost on multi-core computers. Specify a discrete non-zero number of threads "
         "if you want to benefit from multi-core decoding but want to prevent movie playback from using up all available computation "
         "power, e.g., because you want to run some other timing-sensitive tasks in parallel and want to make sure to leave some processor "
-        "cores dedicated to them.\n"
-        "CAUTION: On 32-Bit OS/X, some movie files, e.g., MPEG-1 movies sometimes cause Matlab to hang. This seems to be "
-        "a bad interaction between parts of Apples Quicktime toolkit and Matlabs Java Virtual Machine (JVM). "
-        "If you experience stability problems, please start Matlab with JVM and desktop disabled, e.g., "
-        "with the command: 'matlab -nojvm'. An example command sequence in a terminal window could be: "
-        "/Applications/MATLAB701/bin/matlab -nojvm ";
+        "cores dedicated to them.\n";
 
 static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
 
@@ -262,36 +256,6 @@ PsychError SCREENOpenMovie(void)
                     if (moviehandle < 0) {
                         // Movie loading failed for some reason.
                         printf("PTB-ERROR: When trying to asynchronously load movie %s, the operation failed: ", asyncmovieinfo.moviename);
-                        #if PSYCH_SYSTEM == PSYCH_OSX
-                        switch(moviehandle) {
-                            case -2000:
-                            case -50:
-                            case -43:
-                                printf("File not found.");
-                                break;
-                                
-                            case -2048:
-                                printf("This is not a file that Quicktime understands.");
-                                break;
-                                
-                            case -2003:
-                                printf("Can't find media handler (codec) for this movie.");
-                                break;
-                                
-                            case -2:
-                                printf("Maximum allowed number of simultaneously open movie files exceeded!");
-                                break;
-                                
-                            case -1:
-                                printf("Internal error: Failure in PTB's movie playback engine!");
-                                break;
-                                
-                            default:
-                                printf("Unknown error (Quicktime error %i): Check http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes", moviehandle);
-                        }
-                        printf("\n\n");
-                        #endif
-
                         PsychErrorExitMsg(PsychError_user, "Asynchronous loading of the Quicktime movie failed.");
                     }
                     
@@ -353,7 +317,6 @@ PsychError SCREENFinalizeMovie(void)
 	
 	// Finalize the movie:
 	if (!PsychFinalizeNewMovieFile(moviehandle)) {
-		printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
 		PsychErrorExitMsg(PsychError_user, "FinalizeMovie failed for reason mentioned above.");
 	}
 
@@ -366,11 +329,8 @@ PsychError SCREENCreateMovie(void)
 	static char synopsisString[] = 
 		"Create a new movie file with filename 'movieFile' and according to given 'movieOptions'.\n"
 		"The function returns a handle 'moviePtr' to the file.\n"
-        "On OS/X and on MS-Windows with Matlab versions prior to R2007a, Apple Quicktime is used for movie writing. "
-        "On GNU/Linux and on MS-Windows with recent versions of Matlab or GNU/Octave, the GStreamer multimedia "
-        "framework is used for movie writing. GStreamer is generally more advanced and offers more functionality. "
-		"Currently only single-track video encoding is supported. Audio encoding is not supported on OS/X.\n"
-        "See 'Screen AddAudioBufferToMovie?' on how to add audio tracks to movies via GStreamer.\n"
+		"Currently only single-track video encoding is supported.\n"
+        "See 'Screen AddAudioBufferToMovie?' on how to add audio tracks to movies.\n"
         "\n"
 		"Movie creation is a 3 step procedure:\n"
 		"1. Create a movie and define encoding options via 'CreateMovie'.\n"
@@ -392,12 +352,6 @@ PsychError SCREENCreateMovie(void)
 		"Keywords unknown to a certain implementation or codec will be silently ignored:\n"
 		"EncodingQuality=x Set encoding quality to value x, in the range 0.0 for lowest movie quality to "
 		"1.0 for highest quality. Default is 0.5 = normal quality. 1.0 usually provides lossless encoding.\n"
-        "On systems with Quicktime movie writing, codecs can be selected by FOURCC codes. This is not supported "
-        "on GStreamer setups for now:\n"
-		"CodecFOURCCId=id FOURCC id. The FOURCC of a desired video codec as a number. Defaults to H.264 codec.\n"
-		"Choice of codec and quality defines a tradeoff between filesize, quality, processing demand and speed, "
-		"as well as on which target devices you'll be able to play your movie.\n"
-		"CodecFOURCC=xxxx FOURCC as a four character text string instead of a number.\n"
 		"\n";
 
 	static char seeAlsoString[] = "FinalizeMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
@@ -447,9 +401,6 @@ PsychError SCREENCreateMovie(void)
 	// Create movie of given size and framerate with given options:
 	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, movieOptions);
 	if (0 > moviehandle) {
-		#ifndef PTB_USE_GSTREAMER
-			printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
-		#endif
 		PsychErrorExitMsg(PsychError_user, "CreateMovie failed for reason mentioned above.");
 	}
 	
@@ -464,9 +415,6 @@ PsychError SCREENAddAudioBufferToMovie(void)
 	static char useString[] = "Screen('AddAudioBufferToMovie', moviePtr, audioBuffer);";
 	static char synopsisString[] = 
 		"Add a buffer filled with audio data samples to movie 'moviePtr'.\n"
-        "This function is only supported with the GStreamer based movie writing functions. "
-        "It doesn't work on MS-Windows with Matlab versions before R2007a and it doesn't work "
-        "on Apple OS/X yet.\n"
         "The movie must have been created in 'CreateMovie' with an options string that "
         "enables writing of an audio track into the movie, otherwise this function will fail.\n"
         "You enable writing of audio tracks by adding the keyword 'AddAudioTrack' to the options string.\n"

@@ -11,10 +11,14 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 %
 % CAUTION: Psychtoolbox *will not work* with GNU/Octave on MS-Windows, or
 % with 32-Bit Octave on OSX, as support for these setups has been cancelled
-% for the 3.0.10 series.
+% for the 3.0.10 series. It will also not work with 32-Bit Matlab on OSX,
+% or with OSX versions earlier than 10.6.8 "Snow Leopard", unless you
+% choose the unsupported legacy flavor "Psychtoolbox-3.0.10" via the
+% optional 'flavor' parameter.
 %
-% If you want to download older versions of Psychtoolbox than 3.0.10, use
-% the DownloadLegacyPsychtoolbox() function instead of this function.
+% If you want to download older versions of Psychtoolbox than 3.0.10, e.g.,
+% version 3.0.9, use the DownloadLegacyPsychtoolbox() function instead of
+% this function.
 %
 % On Mac OSX, all parameters are optional. On MS-Windows and GNU/Linux, the
 % first parameter "targetdirectory" with the path to the installation
@@ -145,12 +149,6 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % few users have "administrator" privileges, and many don't. By default,
 % writing to the /Applications folder requires administrator privileges.
 %
-% Thus all OSX installers routinely demand an extra authorization (if
-% needed), asking the user to type in the name and password of an
-% administrator before proceeding. We haven't yet figured out how to do
-% that, but we want to offer that option. This conforms to normal
-% installation of an application under Mac OS X.
-%
 % DownloadPsychtoolbox creates the Psychtoolbox folder with permissions set
 % to allow writing by everyone. Our hope is that this will allow updating
 % (by UpdatePsychtoolbox) without need for administrator privileges.
@@ -275,18 +273,21 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 09/14/12 mk  Drop support for 32-Bit Octave on OSX.
 % 03/10/13 mk  Add additional svn search-pathes matching UpdatePsychtoolbox et al.
 %              Also update download URL for OSX Suversion client.
+% 07/02/13 mk  Drop support for 32-Bit Matlab on OSX, and thereby for 32-Bit OSX.
+% 07/02/13 mk  Reenable write access for all to Psychtoolbox folder.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
 clear mex
 
-% Check if this is 32-Bit Octave on OSX, which we don't support anymore:
-if ~isempty(strfind(computer, 'apple-darwin')) && isempty(strfind(computer, '64'))
-    fprintf('Psychtoolbox 3.0.10 and later does no longer work with 32-Bit GNU/Octave on OSX.\n');
-    fprintf('You need to upgrade to a 64-Bit version of Octave on OSX, which is fully supported.\n');
+% Check if this is 32-Bit Octave or 32-Bit Matlab on OSX, which we don't support anymore:
+if (~isempty(strfind(computer, 'apple-darwin')) || strcmp(computer,'MACI')) && isempty(strfind(computer, '64'))
+    fprintf('Psychtoolbox 3.0.11 and later do no longer work with 32-Bit versions of Octave or Matlab on OSX.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave or Matlab on OSX, which is fully supported.\n');
     fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
-    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX.\n');
-    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX, or use\n');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.10'', which does support 32-Bit Matlab on OSX.\n');
+    error('Tried to setup on 32-Bit Octave or 32-Bit Matlab, which are no longer supported on OSX.');
 end
 
 % Check if this is Octave on Windows, which we don't support at all:
@@ -804,27 +805,27 @@ else
     fprintf('Success.\n\n');
 end
 
-% fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
-%     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
-% try
-%     if IsOSX || IsLinux
-%         [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
-%     else
-%         [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
-%     end
-% catch
-%     s = 0;
-%     m = 'Setting file attributes is not supported under Octave.';
-% end
-% 
-% if s
-%     fprintf('Success.\n\n');
-% else
-%     fprintf('\nFILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
-%     fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
-%     fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
-%     fprintf('The error message of FILEATTRIB was: %s\n\n', m);
-% end
+fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
+    'allow future updates by every user on this machine without requiring administrator privileges.\n']);
+try
+    if IsOSX || IsLinux
+        [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
+    else
+        [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
+    end
+catch
+    s = 0;
+    m = 'Setting file attributes is not supported under Octave.';
+end
+
+if s
+    fprintf('Success.\n\n');
+else
+    fprintf('\nFILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
+    fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
+    fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
+    fprintf('The error message of FILEATTRIB was: %s\n\n', m);
+end
 
 fprintf('You can now use your newly installed ''%s''-flavor Psychtoolbox. Enjoy!\n',flavor);
 fprintf('Whenever you want to upgrade your Psychtoolbox to the latest ''%s'' version, just\n',flavor);
