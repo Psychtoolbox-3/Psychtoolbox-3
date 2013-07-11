@@ -48,18 +48,20 @@ function SetupPsychtoolbox
 %
 % 09/14/12 mk  Drop support for Octave on MS-Windows.
 % 09/14/12 mk  Drop support for 32-Bit Octave on OSX.
+% 07/02/13 mk  Drop support for 32-Bit Matlab on OSX, and thereby for 32-Bit OSX.
 
 % Flush all MEX files: This is needed at least on M$-Windows to
 % work if Screen et al. are still loaded.
 clear mex
 
-% Check if this is 32-Bit Octave on OSX, which we don't support anymore:
-if ~isempty(strfind(computer, 'apple-darwin')) && isempty(strfind(computer, '64'))
-    fprintf('Psychtoolbox 3.0.10 and later does no longer work with 32-Bit GNU/Octave on OSX.\n');
-    fprintf('You need to upgrade to a 64-Bit version of Octave on OSX, which is fully supported.\n');
+% Check if this is 32-Bit Octave or 32-Bit Matlab on OSX, which we don't support anymore:
+if (~isempty(strfind(computer, 'apple-darwin')) || strcmp(computer,'MACI')) && isempty(strfind(computer, '64'))
+    fprintf('Psychtoolbox 3.0.11 and later do no longer work with 32-Bit versions of Octave or Matlab on OSX.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave or Matlab on OSX, which is fully supported.\n');
     fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
-    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX.\n');
-    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX, or use\n');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.10'', which does support 32-Bit Matlab on OSX.\n');
+    error('Tried to setup on 32-Bit Octave or 32-Bit Matlab, which are no longer supported on OSX.');
 end
 
 % Check if this is Octave on Windows, which we don't support at all:

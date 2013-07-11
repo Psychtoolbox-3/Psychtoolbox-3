@@ -38,8 +38,6 @@ function DeinterlacerTest(sf, imgname, method)
 % error, then your hardware is probably not capable of running the
 % deinterlace-shader and you're out of luck.
 %
-% Good luck.
-
 
 AssertOpenGL;
 filter=0;
@@ -50,19 +48,19 @@ escape=KbName('ESCAPE');
 try
     screenid = max(Screen('Screens'));
     [win winrect] = Screen('OpenWindow', screenid, 0);
-
+    
     if nargin<3
         method=1;
     end
-
+    
     if nargin<1
         sf = 1;
     end
-
+    
     if nargin<2
         imgname=[];
     end
-
+    
     % Image filename provided as input?
     if isempty(imgname)
         % Nope. Create synthetic test image:
@@ -72,7 +70,7 @@ try
                 % Even row: Red gradient
                 img(y+1, x, mod(y,2) + 1)=(x-1);
             end
-
+            
             if mod(floor(y/2),2)==0
                 img(y+1, :, mod(y,2) + 1)=255 - img(y+1, :, mod(y,2) + 1);
             end
@@ -81,26 +79,27 @@ try
         % Read image from filesystem:
         img = imread(imgname);
     end
-
+    
     for i=1:3
         teximg(:,:,i)=transpose(img(:,:,i));
     end
     
     % Build corresponding texture:
     tex = Screen('MakeTexture', win, teximg);
-
+    
     dstrect = Screen('Rect', tex);
     dstrect = ScaleRect(dstrect, sf, sf);
     dstrect = CenterRect(dstrect, winrect);
-
+    
     % Show original (interlaced) image:
     Screen('DrawTexture', win, tex, [], dstrect, 90, filter);
     Screen('Flip', win);
-
+    
     % Wait for keypress:
-    KbWait; while KbCheck; end;
-
+    KbStrokeWait;
+    
     % Load deinterlace-shader:
+    deinterlacer = [];
     if method == 1
         % Simple line replication:
         deinterlacer = LoadGLSLProgramFromFiles('EXPDeinterlaceShaderLineDouble',1);
@@ -110,7 +109,7 @@ try
             deinterlacer = LoadGLSLProgramFromFiles('EXPDeinterlaceShaderAvg',1);
         end
     end
-
+    
     if method > 0
         % Bind and initialize it:
         glUseProgram(deinterlacer);
@@ -119,52 +118,42 @@ try
         % Get handle for the field selection parameter:
         useoddfield=glGetUniformLocation(deinterlacer, 'UseOddField');
     end
-
-    glFinish;
-    count = 0;
-    tstart = GetSecs;
-
+    
     % Run until user presses ESCape or for 1000 iterations.
+    count = 0;
     while count < 1000
         % Show the even half-field: Tell deinterlacer we want the even field:
         if method>0
+            glUseProgram(deinterlacer);
             glUniform1f(useoddfield, 0);
         end
-
+        
         % Draw it:
-        Screen('DrawTexture', win, tex, [], dstrect, 90, filter);
+        Screen('DrawTexture', win, tex, [], dstrect, 90, filter, [], [], deinterlacer);
         Screen('Flip', win, 0, 0, 0);
-
+        
         % Wait for keypress:
-        KbWait; while KbCheck; end;
-
+        KbStrokeWait;
+        
         % Show the odd half-field: Tell deinterlacer we want the odd field:
         if method>0
+            glUseProgram(deinterlacer);
             glUniform1f(useoddfield, 1);
         end
-
+        
         % Draw it:
-        Screen('DrawTexture', win, tex, [], dstrect, 90, filter);
+        Screen('DrawTexture', win, tex, [], dstrect, 90, filter, [], [], deinterlacer);
         Screen('Flip', win, 0, 0, 0);
-
+        
         % Wait for keypress:
-        KbWait;
-        [dummy dummy keycode]=KbCheck;
+        [dummy keycode] = KbStrokeWait;
         if keycode(escape)
             break;
         end
-        while KbCheck; end;
-
+        
         count = count + 1;
     end
-    glFinish;
-    telapsed = GetSecs - tstart
-    tavg = telapsed / count / 2 * 1000
-    hz = count / telapsed * 2
-
-    % Done. Disable deinterlacer:
-    glUseProgram(0);
-
+    
     % Shut down:
     Screen('CloseAll');
 catch

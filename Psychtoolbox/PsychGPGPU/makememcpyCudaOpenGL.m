@@ -25,12 +25,12 @@ end
 
 if IsWin(1)
 	% 64-Bit Windows build needs x64 folder instead of Win32 folder:
-	mex -v -g -largeArrayDims memcpyCudaOpenGL.cpp -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I"T:\projects\CUDA\v5.0\include" -LT:\projects\CUDA\v5.0\lib\x64 -lcudart
+	mex -v -largeArrayDims memcpyCudaOpenGL.cpp -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I"T:\projects\CUDA\v5.0\include" -LT:\projects\CUDA\v5.0\lib\x64 -lcudart
 end
 
 if IsWin(0)
 	% 32-Bit Windows build needs Win32 folder:
-	mex -v -g -largeArrayDims memcpyCudaOpenGL.cpp -I"T:\projects\CUDA\v5.0\include" -LT:\projects\CUDA\v5.0\lib\Win32 -lcudart
+	mex -v -largeArrayDims memcpyCudaOpenGL.cpp -I"T:\projects\CUDA\v5.0\include" -LT:\projects\CUDA\v5.0\lib\Win32 -lcudart
 end
 
 delete *.o

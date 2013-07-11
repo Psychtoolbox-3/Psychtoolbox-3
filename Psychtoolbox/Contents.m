@@ -1,5 +1,5 @@
 % Psychtoolbox.
-% Version 3.0.10      1 June 2012
+% Version 3.0.11      3 July 2013
 %
 % The Psychophysics Toolbox is a collection of Octave and Matlab functions
 % that extend the language to give you exquisite control of your
@@ -49,7 +49,6 @@
 % PsychAlpha             - Under development. Experimental, risky, undocumented.
 % PsychAlphaBlending     - OpenGL alpha-channel blending utilities and constants.  
 % PsychBasic             - Basic support routines for psychophysics.
-% PsychBeta              - Under development.  
 % PsychCal               - Calibrate your video monitors.
 % PsychCalDemoData       - Demo calibration data.
 % PsychColorimetric      - Colorimetric calculations.
@@ -74,6 +73,7 @@
 % PsychRadiometric       - Radiometric/photometric calculations and conversions.
 % PsychRects             - Manipulate rectangles for drawing.
 % PsychSignal            - Signal processing and math routines.
+% PsychStairCase         - Adaptive staircase procedure.
 % PsychTests             - Evaluate performance of software and hardware.
 % PsychVideoCapture      - Functions for realtime video capture.
 % Quest                  - Threshold estimation procedure.

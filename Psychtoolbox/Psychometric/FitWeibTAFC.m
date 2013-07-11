@@ -5,7 +5,7 @@ alpha0,beta0)
 %
 % Maximum likelihood fit of a Weibull function to TAFC psychometric data.
 %
-% Requires the optimization toolbox.
+% Requires the optimization toolbox. Doesn't work with Octave yet.
 %
 % INPUTS:
 %   inputs:   Contains the input levels

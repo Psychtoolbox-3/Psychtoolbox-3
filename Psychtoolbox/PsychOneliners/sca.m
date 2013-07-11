@@ -7,8 +7,9 @@ function sca
 %
 
 % History:
-% 4/6/6  Written (MK).
-% 5/31/8 Add CLUT restore call (MK).
+% 4/6/6   Written (MK).
+% 5/31/8  Add CLUT restore call (MK).
+% 7/03/13 Add PsychJavaSwingCleanup call (MK).
 
 % Unhide the cursor if it was hidden:
 ShowCursor;
@@ -26,5 +27,11 @@ Screen('CloseAll');
 
 % Restore (possibly altered) gfx-card gamma tables from backup copies:
 RestoreCluts;
+
+% Call Java cleanup routine to avoid java.lang.outOfMemory exceptions due
+% to the bugs and resource leaks in Matlab's Java based GUI:
+if ~IsOctave && exist('PsychJavaSwingCleanup', 'file')
+    PsychJavaSwingCleanup;
+end
 
 return;

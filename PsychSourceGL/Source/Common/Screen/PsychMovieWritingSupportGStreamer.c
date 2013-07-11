@@ -3,12 +3,8 @@
 
 	PLATFORMS:
 
-		GNU/Linux and MS-Windows with Octave or Matlab R2007a and later for now.
-		Will be supported on OS/X as well in the future.
-
-		This is the movie editing and writing/creation engine based on the
-		GStreamer multimedia framework.
-
+        All.
+ 
 	AUTHORS:
 
 		Mario Kleiner           mk              mario.kleiner@tuebingen.mpg.de
@@ -59,29 +55,33 @@ static PsychMovieWriterRecordType moviewriterRecordBANK[PSYCH_MAX_MOVIEWRITERDEV
 static int moviewritercount = 0;
 static psych_bool firsttime = TRUE;
 
-/* Perform one context loop iteration (for bus message handling) if doWait == false,
- * or two seconds worth of iterations if doWait == true. This drives the message-bus
- * callback, so needs to be performed to get any error reporting etc.
+/* Perform context loop iterations (for bus message handling) if doWait == false,
+ * as long as there is work to do, or at least two seconds worth of iterations
+ * if doWait == true. This drives the message-bus callback, so needs to be
+ * performed to get any error reporting etc.
  */
 static int PsychGSProcessMovieContext(GMainLoop *loop, psych_bool doWait)
 {
-	double tdeadline, tnow;
-	PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
-	tnow = tdeadline;
-	tdeadline+=2.0;
-
-	if (NULL == loop) return(0);
-
-	while (doWait && (tnow < tdeadline)) {
-		// Perform non-blocking work iteration:
-		if (!g_main_context_iteration(g_main_loop_get_context(loop), false)) PsychYieldIntervalSeconds(0.010);
-
-		// Update time:
-		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-	}
-
-	// Perform one more work iteration of the event context, but don't block:
-	return(g_main_context_iteration(g_main_loop_get_context(loop), false));
+    psych_bool workdone;    
+    double tdeadline, tnow;
+    PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
+    tnow = tdeadline;
+    tdeadline+=2.0;
+    
+    if (NULL == loop) return(0);
+    
+    while (doWait && (tnow < tdeadline)) {
+        // Perform non-blocking work iteration:
+        if (!g_main_context_iteration(g_main_loop_get_context(loop), false)) PsychYieldIntervalSeconds(0.010);
+        
+        // Update time:
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+    }
+    
+    // Perform work iterations of the event context as long as events are available, but don't block:
+    while ((workdone = g_main_context_iteration(g_main_loop_get_context(loop), false)) == TRUE);
+    
+    return(workdone);
 }
 
 void PsychMovieWritingInit(void)
@@ -365,9 +365,9 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 
   switch (GST_MESSAGE_TYPE (msg)) {
     case GST_MESSAGE_EOS:
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videobus: Message EOS received.\n");
-	dev->eos = TRUE;
-    break;
+      if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Moviewriter bus: Message EOS received.\n");
+      dev->eos = TRUE;
+      break;
 
     case GST_MESSAGE_WARNING: {
       gchar  *debug;
@@ -687,22 +687,29 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 
 	// Yield another 10 msecs after EOS signalled, just to be safe:
 	PsychYieldIntervalSeconds(0.010);
+	PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
 
 	// Pause the encoding pipeline:
 	if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_PAUSED, 10)) {
 		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to pause movie encoding pipeline at close time!!\n");
 	}
 
+	PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+
 	// Stop the encoding pipeline:
 	if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_READY, 10)) {
 		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to stop movie encoding pipeline at close time!!\n");
 	}
 
+	PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    
 	// Shutdown and release encoding pipeline:
 	if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_NULL, 10)) {
 		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to shutdown movie encoding pipeline at close time!!\n");
 	}
 
+	PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    
 	gst_object_unref(GST_OBJECT(pwriterRec->Movie));
 	pwriterRec->Movie = NULL;
 
@@ -715,9 +722,6 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 	// Delete video context:
 	if (pwriterRec->Context) g_main_loop_unref(pwriterRec->Context);
 	pwriterRec->Context = NULL;
-
-	// gst_object_unref(GST_OBJECT(pwriterRec->filesink));
-	// pwriterRec->filesink = NULL;
 
 	// Decrement count of active writers:
 	moviewritercount--;

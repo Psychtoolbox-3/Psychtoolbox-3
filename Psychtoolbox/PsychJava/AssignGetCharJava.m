@@ -20,7 +20,8 @@ function gcobject = AssignGetCharJava
 % 4.10.2006 Written (MK).
 % 26.05.2011 Add automatic invocation of PsychJavaTrouble() as the most
 %            likely temporary fix for problems (MK).
-%
+% 03.07.2013 Drop Java 1.4.2-9 support for pre 10.4 OSX, pre R2007a.
+%            Also some code cleanup (MK).
 
 % Try to instantiate different versions of GetCharJava.class, starting with
 % the one built against the most recent Java version, descending on failure:
@@ -30,17 +31,7 @@ try
     gcobject = GetCharJava_1_5_0;
     psychlasterror('reset');
     return;
-catch
-    % No op. Just fall through to next case.
-end
-
-psychlasterror('reset');
-try
-    % Java version 1.4.2 -- MacOS-X 10.3.9 and M$-Windows Matlab 7.0.x
-    gcobject = GetCharJava_1_4_2_09;
-    psychlasterror('reset');
-    return;
-catch
+catch %#ok<*CTCH>
     % No op. Just fall through to next case.
 end
 
@@ -91,11 +82,7 @@ fprintf('This may or may not work...\n');
 fprintf('Compile command is: %s\n', compilecmd);
 
 % Invoke compiler, if any:
-if IsWin
-    rc = dos(compilecmd);
-else
-    rc = system(compilecmd);
-end
+system(compilecmd);
 
 % Clear out java cache.
 psychlasterror('reset');
@@ -109,7 +96,7 @@ psychlasterror('reset');
 % Retry binding:
 try
     % GetCharJava built from source on this machine via javac compiler.
-    gcobject = GetCharJava;
+    gcobject = GetCharJava; %#ok<NASGU>
 catch
     % Failed again. We are out of luck.
     fprintf('Failed to built customized GetCharJava! This may be due to lack of\n');

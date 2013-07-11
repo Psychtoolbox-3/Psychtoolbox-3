@@ -940,14 +940,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (windowLevel != -1) waffle_window_show(window);
 
     if (useX11) {
-        // Spin-Wait for it to be really mapped:
-        while (windowLevel != -1) {
-            XEvent ev;
-            XNextEvent(dpy, &ev);
-            if (ev.type == MapNotify) break;
-            PsychYieldIntervalSeconds(0.001);
-        }
-    
         XSync(dpy, False);
 
         // If windowLevel is zero, lower it to the bottom of the stack of windows:

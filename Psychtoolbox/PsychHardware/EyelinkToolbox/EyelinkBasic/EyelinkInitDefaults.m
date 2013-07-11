@@ -77,6 +77,7 @@ el.targetdisplaysound='EyelinkTargetBeep';
 el.calibrationfailedsound='EyelinkErrorBeep';
 el.calibrationsuccesssound='EyelinkSuccessBeep';
 el.targetbeep=1;  % sound a beep when a target is presented
+el.feedbackbeep=1;  % sound a beep after calibration/drift correction
 
 % define beep sounds (frequency, volume, duration);
 el.cal_target_beep=[1250 0.6 0.05];

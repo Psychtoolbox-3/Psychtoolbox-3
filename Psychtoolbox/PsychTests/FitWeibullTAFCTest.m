@@ -33,4 +33,3 @@ hold on
 plot(pInputs,predict,'r');
 plot(pInputs,predict2,'g');
 hold off
-

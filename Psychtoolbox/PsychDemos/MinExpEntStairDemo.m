@@ -1,3 +1,11 @@
+% The demo and MinExpEntStair use nested functions internally, something
+% not supported by Octave, so this is a no-go unless somebody rewrites this
+% stuff:
+if IsOctave
+    fprintf('Sorry, this demo does not yet work on GNU/Octave, neither does the MinExpEntStair function used.\n');
+    return;
+end
+
 close all; clear all
 
 % stair input

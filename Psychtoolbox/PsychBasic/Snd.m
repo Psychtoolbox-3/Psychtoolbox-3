@@ -26,9 +26,10 @@ function err = Snd(command,signal,rate,sampleSize)
 % implementations of Matlab. There are many bugs, latency- and timing
 % problems associated with the use of Snd.
 %
-% GNU/OCTAVE: You must install the optional "audio" package from
-% Octave-Forge, as of Octave 3.0.5, otherwise the required sound() function
-% won't be available and this function will fail!
+% GNU/OCTAVE: If you don't use the PsychPortAudio based Snd() functin, then
+% you must install the optional octave "audio" package from Octave-Forge,
+% as of Octave 3.0.5, otherwise the required sound() function won't be
+% available and this function will fail!
 %
 %
 % Supported functions:
@@ -37,10 +38,12 @@ function err = Snd(command,signal,rate,sampleSize)
 % Snd('Play', signal [, rate][, sampleSize]) plays a sound.
 %
 % rate=Snd('DefaultRate') returns the default sampling rate in Hz, which
-% currently is 22254.5454545454 Hz on all platforms. This default may
-% change in the future, so please either specify a rate, or use this
-% function to get the default rate. (This default is suboptimal on any
-% system except MacOS-9, but kept for backwards compatibility!)
+% currently is 22254.5454545454 Hz on all platforms for the old style sound
+% implementation, and the default device sampling rate if PsychPortAudio is
+% used. This default may change in the future, so please either specify a
+% rate, or use this function to get the default rate. (This default is
+% suboptimal on any system except MacOS-9, but kept for backwards
+% compatibility!)
 %
 % The optional 'sampleSize' argument used with Snd('Play') is only retained
 % for backwards compatibility and has no meaning, unless you opt in to use
@@ -53,17 +56,15 @@ function err = Snd(command,signal,rate,sampleSize)
 % already open. In reality 'Open' does nothing in the current
 % implementation and is silently ignored .
 %
-% Snd('Close') immediately stops all sound and closes the channel. (This
-% happens automatically whenever Snd.mex is flushed, e.g. by "CLEAR Snd"
-% or "CLEAR MEX".)
+% Snd('Close') immediately stops all sound and closes the channel.
 %
-% Snd('Wait') waits until all the sounds in the channel play through.
+% Snd('Wait') waits until the sound is done playing.
 %
-% isPlaying=Snd('IsPlaying') returns true (number of sounds in channel) if
-% any sound is playing, and false (0) otherwise.
+% isPlaying=Snd('IsPlaying') returns true if any sound is playing, and
+% false (0) otherwise.
 %
-% Snd('Quiet') stops the sound currently playing and flushes the queue,
-% but leaves the channel open.
+% Snd('Quiet') stops the sound currently playing and flushes the queue, but
+% leaves the channel open.
 %
 % "signal" must be a numeric array of samples.
 %
@@ -282,6 +283,9 @@ if streq(command,'Play')
             
             if ~IsOSX
                 fprintf('Snd(): PsychPortAudio will be blocked for use by your own code until you call Snd(''Close'');\n');
+                fprintf('Snd(): If you want to use PsychPortAudio and Snd in the same session, make sure to open your\n');
+                fprintf('Snd(): stimulation sound device via calls to PsychPortAudio(''Open'', ...); *before* the first\n');
+                fprintf('Snd(): call to Snd() or any function that might use Snd(), e.g., Beeper() and the Eyelink functions.\n\n');
             end
         end
 

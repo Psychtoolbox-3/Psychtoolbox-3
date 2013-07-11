@@ -42,6 +42,7 @@ function [cal, cals, fullFilename] = LoadCalFile(filespec, whichCal, dir)
 % 8/15/00  dhb  Modify to handle local/demo cal directories.
 % 4/2/13   dhb  Updated for subdir searching logic.
 % 6/2/13   dhb  More robust about whether passed filespec contains the trailing '.mat'.
+% 7/3/13   dhb  Fix buglet for check on trailing .mat when length of filename less than 4 chars.
 
 % Get whichCal
 if nargin < 2 || isempty(whichCal)
@@ -52,7 +53,7 @@ end
 if (nargin < 1 || isempty(filespec))
 	filename = ['default.mat'];
 elseif (ischar(filespec))
-    if (~strcmp(filespec(end-3:end),'.mat'))
+    if (length(filespec) < 4 || ~strcmp(filespec(end-3:end),'.mat'))
         filename = [filespec '.mat'];
     else
         filename = filespec;

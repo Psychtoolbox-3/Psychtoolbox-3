@@ -986,6 +986,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 15.04.2013  Add support for 'UseGPGPUCompute', currently via GPUmat. (MK)
 %
+% 03.07.2013  Call PsychJavaSwingCleanup via onscreen window close hook. (MK)
+%
 
 persistent configphase_active;
 persistent reqs;
@@ -1571,6 +1573,15 @@ if strcmp(cmd, 'OpenWindow')
         % output flag, so Screen('OpenWindow') initializes the internal blit
         % chain properly:
         Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], [], [], kPsychNeedDualWindowOutput);
+    end
+    
+    % Matlab? Does the Java swing cleanup function exist?
+    if ~IsOctave && exist('PsychJavaSwingCleanup', 'file')
+        % Attach a window close callback for cleanup of Java's memory
+        % management mess at window close time when Matlab with Java based
+        % GUI is in use:
+        Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychJavaSwingCleanup().', 'PsychJavaSwingCleanup;');
+        Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
     end
 
     % Perform double-flip, so both back- and frontbuffer get initialized to
