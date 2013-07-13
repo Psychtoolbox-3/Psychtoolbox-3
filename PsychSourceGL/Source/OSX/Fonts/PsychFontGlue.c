@@ -174,6 +174,7 @@ void PsychInitFontList(void)
     OSStatus			localOK;
     LocaleRef			locale;
 	psych_bool			trouble = FALSE;
+	psych_bool			reportTrouble = TRUE;
 
     fontListHead=PsychFontListHeadKeeper(FALSE, NULL); //get the font list head.
     if(fontListHead) PsychErrorExitMsg(PsychError_internal, "Attempt to set new font list head when one is already set.");
@@ -184,15 +185,25 @@ void PsychInitFontList(void)
     i = 0;
 	
     while (halt==noErr) {
-        // Give repair hints early and obnoxiously. Experience shows we might crash during enumeration of a
+        // Give repair hints early. Experience shows we might crash during enumeration of a
         // corrupt OSX font database, so make sure we get out the helpful message as early as possible. Doing
         // this (just) at the end of enumeration might be too late - we might never get there...
-        if (trouble && PsychPrefStateGet_Verbosity() > 0) {
-            printf("\nPTB-HINT: ========================================================================================================================\n");
+        // However, allow user to suppress the hint, as this happens quite regularly on 32-Bit OSX:
+        if (reportTrouble && trouble && PsychPrefStateGet_Verbosity() > 2) {
+            reportTrouble = FALSE; // Only show this hint once, not for every invalid font.
+            printf("\nPTB-HINT: =============================================================================================================================\n");
+            printf("PTB-HINT: At least one font on this system has issues and can not be accessed by Psychtoolbox. If you want to know which font(s) make\n");
+            printf("PTB-HINT: trouble, do a 'clear all' and rerun your script with Screen()'s verbosity level set to at least 4 for more diagnostic output.\n");
+#ifndef __LP64__
+            printf("PTB-HINT: On 32-Bit Matlab under OSX it is quite normal that a few fonts can't be enumerated and used properly and there is no known\n");
+            printf("PTB-HINT: way to fix this, so the following tips will not help you to resolve this issues, but upgrading to 64-Bit Psychtoolbox helps.\n");
+#endif
+            printf("PTB-HINT: The following tips may help you to resolve font issues:\n");
             printf("PTB-HINT: Go to the Application folder and open the 'Font Book' application. It allows you to check and repair your font database.\n");
             printf("PTB-HINT: Run its 'Validate' function on all installed fonts. Another thing you could try is downloading and running the free\n");
             printf("PTB-HINT: FontNuke application (Google will find it for you) to regenerate corrupt OSX font caches. Good luck!\n");
-            printf("PTB-HINT: ========================================================================================================================\n\n");
+            printf("PTB-HINT: You can suppress this hint by choosing a verbosity level for Screen() of 2 or lower.\n");
+            printf("PTB-HINT: =============================================================================================================================\n\n");
         }
 
         halt=ATSFontIteratorNext(fontIterator, &tempATSFontRef);
@@ -234,7 +245,7 @@ void PsychInitFontList(void)
                 resultOK = cfFamilyName && CFStringGetCString(cfFamilyName, (char*) fontRecord->fontFMFamilyName, 255, kCFStringEncodingASCII);
                 if(!resultOK){
                     if (cfFamilyName) CFRelease(cfFamilyName);
-                    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to retrieve font family name for font... Defective font?!? Skipped this entry...\n");
+                    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to retrieve font family name for font... Defective font?!? Skipped this entry...\n");
                     trouble = TRUE;
                     continue;
                 }
@@ -244,7 +255,7 @@ void PsychInitFontList(void)
                 CFRelease(cfFamilyName);
             }
             else {
-                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to retrieve CTFontRef for font... Defective font?!? Skipped this entry...\n");
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to retrieve CTFontRef for font... Defective font?!? Skipped this entry...\n");
                 trouble = TRUE;
                 continue;
             }
@@ -252,7 +263,7 @@ void PsychInitFontList(void)
 
             //get the font name and set the the corresponding field of the struct
             if (ATSFontGetName(fontRecord->fontATSRef, kATSOptionFlagsDefault, &cfFontName)!=noErr) {
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to query font name in ATSFontGetName! OS-X font handling screwed up?!? Skipped this entry...\n");
+				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to query font name in ATSFontGetName! OS-X font handling screwed up?!? Skipped this entry...\n");
 				trouble = TRUE;
 				continue;
             }
@@ -260,7 +271,7 @@ void PsychInitFontList(void)
             resultOK = cfFontName && CFStringGetCString(cfFontName, (char*) fontRecord->fontFMName, 255, kCFStringEncodingASCII);
             if(!resultOK){
                 if (cfFontName) CFRelease(cfFontName);
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to convert fontFMName CF string to char string. Defective font?!? Skipped this entry...\n");
+				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to convert fontFMName CF string to char string. Defective font?!? Skipped this entry...\n");
 				trouble = TRUE;
 				continue;
             }
@@ -268,7 +279,7 @@ void PsychInitFontList(void)
 
             //get the font postscript name and set the corresponding field of the struct
             if (ATSFontGetPostScriptName(fontRecord->fontATSRef, kATSOptionFlagsDefault, &cfFontName)!=noErr) {
-                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: The following font makes trouble: %s. Please REMOVE the offending font file from your font folders and restart Matlab. Skipped entry for now...\n", fontRecord->fontFMName);
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: The following font makes trouble: %s. Please REMOVE the offending font file from your font folders and restart Matlab. Skipped entry for now...\n", fontRecord->fontFMName);
 				trouble = TRUE;
 				continue;
             }
@@ -276,7 +287,7 @@ void PsychInitFontList(void)
             resultOK = cfFontName && CFStringGetCString(cfFontName, (char*) fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII); //kCFStringEncodingASCII matches MATLAB for 0-127
             if(!resultOK){
                 if (cfFontName) CFRelease(cfFontName);
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to convert fontPostScriptName CF string to char string for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
+				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to convert fontPostScriptName CF string to char string for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
 				continue;
             }
@@ -297,7 +308,7 @@ void PsychInitFontList(void)
             // Get the font file used for this font
             osStatus = ATSFontGetFileSpecification(fontRecord->fontATSRef, &fontFileSpec);
             if(osStatus != noErr) {
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the font file specifier for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
+				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to get the font file specifier for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
 				continue;
 			}
@@ -307,7 +318,7 @@ void PsychInitFontList(void)
             // 64-Bit version, available since OSX 10.5:
             osStatus = ATSFontGetFileReference(fontRecord->fontATSRef, &fontFileRef);
             if(osStatus != noErr) {
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the font file specifier for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
+				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to get the font file specifier for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
 				continue;
 			}
@@ -315,7 +326,7 @@ void PsychInitFontList(void)
 
             osStatus= FSRefMakePath(&fontFileRef, (UInt8*) fontRecord->fontFile, (UInt32)(kPsychMaxFontFileNameChars - 1));
             if(osStatus!=noErr){
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the font file path for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
+				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to get the font file path for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
 				continue;
             }
@@ -361,7 +372,9 @@ void PsychInitFontList(void)
             #ifndef __LP64__
             fmStatus=FMGetFontFamilyName(fontRecord->fontFamilyFMRef, fmFontFamilyNamePString);
             if(fmStatus!=noErr){
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the fontFMFamilyName for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
+                // Sadly, this failure is now expected behaviour for a few fonts under 32-Bit runtime when used on modern OSX versions, e.g., 10.5 and later,
+                // see forum message #16109 for the symptoms:
+				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to get the fontFMFamilyName for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
 				continue;
             }
@@ -410,7 +423,7 @@ void PsychInitFontList(void)
 	
     if (fontIterator) ATSFontIteratorRelease(&fontIterator);
     
-    if(halt != kATSIterationCompleted){
+    if (halt != kATSIterationCompleted) {
         PsychFreeFontList();
         trouble = TRUE;
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Font iteration during enumeration terminated prematurely. OS-X Font database corrupted?!?");
@@ -426,12 +439,22 @@ void PsychInitFontList(void)
 		}
 	}
 	
-	if (trouble && PsychPrefStateGet_Verbosity() > 0) {
-		printf("PTB-HINT: ========================================================================================================================\n");
+    // If there was some trouble and it wasn't reported yet, then report it now at the end if either
+    // verbosity level is at least 3 (our default level), or if the error was especially serious and
+    // lead to a premature abortion of font iteration or complete failure to find even a single valid
+    // font. In the latter cases, we must report the trouble, regardless of verbosity level. In the
+    // former case, probably only a few fonts had trouble, so we allow the user to suppress such messages
+    // by lowering the verbosity to warning level or lower:
+	if (reportTrouble && trouble && ((PsychPrefStateGet_Verbosity() > 2) || (halt != kATSIterationCompleted) || (i == 0))) {
+		printf("PTB-HINT: =============================================================================================================================\n");
+        printf("PTB-HINT: At least one font on this system has issues and can not be accessed by Psychtoolbox. If you want to know which font(s) make\n");
+        printf("PTB-HINT: trouble, do a 'clear all' and rerun your script with Screen()'s verbosity level set to at least 4 for more diagnostic output.\n");
+        printf("PTB-HINT: The following tips may help you to resolve font issues:\n");
 		printf("PTB-HINT: Go to the Application folder and open the 'Font Book' application. It allows you to check and repair your font database.\n");
         printf("PTB-HINT: Run its 'Validate' function on all installed fonts. Another thing you could try is downloading and running the free\n");
         printf("PTB-HINT: FontNuke application (Google will find it for you) to regenerate corrupt OSX font caches. Good luck!\n");
-		printf("PTB-HINT: ========================================================================================================================\n");
+        printf("PTB-HINT: In case of non-fatal errors, you can suppress this hint by choosing a verbosity level for Screen() of 2 or lower.\n");
+		printf("PTB-HINT: =============================================================================================================================\n");
 	} 
 
     // Font database ready for use.
