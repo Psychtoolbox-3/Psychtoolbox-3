@@ -182,23 +182,6 @@ if isempty(inputNames) || ismember(computer, inputNames)
             else
                 fprintf('vcredist_x86.exe\n');
             end
-            %fprintf('Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
-            %fprintf('fix this problem. Make sure you follow the download link to Visual Studio SERVICE PACK 1,\n');
-            %fprintf('(the latter links), *not* Visual Studio without the SP1.\n\nAfter fixing the problem, retry.\n\n');
-            
-            if IsWin(1)
-                % 64 bit Matlab running on 64 bit Windows?!? That won't work.
-                fprintf('And another possible reason for failure:\n\n');
-                fprintf('It seems that you are running a 64-bit version of Matlab on your system.\n');
-                fprintf('That won''t work at all! Psychtoolbox currently only supports 32-bit versions\n');
-                fprintf('of Matlab.\n');
-                fprintf('You can try to exit Matlab and then restart it in 32-bit emulation mode to\n');
-                fprintf('make Psychtoolbox work on your 64 bit Windows. You do this by adding the\n');
-                fprintf('startup option -win32 to the matlab.exe start command, ie.\n');
-                fprintf('matlab.exe -win32\n');
-                fprintf('If you do not know how to do this, consult the Matlab help about startup\n');
-                fprintf('options for Windows.\n\n');
-            end
         end
     end
     error('Missing or dysfunctional Psychtoolbox Mex file for this operating system. Read the help text above carefully!!');

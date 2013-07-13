@@ -10,6 +10,7 @@ function svnInfo = GetSVNInfo(directoryOrFile)
 %
 % Output:
 % svnInfo (struct) - Structure containing the following information:
+%   Path
 %	URL
 %	RepositoryRoot
 %	RepositoryUUID
@@ -37,9 +38,8 @@ end
 
 % Get the svn info of the specified directory or file.
 [status, result] = system(sprintf('%s info "%s"', svnPath, directoryOrFile));
-
 if status ~= 0
-	error('GetSVNInfo: "svn info" failed to run.');
+	return;
 end
 
 if ~isempty(strmatch(result, 'Not a versioned resource'))
