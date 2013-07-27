@@ -1,8 +1,7 @@
 % DrawHighQualityUnicodeTextDemo
 %
 % This demo shows how to draw high-quality, anti-aliased text, and some
-% japanese text encoded in Unicode on Apple MacOS/X and Microsoft Windows.
-% GNU/Linux is not yet supported for anti-aliased and unicode text rendering.
+% japanese text encoded in Unicode.
 %
 % MacOS/X has text fonts with support for japanese characters preinstalled,
 % so this should just work out of the box. Have a look at the code of the
@@ -25,6 +24,23 @@
 % After that, text drawing seems to "just work" with our "Courier New"
 % font. If you don't install the font pack, you'll just see funny little
 % squares instead of nice japanese characters...
+%
+% On MacOS/X you have the choice between three different text
+% rendering/layouting methods, as selectable by the Screen preference
+% setting 'TextRenderer': The default is 1, which selects Apple's ATSU text
+% renderer. A setting of 0 would also select ATSU but would use a different
+% method for layout of text. Each method has its own weaknesses in that it
+% will have trouble drawing text in some special fonts correctly, so you
+% may have to choose the method based on the font to get best results.
+% Typical standard fonts are handled correctly by both methods. A setting
+% of 2 will use the Linux text rendering plugin (see "help DrawTextPlugin")
+% which in our experience handles all fonts well and is of superior
+% performance to the OSX ATSU renderer. However, given that historically
+% ATSU was used on OSX for many years and each layout and rendering method
+% will give slightly different text appearance, for reason of consistency
+% we leave the default setting for OSX on 1, instead of using the superior
+% setting 2.
+%
 
 % 11/26/07  mk      Wrote it. Derived from Allens DrawSomeTextDemo.
 

@@ -174,7 +174,8 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     OSStatus		callError;
     ATSUStyle		atsuStyle;
     ATSUTextLayout	textLayout;
-    Rect			textBoundsQRect;
+    Rect			atsuRect;
+    ATSUTextMeasurement mleft, mright, mtop, mbottom;
     double			textBoundsPRect[4], textBoundsPRectOrigin[4], textureRect[4];
     double			textureWidth, textureHeight, textHeight, textWidth, textureTextFractionY, textureTextFractionXLeft,textureTextFractionXRight, textHeightToBaseline;
     double			quadLeft, quadRight, quadTop, quadBottom;
@@ -216,7 +217,6 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 		// baseline of text, i.e. the textheight excluding descenders of letters.
 
 		// Need to compute offset via ATSU:
-		ATSUTextMeasurement mleft, mright, mtop, mbottom;
         callError=ATSUGetUnjustifiedBounds(textLayout, kATSUFromTextBeginning, kATSUToTextEnd, &mleft, &mright, &mbottom, &mtop);
 		if (callError) {
 			PsychErrorExitMsg(PsychError_internal, "Failed to compute unjustified text height to baseline in call to ATSUGetUnjustifiedBounds().\n");    
@@ -233,26 +233,55 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 		textHeightToBaseline = 0;
 	}
 
-    // Get the bounds for our text and create a texture of sufficient size to contain it. 
-    ATSTrapezoid trapezoid;
-    ItemCount oActualNumberOfBounds = 0;
-    callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 0, NULL, &oActualNumberOfBounds);
-    if (callError || oActualNumberOfBounds!=1) {
-        PsychErrorExitMsg(PsychError_internal, "Failed to compute bounding box in call 1 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
+    // Both text renderer 0 and 1 select the OSX ATSU text renderer, but different settings select
+    // a different bounding box computation strategy here: 1 == Classic, 0 = New-Style.
+    if (PsychPrefStateGet_TextRenderer() == 0) {
+        // New-Style method: Use the deprecated function ATSUMeasureTextImage(), which should not even be
+        // available on 64-Bit builds, but mysteriously is, at least when building against 10.6 SDK on 10.7.5
+        // with macosx-min-version=10.5 set (haven't tested any other build settings yet, so this may not be exclusive).
+        // This function is supposed to compute the text bounding box post final layout and also handles unusual fonts,
+        // e.g., "Kuenstler Script LT", much better than the old-style method:
+        callError = ATSUMeasureTextImage(textLayout, kATSUFromTextBeginning, kATSUToTextEnd, 0, 0, &atsuRect);
+        if (callError) PsychErrorExitMsg(PsychError_internal, "Failed to compute text bounding box via ATSUMeasureTextImage()");
+        
+        // Extend bounding box in each direction by one pixel to account for inclusive borders:
+        textBoundsPRect[kPsychLeft]   = atsuRect.left - 1;
+        textBoundsPRect[kPsychRight]  = atsuRect.right + 1;
+        textBoundsPRect[kPsychTop]    = atsuRect.top - 1;
+        textBoundsPRect[kPsychBottom] = atsuRect.bottom + 1;
     }
-	
-    callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 1, &trapezoid, &oActualNumberOfBounds);
-    if (callError || oActualNumberOfBounds!=1) {
-        PsychErrorExitMsg(PsychError_internal, "Failed to retrieve bounding box in call 2 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
+    else {
+        // Old-Style method:
+        // Get the bounds for our text and create a texture of sufficient size to contain it. 
+        ATSTrapezoid trapezoid;
+        ItemCount oActualNumberOfBounds = 0;
+        callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 0, NULL, &oActualNumberOfBounds);
+        if (callError || oActualNumberOfBounds!=1) {
+            PsychErrorExitMsg(PsychError_internal, "Failed to compute bounding box in call 1 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
+        }
+        
+        callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 1, &trapezoid, &oActualNumberOfBounds);
+        if (callError || oActualNumberOfBounds!=1) {
+            PsychErrorExitMsg(PsychError_internal, "Failed to retrieve bounding box in call 2 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
+        }
+        
+        textBoundsPRect[kPsychLeft]=(Fix2X(trapezoid.upperLeft.x) < Fix2X(trapezoid.lowerLeft.x)) ? Fix2X(trapezoid.upperLeft.x) : Fix2X(trapezoid.lowerLeft.x);
+        textBoundsPRect[kPsychRight]=(Fix2X(trapezoid.upperRight.x) > Fix2X(trapezoid.lowerRight.x)) ? Fix2X(trapezoid.upperRight.x) : Fix2X(trapezoid.lowerRight.x);
+        textBoundsPRect[kPsychTop]=(Fix2X(trapezoid.upperLeft.y) < Fix2X(trapezoid.upperRight.y)) ? Fix2X(trapezoid.upperLeft.y) : Fix2X(trapezoid.upperRight.y);
+        textBoundsPRect[kPsychBottom]=(Fix2X(trapezoid.lowerLeft.y) > Fix2X(trapezoid.lowerRight.y)) ? Fix2X(trapezoid.lowerLeft.y) : Fix2X(trapezoid.lowerRight.y);
     }
-    
-    textBoundsPRect[kPsychLeft]=(Fix2X(trapezoid.upperLeft.x) < Fix2X(trapezoid.lowerLeft.x)) ? Fix2X(trapezoid.upperLeft.x) : Fix2X(trapezoid.lowerLeft.x);
-    textBoundsPRect[kPsychRight]=(Fix2X(trapezoid.upperRight.x) > Fix2X(trapezoid.lowerRight.x)) ? Fix2X(trapezoid.upperRight.x) : Fix2X(trapezoid.lowerRight.x);
-    textBoundsPRect[kPsychTop]=(Fix2X(trapezoid.upperLeft.y) < Fix2X(trapezoid.upperRight.y)) ? Fix2X(trapezoid.upperLeft.y) : Fix2X(trapezoid.upperRight.y);
-    textBoundsPRect[kPsychBottom]=(Fix2X(trapezoid.lowerLeft.y) > Fix2X(trapezoid.lowerRight.y)) ? Fix2X(trapezoid.lowerLeft.y) : Fix2X(trapezoid.lowerRight.y);
-    
-    // printf("Top %lf x Bottom %lf :: ",textBoundsPRect[kPsychTop], textBoundsPRect[kPsychBottom]); 
+
+    // printf("Top %lf x Bottom %lf :: ",textBoundsPRect[kPsychTop], textBoundsPRect[kPsychBottom]);
     PsychNormalizeRect(textBoundsPRect, textBoundsPRectOrigin);
+
+    // printf("N: Top %lf x Bottom %lf :: ",textBoundsPRectOrigin[kPsychTop], textBoundsPRectOrigin[kPsychBottom]);
+	// Denis found an off-by-one bug in the text width. Don't know where it should come from in our code, but
+	// my "solution" is to simply extend the width by one:
+    textWidth  = PsychGetWidthFromRect(textBoundsPRectOrigin) + 1.0;
+    textHeight = PsychGetHeightFromRect(textBoundsPRectOrigin);
+
+    // Adjust for differences in text height for new-style text bounding box and offset computation:
+    if (yPositionIsBaseline && (PsychPrefStateGet_TextRenderer() == 0)) textHeightToBaseline = textHeight - fabs(Fix2X(mtop));
 
 	// Only text boundingbox in absolute coordinates requested?
 	if (boundingbox) {
@@ -270,12 +299,6 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 		return(PsychError_none);
 	}
 
-    // printf("N: Top %lf x Bottom %lf :: ",textBoundsPRectOrigin[kPsychTop], textBoundsPRectOrigin[kPsychBottom]);
-	// Denis found an off-by-one bug in the text width. Don't know where it should come from in our code, but
-	// my "solution" is to simply extend the width by one: 
-    textWidth=PsychGetWidthFromRect(textBoundsPRectOrigin) + 1.0;
-    textHeight=PsychGetHeightFromRect(textBoundsPRectOrigin);
-	
 	// Clamp maximum size of text bitmap to maximum supported texture size of GPU:
 	if (textWidth > winRec->maxTextureSize) textWidth = winRec->maxTextureSize;
 	if (textHeight > winRec->maxTextureSize) textHeight = winRec->maxTextureSize;

@@ -113,6 +113,7 @@ PsychError EyelinkCurrentMode(void);
 PsychError EyelinkImageModeDisplay(void);
 PsychError EyelinkInitialize(void);
 PsychError EyelinkIsConnected(void);
+PsychError EyelinkSetAddress(void);
 PsychError EyelinkNewestFloatSample(void);
 PsychError EyelinkSendKeyButton(void);
 PsychError EyelinkShutdown(void);

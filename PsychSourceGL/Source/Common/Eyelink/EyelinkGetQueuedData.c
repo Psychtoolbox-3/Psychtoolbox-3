@@ -93,8 +93,7 @@ static char synopsisString[] =
 "More info:\n"
 "\t   HMARKER (originally for Eyelink2's infrared head tracking markers) and INPUT (originally for the TTL lines) are jury-rigged to hold the extra data.\n"
 "\t   You can also set file_sample_data to collect raw samples in the .edf file.\n"
-"CAUTION: Raw fields are not supported on Linux. It may or may not work on your setup with your tracker. Currently it doesn't work on Linux at least.\n\n"
-
+"CAUTION: It may or may not work on your setup with your tracker.\n\n"
 " event rows are as follows: \n"
 "\t 1: effective time of event\n"
 "\t 2: event type\n"
@@ -181,7 +180,6 @@ PsychError EyelinkGetQueuedData(void)
 	if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: boilerplate done\n");
 	
 	if (PsychCopyInIntegerArg(1, kPsychArgOptional, &eye)) {
-#if PSYCH_SYSTEM != PSYCH_LINUX
 		if (eye!=LEFT_EYE && eye!=RIGHT_EYE) {
 			PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "EyeLink: GetQueuedData:  eye argument must be LEFT_EYE or RIGHT_EYE as returned by EyelinkInitDefaults\n");
 		}
@@ -190,9 +188,6 @@ PsychError EyelinkGetQueuedData(void)
 		
 		useEye=TRUE;
 		numSampleFields=NUM_SAMPLE_FIELDS+NUM_RAW_SAMPLE_FIELDS;
-#else
-		PsychErrorExitMsg(PsychError_unimplemented, "EyeLink: GetQueuedData:  Sorry, collecting raw values is not supported on Linux (do not supply an eye argument).");
-#endif
 	} else {
 		numSampleFields=NUM_SAMPLE_FIELDS;
 		useEye=FALSE;

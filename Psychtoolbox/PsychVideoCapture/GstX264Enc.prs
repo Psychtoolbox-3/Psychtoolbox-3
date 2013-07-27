@@ -4,6 +4,9 @@ element-name=GstX264Enc
 
 [ptb3_videorecording_presets_video]
 speed-preset=1
+bframes=0
+cabac=false
+dct8x8=false
 
 [Profile Baseline]
 _meta/comment=Baseline Profile
