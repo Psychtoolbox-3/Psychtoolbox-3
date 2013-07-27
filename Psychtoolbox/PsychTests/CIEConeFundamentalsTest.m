@@ -13,6 +13,26 @@
 % if one uses the nomogram and recommended lambda-max values to
 % generate the absorbances.  See comment on this point in StockmanSharpeNomogram.m
 %
+% % NOTE, DHB, 7/19/13. This test program and its associated code
+% should be better integrated with the older code that
+% builds up cone sensitivities from parts and scales them for
+% computation of isomerization rates. See also
+%    IsomerizationsInDishDemo
+%    IsomerizationsInEyeDemo
+%    ComputeCIEConeFundamentals
+%    ComputeRawConeFundamentals
+%    DefaultPhotoreceptors
+%    FillInPhotoreceptors
+%    PrintPhotoreceptors
+%    RetIrradianceToIsoRecSec
+% In particular, there should be some default for the 
+% photoreceptors structure that gives one the CIE cone
+% fundamentals in all their parametric glory, plus additional
+% parameters that yield real energy/quantal sensitivites so
+% that the resulting coordinates are isomerization rates in
+% real units.  I think that we're close to having that, but
+% better documentation and tidying is needed.
+%
 % 8/11/11  dhb  Wrote it
 % 8/14/11  dhb  Clean up a little.
 % 12/16/12 dhb  Added test for rods.

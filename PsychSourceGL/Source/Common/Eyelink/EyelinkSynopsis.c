@@ -49,7 +49,8 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n% Initialize or shutdown Eyelink connection:";
 	synopsis[i++] = "[status =] Eyelink('Initialize' [, displayCallbackFunction])";
 	synopsis[i++] = "[status =] Eyelink('InitializeDummy' [, displayCallbackFunction])";
-	synopsis[i++] = "status = Eyelink('IsConnected')";
+	synopsis[i++] = "[status =] Eyelink('IsConnected')";
+	synopsis[i++] = "[status =] Eyelink('SetAddress', ipaddress);";
 	synopsis[i++] = "Eyelink('Shutdown')";
 	synopsis[i++] = "oldlevel = Eyelink('Verbosity' [,level]);";
 	synopsis[i++] = "Eyelink('TestSuite')";

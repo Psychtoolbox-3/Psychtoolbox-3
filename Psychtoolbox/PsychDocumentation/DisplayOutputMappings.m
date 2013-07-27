@@ -71,17 +71,40 @@
 %    monitors per Psychtoolbox screen.
 %
 % 4. If you have a multi-GPU setup, ie., multiple graphics cards installed
-%    and active at the same time, then Screen() low-level functions may
-%    not work. More precisely, they will not work at all on MS-Windows or
-%    Apple OS/X. On Linux you can make them work on exactly one GPU, the
+%    and active at the same time, then Screen() low-level functions may not
+%    work. More precisely, they will not work at all on MS-Windows. On
+%    Apple OS/X or on Linux you can make them work on exactly one GPU, the
 %    other GPU's will be ignored. By default, the first GPU in the system
-%    is chosen. You can override the choice by setting a Unix environment
-%    variable PSYCH_USE_GPUIDX, e.g., the command...
-%    export PSYCH_USE_GPUIDX=1 ; matlab 
-%    ... would start Matlab and instruct Screen() to use the GPU with index
-%    1, which is the 2nd GPU in the system, as numbering starts with zero
-%    for the 1st GPU.
+%    is chosen. You can override the choice by executing the command
+%    PsychTweak('UseGPUIndex', gpuidx); *before* other calls to Screen() to
+%    instruct Screen() to use the GPU with index gpuidx. If you call the
+%    command after Screen() has been called already, it will usually not
+%    pick up your new setting! E.g., PsychTweak('UseGPUIndex', 1); would
+%    instruct Screen() to use the GPU with index 1, which is the 2nd GPU in
+%    the system, as numbering starts with zero for the 1st GPU.
 %
+%    If you use PsychTweak() to select a different GPU than the first one,
+%    you often also need to perform the actions explained in step 3 to
+%    manually define which GPU output maps to which display connector, as
+%    the heuristic will most often result in wrong assignments for other
+%    GPU's than the first one (aka GPU zero).
+%
+%    Also remember that all your visual stimulation (== "experiment")
+%    displays should be connected to the chosen GPU, not one of the other
+%    GPUs! Other GPUs should usually only be used for non-Psychtoolbox
+%    purposes, e.g., operator displays like the Matlab or Octave window,
+%    etc. While it is possible to open Screen() onscreen windows on the
+%    other GPUs as well, visual stimulus onset timestamping and other
+%    special functions won't work there and you'll likely see a bunch of
+%    timing error warnings ("Synchronization trouble") for those windows,
+%    which indicate that visual timing on those windows will be broken or
+%    highly unreliable.
+%
+%    For an example case of such a multi-gpu setup under Linux, and the
+%    procedure that resolved problems and made timestamping work, see
+%    Psychtoolbox forum message #16208:
+%
+%    http://tech.groups.yahoo.com/group/psychtoolbox/message/16208
 %
 % Good luck with troubleshooting!
 %

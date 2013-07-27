@@ -20,8 +20,11 @@ function varargout = PsychVideoSwitcher(cmd, varargin)
 % standard RGB true color display mode. 'screenIdx' is the screen index of the
 % for the display screen to switch.
 %
-% 'enableLuminanceMode' must be set to 0 to switch to RGB mode, and to 1 to
-% switch to high precision luminance mode.
+% 'enableLuminanceMode' is meaningful only for card VideoSwitcher, which
+% must be set to 0 to switch to RGB mode, and to 1 to switch to high
+% precision luminance mode. For box version, the SwitchMode subfunction
+% ignores the third input, and only toggles between two display modes,
+% equivalent to pushing the switch button on the box.
 %
 % 'VideoSwitcherIsABox' is an optional argument: If set to 1, then perform
 % switching procedure for an external (box) device. If set to zero, then
@@ -181,6 +184,8 @@ function varargout = PsychVideoSwitcher(cmd, varargin)
 %              Xiangrui Li in helper subroutines.
 % 05/24/11 xl  3rd input for SwitchMode is not manditory since it is not
 %              used by box version.
+% 07/17/13 xl  Clarify in help text that SwitchMode only toggles between
+%              two display modes.  
 
 % GL access is needed for setup of green trigger channel in callback:
 global GL;

@@ -57,6 +57,7 @@ PsychError PsychModuleInit(void)
 
 	PsychErrorExit(PsychRegister("Initialize",			&EyelinkInitialize));
 	PsychErrorExit(PsychRegister("IsConnected",			&EyelinkIsConnected));
+	PsychErrorExit(PsychRegister("SetAddress",			&EyelinkSetAddress));
 	PsychErrorExit(PsychRegister("NewestFloatSample",	&EyelinkNewestFloatSample));
 	PsychErrorExit(PsychRegister("SendKeyButton",		&EyelinkSendKeyButton));
 	PsychErrorExit(PsychRegister("Shutdown",			&EyelinkShutdown));

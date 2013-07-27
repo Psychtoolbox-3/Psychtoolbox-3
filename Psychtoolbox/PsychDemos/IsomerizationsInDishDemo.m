@@ -8,7 +8,26 @@
 % the relative spectrum of the light with respect to which
 % the computation is accomplished.
 %
-% See also: IsomerizationInEyeDemo.
+% NOTE, DHB, 7/19/13. This demo routine and its associated data routines 
+% (DefaultPhotoreceptors, FillInPhotoreceptors, PrintPhotoreceptors)
+% should be better integrated with the more recent code that
+% implements the CIE physiological cone fundamentals, and the
+% whole set of stuff should be better documented.  See also
+%    IsomerizationsInDishDemo
+%    CIEConeFundamentalsTest
+%    ComputeCIEConeFundamentals
+%    ComputeRawConeFundamentals
+%    DefaultPhotoreceptors
+%    FillInPhotoreceptors
+%    PrintPhotoreceptors
+%    RetIrradianceToIsoRecSec
+% In particular, there should be some default for the 
+% photoreceptors structure that gives one the CIE cone
+% fundamentals in all their parametric glory, plus additional
+% parameters that yield real energy/quantal sensitivites so
+% that the resulting coordinates are isomerization rates in
+% real units.  I think that we're close to having that, but
+% better documentation and tidying is needed.
 %
 % 05/06/03 lyin Wrote it.
 % 06/26/03 dhb	Rewrote to be self-contained, plus new calling conventions.
@@ -16,6 +35,7 @@
 % 07/11/03 dhb  Grab data through subroutines.  Get rid of integration time.
 % 04/2/13  dhb  Change clear all to clear, and close figs.
 % 04/27/13 dhb  Improve comments.
+% 7/19/13  dhb  Print out photoreceptors structure using PrintPhotoreceptors.
 
 %% clear
 clear; close all;
@@ -86,16 +106,14 @@ set(xlabel('Wavelength (nm)'),'FontSize',12);
 set(ylabel('Probability'),'FontSize',12);
 axis([300 800 0 1]);
 
+%% Print out photoreceptors structure
+fprintf('\n');
+PrintPhotoreceptors(photoreceptors);
+fprintf('\n');
+
 %% Print out a table summarizing the calculation.
 fprintf('***********************************************\n');
 fprintf('Isomerization calculations for retina in a dish\n');
-fprintf('\n');
-fprintf('Calculations done using:\n');
-fprintf('\t%s estimates for photoreceptor OS diameter\n',photoreceptors.OSdiameter.source);
-fprintf('\t%s estimates for photoreceptor IS diameter\n',photoreceptors.ISdiameter.source);
-fprintf('\t%s estimates for photoreceptor OS length\n',photoreceptors.OSlength.source);
-fprintf('\t%s estimates for receptor specific density\n',photoreceptors.specificDensity.source);
-fprintf('\t%s photopigment nomogram\n',photoreceptors.nomogram.source);
 fprintf('\n');
 fprintf('Photoreceptor Type             |\t       M\t       S\t     Rod\n');
 fprintf('______________________________________________________________________________________\n');

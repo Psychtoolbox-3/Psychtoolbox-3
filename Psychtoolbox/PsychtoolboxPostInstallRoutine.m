@@ -148,7 +148,12 @@ end
 
 % 32-Bit Octave or 32-Bit Matlab on OSX? This is unsupported as of Version 3.0.11.
 if IsOSX && ~Is64Bit
-    error('Use of 32-Bit GNU/Octave or 32-Bit Matlab on OSX with Psychtoolbox 3.0.11 is no longer supported. Aborted.');
+    fprintf('Psychtoolbox 3.0.11 and later do no longer work with 32-Bit versions of Octave or Matlab on OSX.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave or Matlab on OSX, which is fully supported.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX, or use\n');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.10'', which does support 32-Bit Matlab on OSX.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
 end
 
 % Check if our own startup function is part of the startup file and add it,

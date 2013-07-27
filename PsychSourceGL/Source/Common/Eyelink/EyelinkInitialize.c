@@ -249,3 +249,46 @@ PsychError EyelinkTestSuite(void)
 	
 	return(PsychError_none);	
 }
+
+PsychError EyelinkSetAddress(void)
+{
+    static char useAddressString[] = "[status =] Eyelink('SetAddress', ipaddress);";
+    static char synopsisAddressString[] =
+    "Set IP address of eyelink tracker computer to connect to.\n"
+    "Call this before opening a tracker connection if you want to use "
+    "a non-default IP address for the tracker computer.\n"
+    "'ipaddress' is a character string containing the tracker address.\n"
+    "Returns: 0 if OK, -1 on error\n";
+    static char seeAlsoAddressString[] = "Initialize";
+    
+    char* ipAddress;
+    int	iStatus = -1;
+    
+    // Add help strings:
+    PsychPushHelp(useAddressString, synopsisAddressString, seeAlsoAddressString);
+    
+    // Output help if asked:
+    if (PsychIsGiveHelp()) {
+        PsychGiveHelp();
+        return(PsychError_none);
+    }
+    
+    // Check arguments:
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    
+    // Must call this function before opening a tracker connection:
+    if (giSystemInitialized == 1) PsychErrorExitMsg(PsychError_user, "Tried to set target tracker host ip address, but connection already initialized!");
+    
+    // Get mandatory string with IP address spec:
+    PsychAllocInCharArg(1, kPsychArgRequired, &ipAddress);
+    
+    // Assign new address:
+    iStatus = set_eyelink_address(ipAddress);
+    
+    // Copy out status:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, iStatus);
+    
+    return(PsychError_none);
+}

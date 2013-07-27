@@ -33,6 +33,7 @@
 %   PhotopigmentSpecificDensity - Estimates of specific density.
 %   PhotopigmentQuantalEfficiency - Estimates of photopigment quantal efficiency.
 %   PhotoreceptorDimensions   - Estimates of various photoreceptor dimensions.
+%   PrintPhotoreceptors       - Print out what is in photoreceptor structure.
 %   PupilDiameterFromLum      - Estimate pupil diameter from luminance.
 %   RetinalMMToDegrees        - Convert foveal retinal extent from mm of retina to degrees.
 %   StockmanSharpeNomogram    - Stockman/Sharpe photopigment nomogram (not finished).

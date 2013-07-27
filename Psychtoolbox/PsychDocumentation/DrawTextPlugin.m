@@ -66,11 +66,8 @@
 % You may need to search around a bit or use your graphical package manager
 % if the names don't match perfectly.
 %
-% On OS/X, these libraries are quite often not installed. If you want to
-% use the text renderer plugin, you'll need to install them manually, e.g.,
-% by using the freely available versions from the "DarwinPorts" project:
-%
-% http://darwinports.com
+% On OS/X, these libraries are part of the X-Server, so if you have an
+% X-Server installed, you'll have those libraries available.
 %
 % Reasons for failure to load the plugin:
 %
