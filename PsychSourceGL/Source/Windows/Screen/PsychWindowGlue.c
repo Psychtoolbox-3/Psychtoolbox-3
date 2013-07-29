@@ -443,6 +443,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	static PAINTSTRUCT ps;
 	PsychWindowRecordType	**windowRecordArray;
 	int i, numWindows;
+	LRESULT res;
 	int verbosity = PsychPrefStateGet_Verbosity();
 	
 	if (verbosity > 6) printf("PTB-DEBUG: WndProc(): Called!\n");
@@ -452,7 +453,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case WM_MOUSEACTIVATE:
 			// Mouseclick into our inactive window (non-fullscreen) received. Eat it:
 			if (verbosity > 6) printf("PTB-DEBUG: WndProc(): MOUSE ACTIVATION!\n");
-			return(MA_NOACTIVATEANDEAT);
+            
+			// Default to ignore activation event:
+			res = MA_NOACTIVATEANDEAT;
+            
+			// Scan the list of windows to find onscreen window with handle hWnd:
+			PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
+			for(i = 0; i < numWindows; i++) {
+				if (PsychIsOnscreenWindow(windowRecordArray[i]) &&
+					windowRecordArray[i]->targetSpecific.windowHandle == hWnd) {
+                    // This is our window, and if it is a GUI window then perform activation:
+                    if (windowRecordArray[i]->specialflags & kPsychGUIWindow) res = MA_ACTIVATEANDEAT;
+                    break;
+				}
+			}
+			PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+
+			return(res);
 			break;
 			
 		case WM_SYSCOMMAND:
@@ -464,7 +481,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				case SC_MONITORPOWER:
 					return(0);
 			}
-				break;
+			break;
 			
 		case WM_LBUTTONDOWN:
 			// Left mouse button depressed:
@@ -499,39 +516,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case WM_PAINT:
 			// Repaint event: This happens if a previously covered non-fullscreen window
 			// got uncovered, so part of it needs to be redrawn. PTB's rendering model
-			// doesn't have a concept of redrawing a stimulus. As this is mostly useful
-			// for debugging, we just do a double doublebuffer swap in the hope that this
-			// will restore the frontbuffer...
+			// doesn't have a concept of redrawing a stimulus. We do nothing here.
 			if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
-			BeginPaint(hWnd, &ps);
-			EndPaint(hWnd, &ps);
-			// Scan the list of windows to find onscreen window with handle hWnd:
-			PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
-			for(i = 0; i < numWindows; i++) {
-				if (PsychIsOnscreenWindow(windowRecordArray[i]) &&
-					windowRecordArray[i]->targetSpecific.windowHandle == hWnd &&
-					windowRecordArray[i]->stereomode == 0) {
-					// This is it! Initiate bufferswap twice: DISABLE FOR NOW! May do more harm than good
-					// on MS-Vista, Windows-7 et al. and is not very useful on WinXP et al. either...
-					if (0) {
-						PsychOSFlipWindowBuffers(windowRecordArray[i]);
-						PsychOSFlipWindowBuffers(windowRecordArray[i]);
-					}
-				}
-			}
-				PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
-			// Done.
-			return 0;
+			break;
 			
 		case WM_SIZE:
 			// Window resize event: Only happens in debug-mode (non-fullscreen).
 			// We resize the viewport accordingly and then trigger a repaint-op.
-			if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SIZE!\n");
-			
-			glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
-			PostMessage(hWnd, WM_PAINT, 0, 0);
-			// printf("\nPTB-INFO: Onscreen window resized to: %i x %i.\n", (int) LOWORD(lParam), (int) HIWORD(lParam));
-			return 0;
+			if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SIZE!\n");			
+			break;
 			
 		case WM_CLOSE:
 			// WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press.
@@ -776,9 +769,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   
   psych_bool fullscreen = FALSE;
   DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+
   // The WS_EX_NOACTIVATE flag prevents the window from grabbing keyboard focus. That way,
-  // the new Java-GetChar can do its job.
-  DWORD windowExtendedStyle = WS_EX_APPWINDOW | 0x08000000; // const int WS_EX_NOACTIVATE = 0x08000000;
+  // the new Java-GetChar can do its job. Can't be used with GUI windows though:
+  DWORD windowExtendedStyle = WS_EX_APPWINDOW | ((windowRecord->specialflags & kPsychGUIWindow) ? 0 : WS_EX_NOACTIVATE);
 
   if (PsychPrefStateGet_Verbosity()>6) {
     printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Entering Win32 specific window setup...\n");
@@ -2292,6 +2286,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     DWM_TIMING_INFO	dwmtiming;
     HRESULT rc;
     psych_uint64 msc, ust;
+    double tSwapMapped;
 
     // We only support (or need) Windows-OS specific swap timestamping if the DWM
     // is active for our onscreen windows display. Fallback to default timestamping
@@ -2349,8 +2344,15 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     ust = dwmtiming.qpcVBlank - ((dwmtiming.cDXRefresh - dwmtiming.cDXRefreshConfirmed) * dwmtiming.qpcRefreshPeriod);
 
     // Translate to GetSecs time:
-    if (tSwap) *tSwap = PsychMapPrecisionTimerTicksToSeconds(ust);
+    tSwapMapped = PsychMapPrecisionTimerTicksToSeconds(ust);
 
+    // A last consistency check. Known to trigger at least sometimes when running Windows-7 in a VM:
+    if (msc < 0 || tSwapMapped < 0) return(-1);
+
+    // Assign swap completion timestamp:
+    if (tSwap) *tSwap = tSwapMapped;
+
+    // Return msc of swap completion:
     return((psych_int64) msc);
 }
 
