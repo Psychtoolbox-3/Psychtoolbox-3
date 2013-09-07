@@ -46,8 +46,7 @@ if setGammaTable
     % gamma is incorrectly mapped from [0, 255/256] instead of [0, 1].
     % If you are having trouble using the DIO, try uncommenting the 2nd line
     % below.
-    Screen('LoadNormalizedGammaTable', windowPtr, linspace(0, 255/256, 256)' * ones(1, 3));
-    %Screen('LoadNormalizedGammaTable', windowPtr, linspace(0, 1, 256)' * ones(1, 3));
+    LoadIdentityClut(windowPtr);
 end
 
 % Call common encoder routine to create T-Lock image matrix:

@@ -19,4 +19,4 @@ clut = clut / colorRange .* (2^16 - 1);
 newClutRow = BitsPlusEncodeClutRow(clut);
 
 % Generate the texture holding the Bits++ clut.
-texturePtr = Screen('MakeTexture', windowPtr, newClutRow);
+texturePtr = Screen('MakeTexture', windowPtr, uint8(newClutRow));

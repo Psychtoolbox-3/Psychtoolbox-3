@@ -20,6 +20,8 @@ function AntiSaccade(placeHolderFlag,gapManipulation)
 %
 % 01/28/11  NJ  created
 
+PsychDefaultSetup(1);
+
 if nargin < 1
     placeHolderFlag  = true;
 end

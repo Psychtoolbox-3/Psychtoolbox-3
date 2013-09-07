@@ -19,7 +19,7 @@ function mMasked=MaskImageIn(m,alphaIn)
 % 5/02/13   mk   Made it hopefully work.
 
 if nargin<2
-   alphaIn=255;
+   alphaIn = WhiteIndex(0);
 end
 
 dims=size(m);

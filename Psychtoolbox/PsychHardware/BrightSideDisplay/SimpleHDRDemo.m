@@ -39,7 +39,7 @@ function SimpleHDRDemo(imfilename, dummymode, sf)
 % and Oguz Ahmet Akyuz - Department of Computer Science, University of Central Florida.
 
 % Make sure we run on OpenGL-Psychtoolbox. Abort otherwise.
-AssertOpenGL;
+PsychDefaultSetup(1);
 
 % Run demo in dummy mode?
 if nargin < 2

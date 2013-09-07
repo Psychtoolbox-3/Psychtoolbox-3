@@ -16,7 +16,7 @@ function ShowHDRDemo(imfilename, dummymode, sf, halffloat)
 % and Oguz Ahmet Akyuz - Department of Computer Science, University of Central Florida.
 
 % Make sure we run on OpenGL-Psychtoolbox. Abort otherwise.
-AssertOpenGL;
+PsychDefaultSetup(1);
 
 % Use remapping shaders? 0 = No, 1 = Yes. Shaders are no longer needed for
 % HDR drawing, as we disable color clamping in the whole pipeline, even if
@@ -34,7 +34,7 @@ end
 % Name of an image file passed? If so, then load it. Load our default LDR
 % image otherwise.
 if nargin>=1 && ~isempty(imfilename)
-    if ~isempty(findstr(imfilename, '.hdr'))
+    if ~isempty(strfind(imfilename, '.hdr'))
         % Load a real EXR high dynamic range file:
         inimg = read_rle_rgbe(imfilename);
         img(:,:,1) = flipud(inimg(:,:,1));
@@ -148,7 +148,10 @@ try
         Screen('DrawTexture', win, texid, [], [], rotAngle, halffloat);
 
         % Draw some 2D primitives:
-        if useshader, glUseProgram(glslcolor); end;
+        if useshader
+            glUseProgram(glslcolor);
+        end
+        
         Screen('FillOval', win, [255 * 255 * 10 255 0], [500 500 600 600]);
         
         % And some text:

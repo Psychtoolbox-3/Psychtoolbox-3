@@ -38,10 +38,7 @@ function HDRViewer(imfilepattern, dummymode, sf)
 % and Oguz Ahmet Akyuz - Department of Computer Science, University of Central Florida.
 
 % Make sure we run on OpenGL-Psychtoolbox. Abort otherwise.
-AssertOpenGL;
-
-% Use unified key mapping on all operating systems:
-KbName('UnifyKeyNames');
+PsychDefaultSetup(1);
 
 % Shorten display timing tests - Pretty futile on such a slow device
 % anyway...
@@ -57,9 +54,7 @@ end
 
 % Name of an image file passed? If not, we default to all *.hdr files in
 % current working directory:
-if nargin>=1 && ~isempty(imfilepattern)
-    imfilename = dir(imfilepattern);
-else
+if nargin < 1 || isempty(imfilepattern)
     % No pattern provided. Search in current working directory.
     imfilepattern = '*.hdr';
 end

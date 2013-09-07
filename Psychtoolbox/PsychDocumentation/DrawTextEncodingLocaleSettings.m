@@ -86,7 +86,7 @@
 % UTF-8 unicode strings to 'DrawText'.
 %
 
-AssertOpenGL;
+PsychDefaultSetup(1);
 
 try
     screenid = max(Screen('Screens'));

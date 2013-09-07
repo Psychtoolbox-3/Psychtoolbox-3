@@ -13,10 +13,8 @@ white = WhiteIndex(whichScreen);
 black = BlackIndex(whichScreen);
 gray = GrayIndex(whichScreen);
 
-% Open a double buffered fullscreen window
-% does not like opening it 24 bit deep, so stick with 32 bits,
-% though we don't want alpha!!
-[window, screenRect] = Screen('OpenWindow', whichScreen, 0, [], 32, 2);
+% Open a double buffered fullscreen window:
+[window, screenRect] = Screen('OpenWindow', whichScreen, 0);
 
 % THE FOLLOWING STEP IS IMPORTANT.
 % make sure the graphics card LUT is set to a linear ramp
@@ -25,8 +23,7 @@ gray = GrayIndex(whichScreen);
 % gamma is incorrectly mapped from [0, 255/256] instead of [0, 1].
 % If you are having trouble using the DIO, try uncommenting the 2nd line
 % below.
-Screen('LoadNormalizedGammaTable', window, linspace(0, 255/256, 256)' * ones(1, 3));
-%Screen('LoadNormalizedGammaTable', window, linspace(0, 1, 256)' * ones(1, 3));
+LoadIdentityClut(window);
 
 % find out how big the window is
 [screenWidth, screenHeight] = Screen('WindowSize', window);

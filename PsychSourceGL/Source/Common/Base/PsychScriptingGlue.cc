@@ -1107,17 +1107,11 @@ PsychError PsychExitOctaveGlue(void)
 */
 void PsychExitGlue(void)
 {
-    // Reset firstTime flag, so reloading the module leads to a full init cycle.
-    // This is especially important on Octave, as it doesn't fully unload/reload
-    // mex file modules at "clear" time, so the static firstTime variable won't
-    // get automatically reset to its inital load default of TRUE:
-    // firstTime = TRUE;
-    
     // Perform platform independent shutdown:
 	PsychErrorExitMsg(PsychExit(),NULL);
     
-    // And we are dead! Now the runtime will flush us from process memory,
-    // at least on Matlab. In any case no further invocation will happen
+    // And we are dead. Now the runtime will flush us from process memory,
+    // at least on Matlab and Octave 3.7+. In any case no further invocation will happen
     // until reload.
 }
 

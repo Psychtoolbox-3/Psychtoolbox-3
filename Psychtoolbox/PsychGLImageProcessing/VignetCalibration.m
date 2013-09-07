@@ -65,10 +65,7 @@ function s = VignetCalibration(filename, screenId)
 %
 
 	% Check for proper installation:
-	AssertOpenGL;
-
-	%unify keynames
-	KbName('UnifyKeyNames');
+	PsychDefaultSetup(1);
 
 	%create variable if needed
     if ~exist('screenId','var')

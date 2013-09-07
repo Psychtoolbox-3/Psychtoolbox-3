@@ -1,4 +1,4 @@
-function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUntilTime, varargin) %#ok<INUSD>
+function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUntilTime, varargin)
 % [keyIsDown, secs, keyCode, deltaSecs] = KbCheck([deviceNumber])
 % 
 % Return keyboard status (keyIsDown), time (secs) of the status check, and

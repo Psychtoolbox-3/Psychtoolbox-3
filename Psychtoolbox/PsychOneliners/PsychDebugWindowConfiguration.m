@@ -2,19 +2,20 @@ function PsychDebugWindowConfiguration(opaqueForHID, opacity)
 % Switch PTB's onscreen window into a display mode suitable for easy debugging on single-screen setups.
 %
 % This function allows to setup Screen onscreen windows to be
-% half-transparent, so one can simultaneously see the stimulus display and
+% partially transparent, so one can simultaneously see the stimulus display and
 % the Matlab window and other GUI windows.
 %
 % Usage: PsychDebugWindowConfiguration([opaqueForHID=0][, opacity=0.5])
 %
 % To enable: Call PsychDebugWindowConfiguration before the Screen('OpenWindow',...) call!
-% To disable: Type "clear Screen"
+% To disable: Type "clear Screen" or "clear all".
 %
 % The optional parameter 'opaqueForHID' if set to a non-zero value will
 % disallow mouse clicks and other mouse actions to "get through" to the
 % GUI, ie., it will make the onscreen window opaque to the mouse pointer.
 %
-% A setting of -1 will disable the debug mode again.
+% A setting of -1 will disable the transparency again, but *keep all timing tests
+% and timestamping disabled*.
 %
 % The optional parameter 'opacity' controls how opaque the onscreen window
 % is, in a range of 0.0 to 1.0 for 0% to 100% opacity. By default the
@@ -26,9 +27,10 @@ function PsychDebugWindowConfiguration(opaqueForHID, opacity)
 %
 % This feature will only work reliably - or at all - if your operating
 % system is running with a compositing window manager installed and
-% enabled. This is the case for Windows Vista, Windows-7 and later MS
-% operating systems, MacOS/X, and GNU/Linux distributions that have the
-% Compiz window manager installed and enabled, e.g., Ubuntu-9.1 and later.
+% enabled. This is the case for Windows Vista, Windows-7/8 and later MS
+% operating systems, as well as MacOS/X, and most GNU/Linux distributions
+% which have a compositing desktop installed and enabled, e.g., KDE,
+% GNOME-2/3, Compiz, Unity.
 %
 % Keyboard and mouse input may not work as expected under all conditions,
 % i.e., it may by impaired in either Psychtoolbox, or for the other running
@@ -38,6 +40,8 @@ function PsychDebugWindowConfiguration(opaqueForHID, opacity)
 % History:
 % 30.07.2009 mk  Written.
 % 15.11.2009 mk  Now also for Windows and Linux.
+% 22.08.2013 mk  Disable any high-precision timestamping on all operating systems.
+%
 
 if nargin < 1
     opaqueForHID = [];
@@ -52,13 +56,13 @@ if nargin < 2
 end
 
 if IsOSX
-    % Disable high precision timestamping:
-    Screen('Preference', 'VBLTimestampingMode', -1);
-    
-    % Use AGL + Carbon, even for fullscreen windows:
+    % Use NSOpenGL + Cocoa, even for fullscreen windows:
     oldconserve = Screen('Preference', 'ConserveVRAM');
     Screen('Preference', 'ConserveVRAM', bitor(oldconserve, 16384));
 end
+
+% Disable high precision timestamping:
+Screen('Preference', 'VBLTimestampingMode', -1);
 
 % Skip sync tests:
 Screen('Preference', 'SkipSyncTests', 2);

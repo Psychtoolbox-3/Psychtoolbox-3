@@ -182,7 +182,7 @@ function [scal] = DisplayUndistortionBVL(caliboutfilename, screenid, xnum, ynum,
 %           than monoscopic display for calibration. (MK)
 
 % Running on PTB-3? Abort otherwise:
-AssertOpenGL;
+PsychDefaultSetup(1);
 
 % Need to temporarily add the '/private' subfolder to Octave's path, as
 % Octave as of V3.0.5 doesn't know about private subfolders yet:

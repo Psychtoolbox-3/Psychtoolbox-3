@@ -6,3 +6,4 @@
 %   KinectRawRecordingDemo   - Half finished, demo on how to record Kinect data.
 %   PrintStruct              - Print structure & cell array to any depth
 %   ShowHDRDemo              - Incomplete demo of how to show HDR images.
+

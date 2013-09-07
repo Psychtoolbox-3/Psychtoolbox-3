@@ -278,7 +278,7 @@ global GL;
             % encountered:
             try
                 Screen('LoadNormalizedGammaTable', win, curlut);
-            catch
+            catch %#ok<CTCH>
                 psychlasterror('reset');
             end
             

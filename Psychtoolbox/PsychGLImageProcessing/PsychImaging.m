@@ -324,15 +324,35 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   arbitrary values, e.g., also negative values. All Screen() 2D drawing
 %   commands should operate at maximum color/luminance precision.
 %
-%   This is just a convenience shortcut for Screen('ColorRange', win, 1, 0);
+%   Usage: PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange' [, applyAlsoToMakeTexture]);
+%
+%   The command PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange', 1);
+%   is automatically executed if you used PsychDefaultSetup(featureLevel)
+%   with a featureLevel of >= 2 at the top of your experiment script,
+%   *except* that clamping is *not* disabled by default in this case! To
+%   disable clamping you'd still need to add this task explicitely, as
+%   unclamping may have unintended side effects on old graphics hardware.
+%
+%   The optional flag 'applyAlsoToMakeTexture' defaults to zero. If set to 1,
+%   then a unit color range of expected input values in the [0; 1] range is
+%   also applied to standard 8-Bit precision textures in Screen('MakeTexture')
+%   if the provided Matlab imageMatrix is of double precision type instead of
+%   uint8 type. This allows to specify standard textures in the same consistent
+%   value range 0-1 as other drawing colors, for cleaner code. Such textures
+%   will still be limited to 0-1 range and only resolved into 256 intensity
+%   levels, unless you also set the optional 'floatprecision' flag in Screen('MakeTexture')
+%   to a value of 1 or 2. We still apply this limitation, as high precision textures consume
+%   more memory and other resources and are incompatible with very old graphics
+%   hardware.
+%
+%   This is just a convenience shortcut for Screen('ColorRange', win, 1, 0, applyAlsoToMakeTexture);
 %   with the added benefit of allowing to specify the background clear
 %   color in normalized 0-1 range as well. This command is implied by use
 %   of any of the high precision display device drivers (for attenuators,
 %   Bits+ box etc.). It is only needed if you want to create the same
 %   visual results on a 8 bit standard framebuffer without needing to
-%   change your code.
-%
-%   Usage: PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange');
+%   change your code, or if you want to set the 'applyAlsoToMakeTexture' flag to a
+%   setting of non-zero, so unit colorrange also applies to Screen('MakeTexture').
 %
 %
 % * 'DisplayColorCorrection' Select a method for color correction to apply to
@@ -1011,20 +1031,27 @@ end
 rc = [];
 winRect = [];
 
-if strcmp(cmd, 'PrepareConfiguration')
+if strcmpi(cmd, 'PrepareConfiguration')
     % Prepare new configuration:
     if configphase_active
-        fprintf('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!\n');
+        % Huh? Configuration was already in progress. Warn user about reset of task specs:
+        fprintf('Tried to prepare a new configuration phase via PsychImaging(''PrepareConfiguration''), but did not finalize the previous phase yet.\n');
         fprintf('You must call the PsychImaging(''OpenWindow'', ...); command at least once to open an onscreen\n');
-        fprintf('window with the provided settings, before you can specify settings for additional onscreen windows.\n\n');
-        fprintf('\n\n');
-        fprintf('However, the most likely reason you see this error message is because your script aborted with some\n');
-        fprintf('error. In that case you will need to execute a ''clear all'' command at the Matlab/Octave prompt before\n');
-        fprintf('you can restart your script.\n\n');
-        error('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!');
+        fprintf('window according to the provided settings, before you can specify settings for additional onscreen windows.\n');
+        fprintf('\n');
+        fprintf('The most likely reason you see this error message is because your script aborted with some error\n');
+        fprintf('before it managed to open the onscreen window. In that case it is best practice to execute a ''clear all''\n');
+        fprintf('command at the Matlab/Octave prompt before you restart your script.\n');
+        fprintf('\n');
+        fprintf('I will restart configuration now and forget the previously made PsychImaging(''AddTask'', ...); settings.\n');
+        warning('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!');
     end
     
+    % Enter configuration mode, accept 'AddTask' specifications:
     configphase_active = 1;
+    
+    % Reset old settings:
+    
     % MK: This clear reqs causes malfunctions on Octave 3.2.0 for some reason, so don't use it! clear reqs;
     reqs = [];
     ptb_outputformatter_icmAware = 0;
@@ -1034,11 +1061,13 @@ if strcmp(cmd, 'PrepareConfiguration')
         psych_gpgpuapi = 0;
     end
     
+    % Assign default success return code rc:
     rc = 0;
+    
     return;
 end
 
-if strcmp(cmd, 'AddTask')
+if strcmpi(cmd, 'AddTask')
     if nargin < 3 || isempty(varargin{1}) || isempty(varargin{2})
         error('Parameters missing: Need at least "whichChannel" and "whichTask"!');
     end
@@ -1072,7 +1101,7 @@ if strcmp(cmd, 'AddTask')
     return;
 end
 
-if strcmp(cmd, 'FinalizeConfiguration')
+if strcmpi(cmd, 'FinalizeConfiguration')
     if configphase_active ~= 1
         error('You tried to finalize configuration, but no configuration in progress!');
     end
@@ -1092,7 +1121,7 @@ if strcmp(cmd, 'FinalizeConfiguration')
     return;
 end
 
-if strcmp(cmd, 'PostConfiguration')
+if strcmpi(cmd, 'PostConfiguration')
     if configphase_active ~= 2
         error('Tried to call PostConfiguration without calling FinalizeConfiguration before!');
     end
@@ -1113,9 +1142,15 @@ if strcmp(cmd, 'PostConfiguration')
     return;
 end
     
-if strcmp(cmd, 'OpenWindow')
+if strcmpi(cmd, 'OpenWindow')
+
+    % Allow 'OpenWindow' without task specs. Simply open with empty task requirements list:
+    if ismember(configphase_active, [0, 2])
+        PsychImaging('PrepareConfiguration');
+    end
+    
     if configphase_active ~= 1
-        error('You tried to OpenImagingWindow, but didn''t specify any imaging configuration!');
+        error('You tried to OpenWindow, but didn''t specify any imaging configuration!');
     end
 
     if nargin < 2
@@ -1622,7 +1657,7 @@ if strcmp(cmd, 'OpenWindow')
     return;
 end
 
-if strcmp(cmd, 'RestrictProcessingToROI')
+if strcmpi(cmd, 'RestrictProcessingToROI')
     % Define a ROI in a processing chain/channel to which processing should
     % be restricted by internal use of glScissor() command. This is a
     % runtime function. Each invocation will search the given channel if
@@ -1698,7 +1733,7 @@ if strcmp(cmd, 'RestrictProcessingToROI')
     return;
 end
 
-if strcmp(cmd, 'UnrestrictProcessing')
+if strcmpi(cmd, 'UnrestrictProcessing')
     % Remove a ROI in a processing chain/channel to which processing should
     % be restricted by internal use of glScissor() command. This is a
     % runtime function. Each invocation will search the given channel if
@@ -2294,6 +2329,8 @@ global ptb_outputformatter_icmAware;
 global GL;
 global ptb_geometry_inverseWarpMap;
 global psych_gpgpuapi; %#ok<NUSED>
+% Default requested colormode: Set by PsychDefaultSetup(), if at all.
+global psych_default_colormode;
 
 if isempty(GL)
     % Perform minimal OpenGL init, so we can call OpenGL commands and use
@@ -2306,6 +2343,7 @@ needsIdentityCLUT = 0;
 
 % 0.0 - 1.0 colorrange without color clamping required?
 needsUnitUnclampedColorRange = 0;
+applyAlsoToMakeTexture = [];
 
 % Number of used slots in left- and right processing chain:
 leftcount = 0;
@@ -3305,6 +3343,20 @@ end
 if ~isempty(find(mystrcmp(reqs, 'NormalizedHighresColorRange')))
     % Use unit color range, without clamping, but in high-precision mode:
     needsUnitUnclampedColorRange = 1;
+    
+    % Extract first parameter - This should be the applyAlsoToMakeTexture flag:
+    floc = find(mystrcmp(reqs, 'NormalizedHighresColorRange'));
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+    applyAlsoToMakeTexture = reqs{row, 3};
+    if ~isempty(applyAlsoToMakeTexture)
+        if ~isnumeric(applyAlsoToMakeTexture) || ~ismember(applyAlsoToMakeTexture, [0, 1])
+            Screen('CloseAll');
+            error('In NormalizedHighresColorRange: Invalid applyAlsoToMakeTexture flag specified. Must be 0 or 1.');
+        end
+    else
+        applyAlsoToMakeTexture = [];
+    end
 end
 % --- End of setup for unclamped, high precision 0-1 range colors ---
 
@@ -3764,6 +3816,35 @@ if needsIdentityCLUT
     LoadIdentityClut(win);
 end
 
+% Is a default colormode specified via psych_default_colormode variable and
+% the level is at least 1? If so, switch to be created onscreen window to a
+% [0;1] colorrange with clamping by default, and apply input scaling to
+% Screen('MakeTexture') as well. This is like 'NormalizedHighresColorRange'
+% aka needsUnitUnclampedColorRange, except it doesn't unclamp the
+% framebuffer, but keeps it clamped to 0 - 1 range, unless a previous
+% 'ColorRange' call changed this. Why? To accomodate OpenGL hw without
+% clamp extension:
+if ~needsUnitUnclampedColorRange && ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
+    Screen('ColorRange', win, 1, [], 1);
+    applyAlsoToMakeTexture = 1;
+    
+    % Set Screen background clear color, in normalized 0.0 - 1.0 range:
+    if ~isempty(clearcolor) && (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
+        % Looks like someone's feeding old style 0-255 integer values as
+        % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
+        % range of values:
+        fprintf('\n\nPsychImaging-Warning: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range.\nPlease update your code for correct behaviour.\n\n');
+    end
+
+    % Set the background clear color via old fullscreen 'FillRect' trick,
+    % followed by a flip:
+    Screen('FillRect', win, clearcolor);
+
+    % Double-flip to be on the safe side:
+    Screen('Flip', win);
+    Screen('Flip', win);
+end
+
 % Do we need a normalized [0.0 ; 1.0] color range mapping with unclamped
 % high precision colors?
 if needsUnitUnclampedColorRange
@@ -3771,14 +3852,14 @@ if needsUnitUnclampedColorRange
     % 0-255 values. Try to disable color clamping. This may fail and
     % produce a PTB warning, but if it succeeds then we're better off for
     % the 2D drawing commands...
-    Screen('ColorRange', win, 1, 0);
+    Screen('ColorRange', win, 1, 0, applyAlsoToMakeTexture);
 
     % Set Screen background clear color, in normalized 0.0 - 1.0 range:
-    if (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
+    if ~isempty(clearcolor) && (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
         % Looks like someone's feeding old style 0-255 integer values as
         % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
         % range of values:
-        fprintf('\n\nPsychImaging-Warning: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.');
+        fprintf('\n\nPsychImaging-Warning: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range.\nPlease update your code for correct behaviour.\n\n');
     end
 
     % Set the background clear color via old fullscreen 'FillRect' trick,

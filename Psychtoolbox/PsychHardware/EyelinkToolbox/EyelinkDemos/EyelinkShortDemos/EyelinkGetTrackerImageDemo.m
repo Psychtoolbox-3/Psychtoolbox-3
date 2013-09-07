@@ -1,5 +1,8 @@
 function EyelinkGetTrackerImageDemo
 % This shows you how to register a callback m-file that can display the tracker's eye image in PTB
+
+PsychDefaultSetup(1);
+
 try
     % Disable key output to Matlab window:
     ListenChar(2);
