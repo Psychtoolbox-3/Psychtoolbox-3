@@ -19,8 +19,13 @@
 % wants to keep the convenient assumption of constant photopigment 
 % absorbance shape along a log wavelength axis.
 %
+% If one really wanted to go after fitting the fundamentals from parts,
+% searching on various densities as well as the lambda max values
+% would probably be the way to go.
+%
 % 8/11/11  dhb  Wrote it.
 % 8/14/11  dhb  Clean up and add comments.
+% 8/10/13  dhb  A few more notes.
 
 % Doesn't work on octave due to lack of function 'fmincon' from the
 % Matlab Optimization toolbox (see https://savannah.gnu.org/bugs/?35333)

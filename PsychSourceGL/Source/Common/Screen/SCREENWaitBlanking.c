@@ -116,7 +116,7 @@ PsychError SCREENWaitBlanking(void)
     // Check if beamposition queries are supported by this OS and working properly:
     if (-1 != PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber) && windowRecord->VBL_Endline >= 0) {
         // Beamposition queries supported and fine. We can wait for VBL without bufferswap-tricks:
-        // This is the OS-X way of doing things. We query the rasterbeamposition and compare it
+        // We query the rasterbeamposition and compare it
         // to the known values for the VBL area. If we enter VBL, we take a timestamp and return -
         // or wait for the next VBL if waitFrames>0
         
@@ -171,7 +171,7 @@ PsychError SCREENWaitBlanking(void)
             // Wait for next vblank counter increment - aka start of next frame (its vblank):
             while (vblCount == vblRefCount) {
                 // Requery:
-                PsychOSGetVBLTimeAndCount(windowRecord, &vblCount);
+                tvbl = PsychOSGetVBLTimeAndCount(windowRecord, &vblCount);
                 // Yield at least 100 usecs. This is accurate as this code-path
                 // only executes on OS/X and Linux, never on Windows (as of 01/06/2011):
                 PsychYieldIntervalSeconds(0.000100);

@@ -301,3 +301,5 @@
 % meant as a last ressort, e.g., if you need to get something going quickly
 % or can't get access to bug-fixed drivers.
 %
+
+% Need this extra line, separated by a blank line for help to work on Octave - weird.

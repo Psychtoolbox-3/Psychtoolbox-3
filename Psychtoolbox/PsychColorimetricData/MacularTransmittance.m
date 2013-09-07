@@ -37,10 +37,10 @@ function [macTransmit,macDensity] = MacularTransmittance(S,species,source,fieldS
 %              multiplicative rather than additive.  Second, there was
 %              an operator precedence grouping error in the computation
 %              of the correction factor.
-% 5/8/12  dhb  Removed comment that we can't reproduce CIE tabular 10 deg
-%              values.
+% 5/8/12  dhb  Removed comment that we can't reproduce CIE tabular 10 deg values.
 % 9/17/12 dhb  Return density for 'None' case as well.
-
+% 8/9/13  dhb  More consistent returning of density for 'None' case.
+% 8/11/13 dhb  Try to make dimensions of returned density match those of returned transmittance.
 
 % Default
 if (nargin < 2 || isempty(species))
@@ -59,21 +59,22 @@ switch (species)
 		switch (source)
 			case 'None',
 				macTransmit = ones(S(3),1)';
+                macDensity = zeros(S(3),1)';
 			case 'WyszeckiStiles',
 				load den_mac_ws;
-				macDensity = SplineSrf(S_mac_ws,den_mac_ws,S,2);
-				macTransmit = 10.^(-macDensity)';
+				macDensity = SplineSrf(S_mac_ws,den_mac_ws,S,2)';
+				macTransmit = 10.^(-macDensity);
 			case 'Vos',
 				load den_mac_vos;
-				macDensity = SplineSrf(S_mac_vos,den_mac_vos,S,2);
-				macTransmit = 10.^(-macDensity)';
+				macDensity = SplineSrf(S_mac_vos,den_mac_vos,S,2)';
+				macTransmit = 10.^(-macDensity);
 			case 'Bone',
 				load den_mac_bone;
-				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,2);
-				macTransmit = 10.^(-macDensity)';
+				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,2)';
+				macTransmit = 10.^(-macDensity);
             case 'CIE'
                 load den_mac_bone;
-				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,2);
+				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,2)';
                 
                 % Adjust for field size by adjusting peak optical density.
                 % This is a multiplicative adjustment, which is pretty
@@ -88,7 +89,7 @@ switch (species)
                 macDensity = macDensity*densityAdjustFieldSize;
                 macDensity(macDensity < 0) = 0;
                 
-				macTransmit = 10.^(-macDensity)';
+				macTransmit = 10.^(-macDensity);
 			otherwise,
 				error('Unsupported macular pigment density estimate specified');
 		end

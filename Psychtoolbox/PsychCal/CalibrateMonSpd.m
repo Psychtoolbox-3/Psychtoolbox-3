@@ -88,6 +88,9 @@
 
 global g_usebitspp;
 
+% Unified key mapping, no unit color range by default:
+PsychDefaultSetup(1);
+
 % If the global flag for using Bits++ is empty, then it hasn't been
 % initialized and we ask user what to use:
 if isempty(g_usebitspp)

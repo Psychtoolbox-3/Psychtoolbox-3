@@ -14,6 +14,8 @@ function EyelinkExample
 clear all;
 commandwindow;
 
+PsychDefaultSetup(1);
+
 try
     
     fprintf('EyelinkToolbox Example\n\n\t');

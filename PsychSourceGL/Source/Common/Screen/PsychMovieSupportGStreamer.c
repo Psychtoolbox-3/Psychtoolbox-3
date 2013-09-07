@@ -123,8 +123,8 @@ void PsychGSMovieInit(void)
     // likely succeed. If the following LoadLibrary() call fails and returns NULL,
     // then we know we would end up crashing. Therefore we'll output some helpful
     // error-message instead:
-    if (((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) &&
-        ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll")))) {
+    if (((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) &&
+        ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll")))) {
         // Failed: GLib and its threading support isn't installed. This means that
         // GStreamer won't work as the relevant .dll's are missing on the system.
         // We silently return, skpipping the GLib init, as it is completely valid
@@ -1772,6 +1772,9 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             // Check if 1.5x height texture fits within hardware limits of this GPU:
             if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
             
+            // Byte alignment: Assume no alignment for now:
+            out_texture->textureByteAligned = 1;
+
             // Create planar "I420 inside L8" texture:
             PsychCreateTexture(out_texture);
             
@@ -1792,16 +1795,19 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             out_texture->nrchannels = 3;
             
             // And 24 bpp depth:
-            out_texture->depth = 24;
-            
-            // Byte alignment: Assume no alignment for now:
-            out_texture->textureByteAligned = 1;
+            out_texture->depth = 24;            
         }
         else {
             // Let PsychCreateTexture() do the rest of the job of creating, setting up and
             // filling an OpenGL texture with content:
             PsychCreateTexture(out_texture);
         }
+
+        // NULL-out the texture memory pointer after PsychCreateTexture(). This is not strictly
+        // needed, as PsychCreateTexture() did it already, but we add it here as an annotation
+        // to make it obvious during code correctness review that we won't touch or free() the
+        // video memory buffer anymore, which is owned and only memory-managed by GStreamer:
+        out_texture->textureMemory = NULL;
 
         // After PsychCreateTexture() the cached texture object from our cache is used
         // and no longer available for recycling. We mark the cache as empty:

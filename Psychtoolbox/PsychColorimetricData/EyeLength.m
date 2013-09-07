@@ -23,6 +23,11 @@ function eyeLengthMM = EyeLength(species,source)
 % estimate, independent of species.  This is a hack that allows
 % some debugging.
 %
+% Passing a string that is a number (that is, something that str2num
+% will turn into a number) as the source will cause that number to
+% be returned as the eye length.  This is a bit redundant with the
+% numeric option above.
+%
 % Passing None is appropriate as an error check -- if a calculation
 % uses the eye length when none is passed, NaN's will show up in
 % the answer.
@@ -37,6 +42,7 @@ function eyeLengthMM = EyeLength(species,source)
 %          dhb  Added option of passing a number as a string.
 % 4/12/13  dhb  Fix bug introduced in previous update, which may have
 %               been Matlab version dependent.
+% 8/9/13   dhb  A few more comments.
 
 % Fill in defaults
 if (nargin < 1 || isempty(species))

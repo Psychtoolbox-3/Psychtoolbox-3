@@ -28,12 +28,14 @@ function densities = PhotopigmentSpecificDensity(receptorTypes,species,source)
 % Supported sources:
 % 	Rodieck (Human) (Default).
 %   Bowmaker (GuineaPig).
-%   Generic.
+%   Generic
+%   None (returns empty matrix as value)
 %
 % The Generic source returns a single number for all species and receptor types.
 % This number is 0.015 /um.
 %
 % 7/11/03  dhb  Wrote it.
+% 8/9/13   dhb  Comment clean up, allow 'None' to return empty as the value.
 
 % Fill in defaults
 if (nargin < 2 || isempty(species))
@@ -59,6 +61,8 @@ for i = 1:length(densities)
 	end
 
 	switch (source)
+        case {'None'}
+            densities = [];
 		case {'Generic'}
 			densities(i) = 0.015;
 

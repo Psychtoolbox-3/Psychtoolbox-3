@@ -216,8 +216,8 @@ void PsychGSCheckInit(const char* engineName)
             // OSX linker sets the symbol to NULL if dynamic weak linking during runtime failed.
             // On failure we'll output some helpful error-message instead:
             #if PSYCH_SYSTEM == PSYCH_WINDOWS
-                if (((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) &&
-                    ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll")))) {
+                if (((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) &&
+                    ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll")))) {
             #endif
             #if PSYCH_SYSTEM == PSYCH_OSX
                 if (NULL == gst_init_check) {
@@ -2820,6 +2820,45 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         theight = -1;
     }
 
+    // Should we disable application of colorcaps as filter-caps to video source. A flag of 4096
+    // says so. We would want to disable this if we want maximum acceptance of different color formats
+    // from the video source, e.g., to accomodate exotic video sources, at the expense of some performance
+    // loss due to need of an extra colorspace / color format conversion step down the pipeline:
+    if (recordingflags & 4096) {
+        // Yes:
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: OpenVideoCapture: Disabling use of colorcaps as filter-caps. Lower performance, but higher compatibility.\n");
+        
+        // Disable for camerabin1 happens below...
+        if (usecamerabin == 2) {
+            // Disable on camerabin2: We do this by deleting colorcaps and creating them as empty
+            // caps object, so they don't impose restriction on color encoding if they get
+            // applied downstream, e.g., as viewfinder-caps or capture-caps:
+            gst_caps_unref(colorcaps);
+            
+            // No size/resolution specified?
+            if (twidth == -1 && theight == -1) {
+                // Totally unconstrained format:
+                colorcaps = gst_caps_new_any();
+            }
+            else {
+                // Non-Default resolution requested. Need to set a bit more explicit caps
+                // for this to work -- at least basic color format:
+                if (reqdepth == 3 || reqdepth == 4) {
+                    // RGB8 or RGBA8:
+                    colorcaps = gst_caps_new_simple("video/x-raw-rgb", NULL);
+                }
+                else if (reqdepth == 1 || (reqdepth == 2 && capdev->pixeldepth != 12 && capdev->pixeldepth != 16)) {
+                    // GRAY8:
+                    colorcaps = gst_caps_new_simple("video/x-raw-gray", NULL);
+                }
+                else {
+                    // UYVY or I420:                    
+                    colorcaps = gst_caps_new_simple("video/x-raw-yuv", NULL);
+                }
+            }
+        }
+    }
+
     // Assign our special appsink 'videosink' as video-sink of the pipeline:
     if (!usecamerabin) {
         if (capdev->recording_active) PsychErrorExitMsg(PsychError_user, "Video recording requested, but this isn't supported on this setup, sorry.");
@@ -2838,8 +2877,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		    // Pure video capture, no recording: Optimize pipeline for this case:
 		    g_object_set(G_OBJECT(camera), "flags", (usecamerabin == 1) ? 1+2+4 : 0, NULL);
             
-            // Setup colorcaps for camerabin1, do it later for camerabin2:
-            if (usecamerabin == 1) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
+            // Setup colorcaps for camerabin1, unless prevented by recordingflags 4096, do it later for camerabin2:
+            if ((usecamerabin == 1) && !(recordingflags & 4096)) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
             
 	    } else {
 		    // Video recording (with optional capture). Setup pipeline:
@@ -4287,6 +4326,9 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             // Check if 1.5x height texture fits within hardware limits of this GPU:
             if (h * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixeldepth of 4 in 'OpenVideoCapture'.");
             
+            // Byte alignment: Assume no alignment for now:
+            out_texture->textureByteAligned = 1;
+            
             // Create planar "I420 inside L8" texture:
             PsychCreateTexture(out_texture);
             
@@ -4308,15 +4350,15 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             
             // And 24 bpp depth:
             out_texture->depth = 24;
-            
-            // Byte alignment: Assume no alignment for now:
-            out_texture->textureByteAligned = 1;
         }
         else {
             // Let PsychCreateTexture() do the rest of the job of creating, setting up and
             // filling an OpenGL texture with content:
             PsychCreateTexture(out_texture);
         }
+
+        // This NULL-out is not strictly needed (done already in PsychCreateTexture()), just for simpler code review:
+        out_texture->textureMemory = NULL;
 
         // Immediate conversion of texture into normalized orientation and format requested
         // by usercode?

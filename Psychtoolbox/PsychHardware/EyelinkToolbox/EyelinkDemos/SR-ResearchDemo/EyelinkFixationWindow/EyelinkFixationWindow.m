@@ -18,11 +18,12 @@ function EyelinkFixationWindow
 %
 % 01/28/11  NJ  created
 
+PsychDefaultSetup(1);
 
 % trial defaults
 dummymode=0;
 
-if ~isoctave
+if ~IsOctave
     commandwindow;
 else
     more off;
@@ -45,7 +46,7 @@ try
     % Added a dialog box to set your own EDF file name before opening
     % experiment graphics. Make sure the entered EDF file name is 1 to 8
     % characters in length and only numbers or letters are allowed.
-    if isoctave
+    if IsOctave
         edfFile = 'DEMO';
     else 
         prompt = {'Enter tracker EDF file name (1 to 8 letters or numbers)'};

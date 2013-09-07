@@ -36,6 +36,7 @@
 % 04/2/13  dhb  Change clear all to clear, and close figs.
 % 04/27/13 dhb  Improve comments.
 % 7/19/13  dhb  Print out photoreceptors structure using PrintPhotoreceptors.
+% 8/11/13  dhb  Protect against case when absorbance is provided directly.
 
 %% clear
 clear; close all;
@@ -118,7 +119,9 @@ fprintf('\n');
 fprintf('Photoreceptor Type             |\t       M\t       S\t     Rod\n');
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');
-fprintf('Lambda max                     |\t%8.1f\t%8.1f\t%8.1f\t nm\n',photoreceptors.nomogram.lambdaMax);
+if (isfield(photoreceptors.nomogram,'lambdaMax'))
+    fprintf('Lambda max                     |\t%8.1f\t%8.1f\t%8.1f\t nm\n',photoreceptors.nomogram.lambdaMax);
+end
 fprintf('Outer Segment Length           |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSlength.value);
 fprintf('Outer Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSdiameter.value);
 fprintf('Inner Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.ISdiameter.value);

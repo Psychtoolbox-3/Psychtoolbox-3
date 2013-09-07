@@ -3,12 +3,6 @@ function SaveAsEps(filename,m,pageRect,resolution)
 % Based on WindowToEps.c of the VideoToolbox.
 % Copyright © 1996-2003 Denis G. Pelli
 % 
-% NOTE: Most users will prefer to use Screen 'SaveAsEps' instead, which
-% has the virtue of adding the PICT preview automatically. It's very
-% similar to SaveAsEps.m, but accepts a window instead of a Matlab matrix.
-% This help text, below, might still be of some use to users of the new
-% Screen 'SaveAsEps'.
-% 
 % SaveAsEps converts a grayscale image (in a Matlab matrix) to a
 % PostScript file that a LaserWriter or Linotype will accurately render on
 % paper. The output file is a standard Encapsulated PostScript File, with

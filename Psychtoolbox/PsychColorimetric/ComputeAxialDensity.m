@@ -8,5 +8,4 @@ function [axialOpticalDensity] = ComputeAxialDensity(specificDensity, outSegment
 % 06/11/03 lyin Wrote it.
 % 06/26/03 dhb	Change "peakAxialOpticDensity" to "axialOpticalDensity".
 
-
 axialOpticalDensity = outSegmentLength .* specificDensity;

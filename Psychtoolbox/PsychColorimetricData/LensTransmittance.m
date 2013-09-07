@@ -32,6 +32,8 @@ function [lensTransmit,lensDensity] = LensTransmittance(S,species,source,ageInYe
 %         dhb  Finish. Add pupil size.
 % 8/13/11 dhb  Linearly extrapolate read functions outside of range.
 % 9/17/12 dhb  Return density for 'None' case as well.
+% 8/9/13  dhb  More consistent returning of density for 'None' case.
+% 8/11/13 dhb  Try to make dimensions of returned density match those of returned transmittance.
 
 % Default
 if (nargin < 2 || isempty(species))
@@ -53,20 +55,21 @@ switch (species)
 		switch (source)
 			case 'None',
 				lensTransmit = ones(S(3),1)';
+                lensDensity = zeros(S(3),1)';
 			case 'WyszeckiStiles',
 				load den_lens_ws;
-				lensDensity = SplineSrf(S_lens_ws,den_lens_ws,S,2);
-				lensTransmit = 10.^(-lensDensity)';
+				lensDensity = SplineSrf(S_lens_ws,den_lens_ws,S,2)';
+				lensTransmit = 10.^(-lensDensity);
 			case 'StockmanSharpe',
 				load den_lens_ssf;
-				lensDensity = SplineSrf(S_lens_ssf,den_lens_ssf,S,2);
-				lensTransmit = 10.^(-lensDensity)';
+				lensDensity = SplineSrf(S_lens_ssf,den_lens_ssf,S,2)';
+				lensTransmit = 10.^(-lensDensity);
             case 'CIE'
                 % Load CIE age dependent and age independent components
                 load den_lens_cie_1
                 load den_lens_cie_2
-                lensDensity1 = SplineSrf(S_lens_cie_1,den_lens_cie_1,S,2);
-                lensDensity2 = SplineSrf(S_lens_cie_2,den_lens_cie_2,S,2);
+                lensDensity1 = SplineSrf(S_lens_cie_1,den_lens_cie_1,S,2)';
+                lensDensity2 = SplineSrf(S_lens_cie_2,den_lens_cie_2,S,2)';
                 
                 % Combine them according to age using CIE formulae
                 if (ageInYears < 20)
@@ -96,7 +99,7 @@ switch (species)
                 elseif (pupilDiameterMM >= 7)
                     lensDensity = 0.86207*lensDensity;
                 end
-                lensTransmit = 10.^(-lensDensity)';
+                lensTransmit = 10.^(-lensDensity);
           
 			otherwise,
 				error('Unsupported lens density estimate specified');

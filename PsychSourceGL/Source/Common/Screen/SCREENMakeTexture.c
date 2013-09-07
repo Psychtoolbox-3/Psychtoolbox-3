@@ -36,9 +36,11 @@ static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, image
 //                                                            1            2              3                          4                5                    6						7
 static char synopsisString[] = 
 	"Convert the 2D or 3D matrix 'imageMatrix' into an OpenGL texture and return an index which may be passed to 'DrawTexture' to specify the texture.\n"
-	"In the the OpenGL Psychtoolbox textures replace offscreen windows for fast drawing of images during animation."
+	"In the OpenGL Psychtoolbox textures replace offscreen windows for fast drawing of images during animation.\n"
 	"The imageMatrix argument may consist of one monochrome plane (Luminance), LA planes, RGB planes, or RGBA planes where "
-	"A is alpha, the transparency of a pixel. Alpha values typically range between zero (=fully transparent) and 255 (=fully opaque). "
+	"A is alpha, the transparency of a pixel. Alpha values typically range between zero (=fully transparent) and 255 (=fully opaque).\n"
+	"The Screen('ColorRange') command affects the range of expected input values in 'imageMatrix' matrices of double precision type, "
+	"as does the optional 'floatprecision' flag discussed below.\n"
 	"You need to enable Alpha-Blending via Screen('BlendFunction',...) for the transparency values to have an effect.\n"
 	"The argument 'optimizeForDrawAngle' if provided, asks Psychtoolbox to optimize the texture for especially fast "
 	"drawing at the specified rotation angle. The default is 0 == Optimize for upright drawing. If 'specialFlags' is set "
@@ -107,13 +109,14 @@ PsychError SCREENMakeTexture(void)
     double								*doubleMatrix;
     GLuint								*texturePointer;
     GLubyte								*texturePointer_b;
-	GLfloat								*texturePointer_f;
+    GLfloat								*texturePointer_f;
     double								*rp, *gp, *bp, *ap;
     GLubyte								*rpb, *gpb, *bpb, *apb;
     int									usepoweroftwo, usefloatformat, assume_texorientation, textureShader;
-    double								optimized_orientation;
+    double                              optimized_orientation;
     psych_bool							bigendian;
-	psych_bool							planar_storage = FALSE;
+    psych_bool							planar_storage = FALSE;
+    double                              scaled = 1.0;
 
     // Detect endianity (byte-order) of machine:
     ix=255;
@@ -140,6 +143,18 @@ PsychError SCREENMakeTexture(void)
     if((windowRecord->windowType!=kPsychDoubleBufferOnscreen) && (windowRecord->windowType!=kPsychSingleBufferOnscreen))
         PsychErrorExitMsg(PsychError_user, "MakeTexture called on something else than a onscreen window");
     
+    if (windowRecord->applyColorRangeToDoubleInputMakeTexture == 1) {
+        // Apply scaling to uint8 textures which are created from double input matrices, so that
+        // the Screen('ColorRange', ...) affects those values just as it affects other color specs for other
+        // drawing commands:
+        scaled = 255.0 / fabs(windowRecord->colorRange);
+    }
+    else {
+        //  Do not apply scaling based on colorRange to double input for uint8 textures:
+        scaled = 1.0;
+    }
+    // printf("ColorRange = %f  ,   apply = %i  -> scaled = %f\n", windowRecord->colorRange, windowRecord->applyColorRangeToDoubleInputMakeTexture, scaled);
+
 	// Get optional texture orientation flag:
 	assume_texorientation = 0;
 	PsychCopyInIntegerArg(6, FALSE, &assume_texorientation);
@@ -325,7 +340,7 @@ PsychError SCREENMakeTexture(void)
 				iters = (size_t) xSize * (size_t) ySize * (size_t) numMatrixPlanes;
 				texturePointer_b = (GLubyte*) texturePointer;
 				for(ix = 0; ix < iters; ix++) {
-					*(texturePointer_b++) = (GLubyte) *(doubleMatrix++);
+					*(texturePointer_b++) = (GLubyte) (scaled * *(doubleMatrix++));
 				}
 				iters = (size_t) xSize * (size_t) ySize;
 			}
@@ -416,7 +431,7 @@ PsychError SCREENMakeTexture(void)
 		if(isImageMatrixDoubles && numMatrixPlanes==1){
 			texturePointer_b=(GLubyte*) texturePointer;
 			for(ix=0;ix<iters;ix++){
-				*(texturePointer_b++)= (GLubyte) *(doubleMatrix++);  
+				*(texturePointer_b++)= (GLubyte) (scaled * *(doubleMatrix++));
 			}
 			textureRecord->depth=8;
 		}
@@ -453,8 +468,8 @@ PsychError SCREENMakeTexture(void)
 			rp=(double*) ((size_t) doubleMatrix);
 			ap=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
 			for(ix=0;ix<iters;ix++){
-				*(texturePointer_b++)= (GLubyte) *(rp++);  
-				*(texturePointer_b++)= (GLubyte) *(ap++);  
+				*(texturePointer_b++)= (GLubyte) (scaled * *(rp++));
+				*(texturePointer_b++)= (GLubyte) (scaled * *(ap++));
 			}
 			textureRecord->depth=16;
 		}
@@ -478,9 +493,9 @@ PsychError SCREENMakeTexture(void)
 			gp=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
 			bp=(double*) ((size_t) gp + (size_t) iters * sizeof(double));
 			for(ix=0;ix<iters;ix++){
-				*(texturePointer_b++)= (GLubyte) *(rp++);  
-				*(texturePointer_b++)= (GLubyte) *(gp++);  
-				*(texturePointer_b++)= (GLubyte) *(bp++);  
+				*(texturePointer_b++)= (GLubyte) (scaled * *(rp++));
+				*(texturePointer_b++)= (GLubyte) (scaled * *(gp++));
+				*(texturePointer_b++)= (GLubyte) (scaled * *(bp++));
 			}
 			textureRecord->depth=24;
 		}
@@ -509,19 +524,19 @@ PsychError SCREENMakeTexture(void)
 			if (bigendian) {
 				// Code for big-endian machines like PowerPC:
 				for(ix=0;ix<iters;ix++){
-					*(texturePointer_b++)= (GLubyte) *(ap++);  
-					*(texturePointer_b++)= (GLubyte) *(rp++);  
-					*(texturePointer_b++)= (GLubyte) *(gp++);  
-					*(texturePointer_b++)= (GLubyte) *(bp++);  
+					*(texturePointer_b++)= (GLubyte) (scaled * *(ap++));
+					*(texturePointer_b++)= (GLubyte) (scaled * *(rp++));
+					*(texturePointer_b++)= (GLubyte) (scaled * *(gp++));
+					*(texturePointer_b++)= (GLubyte) (scaled * *(bp++));
 				}
 			}
 			else {
 				// Code for little-endian machines like Intel Pentium:
 				for(ix=0;ix<iters;ix++){
-					*(texturePointer_b++)= (GLubyte) *(bp++);  
-					*(texturePointer_b++)= (GLubyte) *(gp++);  
-					*(texturePointer_b++)= (GLubyte) *(rp++);  
-					*(texturePointer_b++)= (GLubyte) *(ap++);  
+					*(texturePointer_b++)= (GLubyte) (scaled * *(bp++));
+					*(texturePointer_b++)= (GLubyte) (scaled * *(gp++));
+					*(texturePointer_b++)= (GLubyte) (scaled * *(rp++));
+					*(texturePointer_b++)= (GLubyte) (scaled * *(ap++));
 				}
 			}
 			

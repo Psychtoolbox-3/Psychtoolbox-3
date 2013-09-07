@@ -84,9 +84,10 @@ function varargout = Screen(varargin) %#ok<STOUT>
 % 		% make movie
 % 		window=Screen('OpenWindow', 0, 0);
 % 		rect=[0 0 200 200];
+%       white = WhiteIndex(window);
 % 		for i=1:100
 % 			movie(i)=Screen('OpenOffscreenWindow', window, 0, rect);
-% 			Screen('FillOval', movie(i), 255, [0 0 2 2]*(i-1));
+% 			Screen('FillOval', movie(i), white, [0 0 2 2]*(i-1));
 % 		end;
 %
 % 		% show movie

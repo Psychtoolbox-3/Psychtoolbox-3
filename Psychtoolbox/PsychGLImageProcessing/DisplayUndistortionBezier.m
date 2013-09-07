@@ -132,7 +132,7 @@ function DisplayUndistortionBezier(caliboutfilename, xnum, ynum, subdivision, im
 % 07/16/07 Initial (incomplete) version. (MK)
 
 % Running on PTB-3? Abort otherwise:
-AssertOpenGL;
+PsychDefaultSetup(1);
 
 % No need for synctests here...
 oldsynclevel = Screen('Preference', 'SkipSyncTests', 1);

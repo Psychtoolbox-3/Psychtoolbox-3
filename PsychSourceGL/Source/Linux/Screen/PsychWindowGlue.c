@@ -861,52 +861,65 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     //        // an empty list of allowed actions:
     //        XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_ALLOWED_ACTIONS", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) NULL, 0);
     //    }
+
+    // For some reason we need to use unsigned long and long here instead of
+    // int32_t etc., despite the fact that on a 64-Bit build, a long is 64-Bit
+    // and on a 32-Bit build, a long is 32-Bit, whereas the XChangeProperty()
+    // request says a single unit is 32-Bits? Anyway, it works correctly on a
+    // 64-Bit build, so this seems to be magically ok.
+    struct MwmHints {
+        unsigned long flags;
+        unsigned long functions;
+        unsigned long decorations;
+        long          input_mode;
+        unsigned long status;
+    };
+        
+    enum {
+        MWM_HINTS_FUNCTIONS = (1L << 0),
+        MWM_HINTS_DECORATIONS =  (1L << 1),
+            
+        MWM_FUNC_ALL = (1L << 0),
+        MWM_FUNC_RESIZE = (1L << 1),
+        MWM_FUNC_MOVE = (1L << 2),
+        MWM_FUNC_MINIMIZE = (1L << 3),
+        MWM_FUNC_MAXIMIZE = (1L << 4),
+        MWM_FUNC_CLOSE = (1L << 5)
+    };
+        
+    Atom mwmHintsProperty = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+        
+    struct MwmHints hints;
+    memset(&hints, 0, sizeof(hints));        
+    hints.flags = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
     
     // If this window is a GUI window then enable all window decorations and
     // manipulations, except for the window close button, which would wreak havoc:
     if (windowRecord->specialflags & kPsychGUIWindow) {
-        // For some reason we need to use unsigned long and long here instead of
-        // int32_t etc., despite the fact that on a 64-Bit build, a long is 64-Bit
-        // and on a 32-Bit build, a long is 32-Bit, whereas the XChangeProperty()
-        // request says a single unit is 32-Bits? Anyway, it works correctly on a
-        // 64-Bit build, so this seems to be magically ok.
-        struct MwmHints {
-            unsigned long flags;
-            unsigned long functions;
-            unsigned long decorations;
-            long          input_mode;
-            unsigned long status;
-        };
-        
-        enum {
-            MWM_HINTS_FUNCTIONS = (1L << 0),
-            MWM_HINTS_DECORATIONS =  (1L << 1),
-            
-            MWM_FUNC_ALL = (1L << 0),
-            MWM_FUNC_RESIZE = (1L << 1),
-            MWM_FUNC_MOVE = (1L << 2),
-            MWM_FUNC_MINIMIZE = (1L << 3),
-            MWM_FUNC_MAXIMIZE = (1L << 4),
-            MWM_FUNC_CLOSE = (1L << 5)
-        };
-        
-        Atom mwmHintsProperty = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
-        
-        struct MwmHints hints;
-        memset(&hints, 0, sizeof(hints));
-        
-        hints.flags       = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
         hints.decorations = MWM_FUNC_ALL;
         hints.functions   = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
-        
-        XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *) &hints, sizeof(hints) / sizeof(long));
-        
-        // For windowLevels of at least 500, tell window manager to try to keep
-        // our window above most other windows, by setting the state to WM_STATE_ABOVE:
-        if (windowLevel >= 500) {
-            Atom stateAbove = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
-            XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) &stateAbove, 1);
-        }
+    }
+    else {
+        // No GUI window: Prevent the user from interacting with / manipulating the window by defining an empty list of allowed actions:
+        XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_ALLOWED_ACTIONS", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) NULL, 0);
+
+        // No decorations:
+        hints.decorations = 0;
+
+        // No interaction via any controls (buttons etc.):
+        hints.functions   = 0;
+    }
+
+    // Apply hints:
+    XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *) &hints, sizeof(hints) / sizeof(long));        
+
+    // For windowLevels of at least 500, tell window manager to try to keep
+    // our window above most other windows, by setting the state to WM_STATE_ABOVE:
+    // Note: Can't use it for level 2000. On level 2000 it will be automatically above others, so this
+    // isn't needed, but setting it would *undo* some required settings for fullscreen opaque windows.
+    if ((windowLevel >= 500) && (windowLevel < 2000)) {
+        Atom stateAbove = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+        XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) &stateAbove, 1);
     }
 
     // Show our new window: Also raise it to the top for

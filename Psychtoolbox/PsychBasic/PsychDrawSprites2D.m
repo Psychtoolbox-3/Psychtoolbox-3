@@ -2,7 +2,7 @@ function PsychDrawSprites2D(windowPtr, spriteTex, xy, spriteScale, spriteAngle, 
 % Draw little texture in multiple places, with a similar syntax as
 % Screen('DrawDots').
 %
-% Usage: PsychDrawSprites2D(windowPtr, spriteTex, xy [, spriteScale=1][, spriteAngle=0][, spriteColor=255][, center2D=[0,0]][, spriteShader]);
+% Usage: PsychDrawSprites2D(windowPtr, spriteTex, xy [, spriteScale=1][, spriteAngle=0][, spriteColor=white][, center2D=[0,0]][, spriteShader]);
 %
 % This is basically a 'DrawDots' work-alike, just that it doesn't draw nice
 % round dots, but many copies of nice little texture images, each
@@ -26,6 +26,7 @@ function PsychDrawSprites2D(windowPtr, spriteTex, xy, spriteScale, spriteAngle, 
 
 % History:
 % 18.04.2010  mk  Wrote it.
+% 05.09.2013  mk  Use WhiteIndex() instead of hard-coded 255 color value.
 
 if nargin < 1 || isempty(windowPtr)
     error('"windowPtr" window handle missing! This is required!');
@@ -103,7 +104,7 @@ if ~isempty(spriteColor)
     end
 else
     ncolors = 0; %#ok<NASGU>
-    spriteColor = 255;
+    spriteColor = WhiteIndex(windowPtr);
 end
 
 if nargin < 8

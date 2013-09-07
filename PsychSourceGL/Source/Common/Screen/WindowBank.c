@@ -548,6 +548,7 @@ void  PsychAssignParentWindow(PsychWindowRecordType *childWin, PsychWindowRecord
 	
 	// Copy color range and mode from parent window:
 	childWin->colorRange = parentWin->colorRange;
+	childWin->applyColorRangeToDoubleInputMakeTexture = parentWin->applyColorRangeToDoubleInputMakeTexture;
 
 	// Copy imaging mode flags from parent:
 	childWin->imagingMode = parentWin->imagingMode;

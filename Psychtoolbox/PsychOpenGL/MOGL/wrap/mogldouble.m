@@ -28,26 +28,4 @@ function retval = mogldouble(arg)
 
 % ---protected---
 
-if IsOctave
-    % If this is Octave, then we can use dispatch() to optimize calls to
-    % mogldouble() away, ie., all calls to mogldouble() will get redirected
-    % to double() unconditionally to save some overhead:
-    dispatch('mogldouble', 'double', 'all');
-end
-
 retval = double(arg);
-
-return;
-
-% % Special float values are encoded by MOGL/Octave
-% % as uint32's. Therefore if the passed value isn't a
-% % uint32, we apply the normal builtin double() operator:
-% if ~strcmp(class(arg), 'uint32')
-%    retval = double(arg);
-% else
-%    % This is a float, packed into a uint32. Apply our
-%    % special cast-operator:
-%    retval = castDouble2Float(arg, 1);
-% end
-%
-%return;

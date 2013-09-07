@@ -5,15 +5,8 @@ function SimpleHDROfflineCaptureTest(imfilename, dummymode, sf)
 % low-dynamic range 'konijntjes' if 'imfilename' is omitted.
 %
 
-
 % Make sure we run on OpenGL-Psychtoolbox. Abort otherwise.
-AssertOpenGL;
-
-if IsOSX
-    % A little debug helper...
-    Screen('Preference', 'ConserveVRAM', 16384);
-    Screen('Preference', 'WindowShieldingLevel', 1250);
-end
+PsychDefaultSetup(1);
 
 % Run demo in dummy mode?
 if nargin < 2

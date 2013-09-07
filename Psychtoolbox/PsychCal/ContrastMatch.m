@@ -32,6 +32,8 @@ function weight=ContrastMatch(device,dimWeight,foreColor,backColor)
 % 7/19/98 dgp  Removed obsolete TIMER.
 % 6/30/03 dgp Updated Screen OpenScreen to Screen OpenWindow.
 
+PsychDefaultSetup(1);
+
 if nargin<2 || nargout>1
 	error('Usage: weight=GratingMatch(device,dimWeight,[foreColor],[backColor])');
 end
@@ -44,7 +46,7 @@ end
 dpi=67;
 distanceM=0.57;
 pixelDeg=57/(dpi*distanceM/0.0254);
-screenRect=Screen(device,'OpenWindow');
+[win, screenRect] = Screen('OpenWindow', device);
 screenRect=reshape(screenRect,1,4);
 white=[255 255 255];
 black=[0 0 0];
@@ -56,7 +58,7 @@ clut(2,:)=black;
 clut(3,:)=white;
 clut(4,:)=black;
 clut(5,:)=dimWeight*white+(1-dimWeight)*black;
-Screen('SetClut',clut);
+Screen('SetClut', win, clut);
 
 if 0
 	blend=1:RectHeight(barRect);
@@ -79,12 +81,12 @@ barRect=SetRect(0,0,barWidth,RectHeight(testRect));
 for color=0:2:2
 	barRect=AlignRect(barRect,testRect,RectLeft,RectBottom);
 	for i=0:2:ceil(RectWidth(testRect)/RectWidth(barRect))
-		Screen('DrawRect',color+1,barRect);
+		Screen('FillRect', win, color+1,barRect);
 		barRect=OffsetRect(barRect,RectWidth(barRect),0);
-		Screen('DrawRect',color+2,barRect);
+		Screen('FillRect', win, color+2,barRect);
 		barRect=OffsetRect(barRect,RectWidth(barRect),0);
 	end
-	Screen('DrawRect',0,AdjoinRect(testRect,testRect,RectRight))
+	Screen('FillRect', win, 0,AdjoinRect(testRect,testRect,RectRight))
 	testRect=AdjoinRect(testRect,testRect,RectBottom);
 end
 
@@ -96,15 +98,16 @@ theText=char(theText,'you see one long grating,');
 theText=char(theText,'partly occluded by a dark');
 theText=char(theText,'filter.');
 s=24;
-Screen('TextFont','Chicago');
-Screen('TextSize',s);
+%Screen('TextFont', win, 'Chicago');
+Screen('TextSize', win, s);
 s=s+8;
-textRect=SetRect(0,0,Screen('TextWidth',theText(2,:)),size(theText,1)*s);
-textRect=CenterRect(textRect,screenRect);
-textRect=OffsetRect(textRect,RectWidth(screenRect)/4+20/4,0);
-for i=1:size(theText,1)
-	Screen('DrawText',textRect(RectLeft),textRect(RectTop)+s*i,255,theText(i,:));
-end
+% textRect=SetRect(0,0,Screen('TextWidth',theText(2,:)),size(theText,1)*s);
+% textRect=CenterRect(textRect,screenRect);
+% textRect=OffsetRect(textRect,RectWidth(screenRect)/4+20/4,0);
+% for i=1:size(theText,1)
+% 	Screen('DrawText',textRect(RectLeft),textRect(RectTop)+s*i,255,theText(i,:));
+% end
+DrawFormattedText(win, theText, 0, 'center', 'center', white);
 
 % animate
 % track vertical mouse position with vertical slider knob.
@@ -114,12 +117,12 @@ knobRect=SetRect(0,0,RectWidth(sliderRect),RectWidth(sliderRect));
 knobRect=InsetRect(CenterRect(knobRect,sliderRect),1,0);
 top=RectTop;
 bottom=RectBottom;
-Screen('DrawRect',0,sliderRect);
-Screen('FrameRect',255,sliderRect);
+Screen('FillRect', win, 0, sliderRect);
+Screen('FrameRect', win, 255, sliderRect);
 while 1
 	[x,y,button]=GetMouse;
 	weight=(sliderRect(bottom)-y)/RectHeight(sliderRect);
-	Screen('SetClut',weight*foreColor+(1-weight)*backColor,1);
+	Screen('SetClut', win, weight*foreColor+(1-weight)*backColor,1);
 	dy=y-(knobRect(top)+knobRect(bottom))/2;
 	residue=knobRect;
 	if dy>0
@@ -128,9 +131,9 @@ while 1
 		residue(top)=residue(bottom)+dy;
 	end
 	knobRect=OffsetRect(knobRect,0,dy);
-	Screen('DrawRect',0,residue);
-	Screen('DrawRect',255,knobRect);
-	if(button)break;end;
+	Screen('FillRect', win, 0,residue);
+	Screen('FillRect', win, 255,knobRect);
+	if(button) break; end;
 	WaitSecs(.01); % make sure we miss some frames, so mouse gets updated
 end
 Screen('CloseAll');

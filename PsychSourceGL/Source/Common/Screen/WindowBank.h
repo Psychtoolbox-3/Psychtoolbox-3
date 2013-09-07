@@ -378,6 +378,7 @@ typedef struct _PsychWindowRecordType_{
 	int    loadGammaTableOnNextFlip;	// Type of upload operation: 0 = None, 1 = Load on next Flip via OS gamma table routines, then reset flag.
 	
 	// Settings for the image processing and hook callback pipeline: See PsychImagingPipelineSupport.hc for definition and implementation:
+	int						applyColorRangeToDoubleInputMakeTexture; // Should colorRange also affect uint8 textures created from double input in Screen('MakeTexture')?
 	double					colorRange;								// Maximum allowable color component value. See SCREENColorRange.c for explanation.
 	GLuint					unclampedDrawShader;					// Handle of GLSL shader object for drawing of non-texture stims without vertex color clamping. Zero by default.
 	GLuint					defaultDrawShader;						// Default GLSL shader object for drawing of non-texture stims. Zero by default.

@@ -57,6 +57,31 @@ switch ivx.connection
                         result=data;
                     end
                 end
+            case 'receivelast',
+                if ~isempty(ivx.udp)
+                    % should we instead check status?
+                    % stat=pnet(ivx.udp,'status');
+                    
+                    while 1
+                        % Wait/Read udp packet to read buffer
+                        len=pnet(ivx.udp,'readpacket');
+                        
+                        %len=pnet(udp,'readpacket',[],'noblock');
+                        % if len>0 fprintf('Len: %d\n', len); end
+                        
+                        if len > 0
+                            % [ip,port]=pnet(ivx.udp,'gethost');
+                            % if packet larger then 1 byte then read
+                            % maximum of 1000 doubles in network byte order
+                            % data=pnet(udp,'read',ivx.udpmaxread,'double');
+                            data=pnet(ivx.udp,'read',ivx.udpmaxread);
+                            % data
+                            result=data;
+                        else
+                            break
+                        end
+                    end
+                end
             case 'close',
                 if ~isempty(ivx.udp)
 

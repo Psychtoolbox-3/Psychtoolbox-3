@@ -29,6 +29,8 @@ function foreWeight=GratingNull(device,message,forePart,blendPeriodPix,foreColor
 %               by GetMouse on Windows.
 %              -Replace Chicago font with Arial because it's available on both Mac and Windows
 
+PsychDefaultSetup(1);
+
 if sscanf(version,'%f',1)<5
 	if nargin<4 || nargin>8 || nargout>1 || ~ischar(message)
 		error('Usage:	foreWeight=GratingNull(device,message,forePart,blendPeriodPix,[foreColor],[backColor],[viewingDistanceM],[dpi])');
@@ -52,7 +54,7 @@ if nargin<5
 end
 pixelDeg=57/(dpi*distanceM/0.0254);
 % 7/14/99 dgp At least some parts of VisualGammaDemo assume 8-bit pixelsize, so i'm forcing it here.
-[window,screenRect]=Screen(device,'OpenWindow',[],[],8);
+[window,screenRect]=Screen(device,'OpenWindow');
 white=[255 255 255];
 black=[0 0 0];
 clut=(0:255)';
@@ -124,7 +126,7 @@ top=RectTop;
 bottom=RectBottom;
 Screen(window,'FillRect',0,sliderRect);
 Screen(window,'FrameRect',255,sliderRect);
-FlushEvents('mouseUp','mouseDown');
+Screen('Flip', window, [], 1);
 while 1
 	[x,y,button]=GetMouse;
 	foreWeight=(sliderRect(bottom)-y)/RectHeight(sliderRect);
@@ -139,8 +141,9 @@ while 1
 	knobRect=OffsetRect(knobRect,0,dy);
 	Screen(window,'FillRect',0,residue);
 	Screen(window,'FillRect',255,knobRect);
+    Screen('Flip', window, [], 1);
+
 	if any(button)break;end;
 	WaitSecs(.01); % make sure we miss some frames, so mouse gets updated
 end
-FlushEvents('mouseUp','mouseDown');
 Screen('CloseAll');

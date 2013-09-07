@@ -53,7 +53,7 @@ function DisplayUndistortionHalfCylinder(calibfilename, screenid)
 
 global GL;
 
-AssertOpenGL;
+PsychDefaultSetup(1);
 
 correctiontype = input('Cylinder projection (c) or sphere projection (s)? ', 's');
 if ~ismember(correctiontype, {'c','s'})

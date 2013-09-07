@@ -1,7 +1,7 @@
 function ScreenDrawDots(windowPtr, varargin)
 % Workaround-Wrapper for the Screen('DrawDots') function.
 %
-% Usage: ScreenDrawDots(windowPtr, xy [, dotdiameter=1][, dotcolor=255][, center2D][, dot_type=1]);
+% Usage: ScreenDrawDots(windowPtr, xy [, dotdiameter=1][, dotcolor=white][, center2D][, dot_type=1]);
 %
 % This function is the equivalent of the Screen('DrawDots') subfunction
 % for fast drawing of 2D dots. It has the same parameters as that function,
@@ -42,6 +42,7 @@ function ScreenDrawDots(windowPtr, varargin)
 
 % History:
 % 03.04.2010  mk  Written to compensate for severe OS/X 10.6.3 OpenGL bugs.
+% 05.09.2013  mk  Use WhiteIndex() instead of hard-coded 255 color value.
 
 persistent needWorkaround
 persistent spriteTextures
@@ -114,7 +115,7 @@ if isempty(xy)
 end
 
 % Must be a 2D matrix:
-if ndims(xy)~=2
+if ndims(xy)~=2 %#ok<ISMAT>
     error('"xy" dot position argument is not a 2D matrix! This is required!');
 end
 
@@ -164,7 +165,7 @@ if ~isempty(dotcolor)
     end
 else
     ncolors = 0; %#ok<NASGU>
-    dotcolor = 255;
+    dotcolor = WhiteIndex(windowPtr);
 end
 
 % 'center2D' argument specified?
@@ -249,13 +250,16 @@ end
 function tex = BuildDotTextures(w, maxms)
     % Prealloc texture vector:
     tex = zeros(1, maxms);
+    
+    % Get white value:
+    white = WhiteIndex(w);
 
     % Create images for different diameters and corresponding textures:
     for ms = 1:maxms
         % Two-Layer Luminance+Alpha image: 1st Layer - Luminance - is
-        % always a full 255 white. We extend the dotimage by 2 pixels in
+        % always a full white white. We extend the dotimage by 2 pixels in
         % each direction to have some safety margin around the dot:
-        dotimage = ones(ms+2, ms+2, 2) * 255;
+        dotimage = ones(ms+2, ms+2, 2) * white;
 
         % 2nd alpha layer starts with zero:
         dotimage(:,:,2) = 0;
@@ -284,8 +288,8 @@ function tex = BuildDotTextures(w, maxms)
         end
 
         % Normalize the score between 0 and 16 for each pixel to 0.0 - 1.0,
-        % then map to alpha range 0 - 255 to build final alpha-layer:
-        dotimage(:,:,2) = dotimage(:,:,2) / 16 * 255;
+        % then map to alpha range 0 - white to build final alpha-layer:
+        dotimage(:,:,2) = dotimage(:,:,2) / 16 * white;
 
         if 0
             imagesc(dotimage(:,:,2));

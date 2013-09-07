@@ -1,15 +1,16 @@
-% PTBAndVSETColorimetry
+% PTBAndIsetbioColorimetryTest
 % 
-% This script compares values calculated by PTB and vset (developed by
+% This script compares values calculated by PTB and routines in isetbio (developed by
 % Wandell and colleague) for various colorimetric functions.
 %
-% For information on vset, see https://github.com/wandell/vset/blob/master/README.txt.
+% For information on isetbio, see https://github.com/wandell/vset/blob/master/README.txt.
 % It contains its own implementation of many of the colorimetric computations 
 % implemented in PTB.  Note that Brainard and Wandell are not completely
 % independent sources.
 %
-% Make sure vset is on your path to run these comparisons.  The tests should
-% also work if you have iset on your path instead.
+% Make sure isetbio is on your path to run these comparisons.  The tests should
+% also work if you have the proprietary iset on your path instead.
+% isetbio is available on gitHub as https://github.com/wandell/isetbio.git.
 %
 % The checks are grouped into cells that check one thing at a time.
 %
@@ -19,17 +20,15 @@
 %
 % 7/7/10  dhb  Wrote it.
 % x/xx/10 baw  Checked with ISET-4.0 revision 351 (BW)
-% 2/28/13 dhb  Updated to work with VSET rather than proprietary iset.
-%
-% TODO:  
-%   There are small differences in sRGB calculations that need to be tracked down.
+% 2/28/13 dhb  Updated to work with vset rather than proprietary iset.
+% 8/5/13  dhb  Updated to work with isetbio, vset's successor.
 
 %% Clear and close
 clear; close all;
-if (exist('ISET','file'))
-    fprintf('\nComparing PTB and VSET/ISET Colorimetry\n');
+if (exist('isetbioRootPath','file'))
+    fprintf('\nComparing PTB and isetbio Colorimetry\n');
 else
-    error('Need vset (or iset) on your path to run this test');
+    error('Need isetbio on your path to run this test');
 end
 
 %% XYZ-related colorimetry
@@ -264,7 +263,7 @@ else
 end
 
 %% Not yet really implemented
-% The code below calls some vset/iset routines that
+% The code below calls some isetbio routines that
 % either don't yet have PTB counterpards, or for which
 % we have not yet written the comparison code.
 

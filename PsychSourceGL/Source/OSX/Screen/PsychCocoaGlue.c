@@ -77,7 +77,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     NSUInteger windowStyle = 0;
     if (windowRecord->specialflags & kPsychGUIWindow) {
         // GUI window:
-        windowStyle = NSTitledWindowMask|NSClosableWindowMask|NSResizableWindowMask|NSMiniaturizableWindowMask|NSTexturedBackgroundWindowMask;
+        windowStyle = NSTitledWindowMask|NSResizableWindowMask|NSMiniaturizableWindowMask|NSTexturedBackgroundWindowMask;
     }
     else {
         // Pure non-GUI visual stimulus window:

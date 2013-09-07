@@ -11,12 +11,14 @@ function quantalEfficiencies = PhotopigmentQuantalEfficiency(receptorTypes,speci
 %
 % Supported sources:
 % 	Generic (Default).
+%   None (returns 1 for all photoreceptor types)
 %
 % The generic source returns the value 0.667 for any species or type.  This
-% is currently the only source implemented.  The value comes from
+% is currently the only interesting source implemented.  The value comes from
 % Rodieck RW, The First Steps in Seeing, page 472.
 %
 % 7/25/03  dhb  Wrote it.
+% 8/9/13   dhb  Add type of 1.
 
 % Fill in defaults
 if (nargin < 2 || isempty(species))
@@ -42,6 +44,9 @@ for i = 1:length(quantalEfficiencies)
 	end
 
 	switch (source)
+        case {'None'};
+            quantalEfficiencies(i) = 1;
+            
 		case {'Generic'}
 			quantalEfficiencies(i) = 0.667;
 

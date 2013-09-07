@@ -15,9 +15,9 @@ function [absorbtanceSpectra, absorbtanceSpectraWls] =...
 %
 % Equation: absorbtanceSpectra = 1 - 10.^(-OD * absorbanceSpectra)
 %
-% Multiple spectra may be passed in the columns of absorbanceSpectra.  If
+% Multiple spectra may be passed in the rows of absorbanceSpectra.  If
 % so, then the same number of densities should be passed in the vector
-% axialOpticalDensities, and multiple answers are returned in the columns
+% axialOpticalDensities, and multiple answers are returned in the rows
 % of absorbtanceSpectra.
 %
 % Wavelength information may be in any of the available Psychtoolbox representations,
@@ -28,12 +28,14 @@ function [absorbtanceSpectra, absorbtanceSpectraWls] =...
 % 06/12/03 lyin 	Change the way variable being passed
 % 06/23/03 dhb		Check dimensions of spectra and density.
 % 06/30/03 dhb      Change to toolbox convention, put sensitivity like stuff in rows.
+% 08/11/13 dhb      Fix comment to reflect row convention change made in 2003.  Slowly but surely we fix things up.
 
 % Check that dimensions match properly
 if (size(absorbanceSpectra,1) ~= length(axialOpticalDensities))
 	error('Number of spectra does not match number of densities');
 end
-%	Equation: absorbtanceSpectra = 1 - 10.^(-OD * absorbanceSpectra)
+
+% Equation: absorbtanceSpectra = 1 - 10.^(-OD * absorbanceSpectra)
 absorbtanceSpectra = 1 - 10.^(-diag(axialOpticalDensities)*absorbanceSpectra);
 
 % Wls of absorbtanceSpectra

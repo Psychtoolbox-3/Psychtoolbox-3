@@ -20,7 +20,7 @@ function [photonAbsorptionRate] =...
 %   absorbtanceSpectra: probability an incident quantum will be absorbed.
 %   collectingDiameter (um^2)
 %
-%	05/06/03	lyin Wrote it
+% 05/06/03	lyin Wrote it
 % 06/12/03	lyin Change the way variable being passed.
 % 06/26/03  dhb  Change computation of area to pi*r^2 rather than pi*d^2!
 % 06/26/03  dhb  Change to expect absorptanceSpectra and collectingDiameter in rows.
@@ -34,7 +34,7 @@ irradianceInQuanta = SplineSpd(irradianceS, irradianceInQuanta, absorbtanceSpect
 % Compute absorptions per unit area for each passed photoreceptor (quanta/sec-um^2).
 photonAbsorptionRatePerArea = (absorbtanceSpectra * irradianceInQuanta);
 
-% Calculate the Photon collecting area of each type of photoreceptors
+% Calculate the photon collecting area of each type of photoreceptors
 collectingArea = pi * (collectingDiameter/2).^2;
 
 % Real numbers of photons absorbed for each photoreceptors (quanta/sec)

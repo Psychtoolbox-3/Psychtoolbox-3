@@ -1,7 +1,5 @@
 function EyelinkBubbleDemo(mode, ms, myimgfile)
 %
-% OS X and WINDOWS: _______________________________________________________
-%
 % Demo implementation of a generic bubble display.
 % We take one input image and create - via image processing - two images
 % out of it: An image to show at the screen location were the subject
@@ -15,10 +13,6 @@ function EyelinkBubbleDemo(mode, ms, myimgfile)
 % two images based on a spatial gaussian weight mask. Compositing is done
 % by the graphics hardware.
 %
-%
-% OS 9: ___________________________________________________________________
-%
-% BubbleDemoOSX does not exist on OS 9.
 % _________________________________________________________________________
 %
 % see also: PsychDemosOSX, MovieDemoOSX, DriftDemo
@@ -30,6 +24,7 @@ function EyelinkBubbleDemo(mode, ms, myimgfile)
 %  7/23/05    mk      Derived it from Frans Cornelissens AlphaImageDemoOSX.
 %   22/06/06    fwc     eyelinked, derived from Mario Kleiner's BubbleDemo ;-)
 
+PsychDefaultSetup(1);
 
 % Set hurryup = 1 for benchmarking - Syncing to retrace is disabled
 % in that case so we'll get the maximum refresh rate.

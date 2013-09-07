@@ -42,6 +42,8 @@ function EyelinkGazeContingentDemo(mode)
 %                     enable eye image display, added "cleanup" function,
 %
 
+PsychDefaultSetup(1);
+
 dummymode=0;
 try
     

@@ -85,6 +85,7 @@
 %    ReceivingTriggerFromSerialPortDemo - Template for asynchronous trigger collection and timestamping from serial port.
 %    RenderDemo              - Render CIE xyY as a color patch.
 %    SadowskiDemo            - Shows the "Sadowski" color afterimage effect.
+%    SimpleSoundScheduleDemo - Simple demo for basic use of sound schedules with PsychPortAudio.
 %    SimpleVoiceTriggerDemo  - Demo of a simple voice trigger with PsychPortAudio.
 %    SpriteDemo              - Animates an image that follows the mouse.
 %    StereoDemo              - Drive stereo-displays e.g., CrystalEyes.

@@ -90,7 +90,10 @@
 %   T_cones_smj10       - Stockman-MacLeod-Johnson 10-degree cone fundamentals.  See CVRL database.
 %   T_cones_ss2         - Stockman-Sharpe (2000) 2-degree cone fundamentals.  See CVRL database.
 %   T_cones_ss10        - Stockman-Sharpe (2000) 10-degree cone fundamentals.  See CVRL database.
-%   T_cones_sp          - Smith-Pokorny cone fundamentals.
+%   T_cones_sp          - Smith-Pokorny cone fundamentals.  Specified between 380 and 780 nm, but non-zero only between 400 and 700 nm.
+%                       -   This is probably because these were typed in by hand long ago from a table that only had data between 400 and 700 nm
+%                       -   and then zero extended to match the wavelength sampling of other data files.
+%                       -   It might be good to update these with data over the full specified range. 
 %   T_DCS200            - Sensitivities of a Kodak DCS-200 color camera.
 %   T_ground            - Not entirely sure what this is, but it might be ground squirrel receptor sensitivities.
 %   T_Lanom             - Demarco et al. anomolous L cone sensitivity.

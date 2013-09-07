@@ -5,14 +5,16 @@ function handle = LoadShaderFromFile(filename, shadertype, debug)
 % creates an OpenGL GLSL shader of type 'shadertype'. Returns a handle to
 % the new shader. If shadertype is omitted, the type of the shader is
 % derived from the filename extension: .vert == GL_VERTEX_SHADER, .frag ==
-% GL_FRAGMENT_SHADER. The optional 'debug' flag allows to enable debugging
-% output.
+% GL_FRAGMENT_SHADER, .geom == GL_GEOMETRY_SHADER, .tesscontrol =
+% GL_TESS_CONTROL_SHADER, .tesseval = GL_TESS_EVALUATION_SHADER. The
+% optional 'debug' flag allows to enable debugging output.
 %
 % On successfull load & creation, a 'handle' to the new shader is returned.
 %
 
 % 29-Mar-2006 written by MK
 % 29-Jul-2009 Bugfixes by MK: debug must default to 1, not 2!
+% 06-Sep-2013 Add geometry shader and tesselation shader support. (MK)
 
 global GL;
 
@@ -56,6 +58,15 @@ if isempty(shadertype)
     elseif ~isempty(strfind(filename, '.vert'))
         shadertype = GL.VERTEX_SHADER;
         if debug>0, fprintf('Building a vertex shader:'); end;
+    elseif ~isempty(strfind(filename, '.geom'))
+        shadertype = GL.GEOMETRY_SHADER;
+        if debug>0, fprintf('Building a geometry shader:'); end;
+    elseif ~isempty(strfind(filename, '.tesscontrol'))
+        shadertype = GL.TESS_CONTROL_SHADER;
+        if debug>0, fprintf('Building a tesselation control shader:'); end;        
+    elseif ~isempty(strfind(filename, '.tesseval'))
+        shadertype = GL.TESS_EVALUATION_SHADER;
+        if debug>0, fprintf('Building a tesselation evaluation shader:'); end;        
     else
         error('No shadertype provided and could not derive type from filename extension!');
     end;

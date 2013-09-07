@@ -792,8 +792,8 @@ for i=1:25
     img1(1, pixelPos(i)+1:pixelPos(i+1), 2)=bits(1,i)*255;
     img2(1, pixelPos(i)+1:pixelPos(i+1), 2)=bits(2,i)*255;
 end
-tex(1)=Screen('MakeTexture',w,img1);
-tex(2)=Screen('MakeTexture',w,img2);
+tex(1)=Screen('MakeTexture',w,uint8(img1));
+tex(2)=Screen('MakeTexture',w,uint8(img2));
 
 for i=1:2
     for factor=(range(1):step:range(2))/range(1)
@@ -843,7 +843,7 @@ img=zeros(1, pixelPos(26), 3); % one line image, will change green layer
 for i=1:25
     img(1, pixelPos(i)+1:pixelPos(i+1), 2)=bits(color,i)*255;
 end
-tex=Screen('MakeTexture',w,img);
+tex=Screen('MakeTexture',w,uint8(img));
 
 for factor=(range(1):step:range(2))/range(1)
     rd=rand*ppb*0.5; % random shift up to half a bit

@@ -31,15 +31,19 @@ function dimensions = PhotoreceptorDimensions(receptorTypes,whichDimension,speci
 % Supported sources:
 %   Rodeick (Default).
 %  	CVRL (Human Cone OS length)
+%   Webvision (Human Cone IS diameter)
 %   Hendrickson (Human Rod OS length)
 % 	SterlingLab (GuineaPig dimensions).
-%   Generic.
+%   Generic
 %   PennDog (Dog dimensions).
+%   None (returns empty for the corresponding value)
 %
 % The Generic type returns a single number for all species/type.
 %
 % 7/11/03  dhb  Wrote it.
 % 12/04/07 dhb  Added dog but with placeholder numbers.
+% 8/9/13   dhb  Comment clean up, allow 'None' to return empty as the value.
+% 8/10/13  dhb  Added Webvision source for IS diameter.
 
 % Fill in defaults
 if (nargin < 3 || isempty(species))
@@ -49,7 +53,7 @@ if (nargin < 4 || isempty(source))
     source = 'Rodieck';
 end
 
-% Fill in specific density according to specified source
+% Fill in dimensions according to specified source
 if (iscell(receptorTypes))
     dimensions = zeros(length(receptorTypes),1);
 else
@@ -65,7 +69,10 @@ for i = 1:length(dimensions)
     end
 
     switch (source)
+        case {'None'}
+            dimensions = [];
         case {'Generic'}
+            % These are fairly generic dimensions
             switch (whichDimension)
                 case 'OSlength'
                     dimensions(i) = 32;
@@ -75,11 +82,30 @@ for i = 1:length(dimensions)
                     dimensions(i) = 2;
                 otherwise
                     error('Unsupported dimension requested');
+            end 
+        case {'Webvision'}
+            % http://webvision.med.utah.edu
+            switch (whichDimension)
+                case 'ISdiam'
+                    switch (type)
+                        % http://webvision.med.utah.edu/book/part-ii-anatomy-and-physiology-of-the-retina/photoreceptors/
+                        % Attributed to Helga Kolb
+                        case {'FovealLCone', 'FovealMCone' 'FovealSCone'}
+                            dimensions(i) = 1.5;
+                        case {'LCone', 'MCone' 'SCone'}
+                            dimensions(i) = 6;
+                        case {'Rod'}
+                            dimensions(i) = 2;
+                        otherwise,
+                            error(sprintf('Unsupported receptor type %s/%s for %s estimates in %s',...
+                                type,whichDimension,source,species));
+                    end
+                otherwise
+                    error('Unsupported dimension requested');
             end
-
+        case ('PennDog')
             % Numbers we use for dog eyes at Penn.  Got these from
             % Gus Aguirre.  See emails sent about 12/5/07.
-        case ('PennDog')
             switch (species)
                 case {'Dog'}
                     switch (whichDimension)
@@ -119,10 +145,10 @@ for i = 1:length(dimensions)
                 otherwise,
                     error(sprintf('%s estimates not available for species %s',source,species));
             end
-
+     
+        case ('Rodieck')
             % From Rodieck's "standard observer", Appendix B
             % in The First Steps of Seeing.
-        case ('Rodieck')
             switch (species)
                 case {'Human'}
                     switch (whichDimension)
@@ -153,11 +179,10 @@ for i = 1:length(dimensions)
                     error(sprintf('%s estimates not available for species %s',source,species));
             end
 
-
+        case {'CVRL'}
             % These numbers are my encapsulations of CVRL's summary of a variety of data.
             % See CVRL summary text at:
             %   http://cvrl.ioo.ucl.ac.uk/database/text/intros/introlength.htm.
-        case {'CVRL'}
             switch (species)
                 case {'Human'}
                     switch (whichDimension)
@@ -181,12 +206,12 @@ for i = 1:length(dimensions)
                 otherwise,
                     error(sprintf('%s estimates not available for species %s',source,species));
             end
-
+       
+        case {'Hendrickson'}
             % From Hendrickson and Drucker, numbers provided at CVRL database:
             % http://cvrl.ioo.ucl.ac.uk/database/text/outseg/length.htm.  40 um
             % is the number provided for mid-peripheral rods, 40-45 is cited for
             % parafoveal rods.  This routines returns 40.
-        case {'Hendrickson'}
             switch (species)
                 case {'Human'}
                     switch (whichDimension)
@@ -205,9 +230,9 @@ for i = 1:length(dimensions)
                     error(sprintf('%s estimates not available for species %s',source,species));
             end
 
+        case {'SterlingLab'}
             % These are values that Lu Yin provided, based on unpublished
             % measurements used in the Sterling lab.
-        case {'SterlingLab'}
             switch (species)
                 case {'GuineaPig'}
                     switch (whichDimension)

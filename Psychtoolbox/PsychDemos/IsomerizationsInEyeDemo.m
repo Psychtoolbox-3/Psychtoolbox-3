@@ -37,9 +37,12 @@
 % 04/27/13 dhb  More extensive comments.
 % 7/19/13  dhb  Print out photoreceptors structure using PrintPhotoreceptors.
 %          dhb  Add monochromatic light option to the section that starts with trolands.
+% 8/11/13  dhb  Add test of AborbtanceToAbsorbance.
+%          dhb  Protect against case when absorbance is provided directly.
+
 
 %% Clear
-clear all; close all;
+clear; close all;
 
 %% Set photoreceptor properties.
 %
@@ -50,7 +53,7 @@ clear all; close all;
 % The routine DefaultPhotoreceptors is a high level
 % call.  It fills in the 'source' fields and some
 % values according to high-level descriptor (e.g.,
-% ('LivingHumanFovea').  See help for that routine
+% ('CIE2Deg').  See help for that routine
 % for available options.
 %
 % The routine FillInPhotoreceptors fetches the actual
@@ -58,10 +61,28 @@ clear all; close all;
 %
 % To get a feel for this, check what is in the photoreceptors
 % structure after the first call, and then after the second.
-whatCalc = 'LivingHumanFovea';
+whatCalc = 'CIE2Deg';
 photoreceptors = DefaultPhotoreceptors(whatCalc);
 photoreceptors.eyeLengthMM.source = 'LeGrand';
 photoreceptors = FillInPhotoreceptors(photoreceptors);
+
+%% Check AbsorbtancetoAbsorbance
+%
+% Simple check that this routine does what we expect, since
+% we never use it anywhere else and this seems like as good
+% a place to test it as any.
+%
+% We omit the normalization, because sometimes the wavelength
+% sampling we use leads to a maximimum initial absorbance that
+% is not unity, and letting AbsorbtanceToAbsorbance normalize
+% causes disagreement.
+testAbsorbance = photoreceptors.absorbance;
+testAbsorbtance = photoreceptors.absorbtance;
+checkAbsorbance = AbsorbtanceToAbsorbance(testAbsorbtance, photoreceptors.nomogram.S, photoreceptors.axialDensity.value,false);
+diffs = testAbsorbance-checkAbsorbance;
+if (max(abs(diffs(:))) > 1e-7)
+    error('Cannot properly invert absorbance/absorbtance computations');
+end
 
 %% Define common wavelength sampling for this script.
 % 
@@ -116,7 +137,9 @@ switch (whichInputType)
         % We remove the pupilDiameter.source field to make sure we aren't sending
         % mixed messages about how we want to handle pupil diameter.
         photoreceptors.pupilDiameter.value = 2;
-        photoreceptors.pupilDiameter = rmfield(photoreceptors.pupilDiameter,'source');
+        if (isfield(photoreceptors.pupilDiameter,'source'))
+            photoreceptors.pupilDiameter = rmfield(photoreceptors.pupilDiameter,'source');
+        end
         pupilAreaMm2 = pi*(photoreceptors.pupilDiameter.value/2)^2;
         
         % Specify relative spectrum to be used in
@@ -246,7 +269,7 @@ switch (whichInputType)
 		irradianceWattsPerUm2 = RadianceToRetIrradiance(radianceWattsPerM2Sr,S, ...
 			pupilAreaMm2,photoreceptors.eyeLengthMM.value);
 
-	% This light as well as some parameter tweaking are here to match a parameterization the Brian Wandell supplied
+	% This light as well as some parameter tweaking are here to match a parameterization that Brian Wandell supplied
 	% to match what his code to do these computations produces.  Note also
 	% the mucking with the photoreceptors structure.  Wandell estimates
 	% L, M, S isomerizations/cone-sec of 16.5, 12.68, 2.27.  These are very close to the numbers
@@ -282,7 +305,7 @@ switch (whichInputType)
 		radianceWattsPerM2Sr = uniformSpd/normConst;
         photopicLuminanceCdM2 = T_Y*radianceWattsPerM2Sr;
 
-		% Set pupil diameter for 1mm2 pupil area, photoreceptor diameter for 4mm2 collecting
+		% Set pupil diameter for 1 mm2 pupil area, photoreceptor diameter for 4 mm2 collecting
 		% area.  Set eye length to 17 mm.
 		photoreceptors.pupilDiameter.value = 2*sqrt(1/pi);
 		pupilAreaMm2 = pi*(photoreceptors.pupilDiameter.value/2)^2;
@@ -355,7 +378,9 @@ fprintf('\n');
 fprintf('Photoreceptor Type             |\t       L\t       M\t     S\n');
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');
-fprintf('Lambda max                     |\t%8.1f\t%8.1f\t%8.1f\t nm\n',photoreceptors.nomogram.lambdaMax);
+if (isfield(photoreceptors.nomogram,'lambdaMax'))
+    fprintf('Lambda max                     |\t%8.1f\t%8.1f\t%8.1f\t nm\n',photoreceptors.nomogram.lambdaMax);
+end
 fprintf('Outer Segment Length           |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSlength.value);
 fprintf('Inner Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.ISdiameter.value);
 fprintf('\n');
@@ -387,4 +412,5 @@ fprintf('_______________________________________________________________________
 %         save T_dogrec T_dogrec S_dogrec
 %     otherwise
 % end
+
 

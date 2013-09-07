@@ -29,18 +29,4 @@ function retval = moglsingle(arg)
 %
 
 % ---protected---
-
-if exist('single', 'builtin')==5
-    % If this is Octave, then we can use dispatch() to optimize calls to
-    % moglsingle() away, ie., all calls to moglsingle() will get redirected
-    % to single() unconditionally to save some overhead:
-    if IsOctave
-        dispatch('moglsingle', 'single', 'all');
-    end
-    
-    retval = builtin('single', arg);
-else
-    retval = castDouble2Float(double(arg));
-end
-
-return;
+retval = single(arg);
