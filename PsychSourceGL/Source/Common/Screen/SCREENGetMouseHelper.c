@@ -64,8 +64,8 @@
 // Current ListenChar state:
 static int	listenchar_enabled = 0;
 
-// Include Cocoa glue on OSX 64-Bit for window focus queries:
-#if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
+// Include Cocoa glue on OSX for window focus queries:
+#if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychCocoaGlue.h"
 #endif
 
@@ -335,23 +335,14 @@ PsychError SCREENGetMouseHelper(void)
 	}
 			
 	// Get cursor position:
-#ifndef __LP64__
-    // 32-Bit Carbon version:
-	GetGlobalMouse(&mouseXY);
-	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double)mouseXY.h);
-	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double)mouseXY.v);
-#else
-    // 64-Bit HIToolbox version (OSX 10.5 and later):
     HIPoint outPoint;
     HIGetMousePosition(kHICoordSpaceScreenPixel, NULL, &outPoint);
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) outPoint.x);
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) outPoint.y);
-#endif
+    
 	// Return optional keyboard input focus status:
 	if (numButtons > 0) {
 		// Window provided?
-        // We only have the function GetUserFocusWindow on 32-Bit Carbon.
-        // We have a drop-in replacement in OSX/PsychCocoaGlue.c for 64-Bit Cocoa.
 		if (PsychIsWindowIndexArg(2)) {
 			// Yes: Check if it has focus.
 			PsychAllocInWindowRecordArg(2, TRUE, &windowRecord);
@@ -359,7 +350,7 @@ PsychError SCREENGetMouseHelper(void)
 				PsychErrorExitMsg(PsychError_user, "Provided window handle isn't an onscreen window, as required.");
 			}
 
-			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (GetUserFocusWindow() == windowRecord->targetSpecific.windowHandle) ? 1 : 0);
+			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (PsychCocoaGetUserFocusWindow() == windowRecord->targetSpecific.windowHandle) ? 1 : 0);
 		} else
         {
 			// No. Just always return "has focus":

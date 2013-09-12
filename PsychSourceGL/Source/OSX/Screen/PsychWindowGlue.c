@@ -26,7 +26,7 @@
                  9/30/05                mk              Added PsychRealtimePriority for improving timing tests in PsychOpenWindow()
                  9/30/05                mk              Added check for Screen('Preference', 'VisualDebugLevel', level) -> Amount of vis. feedback.
                  10/10/05               mk              Important Bugfix for PsychRealtimePriority() - didn't switch back to non-RT priority!!
-		 10/19/05		awi		Cast NULL to CGLPixelFormatAttribute type to make the compiler happy.
+                 10/19/05               awi             Cast NULL to CGLPixelFormatAttribute type to make the compiler happy.
                  01/02/05               mk              Modified to only contain the OS-X specific code. All OS independent code has been moved to
                                                         Common/Screen/PsychWindowSupport.c
  
@@ -41,10 +41,7 @@
 	NOTES:
 	
 	TO DO: 
-	
-		¥ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
-		name by their placement in a directory tree.
- 
+
 */
 
 #include "Screen.h"
@@ -65,23 +62,7 @@
 // we need to stay compatible to 10.4 - 10.6
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-// Surrogate routines for missing implementations on MacOS/X 64-Bit:
-#ifdef __LP64__
-
 #include "PsychCocoaGlue.h"
-
-OSErr DMGetGDeviceByDisplayID(
-                        int   displayID,
-                        GDHandle *      displayDevice,
-                        Boolean         failToMain)
-{
-    // Return failure:
-    return 0x1;
-}
-
-CGrafPtr GetWindowPort(WindowRef window) { return 0; }
-
-#endif
 
 static struct {
     io_connect_t        connect;
@@ -113,6 +94,9 @@ static CVReturn PsychCVDisplayLinkOutputCallback(CVDisplayLinkRef displayLink, c
     
     // Retrieve screenId of associated display screen:
     int screenId = (int) (long int) displayLinkContext;
+    
+    // Extra guard against shutdown races:
+    if (NULL == cvDisplayLink[screenId]) return(kCVReturnSuccess);
     
     // Translate CoreVideo inNow timestamp with time of last vbl from gpu time
     // to host system time, aka our GetSecs() timebase:
@@ -257,92 +241,101 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
     
     -We maintain the pixel format object because there seems to be now way to retrieve that from the context.
     
-    -To tell the caller to clean up PsychOpenOnscreenWindow returns FALSE if we fail to open the window. It 
+    -To tell the caller to clean up PsychOSOpenOnscreenWindow returns FALSE if we fail to open the window. It 
     would be better to just issue an PsychErrorExit() and have that clean up everything allocated outside of
     PsychOpenOnscreenWindow().
     
     MK: The new option 'stereomode' allows selection of stereo display instead of mono display:
-    0 (default) == Old behaviour -> Monoscopic rendering context.
-    >0          == Stereo display, where the number defines the type of stereo algorithm to use.
-    =1          == Use OpenGL built-in stereo by creating a context/window with left- and right backbuffer.
-    =2          == Use compressed frame stereo: Put both views into one framebuffer, one in top half, other in lower half.
-
+    0 (default) ==  Old behaviour -> Monoscopic rendering context.
+    >0          ==  Stereo display, where the number defines the type of stereo algorithm to use.
+    =1          ==  Use OpenGL built-in stereo by creating a context/window with left- and right backbuffer. This is
+                    the only mode of interest here, as it requires use of a stereo capable OpenGL pixelformat. All other
+                    stereo modes are implemented by PTB itself in a platform independent manner on top of a standard mono
+                    context.
 */
 psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
-    CGLRendererInfoObj				rendererInfo;
-    CGOpenGLDisplayMask 			displayMask;
-    CGLError						error;
-	OSStatus						err;
-    CGDirectDisplayID				cgDisplayID;
-    CGLPixelFormatAttribute			attribs[40];
-    GLint							numVirtualScreens;
-    GLboolean						isDoubleBuffer, isFloatBuffer;
-    GLint bpc;
-	GLenum glerr;
-	PsychRectType					screenrect;
-    int attribcount=0;
-    int i;
-	int								windowLevel;
-	psych_bool						useAGL, AGLForFullscreen;
-	WindowRef						carbonWindow = NULL;
-	int								aglbufferid;
-	AGLPixelFormat					pf = NULL;
- 	AGLContext						glcontext = NULL;
-	GDHandle						gdhDisplay;
-	GDHandle						*gdhDisplayPtr = NULL; 
-	int								gdhcount = 0;
-    psych_bool                      useCocoa = FALSE;
-	    
+    CGOpenGLDisplayMask             displayMask;
+    CGLError                        error;
+    CGDirectDisplayID               cgDisplayID;
+    CGLPixelFormatAttribute         attribs[40];
+    int                             attribcount;
+    GLint                           numVirtualScreens;
+    GLenum                          glerr;
+    PsychRectType                   screenrect;
+    int                             i;
+    int                             windowLevel;
+    psych_bool                      useCocoa;
+    void*                           cocoaWindow = NULL;
+
     // Query OS/X version:
 	Gestalt(gestaltSystemVersionMajor, &osMajor);
 	Gestalt(gestaltSystemVersionMinor, &osMinor);
 
-	// NULL-out Carbon/Cocoa window handle, so this is well-defined in case of error:
+	// NULL-out Cocoa window handle, so this is well-defined in case of error:
 	windowRecord->targetSpecific.windowHandle = NULL;
 
-	// Retrieve windowLevel, an indicator of where non-fullscreen AGL windows should
-	// be located wrt. to other windows. 0 = Behind everything else, occluded by
-	// everything else. 1 - 999 = At layer windowLevel -> Occludes stuff on layers "below" it.
+	// Retrieve windowLevel, an indicator of where non-CGL / non-fullscreen windows should
+	// be located wrt. to other windows. -2 = Allow regular window manager control of stacking
+    // order, visibility etc., -1 = Invisible/hidden, 0 = Behind everything else, occluded by
+	// everything else. 1 - 999 = At layer 'windowLevel' -> Occludes stuff on layers "below" it.
 	// 1000 - 1999 = At highest level, but partially translucent / alpha channel allows to make
-	// regions transparent. 2000 or higher: Above everything, fully opaque, occludes everything.
-	// 2000 is the default.
+	// regions transparent. Range 1000 - 1499 = transparent for mouse and keyboard, alpha 0-99.99%,
+    // 1500-1599 = opaque for mouse and keyboard, alpha 0-99.99%, 2000 or higher: Above everything,
+    // fully opaque, occludes everything, a typical fullscreen onscreen window. 2000 is the default.
 	windowLevel = PsychPrefStateGet_WindowShieldingLevel();
 
-	// Use AGL for fullscreen windows?
-	AGLForFullscreen = (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) ? TRUE : FALSE;
-
-	// Window rect provided which has a different size than screen?
-	useAGL = TRUE;
-	
+    // Window rect provided which has same size as screen?
 	// We do not use windowed mode if the provided window rectangle either
 	// matches the target screens rectangle (and therefore its exact size)
-	// or its screens global rectangle.
+	// or its screens global rectangle. In such cases we use CGL for better
+    // low level control and to exclude the desktop compositor from interfering:
 	PsychGetScreenRect(screenSettings->screenNumber, screenrect);
-	if (PsychMatchRect(screenrect, windowRecord->rect)) useAGL=FALSE;
+	if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
+
 	PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
-	if (PsychMatchRect(screenrect, windowRecord->rect)) useAGL=FALSE;
+	if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
 
-	// GUI windows always use AGL:
-	if (windowRecord->specialflags & kPsychGUIWindow) useAGL = TRUE;
+    if (windowRecord->specialflags & kPsychIsFullscreenWindow) {
+        // Fullscreen windows do not use Cocoa by default, but the lower level CGL direct access. This excludes
+        // use of the desktop compositor which can badly screw with presentation timing and performance:
+        useCocoa = FALSE;
+    }
+    else {
+        // Non fullscreen windows always use Cocoa + desktop composition. There isn't any alternative on OSX:
+        useCocoa = TRUE;
+    }
+    
+	// User override to use Cocoa even for fullscreen windows?
+	if (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) {
+        // Force use of Cocoa. This may or may not result in use of the desktop
+        // compositor on current versions of OSX iff the window is a fullscreen
+        // window:
+        useCocoa = TRUE;
+        
+        if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
+            printf("PTB-INFO: Usercode requests use of Cocoa for this fullscreen window via kPsychUseAGLForFullscreenWindows conserveVRAM setting.\n");
+            printf("PTB-INFO: Presentation timing may suffer, depending on operating system and specific setup.\n");
+        }
+    }
 
-	// FALSE means: This is a fullscreen window:
-	if (!useAGL) {
-	  // Mark this window as fullscreen window:
-	  windowRecord->specialflags |= kPsychIsFullscreenWindow;
-	}
+	// GUI windows always use Cocoa:
+	if (windowRecord->specialflags & kPsychGUIWindow) useCocoa = TRUE;
+    
+    // Window shielding levels below 2000 always use Cocoa:
+    if (windowLevel < 2000) useCocoa = TRUE;
 
-	// Override for use on f$%#$Fd OS/X 10.5.3 - 10.5.8 with NVidia GF 8800 GPU's:
-	// If requested, always use AGL API and regular (non-fullscreen) windows via the
-	// Quartz compositor. These are just borderless fullscreen windows.
-	// This works with the NVidia GF 8800 driver bug on dual-display setups,
-	// but as Quartz is in full control of buffer swaps, the stimulus onset timing
-	// is horrible, animations are jerky and all our high precision timestamping is
+	// Override for use of PsychDebugWindowConfiguration, to allow half transparent
+    // windows for more painless single display setup debugging:
+	// If requested, always use NSOpenGL API and regular windows via the Quartz
+	// desktop compositor. These are just borderless, decorationless fullscreen windows.
+	// As Quartz is in full control of buffer swaps, the stimulus onset timing
+	// is horrible, animations are possibly jerky and all our high precision timestamping is
 	// completely broken and pointless: This mode is only useful for slowly updating
-	// mostly static stimuli with no timing requirements.
-	if (!useAGL && (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows)) {
-		// Force use of AGL in windowed mode, ie., via Quartz compositor:
-		useAGL = TRUE;
+	// mostly static stimuli with no timing requirements, ie., for debugging:
+	if (!useCocoa && (windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows)) {
+		// Force use of Cocoa for use of Quartz compositor:
+		useCocoa = TRUE;
 		
 		// Force a window rectangle that matches the global screen rectangle for that windows screen:
 		PsychCopyRect(windowRecord->rect, screenrect);
@@ -351,186 +344,116 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		PsychPrefStateSet_VBLTimestampingMode(-1);
 		
 		// Warn user about what's going on:
-		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Using desktop compositor for composited onscreen window creation: High precision timestamping disabled,\nany kind of visual stimulus onset timing wil be very unreliable!!\n");		
+		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Using desktop compositor for composited onscreen window creation: High precision timestamping disabled,\nvisual stimulus onset timing may be very unreliable!!\n");		
 	}
 
-	// Do we need to use windowed mode with AGL?
-	if (useAGL) {
-		// Yes. Need to create Carbon window and attach OpenGL to it via AGL:		
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using desktop compositor for onscreen window creation...\n");
+	// Do we need to use Cocoa, possibly in windowed mode?
+	if (useCocoa) {
+		// Yes. Need to create Cocoa window and attach OpenGL to it via NSOpenGL:
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using Cocoa for onscreen window creation...\n");
 		
-		// Create onscreen Carbon window of requested position and size:
-		Rect winRect;
-		winRect.top = (short) windowRecord->rect[kPsychTop];
-		winRect.left = (short) windowRecord->rect[kPsychLeft];
-		winRect.bottom = (short) windowRecord->rect[kPsychBottom];
-		winRect.right = (short) windowRecord->rect[kPsychRight];
-
-		WindowClass wclass;
-		if (windowLevel >= 1000) {
-			wclass = kOverlayWindowClass;
-		}
-		else {
-			wclass = kSimpleWindowClass;
+		if ((windowRecord->specialflags & kPsychGUIWindow) && (PsychPrefStateGet_Verbosity() > 3)) {
+            printf("PTB-INFO: Onscreen window is configured as regular GUI window.\n");
 		}
 
-		if (windowRecord->specialflags & kPsychGUIWindow) wclass = kDocumentWindowClass;
-
-		// Additional attribs to set:
-		WindowAttributes addAttribs;
-		if (windowRecord->specialflags & kPsychGUIWindow) {
-			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Onscreen window is configured as regular GUI window.\n");
-			addAttribs = kWindowNoUpdatesAttribute | kWindowNoActivatesAttribute | kWindowStandardHandlerAttribute;
-		}
-		else {
-			addAttribs = kWindowNoUpdatesAttribute | kWindowNoActivatesAttribute;
-		}
+		// Create onscreen Cocoa window of requested position and size:
+        if (PsychCocoaCreateWindow(windowRecord, windowLevel, &cocoaWindow)) {
+            printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Cocoa onscreen window\n\n");
+            return(FALSE);
+        }
         
-		// For levels 1000 to 1499, where the window is a partially transparent
-		// overlay window with global alpha 0.0 - 1.0, we disable reception of mouse
-		// events. --> Can move and click to windows behind the window!
-		// A range 1500 to 1999 would also allow transparency, but block mouse events:
-		if (windowLevel >= 1000 && windowLevel < 1500) addAttribs += kWindowIgnoreClicksAttribute;
-		
-        #ifndef __LP64__
-            // 32-Bit Carbon path:
-            if (noErr != CreateNewWindow(wclass, addAttribs, &winRect, &carbonWindow)) {
-                printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
-                return(FALSE);
-            }
-        #else
-            // Request use of Cocoa specific setup path on 10.6 and later:
-            if ((osMajor > 10) || ((osMajor == 10) && (osMinor > 5))) useCocoa = TRUE;
-
-            // Usercode wants transparency?
-            psych_bool enableTransparentGL = ((windowLevel >= 1000) && (windowLevel < 2000)) ? TRUE : FALSE;
-
-            // 64-Bit Cocoa path:
-            if (PsychCocoaCreateWindow(windowRecord, screenrect, &winRect, wclass, addAttribs, &carbonWindow, enableTransparentGL)) {
-                printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
-                return(FALSE);
-            }
-        
-            if (enableTransparentGL) {
-                // Setup of global window alpha value for transparency. This is premultiplied to
-                // the individual per-pixel alpha values if transparency is enabled by Cocoa code.
-                //
-                // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
-                SetWindowAlpha(carbonWindow, ((float) (windowLevel % 500)) / 499.0);
-            }        
-        #endif
+        // Transparent window requested?
+        if ((windowLevel >= 1000) && (windowLevel < 2000)) {
+            // Setup of global window alpha value for transparency. This is premultiplied to
+            // the individual per-pixel alpha values if transparency is enabled by Cocoa code.
+            //
+            // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
+            PsychCocoaSetWindowAlpha(cocoaWindow, ((float) (windowLevel % 500)) / 499.0);
+        }
 
 		// Show it! Unless a windowLevel of -1 requests hiding the window:
-		if (windowLevel != -1) ShowWindow(carbonWindow);
+		if (windowLevel != -1) PsychCocoaShowWindow(cocoaWindow);
 
 		// Level zero means: Place behind all other windows:
-		if (windowLevel == 0) SendBehind(carbonWindow, NULL);
+		if (windowLevel == 0) PsychCocoaSendBehind(cocoaWindow);
 
-		// Levels 1 to 998 define window levels for the group of the window. A level
-		// of 999 would leave this to the system:
-		if (windowLevel > 0 && windowLevel < 999) SetWindowGroupLevel(GetWindowGroup(carbonWindow), (SInt32) windowLevel);
+		// Levels 1 to 999 define window levels for the group of the window.
+		// A level of -2 would leave this to the system:
+		if (windowLevel > 0 && windowLevel < 1000) PsychCocoaSetWindowLevel(cocoaWindow, windowLevel);
 
 		// Store window handle in windowRecord:
-		windowRecord->targetSpecific.windowHandle = carbonWindow;
+		windowRecord->targetSpecific.windowHandle = cocoaWindow;
 		
 		// Copy absolute screen location and area of window to 'globalrect',
 		// so functions like Screen('GlobalRect') can still query the real
 		// bounding gox of a window onscreen:
-		PsychCopyRect(windowRecord->globalrect, windowRecord->rect);
-		
-		// Disable the fullscreen flag, in case it was set:
-		AGLForFullscreen = FALSE;
+		PsychCopyRect(windowRecord->globalrect, windowRecord->rect);		
 	}
 	else {
 		// No. Standard CGL setup for fullscreen single display windows:
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using %s for fullscreen onscreen window creation...\n", (AGLForFullscreen) ? "AGL" : "CGL");
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using low-level, non-composited CGL for fullscreen onscreen window creation...\n");
 		
 		// Copy absolute screen location and area of window to 'globalrect',
 		// so functions like Screen('GlobalRect') can still query the real
 		// bounding gox of a window onscreen:
-		PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);		
+		PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
 	}
 
     // Map screen number to physical display handle cgDisplayID:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
-    displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
+    displayMask = CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
-	if (useCocoa || (!useAGL && !AGLForFullscreen)) {
-		if (!useCocoa) attribs[attribcount++]=kCGLPFAFullScreen;
-		attribs[attribcount++]=kCGLPFADisplayMask;
-		attribs[attribcount++]=displayMask;
+    // Define pixelformat attributes for OpenGL contexts:
+    
+    // No pixelformat attribs to start with:
+    attribcount = 0;
 
-		// 10 bit per component framebuffer requested (10-10-10-2)?
-		/*	Disabled: We use our special kernel helper driver and PsychEnableNative10BitFramebuffer(); instead on Radeon Gfx et al.
-		if (windowRecord->depth == 30) {
-			// Request a 10 bit per color component framebuffer with 2 bit alpha channel:
-			printf("PTB-INFO: Trying to enable 10 bpc framebuffer...\n");
-			attribs[attribcount++]=kCGLPFANoRecovery;
-			attribs[attribcount++]=kCGLPFAColorSize;
-			attribs[attribcount++]=16*3;
-			attribs[attribcount++]=kCGLPFAAlphaSize;
-			attribs[attribcount++]=16;
-		}
-		*/
-		
-		// 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
-		if (windowRecord->depth == 64) {
-			// Request a floating point framebuffer in 16-bit half-float format, i.e., RGBA = 16 bits per component.
-			printf("PTB-INFO: Trying to enable 16 bpc float framebuffer...\n");
-			attribs[attribcount++]=kCGLPFAColorFloat;
-			attribs[attribcount++]=kCGLPFAColorSize;
-			attribs[attribcount++]=16*3;
-			attribs[attribcount++]=kCGLPFAAlphaSize;
-			attribs[attribcount++]=16;
-		}
-		
-		// 32 bit per component, 128 bit framebuffer requested (32-32-32-32)?
-		if (windowRecord->depth == 128) {
-			// Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
-			printf("PTB-INFO: Trying to enable 32 bpc float framebuffer...\n");
-			attribs[attribcount++]=kCGLPFAColorFloat;
-			attribs[attribcount++]=kCGLPFAColorSize;
-			attribs[attribcount++]=32*3;
-			attribs[attribcount++]=kCGLPFAAlphaSize;
-			attribs[attribcount++]=32;
-		}
-	}
-	else {
-		// AGL specific pixelformat setup:
+    attribs[attribcount++]=kCGLPFADisplayMask;
+    attribs[attribcount++]=displayMask;
+    
+    // 10 bit per component integer framebuffer requested (10-10-10-2)?
+    if (windowRecord->depth == 30) {
+        // Request a 10 bit per color component framebuffer with 2 bit alpha channel:
+        printf("PTB-INFO: Trying to enable 10 bpc, 30 bit integer framebuffer...\n");
+        attribs[attribcount++]=kCGLPFANoRecovery;
+        attribs[attribcount++]=kCGLPFAColorSize;
+        attribs[attribcount++]=10*3;
+        attribs[attribcount++]=kCGLPFAAlphaSize;
+        attribs[attribcount++]=2;
+    }
+    
+    // 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
+    if (windowRecord->depth == 64) {
+        // Request a floating point framebuffer in 16-bit half-float format, i.e., RGBA = 16 bits per component.
+        printf("PTB-INFO: Trying to enable 16 bpc float framebuffer...\n");
+        attribs[attribcount++]=kCGLPFAColorFloat;
+        attribs[attribcount++]=kCGLPFAColorSize;
+        attribs[attribcount++]=16*3;
+        attribs[attribcount++]=kCGLPFAAlphaSize;
+        attribs[attribcount++]=16;
+    }
+    
+    // 32 bit per component, 128 bit framebuffer requested (32-32-32-32)?
+    if (windowRecord->depth == 128) {
+        // Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
+        printf("PTB-INFO: Trying to enable 32 bpc float framebuffer...\n");
+        attribs[attribcount++]=kCGLPFAColorFloat;
+        attribs[attribcount++]=kCGLPFAColorSize;
+        attribs[attribcount++]=32*3;
+        attribs[attribcount++]=kCGLPFAAlphaSize;
+        attribs[attribcount++]=32;
+    }
+    
+    // Possible to request use of the Apple floating point software renderer:
+    if (conserveVRAM & kPsychUseSoftwareRenderer) {
+        #ifndef kCGLRendererGenericFloatID
+        #define kCGLRendererGenericFloatID    0x00020400
+        #endif
 
-		if (AGLForFullscreen) attribs[attribcount++] = AGL_FULLSCREEN;
+        attribs[attribcount++]=AGL_RENDERER_ID;
+        attribs[attribcount++]=kCGLRendererGenericFloatID;
+    }
 
-		// Possible to request use of the Apple floating point software renderer:
-		if (conserveVRAM & kPsychUseSoftwareRenderer) {
-			#ifndef kCGLRendererGenericFloatID
-			#define kCGLRendererGenericFloatID    0x00020400
-			#endif
-			attribs[attribcount++]=AGL_RENDERER_ID;
-			attribs[attribcount++]=kCGLRendererGenericFloatID;
-		}
-
-		// 32 bit per component, 128 bit framebuffer requested (32-32-32-32)?
-		if (windowRecord->depth == 128) {
-			// Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
-			printf("PTB-INFO: Trying to enable 32 bpc float framebuffer...\n");
-			attribs[attribcount++]= AGL_RGBA;
-			attribs[attribcount++]= AGL_COLOR_FLOAT;
-		}
-		else {
-			attribs[attribcount++]= AGL_RGBA;
-			attribs[attribcount++]=	AGL_RED_SIZE;
-			attribs[attribcount++]= 8;
-			attribs[attribcount++]=	AGL_GREEN_SIZE;
-			attribs[attribcount++]= 8;
-			attribs[attribcount++]=	AGL_BLUE_SIZE;
-			attribs[attribcount++]= 8;
-			attribs[attribcount++]=	AGL_ALPHA_SIZE;
-			attribs[attribcount++]= 8;
-			attribs[attribcount++]= AGL_PIXEL_SIZE;
-			attribs[attribcount++]= 32;
-		}
-	}
-	
     // Support for 3D rendering requested?
     if (PsychPrefStateGet_3DGfx()) {
         // Yes. Allocate a 24-Bit depth and 8-Bit stencilbuffer for this purpose:
@@ -541,291 +464,128 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		// Alloc an accumulation buffer as well?
 		if (PsychPrefStateGet_3DGfx() & 2) {
 			// Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
-			if (useCocoa || (!useAGL && !AGLForFullscreen)) {
-				attribs[attribcount++]=kCGLPFAAccumSize;
-				attribs[attribcount++]=64;
-			}
-			else {
-				attribs[attribcount++]=AGL_ACCUM_RED_SIZE;
-				attribs[attribcount++]=16;
-				attribs[attribcount++]=AGL_ACCUM_GREEN_SIZE;
-				attribs[attribcount++]=16;
-				attribs[attribcount++]=AGL_ACCUM_BLUE_SIZE;
-				attribs[attribcount++]=16;
-				attribs[attribcount++]=AGL_ACCUM_ALPHA_SIZE;
-				attribs[attribcount++]=16;
-			}
+            attribs[attribcount++]=kCGLPFAAccumSize;
+            attribs[attribcount++]=64;
 		}
     }
+    
     if(numBuffers>=2){
         // Enable double-buffering:
         attribs[attribcount++]=kCGLPFADoubleBuffer;
         if ((conserveVRAM & kPsychDisableAUXBuffers) == 0) {
-            // MK: Allocate one or two (mono vs. stereo) AUX buffers for new "don't clear" mode of Screen('Flip'):
+            // Allocate one or two (for mono vs. stereo display) AUX buffers for "don't clear" mode of Screen('Flip'):
             // Not clearing the framebuffer after "Flip" is implemented by storing a backup-copy of
             // the backbuffer to AUXs before flip and restoring the content from AUXs after flip.
+            // Unless the imaging pipeline is active, which doesn't need AUX buffers due to internal
+            // storage of fb content in its drawbufferFBO's:
             attribs[attribcount++]=kCGLPFAAuxBuffers;
             attribs[attribcount++]=(stereomode==kPsychOpenGLStereo || stereomode==kPsychCompressedTLBRStereo || stereomode==kPsychCompressedTRBLStereo) ? 2 : 1;
         }
     }
 
-    // MK: Stereo display support: If stereo display output is requested with OpenGL native stereo,
-    // we request a stereo-enabled rendering context.
+    // If stereo display output is requested with OpenGL native stereo, request a stereo-enabled rendering context.
     if(stereomode==kPsychOpenGLStereo) {
         attribs[attribcount++]=kCGLPFAStereo;
     }
-
+    
     // Multisampled Anti-Aliasing requested?
     if (windowRecord->multiSample > 0) {
-      // Request a multisample buffer:
-      attribs[attribcount++]= kCGLPFASampleBuffers;
-      attribs[attribcount++]= 1;
-      // Request at least multiSample samples per pixel:
-      attribs[attribcount++]= kCGLPFASamples;
-      attribs[attribcount++]= windowRecord->multiSample;
+        // Request a multisample buffer:
+        attribs[attribcount++]= kCGLPFASampleBuffers;
+        attribs[attribcount++]= 1;
+        // Request at least multiSample samples per pixel:
+        attribs[attribcount++]= kCGLPFASamples;
+        attribs[attribcount++]= windowRecord->multiSample;
     }
-
+    
     // Finalize attribute array with NULL.
     attribs[attribcount++]=(CGLPixelFormatAttribute)NULL;
-
+    
     // Init to zero:
     windowRecord->targetSpecific.pixelFormatObject = NULL;
 	windowRecord->targetSpecific.glusercontextObject = NULL;
 	windowRecord->targetSpecific.glswapcontextObject = NULL;
-
-	if (useCocoa || (!useAGL && !AGLForFullscreen)) {
-		// Context setup for CGL (non-windowed, non-multiscreen mode):
-		
-		// First try in choosing a matching format for multisample mode:
-		if (windowRecord->multiSample > 0) {
-			error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
-			if (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
-				// Failed. Probably due to too demanding multisample requirements: Lets lower them...
-				for (i=0; i<attribcount && attribs[i]!=kCGLPFASamples; i++);
-				while (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
-					attribs[i+1]--;
-					windowRecord->multiSample--;
-					error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
-				}
-				if (windowRecord->multiSample == 0 && windowRecord->targetSpecific.pixelFormatObject==NULL) {
-					for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
-					attribs[i+1]=0;
-				}
-			}
-		}
-		
-		// Choose a matching display configuration and create the window and rendering context:
-		// If one of these two fails, then the installed gfx hardware is not good enough to satisfy our
-		// requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
-		if (windowRecord->targetSpecific.pixelFormatObject==NULL) error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
-		if (error) {
-			printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
-			return(FALSE);
-		}
-        
-        // No valid pixelformat found? And stereo format requested?
-        if ((windowRecord->targetSpecific.pixelFormatObject == NULL) && (stereomode == kPsychOpenGLStereo)) {
-            // Yep: Stereo may be the culprit. Remove the stereo attribute by overwriting it with something
-            // that is essentially a no-op, specifically kCGLPFAAccelerated which is supported by all real
-            // renderers that might end up in this code-path:
-            for (i=0; i<attribcount && attribs[i]!=kCGLPFAStereo; i++);
-            attribs[i] = kCGLPFAAccelerated;
-            
-            // Retry query of pixelformat without request for native OpenGL quad-buffered stereo. If we succeed, we're
-            // sort of ok, as the higher-level code will fallback to stereomode kPsychFrameSequentialStereo - our own
-            // homegrown frame-sequential stereo support, which may be good enough.
-            error = CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
-            if (error || (windowRecord->targetSpecific.pixelFormatObject == NULL)) {
-                printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
-                return(FALSE);
-            }            
-        }
-        
-		// Create an OpenGL rendering context with the selected pixelformat: Share its ressources with 'slaveWindow's context, if slaveWindow is non-NULL:
-		error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL), &(windowRecord->targetSpecific.contextObject));
-		if (error) {
-			printf("\nPTB-ERROR[ContextCreation failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
-			return(FALSE);
-		}
-		
-		// Enable the OpenGL rendering context associated with our window:
-		error=CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
-		if (error) {
-			printf("\nPTB-ERROR[SetCurrentContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
-			return(FALSE);
-		}
-		
-        if (!useCocoa) {
-            // Switch to fullscreen display: We need different functions for 10.5+ (which we require/support for 64-Bit mode)
-            // and earlier OS versions (which we support in 32-Bit mode for the time being) for doing exactly the same thing
-            // without any gain in flexibility or for any other rational reasons. This idiocy brought to you by the
-            // world leader in pathetic patent lawsuits and pr-bullshit. Of course they changed their mindless minds
-            // again for 10.7+ and deprecated the replacement function for the function that was deprecated in 10.6+.
-            // I can't wait for the day when we are forced to switch to the 10.7 SDK, when a whole new world of pain will
-            // open up to us.
-            #ifdef __LP64__
-            error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);
-            #else
-            error=CGLSetFullScreen(windowRecord->targetSpecific.contextObject);
-            #endif
-            if (error) {
-                printf("\nPTB-ERROR[CGLSetFullScreen failed: %s]:The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n", CGLErrorString(error));
-                CGLSetCurrentContext(NULL);
-                return(FALSE);
+    
+    // First try in choosing a matching format for multisample mode:
+    if (windowRecord->multiSample > 0) {
+        error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+        if (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
+            // Failed. Probably due to too demanding multisample requirements: Lets lower them...
+            for (i=0; i<attribcount && attribs[i]!=kCGLPFASamples; i++);
+            while (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
+                attribs[i+1]--;
+                windowRecord->multiSample--;
+                error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+            }
+            if (windowRecord->multiSample == 0 && windowRecord->targetSpecific.pixelFormatObject==NULL) {
+                for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
+                attribs[i+1]=0;
             }
         }
+    }
+    
+    // Choose a matching display configuration and create the window and rendering context:
+    // If one of these two fails, then the installed gfx hardware is not good enough to satisfy our
+    // requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
+    if (windowRecord->targetSpecific.pixelFormatObject==NULL) error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+    if (error) {
+        printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]: The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
+        return(FALSE);
+    }
+    
+    // No valid pixelformat found? And stereo format requested?
+    if ((windowRecord->targetSpecific.pixelFormatObject == NULL) && (stereomode == kPsychOpenGLStereo)) {
+        // Yep: Stereo may be the culprit. Remove the stereo attribute by overwriting it with something
+        // that is essentially a no-op, specifically kCGLPFAAccelerated which is supported by all real
+        // renderers that might end up in this code-path:
+        for (i=0; i<attribcount && attribs[i]!=kCGLPFAStereo; i++);
+        attribs[i] = kCGLPFAAccelerated;
         
-		// NULL-out the AGL context field, just for safety...
-		windowRecord->targetSpecific.deviceContext = NULL;
-	}
-	else {
-		// Context setup for AGL (windowed or multiscreen mode or fullscreen mode):
-        // Disabled on 64-Bit.
-        #ifndef __LP64__
-		// Fullscreen mode?
-		if (AGLForFullscreen) {
-			// Need to map to target display device:
-			err = DMGetGDeviceByDisplayID(cgDisplayID, &gdhDisplay, FALSE);
-			if (noErr != err) {
-				printf("\nPTB-ERROR[DMGetGDeviceByDisplayID failed: %s]: Can't map screenId to valid AGL display device id.\n\n", aglErrorString(aglGetError()));
-				return(FALSE);
-			}
-			
-			// And set mapping:
-			gdhDisplayPtr = &gdhDisplay;
-			gdhcount = 1;
-		}
-
-		// First try in choosing a matching format for multisample mode:
-		if (windowRecord->multiSample > 0) {
-			pf = aglChoosePixelFormat(gdhDisplayPtr, gdhcount, (GLint*) attribs);
-			if (pf==NULL && windowRecord->multiSample > 0) {
-				// Failed. Probably due to too demanding multisample requirements: Lets lower them...
-				for (i=0; i<attribcount && attribs[i]!=kCGLPFASamples; i++);
-				while (pf==NULL && windowRecord->multiSample > 0) {
-					attribs[i+1]--;
-					windowRecord->multiSample--;
-					pf = aglChoosePixelFormat(gdhDisplayPtr, gdhcount, (GLint*) attribs);
-				}
-				
-				if (windowRecord->multiSample == 0 && pf==NULL) {
-					for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
-					attribs[i+1]=0;
-				}
-			}
-		}
-
-		// Choose matching pixelformat:
-		pf = aglChoosePixelFormat(gdhDisplayPtr, gdhcount, (GLint*) attribs);
-		if (pf == NULL) {
-			printf("\nPTB-ERROR[aglChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-			DisposeWindow(carbonWindow); 
-			return(FALSE);
-		}
-		
-		// Create OpenGL rendering context for format: Share its ressources with 'slaveWindow' if that's non-NULL:
-		glcontext = aglCreateContext(pf, (windowRecord->slaveWindow) ? (AGLContext)(windowRecord->slaveWindow->targetSpecific.deviceContext) : NULL);
-		if (glcontext == NULL) {
-			printf("\nPTB-ERROR[aglCreateContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-			aglDestroyPixelFormat(pf);
-			DisposeWindow(carbonWindow);
-			return(FALSE);
-		}
-		
-		// Make it the current rendering context:
-		if (!aglSetCurrentContext(glcontext)) {
-			printf("\nPTB-ERROR[aglSetCurrentContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-			aglDestroyContext(glcontext);
-			aglDestroyPixelFormat(pf);
-			DisposeWindow(carbonWindow);
-			return(FALSE);
-		}
-		
-		aglbufferid = (int) windowRecord->windowIndex;
-		if (!aglSetInteger(glcontext, AGL_BUFFER_NAME, &aglbufferid)) {
-			printf("\nPTB-ERROR[aglSetInteger failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-			aglSetCurrentContext(NULL);
-			aglDestroyContext(glcontext);
-			aglDestroyPixelFormat(pf);
-			DisposeWindow(carbonWindow);
-			return(FALSE);
-		}
-
-		if ((windowLevel >= 1000) && (windowLevel < 2000)) {
-			// For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
-			// would be visible, wherever nothing is drawn, i.e., where alpha channel is zero:
-			i = 0;
-			aglSetInteger(glcontext, AGL_SURFACE_OPACITY, &i);
-			
-			// Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
-			SetWindowAlpha(carbonWindow, ((float) (windowLevel % 500)) / 499.0);
-		}
-		
-		if (AGLForFullscreen) {
-			// Attach context to our fullscreen device:
-			if (!aglSetFullScreen(glcontext, 0, 0, 0, 0)) {
-				printf("\nPTB-ERROR[aglSetFullScreen failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-				aglSetCurrentContext(NULL);
-				aglDestroyContext(glcontext);
-				aglDestroyPixelFormat(pf);
-				return(FALSE);
-			}
-		}
-		else {
-			// Attach context to our Carbon windows drawable area:
-			if (!aglSetDrawable(glcontext, GetWindowPort(carbonWindow))) {
-				printf("\nPTB-ERROR[aglSetDrawable failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-				aglSetCurrentContext(NULL);
-				aglDestroyContext(glcontext);
-				aglDestroyPixelFormat(pf);
-				DisposeWindow(carbonWindow);
-				return(FALSE);
-			}
-		}
-		
-		// Ok, theoretically we should have a fully functional OpenGL rendering context, attached to a fully
-		// functional and visible onscreen window at this point.
-		
-		// Query CGL context and pixelformat for the AGL context and pixelformat, so all further code can use them:
-		if (!aglGetCGLPixelFormat(pf, (void**) &(windowRecord->targetSpecific.pixelFormatObject))) {
-			printf("\nPTB-ERROR[aglGetCGLPixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-			aglSetCurrentContext(NULL);
-			aglDestroyContext(glcontext);
-			aglDestroyPixelFormat(pf);
-			DisposeWindow(carbonWindow);
-			return(FALSE);
-		}
-		
-		if (!aglGetCGLContext(glcontext, (void**) &(windowRecord->targetSpecific.contextObject))) {
-			printf("\nPTB-ERROR[aglGetCGLContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-			aglSetCurrentContext(NULL);
-			aglDestroyContext(glcontext);
-			aglDestroyPixelFormat(pf);
-			DisposeWindow(carbonWindow);
-			return(FALSE);
-		}
-				
-		// Store AGLContext for reference...
-		windowRecord->targetSpecific.deviceContext = (void*) glcontext;
-		
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: AGL context setup finished..\n");
-        
-        #endif // 32-Bit AGL setup path.
-        
-        // 64-Bit setup path, using Cocoa + NSOpenGLContext via Objective-C.
-        // This is the legacy path for OSX 10.5 "Leopard", which only provides
-        // basic functionality:
-        #ifdef __LP64__
-        if (PsychCocoaSetupAndAssignLegacyOpenGLContext(carbonWindow, windowRecord)) {
-            printf("\nPTB-ERROR[Cocoa Legacy-OpenGL setup failed]: Setup failed for unknown reasons.\n\n");
-            PsychCocoaDisposeWindow(windowRecord);
+        // Retry query of pixelformat without request for native OpenGL quad-buffered stereo. If we succeed, we're
+        // sort of ok, as the higher-level code will fallback to stereomode kPsychFrameSequentialStereo - our own
+        // homegrown frame-sequential stereo support, which may be good enough.
+        error = CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+        if (error || (windowRecord->targetSpecific.pixelFormatObject == NULL)) {
+            printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
             return(FALSE);
         }
-        #endif
-	}
-			
-	// Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
-	// available OpenGL extensions via GLEW:
+    }
+    
+    // Create an OpenGL rendering context with the selected pixelformat: Share its ressources with 'slaveWindow's context, if slaveWindow is non-NULL.
+    // If slaveWindow is non-NULL here, then slaveWindow is typically another onscreen window. Therefore this establishes OpenGL resource sharing across
+    // different onscreen windows in a session, e.g., for multi-display operation:
+    error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL),
+                           &(windowRecord->targetSpecific.contextObject));
+    if (error) {
+        printf("\nPTB-ERROR[ContextCreation failed: %s]: Could not create master OpenGL context for new onscreen window. Insufficient video memory?\n\n", CGLErrorString(error));
+        return(FALSE);
+    }
+    
+    // Enable the OpenGL rendering context associated with our window:
+    error=CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
+    if (error) {
+        printf("\nPTB-ERROR[SetCurrentContext failed: %s]: Insufficient video memory\n\n", CGLErrorString(error));
+        return(FALSE);
+    }
+    
+    // CGL in use for standard fullscreen onscreen windows?
+    if (!useCocoa) {
+        // Switch to fullscreen display:
+        // This function is deprecated on 10.7+, so i can't wait for the day when we are forced to switch
+        // to the 10.7 SDK, when a whole new world of pain will open up to us.
+        error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);
+        if (error) {
+            printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay failed: %s]: The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n", CGLErrorString(error));
+            CGLSetCurrentContext(NULL);
+            return(FALSE);
+        }
+    }
+    
+    // NULL-out the AGL context field, just for safety...
+    windowRecord->targetSpecific.deviceContext = NULL;
+
+	// Ok, the master OpenGL rendering context for this new onscreen window is up and running.
+    // Auto-detect and bind all available OpenGL extensions via GLEW:
 	glerr = glewInit();
 	if (GLEW_OK != glerr)
 	{
@@ -840,314 +600,188 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Enable multisampling if it was requested:
     if (windowRecord->multiSample > 0) glEnable(GL_MULTISAMPLE);
     
-    // Double-check double buffer support:
-    if(numBuffers>=2){
-        //This doesn't work.  GL thinks that there are double buffers when we fail to get that because
-        //their was insufficient video memory to open a back buffer.  
-        isDoubleBuffer=false;
-        glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
-        if(!isDoubleBuffer){
-			if (useCocoa || !useAGL) {
-				CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
-				CGLSetCurrentContext(NULL);
-				CGLClearDrawable(windowRecord->targetSpecific.contextObject ) ;
-			}
-			else {
-				aglSetCurrentContext(NULL);
-				aglDestroyContext(glcontext);
-				aglDestroyPixelFormat(pf);
-				DisposeWindow(carbonWindow);
-			}
-            return(FALSE);
-        }
-    }
-    
     // External 3D graphics support enabled?
 	if (PsychPrefStateGet_3DGfx()) {
 		// Yes. We need to create an extra OpenGL rendering context for the external
 		// OpenGL code to provide optimal state-isolation. The context shares all
-		// heavyweight ressources likes textures, FBOs, VBOs, PBOs, display lists and
+		// heavyweight ressources likes textures, FBOs, VBOs, PBOs, shader, display lists and
 		// starts off as an identical copy of PTB's context as of here.
-
-		if (useCocoa || !useAGL) {
-			error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glusercontextObject));
-			if (error) {
-				printf("\nPTB-ERROR[UserContextCreation failed: %s]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
-				return(FALSE);
-			}
-            
-            if (!useCocoa) {
-                // Attach it to our onscreen drawable:
-                #ifdef __LP64__
-                error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glusercontextObject, displayMask);
-                #else
-                error=CGLSetFullScreen(windowRecord->targetSpecific.glusercontextObject);
-                #endif
-                if (error) {
-                    printf("\nPTB-ERROR[CGLSetFullScreen for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
-                    CGLSetCurrentContext(NULL);
-                    return(FALSE);
-                }
+        error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glusercontextObject));
+        if (error) {
+            printf("\nPTB-ERROR[UserContextCreation failed: %s]: Creating a private OpenGL context for userspace OpenGL failed.\n\n", CGLErrorString(error));
+            return(FALSE);
+        }
+        
+        // CGL setup:
+        if (!useCocoa) {
+            // Attach it to our onscreen drawable:
+            error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glusercontextObject, displayMask);
+            if (error) {
+                printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay for user context failed: %s]: Attaching private OpenGL context for userspace OpenGL failed.\n\n", CGLErrorString(error));
+                CGLSetCurrentContext(NULL);
+                return(FALSE);
             }
-            
-			// Copy full state from our main context:
-			error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
-			if (error) {
-				printf("\nPTB-ERROR[CGLCopyContext for user context failed: %s]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
-				CGLSetCurrentContext(NULL);
-				return(FALSE);
-			}
-		}
-		else {
-            // Disabled on 64-Bit
-            #ifndef __LP64__
-			AGLContext usercontext = NULL;
-			usercontext = aglCreateContext(pf, glcontext);
-			if (usercontext == NULL) {
-				printf("\nPTB-ERROR[AGL-UserContextCreation failed: %s]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", aglErrorString(aglGetError()));
-				// Ok, this is dirty, but better than nothing...
-				DisposeWindow(carbonWindow);
-				return(FALSE);
-			}
-
-			if (!aglSetInteger(usercontext, AGL_BUFFER_NAME, &aglbufferid)) {
-				printf("\nPTB-ERROR[aglSetInteger for user context failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-				DisposeWindow(carbonWindow);
-				return(FALSE);
-			}
-			
-			if (AGLForFullscreen) {
-				// Attach context to our fullscreen device:
-				if (!aglSetFullScreen(usercontext, 0, 0, 0, 0)) {
-					printf("\nPTB-ERROR[aglSetFullScreen for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
-					// Ok, this is dirty, but better than nothing...
-					return(FALSE);
-				}
-			}
-			else {
-				// Attach it to our onscreen drawable:
-				if (!aglSetDrawable(usercontext, GetWindowPort(carbonWindow))) {
-					printf("\nPTB-ERROR[aglSetDrawable for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
-					// Ok, this is dirty, but better than nothing...
-					DisposeWindow(carbonWindow);
-					return(FALSE);
-				}
-			}
-			
-			// Copy full state from our main context:
-			if (!aglCopyContext(glcontext, usercontext, GL_ALL_ATTRIB_BITS)) {
-				printf("\nPTB-ERROR[aglCopyContext for user context failed: %s]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
-				// Ok, this is dirty, but better than nothing...
-				DisposeWindow(carbonWindow);
-				return(FALSE);
-			}
-
-			// Retrieve CGL context for userspace context:
-			if (!aglGetCGLContext(usercontext, (void**) &(windowRecord->targetSpecific.glusercontextObject))) {
-				printf("\nPTB-ERROR[aglGetCGLContext failed: %s]: Getting CGL userspace context for Matlab OpenGL failed for unknown reasons.\n\n", aglErrorString(aglGetError()));
-				DisposeWindow(carbonWindow);
-				return(FALSE);
-			}
-            #endif
-		}
+        }
+        
+        // Copy full state from our main context:
+        error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
+        if (error) {
+            printf("\nPTB-ERROR[CGLCopyContext for user context failed: %s]: Copying state to private OpenGL context for userspace OpenGL failed.\n\n", CGLErrorString(error));
+            CGLSetCurrentContext(NULL);
+            return(FALSE);
+        }
 	}
-
-    // Create glswapcontextObject - An OpenGL context for exclusive use by parallel
-    // background threads, e.g., our thread for async flip operations:
-    if (TRUE)
-    {
-		if (useCocoa || !useAGL) {
-			error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glswapcontextObject));
-			if (error) {
-				printf("\nPTB-ERROR[SwapContextCreation failed: %s]: Creating a private OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
-				return(FALSE);
-			}
-            
-            if (!useCocoa) {
-                // Attach it to our onscreen drawable:
-                #ifdef __LP64__
-                error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glswapcontextObject, displayMask);
-                #else
-                error=CGLSetFullScreen(windowRecord->targetSpecific.glswapcontextObject);
-                #endif
-                if (error) {
-                    printf("\nPTB-ERROR[CGLSetFullScreen for swapcontext failed: %s]: Attaching private OpenGL context async-bufferswaps failed.\n\n", CGLErrorString(error));
-                    CGLSetCurrentContext(NULL);
-                    return(FALSE);
-                }
-            }
-            
-			// Copy full state from our main context:
-			error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glswapcontextObject, GL_ALL_ATTRIB_BITS);
-			if (error) {
-				printf("\nPTB-ERROR[CGLCopyContext for swapcontext failed: %s]: Copying state to private OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
-				CGLSetCurrentContext(NULL);
-				return(FALSE);
-			}
-		}
-		else {
-            // Disabled on 64-Bit
-            #ifndef __LP64__
-			AGLContext usercontext = NULL;
-			usercontext = aglCreateContext(pf, glcontext);
-			if (usercontext == NULL) {
-				printf("\nPTB-ERROR[AGL-SwapContextCreation failed: %s]: Creating a private OpenGL context for async-bufferswaps failed for unknown reasons.\n\n", aglErrorString(aglGetError()));
-				// Ok, this is dirty, but better than nothing...
-				DisposeWindow(carbonWindow);
-				return(FALSE);
-			}
-
-			if (!aglSetInteger(usercontext, AGL_BUFFER_NAME, &aglbufferid)) {
-				printf("\nPTB-ERROR[aglSetInteger for swapcontext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-				DisposeWindow(carbonWindow);
-				return(FALSE);
-			}
-			
-			if (AGLForFullscreen) {
-				// Attach context to our fullscreen device:
-				if (!aglSetFullScreen(usercontext, 0, 0, 0, 0)) {
-					printf("\nPTB-ERROR[aglSetFullScreen for swapcontext failed: %s]: Attaching private OpenGL context for async-bufferswaps failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
-					// Ok, this is dirty, but better than nothing...
-					return(FALSE);
-				}
-			}
-			else {
-				// Attach it to our onscreen drawable:
-				if (!aglSetDrawable(usercontext, GetWindowPort(carbonWindow))) {
-					printf("\nPTB-ERROR[aglSetDrawable for swapcontext failed: %s]: Attaching private OpenGL context for async-bufferswaps failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
-					// Ok, this is dirty, but better than nothing...
-					DisposeWindow(carbonWindow);
-					return(FALSE);
-				}
-			}
-			
-			// Copy full state from our main context:
-			if (!aglCopyContext(glcontext, usercontext, GL_ALL_ATTRIB_BITS)) {
-				printf("\nPTB-ERROR[aglCopyContext for swapcontext failed: %s]: Copying state to private OpenGL context for async-bufferswaps failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
-				// Ok, this is dirty, but better than nothing...
-				DisposeWindow(carbonWindow);
-				return(FALSE);
-			}
-
-			// Retrieve CGL context for userspace context:
-			if (!aglGetCGLContext(usercontext, (void**) &(windowRecord->targetSpecific.glswapcontextObject))) {
-				printf("\nPTB-ERROR[aglGetCGLContext failed: %s]: Getting CGL userspace context for async-bufferswaps failed for unknown reasons.\n\n", aglErrorString(aglGetError()));
-				DisposeWindow(carbonWindow);
-				return(FALSE);
-			}
-            #endif
-		}
+    
+    // Create glswapcontextObject - An OpenGL context for exclusive use by parallel background threads,
+    // e.g., our thread for async flip operations and self-made frame-sequential stereo:
+    error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glswapcontextObject));
+    if (error) {
+        printf("\nPTB-ERROR[SwapContextCreation failed: %s]: Creating a private OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
+        CGLSetCurrentContext(NULL);
+        return(FALSE);
     }
     
-	// Ok, if we reached this point and AGL is used, we should store its onscreen Carbon window handle:
-	if (useCocoa || (useAGL && !AGLForFullscreen)) {
-		windowRecord->targetSpecific.windowHandle = carbonWindow;
+    // Fullscreen CGL mode?
+    if (!useCocoa) {
+        // Attach it to our onscreen drawable:
+        error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glswapcontextObject, displayMask);
+        if (error) {
+            printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay for swapcontext failed: %s]: Attaching OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
+            CGLSetCurrentContext(NULL);
+            return(FALSE);
+        }
+    }
+    
+    // Copy full state from our main context:
+    error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glswapcontextObject, GL_ALL_ATTRIB_BITS);
+    if (error) {
+        printf("\nPTB-ERROR[CGLCopyContext for swapcontext failed: %s]: Copying state to private OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
+        CGLSetCurrentContext(NULL);
+        return(FALSE);
+    }
+    
+	// Ok, if we reached this point and Cocoa is used, we should store its onscreen window handle:
+	if (useCocoa) {
+		windowRecord->targetSpecific.windowHandle = cocoaWindow;
 	}
 	else {
 		windowRecord->targetSpecific.windowHandle = NULL;
 	}
-
-    // 64-Bit setup path, using Cocoa + NSOpenGLContext wrapped around already
-    // setup CGLContext via Objective-C.
-    // This is the modern path for OSX 10.6 "Snow Leopard" and later:
-    #ifdef __LP64__
+    
+    // Objective-C setup path, using Cocoa + NSOpenGLContext wrapped around already
+    // existing and setup CGLContext:
     if (useCocoa) {
-        if (PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(carbonWindow, windowRecord)) {
+        if (PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(cocoaWindow, windowRecord)) {
             printf("\nPTB-ERROR[Cocoa OpenGL setup failed]: Setup failed for unknown reasons.\n\n");
             PsychCocoaDisposeWindow(windowRecord);
             return(FALSE);
         }
     }
-    #endif
 
-    // Initialize a low-level mapping of Framebuffer device data structures into
-    // our address space: Needed for additional timing checks:
-    if ((PsychPrefStateGet_VBLTimestampingMode() > 0) && (screenRefCount[screenSettings->screenNumber] == 0)) {
-        // Initialize to safe default:
-        fbsharedmem[screenSettings->screenNumber].shmem = NULL;
-
-        // Get access to Mach service port for the physical display device associated
-        // with this onscreen window and open our own connection to the port:
-        if ((kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(cgDisplayID), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect))) ||
-            (kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(CGMainDisplayID()), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect)))) {
-            // Connection established.
-
-			// Map the slice of device memory into our VM space:
-			if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[screenSettings->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
-													   (mach_vm_address_t *) &(fbsharedmem[screenSettings->screenNumber].shmem),
-													   &(fbsharedmem[screenSettings->screenNumber].shmemSize), kIOMapAnywhere)) {
-				// Mapping failed!
-				fbsharedmem[screenSettings->screenNumber].shmem = NULL;
-				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
-			}
-			else {
-				if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Connection to kernel-level vbl handler established (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
-			}
-        }
-        else {
-            if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOServiceOpen()] - Fallback path for time stamping won't be available.\n");
-        }
-        
-        // If the mapping worked, we have a pointer to the driver memory in .shmem, otherwise we have NULL:
-    }
     
-    // Use of CoreVideo is needed on 10.7 and later due to brokeness of the old method (thanks Apple!):
-    if ((osMajor > 10) || (osMinor >= 7)) {
-        useCoreVideoTimestamping = TRUE;
-        if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Deficient Apple OS/X 10.7 or later detected: Would use fragile CoreVideo timestamping as fallback,\n");
-            printf("PTB-INFO: if beamposition timestamping would not work. Will try to use beamposition timestamping if possible.\n");
-            if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
-                printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual onset timestamping\n");
-                printf("PTB-INFO: or timing. See 'help PsychtoolboxKernelDriver' for instructions.\n");
-            }
-        }
-    } else {
-        useCoreVideoTimestamping = FALSE;
-    }
-
-    if (useCoreVideoTimestamping && (fbsharedmem[screenSettings->screenNumber].shmem) && (NULL == cvDisplayLink[screenSettings->screenNumber])) {
-        // Create and start a CVDisplayLink for this screen.
-        if (kCVReturnSuccess != CVDisplayLinkCreateWithCGDisplay(cgDisplayID, &cvDisplayLink[screenSettings->screenNumber])) {
-            if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to create CVDisplayLink for screenId %i. This may impair VBL timestamping.\n", screenSettings->screenNumber);
-        } else {
-            // Assign dummy output callback, as this is mandatory to get the link up and running:
-            CVDisplayLinkSetOutputCallback(cvDisplayLink[screenSettings->screenNumber], &PsychCVDisplayLinkOutputCallback, (void*) (long int) screenSettings->screenNumber);
-            
-            // Setup shared data structure and mutex:
-            memset(&cvDisplayLinkData[screenSettings->screenNumber], 0, sizeof(cvDisplayLinkData[screenSettings->screenNumber]));
-            PsychInitMutex(&(cvDisplayLinkData[screenSettings->screenNumber].mutex));
-
-            // Start the link:
-            if (kCVReturnSuccess != CVDisplayLinkStart(cvDisplayLink[screenSettings->screenNumber])) {
-                // Failed to start: Release it again and report error:
-                CVDisplayLinkRelease(cvDisplayLink[screenSettings->screenNumber]);
-                cvDisplayLink[screenSettings->screenNumber] = NULL;
-
-                // Teardown shared data structure and mutex:
-                PsychDestroyMutex(&(cvDisplayLinkData[screenSettings->screenNumber].mutex));
+    // First reference to this screen by a window?
+    if (screenRefCount[screenSettings->screenNumber] == 0) {
+        // Yes: Initialize shmem to safe default:
+        fbsharedmem[screenSettings->screenNumber].shmem = NULL;
+        
+        // High precision timestamping enabled? If so, we need to setup the fallback
+        // timestamping methods in case beamposition timestamping doesn't work:
+        if (PsychPrefStateGet_VBLTimestampingMode() > 0) {
+            // Which fallback timestamping method to use?
+            //
+            // Use of CoreVideo is needed on 10.7 and later due to brokeness of the old method (thanks Apple!):
+            if ((osMajor > 10) || (osMinor >= 7)) {
+                // 10.7+ Use CoreVideo timestamping and vblank counting:
+                useCoreVideoTimestamping = TRUE;
+                if (PsychPrefStateGet_Verbosity() > 2) {
+                    printf("PTB-INFO: Deficient Apple OS/X 10.7 or later detected: Would use fragile CoreVideo timestamping as fallback,\n");
+                    printf("PTB-INFO: if beamposition timestamping would not work. Will try to use beamposition timestamping if possible.\n");
+                    if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
+                        printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual\n");
+                        printf("PTB-INFO: onset timestamping or timing. See 'help PsychtoolboxKernelDriver' for installation instructions.\n");
+                    }
+                }
+            } else {
+                // 10.6 or earlier: Use VBL shmem irq timestamping and vblank counting:
                 useCoreVideoTimestamping = FALSE;
-                
-                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to start CVDisplayLink for screenId %i. This may impair VBL timestamping.\n", screenSettings->screenNumber);
             }
-            else {
-                // Display link started: Report some stuff for the fun of it...
-                if (PsychPrefStateGet_Verbosity() > 3) {
-                    // Wait for 50 msecs before query of video refresh from display link to give it a chance to start up:
-                    PsychWaitIntervalSeconds(0.050);
+            
+            if (!useCoreVideoTimestamping) {
+                // VBL-IRQ shmem timestamping:
+                //
+                // Initialize a low-level mapping of Framebuffer device data structures into
+                // our address space:
+                // Get access to Mach service port for the physical display device associated
+                // with this onscreen window and open our own connection to the port:
+                if ((kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(cgDisplayID), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect))) ||
+                    (kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(CGMainDisplayID()), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect)))) {
+                    // Connection established.
                     
-                    printf("PTB-INFO: CVDisplayLink for screen %i created to work around the brokenness of Apple Mac OS/X 10.7 and later:\n", screenSettings->screenNumber);
-                    printf("PTB-INFO: Video refresh interval as measured by CoreVideo display link: %f msecs.\n", (float) CVDisplayLinkGetActualOutputVideoRefreshPeriod(cvDisplayLink[screenSettings->screenNumber]) * 1000.0);
-                    CVTime outLatency = CVDisplayLinkGetOutputVideoLatency(cvDisplayLink[screenSettings->screenNumber]);
-                    printf("PTB-INFO: Video display output delay as reported by CoreVideo display link: %f msecs.\n", screenSettings->screenNumber, (float) (((double) outLatency.timeValue / (double) outLatency.timeScale) * 1000.0));
+                    // Map the slice of device memory into our VM space:
+                    if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[screenSettings->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
+                                                               (mach_vm_address_t *) &(fbsharedmem[screenSettings->screenNumber].shmem),
+                                                               &(fbsharedmem[screenSettings->screenNumber].shmemSize), kIOMapAnywhere)) {
+                        // Mapping failed!
+                        fbsharedmem[screenSettings->screenNumber].shmem = NULL;
+                        if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
+                    }
+                    else {
+                        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Connection to kernel-level vbl handler established (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
+                    }
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOServiceOpen()] - Fallback path for time stamping won't be available.\n");
+                }
+                
+                // If the mapping worked, we have a pointer to the driver memory in .shmem, otherwise we have NULL:
+            }
+            
+            if (useCoreVideoTimestamping && (NULL == cvDisplayLink[screenSettings->screenNumber])) {
+                // CoreVideo timestamping:
+                //
+                // Create and start a CVDisplayLink for this screen.
+                if (kCVReturnSuccess != CVDisplayLinkCreateWithCGDisplay(cgDisplayID, &cvDisplayLink[screenSettings->screenNumber])) {
+                    if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to create CVDisplayLink for screenId %i. This may impair VBL timestamping.\n", screenSettings->screenNumber);
+                } else {
+                    // Assign dummy output callback, as this is mandatory to get the link up and running:
+                    CVDisplayLinkSetOutputCallback(cvDisplayLink[screenSettings->screenNumber], &PsychCVDisplayLinkOutputCallback, (void*) (long int) screenSettings->screenNumber);
+                    
+                    // Setup shared data structure and mutex:
+                    memset(&cvDisplayLinkData[screenSettings->screenNumber], 0, sizeof(cvDisplayLinkData[screenSettings->screenNumber]));
+                    PsychInitMutex(&(cvDisplayLinkData[screenSettings->screenNumber].mutex));
+                    
+                    // Start the link:
+                    if (kCVReturnSuccess != CVDisplayLinkStart(cvDisplayLink[screenSettings->screenNumber])) {
+                        // Failed to start: Release it again and report error:
+                        CVDisplayLinkRelease(cvDisplayLink[screenSettings->screenNumber]);
+                        cvDisplayLink[screenSettings->screenNumber] = NULL;
+                        
+                        // Teardown shared data structure and mutex:
+                        PsychDestroyMutex(&(cvDisplayLinkData[screenSettings->screenNumber].mutex));
+                        useCoreVideoTimestamping = FALSE;
+                        
+                        if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to start CVDisplayLink for screenId %i. This may impair VBL timestamping.\n", screenSettings->screenNumber);
+                    }
+                    else {
+                        // Display link started: Report some stuff for the fun of it...
+                        if (PsychPrefStateGet_Verbosity() > 3) {
+                            // Wait for 50 msecs before query of video refresh from display link to give it a chance to start up:
+                            PsychWaitIntervalSeconds(0.050);
+                            
+                            printf("PTB-INFO: CVDisplayLink for screen %i created to work around the brokenness of Apple Mac OS/X 10.7 and later:\n", screenSettings->screenNumber);
+                            printf("PTB-INFO: Video refresh interval as measured by CoreVideo display link: %f msecs.\n", (float) CVDisplayLinkGetActualOutputVideoRefreshPeriod(cvDisplayLink[screenSettings->screenNumber]) * 1000.0);
+                            CVTime outLatency = CVDisplayLinkGetOutputVideoLatency(cvDisplayLink[screenSettings->screenNumber]);
+                            printf("PTB-INFO: Video display output delay as reported by CoreVideo display link: %f msecs.\n", screenSettings->screenNumber, (float) (((double) outLatency.timeValue / (double) outLatency.timeScale) * 1000.0));
+                        }
+                    }
                 }
             }
         }
     }
-
+    
     // Retain reference of this window to its screen:
     screenRefCount[screenSettings->screenNumber]++;
-
+    
     // Done.
     return(TRUE);
 }
@@ -1174,25 +808,6 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
         *vblCount = cvDisplayLinkData[screenid].vblCount;
         cvTime = cvDisplayLinkData[screenid].vblTimestamp;
         PsychUnlockMutex(&(cvDisplayLinkData[screenid].mutex));
-
-        // Current time more than 0.9 video refresh durations after queried
-        // vblank timestamps cvTime?
-        /* Doesn't work, as calls to this function are often not synced to vblank, so
-           this may easily detect false positives and do the wrong thing, especially in
-           high load situations where it would be most urgently needed to fix Apple's
-           lame os. The PsychtoolboxKernelDriver method seems to be the only reasonable
-           choice going forward with the products of the iPhone company...
-        cvRefresh = CVDisplayLinkGetActualOutputVideoRefreshPeriod(cvDisplayLink[screenid]);
-        if ((tnow - cvTime) > (0.9 * cvRefresh)) {
-            // Yes: It is more likely that we fetched a stale cvTime timestamp from
-            // the previous vblank instead of the current one, because we got called
-            // before the display link callback could execute for the current vblank.
-            // Assume this is the case and correct the returned timestamp and count.
-            // Add one video refresh duration and count to make it so:
-            cvTime += cvRefresh;
-            *vblCount = *vblCount + 1;
-        }
-        */
         
         // If timestamp debugging is off, we're done:
         if (PsychPrefStateGet_Verbosity() <= 19) return(cvTime);
@@ -1295,53 +910,44 @@ psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecord
 void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 {    
     CGDirectDisplayID				cgDisplayID;
-
+    
     // Disable rendering context:
     CGLSetCurrentContext(NULL);
- 
+    
 	if (windowRecord->targetSpecific.windowHandle == NULL) {
-		// Shutdown sequence for CGL, i.e., no AGL+Carbon mode:
-		// MK: Hack, needed to work around a "screen corruption on shutdown" bug.
-		// When closing stereo display windows, it sometimes leads to a completely
-		// messed up and unusable display.
+		// Shutdown sequence for CGL, i.e., no NSOpenGL + Cocoa mode:
 		if (PsychIsOnscreenWindow(windowRecord)) {
-			PsychReleaseScreen(windowRecord->screenNumber);
 			// Destroy onscreen window, detach context:
 			CGLClearDrawable(windowRecord->targetSpecific.contextObject);
 			if (windowRecord->targetSpecific.glusercontextObject) CGLClearDrawable(windowRecord->targetSpecific.glusercontextObject);
 			if (windowRecord->targetSpecific.glswapcontextObject) CGLClearDrawable(windowRecord->targetSpecific.glswapcontextObject);
-			PsychCaptureScreen(windowRecord->screenNumber);
 		}
 	}
-
+    
 	// Destroy pixelformat object:
     CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
     
 	// Destroy rendering context:
-    #ifdef __LP64__
-        // 64-Bit Path: We're on OSX 10.5 or later. Use new-style CGLReleaseContext(), which is needed for our
-        // Cocoa windowed mode with NSOpenGLContext wrapped around CGLContext:
-
-        // printf("PRERELEASE: Refcounts: mccgl=%i sccgl=%i\n", CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
-        CGLReleaseContext(windowRecord->targetSpecific.contextObject);
-        if (windowRecord->targetSpecific.glusercontextObject) CGLReleaseContext(windowRecord->targetSpecific.glusercontextObject);
-        if (windowRecord->targetSpecific.glswapcontextObject) CGLReleaseContext(windowRecord->targetSpecific.glswapcontextObject);
-    #else
-        // 32-Bit Path: Use good ol' CGLDestroyContext():
-        CGLDestroyContext(windowRecord->targetSpecific.contextObject);
-        if (windowRecord->targetSpecific.glusercontextObject) CGLDestroyContext(windowRecord->targetSpecific.glusercontextObject);
-        if (windowRecord->targetSpecific.glswapcontextObject) CGLDestroyContext(windowRecord->targetSpecific.glswapcontextObject);
-    #endif
+    CGLReleaseContext(windowRecord->targetSpecific.contextObject);
+    if (windowRecord->targetSpecific.glusercontextObject) CGLReleaseContext(windowRecord->targetSpecific.glusercontextObject);
+    if (windowRecord->targetSpecific.glswapcontextObject) CGLReleaseContext(windowRecord->targetSpecific.glswapcontextObject);
     
-    // Disable low-level mapping of framebuffer cursor memory:
-    if (fbsharedmem[windowRecord->screenNumber].shmem && (screenRefCount[windowRecord->screenNumber] == 1)) {
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Releasing shared memory mapping for screen %i.\n", windowRecord->screenNumber);
-
-        IOConnectUnmapMemory(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCursorMemory, mach_task_self(), (vm_address_t) fbsharedmem[windowRecord->screenNumber].shmem);
-        fbsharedmem[windowRecord->screenNumber].shmem = NULL;
+    // Last reference to this screen? In that case we have to shutdown the fallback
+    // vbl timestamping and vblank counting facilities for this screen:
+    if (screenRefCount[windowRecord->screenNumber] == 1) {
+        // Last one on this screen will be gone in a second. Shutdown this stuff:
         
-        // Close the service port:
-        IOServiceClose(fbsharedmem[windowRecord->screenNumber].connect);
+        // Disable low-level mapping of framebuffer cursor memory, if active:
+        if (fbsharedmem[windowRecord->screenNumber].shmem) {
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Releasing shared memory mapping for screen %i.\n", windowRecord->screenNumber);
+            
+            IOConnectUnmapMemory(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCursorMemory, mach_task_self(), (vm_address_t) fbsharedmem[windowRecord->screenNumber].shmem);
+
+            fbsharedmem[windowRecord->screenNumber].shmem = NULL;
+            
+            // Close the service port:
+            IOServiceClose(fbsharedmem[windowRecord->screenNumber].connect);            
+        }
         
         // Shutdown and release CVDisplayLink for this windows screen, if any:
         if (cvDisplayLink[windowRecord->screenNumber]) {
@@ -1352,7 +958,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
             CVDisplayLinkRelease(cvDisplayLink[windowRecord->screenNumber]);
             cvDisplayLink[windowRecord->screenNumber] = NULL;
             PsychYieldIntervalSeconds(0.1);
-
+            
             // Teardown shared data structure and mutex:
             PsychDestroyMutex(&(cvDisplayLinkData[windowRecord->screenNumber].mutex));
         }
@@ -1361,16 +967,10 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // Release reference of this window to its screen:
     screenRefCount[windowRecord->screenNumber]--;
     
-    #ifdef __LP64__
-        // Destroy Cocoa onscreen window, if any:
-        if (windowRecord->targetSpecific.windowHandle) PsychCocoaDisposeWindow(windowRecord);
-    #else
-        // Destroy Carbon onscreen window, if any:
-        if (windowRecord->targetSpecific.windowHandle) DisposeWindow(windowRecord->targetSpecific.windowHandle);
-    #endif
+    // Destroy Cocoa onscreen window, if any:
+    if (windowRecord->targetSpecific.windowHandle) PsychCocoaDisposeWindow(windowRecord);
+    windowRecord->targetSpecific.windowHandle = NULL;
     
-    // printf("POSTWINDISPOSE: Refcounts: mccgl=%i sccgl=%i\n", CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
-
     return;
 }
 
@@ -1509,10 +1109,10 @@ void PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord)
 		
 		// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
 		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+        
+        // Detach totally:
+        CGLSetCurrentContext(NULL);        
 	}
-
-	// Detach totally:
-    CGLSetCurrentContext(NULL);
 }
 
 /* PsychOSSetVBLSyncLevel - Enable or disable synchronization of bufferswaps to
@@ -1523,7 +1123,7 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
     CGLError	error;
     GLint myinterval = (GLint) swapInterval;
     psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
-    	
+    
 	// Store new setting also in internal helper variable, e.g., to allow workarounds to work:
 	windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
 	
@@ -1531,9 +1131,9 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
     if (error) {
         if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval>0) ? "enable" : "disable");
     }
-
+    
     error=CGLGetParameter((oldStyle || PsychIsMasterThread()) ? windowRecord->targetSpecific.contextObject : windowRecord->targetSpecific.glswapcontextObject, kCGLCPSwapInterval, &myinterval);
-    if (error || (myinterval != (long) swapInterval)) {
+    if (error || (myinterval != (GLint) swapInterval)) {
         if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace (System ignored setting)!\n\n", (swapInterval>0) ? "enable" : "disable");
     }
 }
@@ -1575,8 +1175,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 	// GUI windows need to behave GUIyee:
 	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
 		// Update windows rect and globalrect, based on current size and location:
-		GetWindowBounds(windowRecord->targetSpecific.windowHandle, kWindowContentRgn, &globalBounds);
-		PsychMakeRect(windowRecord->globalrect, globalBounds.left, globalBounds.top, globalBounds.right, globalBounds.bottom);
+		PsychCocoaGetWindowBounds(windowRecord->targetSpecific.windowHandle, windowRecord->globalrect);
 		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
 		PsychSetupClientRect(windowRecord);
 		PsychSetupView(windowRecord, FALSE);

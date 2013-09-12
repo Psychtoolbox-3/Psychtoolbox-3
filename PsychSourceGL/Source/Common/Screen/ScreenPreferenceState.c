@@ -42,34 +42,25 @@
 #define PTB_DEFAULT_TEXTRENDERER 1
 #endif
 
-#if PSYCH_SYSTEM == PSYCH_LINUX
-// Linux: Default capture engine is GStreamer (3), used to be LibDC1394 V2 (1):
+// Default video capture engine is GStreamer (3):
 #define PTB_DEFAULTVIDCAPENGINE 3
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
 #define INITIAL_DEFAULT_FONT_NAME		"Times"
 #define INITIAL_DEFAULT_FONT_SIZE		24
-#define INITIAL_DEFAULT_FONT_STYLE		3
+#define INITIAL_DEFAULT_FONT_STYLE		0
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-// OS/X: Default engine is...
-#ifdef __LP64__
-// ...  GStreamer (3) on 64-Bit OSX:
-#define PTB_DEFAULTVIDCAPENGINE 3
-#else
-// ... Quicktime SequenceGrabbers (0) on 32-Bit OSX:
-#define PTB_DEFAULTVIDCAPENGINE 0
-#endif
 #define INITIAL_DEFAULT_FONT_NAME		"Geneva"
 #define INITIAL_DEFAULT_FONT_SIZE		12
 #define INITIAL_DEFAULT_FONT_STYLE		0
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-// MS-Windows: Default capture engine is GStreamer (3):
-#define PTB_DEFAULTVIDCAPENGINE 3
 #define INITIAL_DEFAULT_FONT_NAME		"Courier New"
 #define INITIAL_DEFAULT_FONT_SIZE		18
-#define INITIAL_DEFAULT_FONT_STYLE		1
+#define INITIAL_DEFAULT_FONT_STYLE		0
 #endif
 
 //PsychTable preference state

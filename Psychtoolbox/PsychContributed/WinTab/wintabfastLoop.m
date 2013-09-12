@@ -68,7 +68,7 @@ try
         pkt = WinTabMex(5);
 
         if isempty(pkt) %ie the queue is empty
-            data = [data zeros(8,1)]; %To index that a break got called
+            data = [data zeros(9,1)]; %To index that a break got called
             break;
         else
             data = [data pkt];
@@ -97,9 +97,17 @@ try
     ListenChar(1);  ShowCursor;
     Screen('CloseAll');
 catch
+    disp('Quit with error (wintabfastLoop.m)');
     WinTabMex(3); WinTabMex(1);
     ListenChar(1);  ShowCursor;
     Screen('CloseAll');
+    
+    tabletTestError = lasterror;
+    message = tabletTestError(1).message
+    identifier = tabletTestError(1).identifier
+    stack = tabletTestError(1).stack;
+    file = stack.file
+    line = stack.line
 end
 
 function [x y] = centreText(wPtr, text, preferredFontSize)

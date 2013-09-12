@@ -83,7 +83,7 @@ PsychError SCREENShowCursorHelper(void)
 		// Yes.
 #if PSYCH_SYSTEM == PSYCH_OSX
 		// OS/X:
-		SetThemeCursor((ThemeCursor) cursorid);
+		PsychCocoaSetThemeCursor(cursorid);
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX

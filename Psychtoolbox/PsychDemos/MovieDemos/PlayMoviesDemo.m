@@ -66,10 +66,10 @@ if isempty(moviename)
     moviename = '*.mov';
 end
 
-% Switch KbName into unified mode: It will use the names of the OS-X
-% platform on all platforms in order to make this script portable:
-KbName('UnifyKeyNames');
+% Initialize with unified keynames and normalized colorspace:
+PsychDefaultSetup(2);
 
+% Setup key mapping:
 space=KbName('SPACE');
 esc=KbName('ESCAPE');
 right=KbName('RightArrow');
@@ -79,13 +79,9 @@ down=KbName('DownArrow');
 shift=KbName('RightShift');
 
 try
-    % Child protection
-    AssertOpenGL;
-    background=[128, 128, 128];
-    
-    % Open onscreen window:
-    screen=max(Screen('Screens'));
-    win = Screen('OpenWindow', screen, 0);
+    % Open onscreen window with gray background:
+    screen = max(Screen('Screens'));
+    win = PsychImaging('OpenWindow', screen, [0.5, 0.5, 0.5]);
     
     shader = [];
     if (nargin > 1) && ~isempty(backgroundMaskOut)
@@ -104,9 +100,6 @@ try
     if nargin < 5
         maxThreads = [];
     end
-    
-    % Clear screen to background color:
-    Screen('FillRect', win, background);
     
     % Initial display and sync to timestamp:
     Screen('Flip',win);
@@ -137,37 +130,57 @@ try
         moviecount = 1;
     end
     
-    if strcmpi(theanswer, 'c')
+    if strcmpi(theanswer, 'c')        
         % Cool stuff, streaming from the web ;-)
+        coolstuff = 1;
         moviefiles = [];
         
         % Make sure a cache directory for buffering exists.
         PsychHomeDir('.cache');
         
-        % Increase buffering time for those:
-        % No again. This seems to do more harm than good for many streaming sources: preloadsecs = 10;
+        % MC Hammers Can't touch this - performed by a special ensemble:
+        moviefiles(end+1).name = 'http://archive.org/download/juniorx3_dancevideo2/juniorx3_dancevideo2.ogv';
+        moviefiles(end).url = 'http://archive.org/details/juniorx3_dancevideo2';
+        moviefiles(end).credits = 'MC Hammers Can''t touch this - performed by a special ensemble';
         
         % The Godfather of Soul giving quick dance lessons:
         moviefiles(end+1).name = 'http://archive.org/download/9lines-JamesBrownDancingLessons151/9lines-JamesBrownDancingLessons151.ogv';
+        moviefiles(end).url = 'http://archive.org/details/9lines-JamesBrownDancingLessons151';
+        moviefiles(end).credits = 'The Godfather of Soul giving quick dance lessons';
         
         % Randy Pausch's "Last lecture":
         moviefiles(end+1).name = 'http://archive.org/download/LastLecturebyRandyPausch/Last_Lecture_by_Randy_Pausch_Sept_2007_MWV.ogv';
+        moviefiles(end).url = 'http://archive.org/details/LastLecturebyRandyPausch';
+        moviefiles(end).credits = 'Randy Pausch''s Last Lecture "Achieving Your Childhood Dreams"';
         
         % Richard Stallman talks about the dangers of software patents:
         moviefiles(end+1).name = 'http://archive.org/download/ifso-stallman/ifso-stallman-mpeg1_512kb.mp4';
+        moviefiles(end).url = 'http://archive.org/details/ifso-stallman';
+        moviefiles(end).credits = 'Richard Stallman talks about the dangers of software patents';
         
         % Linus Torvalds talks at Aalto University Finnland:
         moviefiles(end+1).name = 'http://archive.org/download/AaltoTalkWithLinusTorvalds/AaltoTalkWithLinusTorvalds.ogv';
+        moviefiles(end).url = 'http://archive.org/details/AaltoTalkWithLinusTorvalds';
+        moviefiles(end).credits = 'Linux creator and Millenium prize 2012 winner Linus Torvalds talks at Aalto University Finnland';
         
         % Elon Musk talks about electrical cars, space-flight and solar power:
         moviefiles(end+1).name = 'http://video.ted.com/talk/podcast/2013/None/ElonMusk_2013.mp4';
+        moviefiles(end).url = 'http://www.ted.com/talks/elon_musk_the_mind_behind_tesla_spacex_solarcity.html';
+        moviefiles(end).credits = 'At TED Elon Musk talks with Chris Anderson about electrical cars, space-flight and solar power';
+
         moviefiles(end+1).name = 'http://www.oxfordmartin.ox.ac.uk/webcast/201211_musk.mp4';
+        moviefiles(end).url = 'http://www.oxfordmartin.ox.ac.uk/videos/view/211';
+        moviefiles(end).credits = 'Elon Musk - The Future of Energy and Transport';
         
         % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
         moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';
+        moviefiles(end).url = 'http://video.fosdem.org/2012';
+        moviefiles(end).credits = 'FOSDEM 2012 talk about Linux''s next generation graphics display server "Wayland"';
         
         % ELC 2012 talk: Gstreamer-1.0 No-longer-compromise-flexibility-for-performance:
         moviefiles(end+1).name = 'http://d17mmld7179ppq.cloudfront.net/gstreamer-10-no-longer-compromise-flexibility-for-performance_52ca47/hd_ready.webm';
+        moviefiles(end).url = '';
+        moviefiles(end).credits = 'ELC 2012 talk about GStreamer - 1.0';
         
         % Count all movies in our playlist:
         moviecount = size(moviefiles,2);
@@ -180,10 +193,9 @@ try
         % Use polling to wait for new frames when playing movies from the
         % internet. This to make sure we don't time out too early or block
         % for too long if the network connection is slow / high-latency / bad.
-        blocking = 0;
-        
-        % For network playback we use a higher than default caching time:
-        % Actually, we don't, as some network streaming videos don't like this, e.g., Youtube: preloadsecs = 10;
+        blocking = 0;        
+    else
+        coolstuff = 0;
     end
     
     % Playbackrate defaults to 1:
@@ -194,25 +206,20 @@ try
     
     % Endless loop, runs until ESC key pressed:
     while (abortit<2)
-        moviename=moviefiles(mod(iteration, moviecount)+1).name;
-        iteration=iteration + 1;
+        if coolstuff
+            url = moviefiles(mod(iteration, moviecount)+1).url;
+            credits = moviefiles(mod(iteration, moviecount)+1).credits;
+        end
+        moviename = moviefiles(mod(iteration, moviecount)+1).name;
+        iteration = iteration + 1;
         fprintf('ITER=%i::', iteration);
         
         % Show title while movie is loading/prerolling:
-        DrawFormattedText(win, moviename, 'center', 'center', [255 255 0], 40);
+        DrawFormattedText(win, ['Loading ...\n' moviename], 'center', 'center', 0, 40);
         Screen('Flip', win);
         
         % Open movie file and retrieve basic info about movie:
-        % Some legacy Screen() mex files don't support the pixelFormat or
-        % maxThreads flag, therefore we try to do without them if they are not
-        % used anyway, avoiding an error abort:
-        if ~isempty(pixelFormat) || ~isempty(maxThreads)
-            [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);
-        else
-            % Legacy compatible call:
-            [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs);
-        end
-        
+        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);        
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
         
         i=0;
@@ -268,6 +275,11 @@ try
                 
                 % Draw the new texture immediately to screen:
                 Screen('DrawTexture', win, tex, [], [], [], [], [], [], shader);
+                
+                DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, 0);
+                if coolstuff
+                    DrawFormattedText(win, ['Original URL: ' url '\n\n' credits], 'center', 60, 0);
+                end
                 
                 % Update display:
                 Screen('Flip', win);

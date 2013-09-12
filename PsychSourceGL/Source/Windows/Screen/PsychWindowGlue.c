@@ -789,7 +789,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   
   // Shielding levels below 1500 will let mouse event through to underlying windows, i.e.,
   // the window is non-existent for the mouse:
-  if (windowLevel < 1500) windowExtendedStyle = windowExtendedStyle | WS_EX_TRANSPARENT;
+  if ((windowLevel >= 1000) && (windowLevel < 1500)) windowExtendedStyle = windowExtendedStyle | WS_EX_TRANSPARENT;
 
     // Init to safe default:
     windowRecord->targetSpecific.glusercontextObject = NULL;

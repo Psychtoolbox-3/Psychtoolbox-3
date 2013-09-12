@@ -96,7 +96,27 @@ static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET,
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for March 2013 (last update e-mail patch / commit 15-Mar-2013). Will need updates for anything after start of April 2013 */
+/* Mappings up to date for August 2013 (last update e-mail patch / commit 30-Aug-2013). Will need updates for anything after start of September 2013 */
+
+/* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE8(void)
+{
+	bool isDCE8 = false;
+    
+	// Everything >= BONAIRE is DCE8 -- This is part of the "Sea Islands" GPU family.
+    
+    // BONAIRE in 0x664x - 0x665x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x6640) isDCE8 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6650) isDCE8 = true;
+    
+    // KABINI in 0x983x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x9830) isDCE8 = true;
+    
+    // KAVERI in 0x13xx range:
+	if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE8 = true;
+    
+	return(isDCE8);
+}
 
 /* Is a given ATI/AMD GPU a DCE6.4 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE64(void)
@@ -121,6 +141,9 @@ bool PsychtoolboxKernelDriver::isDCE61(void)
     // ARUBA in 0x99xx range: This is the "Trinity" chip family.
 	if ((fPCIDeviceId & 0xFF00) == 0x9900) isDCE61 = true;
     
+    // KAVERI in 0x13xx range:
+	if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE61 = true;
+    
 	return(isDCE61);    
 }
 
@@ -143,11 +166,17 @@ bool PsychtoolboxKernelDriver::isDCE6(void)
     // And one outlier PITCAIRN:
 	if ((fPCIDeviceId & 0xFFFF) == 0x684c) isDCE6 = true;
     
+    // Then HAINAN in the 0x666x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x6660) isDCE6 = true;
+    
 	// All DCE-6.1 engines are also DCE-6:
 	if (isDCE61()) isDCE6 = true;
-
+    
 	// All DCE-6.4 engines are also DCE-6:
 	if (isDCE64()) isDCE6 = true;
+    
+	// All DCE-8 engines are also DCE-6:
+	if (isDCE8()) isDCE6 = true;
 
 	return(isDCE6);
 }
@@ -181,8 +210,8 @@ bool PsychtoolboxKernelDriver::isDCE41(void)
 	// DCE-4.1 is a real subset of DCE-4, with all its
 	// functionality, except it only has 2 crtcs instead of 6.
     
-	// Palm in 0x98xx range:
-	if ((fPCIDeviceId & 0xFF00) == 0x9800) isDCE41 = true;
+	// Palm in 0x980x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x9800) isDCE41 = true;
     
 	// Sumo/Sumo2 in 0x964x range:
 	if ((fPCIDeviceId & 0xFFF0) == 0x9640) isDCE41 = true;
@@ -1083,7 +1112,7 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 {
 	SInt32					beampos = 0;
 
-    if (headId < 0 || headId >= fNumDisplayHeads) {
+    if (headId >= fNumDisplayHeads) {
         // Invalid head - bail:
         IOLog("%s: GetBeamPosition: ERROR! Invalid headId %d provided. Must be between 0 and %d. Aborted.\n", getName(), headId, fNumDisplayHeads - 1);
         return(0);

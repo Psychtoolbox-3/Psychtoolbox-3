@@ -75,13 +75,10 @@
 #include <gst/interfaces/colorbalance.h>
 
 // Compile-Time enable GStreamer encoding profile support by default on
-// MacOSX and on 64-Bit Windows. These are the platforms where we know
+// MacOSX and Windows. These are the platforms where we know
 // for sure that the installed GStreamer runtimes support this feature,
-// because 64-Bit Windows == GStreamer-SDK and OSX == GStreamer-SDK or
+// because Windows == GStreamer-SDK and OSX == GStreamer-SDK or
 // Homebrews GStreamer. Both Homebrew installs and the SDK do support this.
-//
-// 32-Bit Windows requires the OSSBuilds GStreamer which is too old to support this, but
-// there we use camerabin1 + old setup path anyway, so no loss.
 //
 // Linux is mixed: Recent distros support it, old ones don't. I'm simply too lazy atm.
 // to implement dynamic detection of support and dynamic linking on Linux, and use of
@@ -90,7 +87,7 @@
 // default to camerabin1 capture+recording and old style setup on Linux and safe ourselves
 // a bit of hassle. Once we support a GStreamer V1.0 multi-media backend, we can implement
 // this unconditionally without any pain or compatibility issues.
-#if (PSYCH_SYSTEM == PSYCH_OSX) || ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (defined(__LP64__) || defined(_M_IA64) || defined(_WIN64)))
+#if (PSYCH_SYSTEM == PSYCH_OSX) || (PSYCH_SYSTEM == PSYCH_WINDOWS)
 #define PTB_USE_GSTENCODINGPROFILES 1
 #endif
 
@@ -216,8 +213,7 @@ void PsychGSCheckInit(const char* engineName)
             // OSX linker sets the symbol to NULL if dynamic weak linking during runtime failed.
             // On failure we'll output some helpful error-message instead:
             #if PSYCH_SYSTEM == PSYCH_WINDOWS
-                if (((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) &&
-                    ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll")))) {
+                if ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) {
             #endif
             #if PSYCH_SYSTEM == PSYCH_OSX
                 if (NULL == gst_init_check) {
@@ -231,6 +227,12 @@ void PsychGSCheckInit(const char* engineName)
                 printf("PTB-ERROR: Another reason could be that you have GStreamer version 1.0 instead of the required\n");
                 printf("PTB-ERROR: version 0.10 installed. The version 1 series is not yet supported.\n\n");
                 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                    printf("PTB-ERROR: Please also note that on 32-Bit Matlab for MS-Windows, as of September 2013,\n");
+                    printf("PTB-ERROR: you will need to install the GStreamer-SDK from www.gstreamer.com, not the\n");
+                    printf("PTB-ERROR: older GStreamer runtime from OSSBuilds. The old OSSBuilds GStreamer, which\n");
+                    printf("PTB-ERROR: was required before August 2013, will no longer work with 32-Bit Matlab on\n");
+                    printf("PTB-ERROR: Windows! Please uninstall the old OSSBuilds version and install the SDK version\n");
+                    printf("PTB-ERROR: if GStreamer worked for you before.\n");
                     printf("PTB-ERROR: The system returned error code %d.\n", GetLastError());
                 #endif
                 printf("PTB-ERROR: Please read the help by typing 'help GStreamer' for installation and troubleshooting\n");
@@ -251,6 +253,19 @@ void PsychGSCheckInit(const char* engineName)
                 PsychErrorExitMsg(PsychError_user, "GStreamer initialization failed due to library loading problems. Aborted.");
             }
         #endif
+
+		// Can't pass environment vars from Matlab to Screen+GStreamer on a MS-Windows
+		// build against MSVCRT.dll, so we need a hack to pass a debug level env var to
+		// GStreamer. Set GST_DEBUG env var from within Screen's DLL boundaries if verbosity > 20,
+		// as this setting should transfer to the GStreamer dll's, which are also linked against msvcrt.dll:
+		#if (PSYCH_SYSTEM == PSYCH_WINDOWS) && defined(__MSVCRT__)
+		if (PsychPrefStateGet_Verbosity() > 20) {
+			char dbglvl[10];
+			sprintf(dbglvl, "%i", PsychPrefStateGet_Verbosity() - 20);
+			_putenv_s("GST_DEBUG", dbglvl);
+			printf("PTB-DEBUG: Set GStreamer GST_DEBUG=%s from within Screen() dll boundaries.\n", dbglvl);
+		}
+		#endif
 
 		// Initialize GStreamer:
 		if(!gst_init_check(NULL, NULL, &error)) {
@@ -2236,32 +2251,38 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     plugin_name[0] = 0;
     prop_name[0] = 0;
 
-	// Init capturehandle to none:
-	*capturehandle = -1;
-	
-	// Make sure GStreamer is ready:
-	PsychGSCheckInit("videocapture");
-	
-	// Map deviceIndex of requested video source to device name:
-	if (deviceIndex >= 0) {
-		// Get device name for given deviceIndex from video device
-		// enumeration (or NULL if no such device):
-		theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex);
-		if (NULL == theDevice) {
-			printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
-			PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
-		}
-		
-		// Assign name:
-		sprintf(device_name, "%s", theDevice->deviceHandle);
-		sprintf(plugin_name, "%s", theDevice->deviceVideoPlugin);
-		sprintf(prop_name, "%s", theDevice->deviceSelectorProperty);
-		if (theDevice->deviceURI > 0) {
-			sprintf(device_name, "%llu", theDevice->deviceURI);
-		}
+    // Init capturehandle to none:
+    *capturehandle = -1;
+    
+    // Make sure GStreamer is ready:
+    PsychGSCheckInit("videocapture");
 
-		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
-	}
+    // As a side effect of some PsychGSCheckInit() some broken GStreamer runtimes can change
+    // the OpenGL context binding behind our back to some GStreamer internal context.
+    // Make sure our own context is bound after return from PsychGSCheckInit() to protect
+    // against the state bleeding this would cause:
+    if (win) PsychSetGLContext(win);
+
+    // Map deviceIndex of requested video source to device name:
+    if (deviceIndex >= 0) {
+      // Get device name for given deviceIndex from video device
+      // enumeration (or NULL if no such device):
+      theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex);
+      if (NULL == theDevice) {
+	printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
+	PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
+      }
+      
+      // Assign name:
+      sprintf(device_name, "%s", theDevice->deviceHandle);
+      sprintf(plugin_name, "%s", theDevice->deviceVideoPlugin);
+      sprintf(prop_name, "%s", theDevice->deviceSelectorProperty);
+      if (theDevice->deviceURI > 0) {
+	sprintf(device_name, "%llu", theDevice->deviceURI);
+      }
+      
+      if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
+    }
 
     // Slot 'slotid' will contain the record for our new capture object:
 

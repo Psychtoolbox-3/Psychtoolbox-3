@@ -41,7 +41,7 @@ function PsychDebugWindowConfiguration(opaqueForHID, opacity)
 % 30.07.2009 mk  Written.
 % 15.11.2009 mk  Now also for Windows and Linux.
 % 22.08.2013 mk  Disable any high-precision timestamping on all operating systems.
-%
+% 09.09.2013 mk  No special case handling for OSX needed anymore.
 
 if nargin < 1
     opaqueForHID = [];
@@ -53,12 +53,6 @@ end
 
 if nargin < 2
     opacity=0.5;
-end
-
-if IsOSX
-    % Use NSOpenGL + Cocoa, even for fullscreen windows:
-    oldconserve = Screen('Preference', 'ConserveVRAM');
-    Screen('Preference', 'ConserveVRAM', bitor(oldconserve, 16384));
 end
 
 % Disable high precision timestamping:

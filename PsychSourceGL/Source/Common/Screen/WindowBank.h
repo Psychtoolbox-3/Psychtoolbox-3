@@ -209,13 +209,13 @@ typedef struct{
 		CGLContextObj		glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
         CVOpenGLTextureRef  QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
         void*				deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
-		WindowRef			windowHandle;			// Handle for Carbon + AGL window when using windowed mode. (NULL in non-windowed mode).
-        #ifdef __LP64__
+        // NSWindow* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
+        void*               windowHandle;			// Handle for Cocoa window when using windowed mode. (NULL in non-windowed mode).
+
         // NSOpenGLContext* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
         void*    nsmasterContext;        // Cocoa OpenGL master context.
         void*    nsswapContext;          // Cocoa OpenGL async swap context.
         void*    nsuserContext;          // Cocoa OpenGL userspace rendering context.
-        #endif
 } PsychTargetSpecificWindowRecordType;
 #endif 
 

@@ -352,12 +352,9 @@ void PsychReleaseScreen(int screenNumber)
 	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
 
 	// Try to restore keyboard input focus to whatever window had focus before
-	// the CGDisplayCapture()/CGDisplayRelease(). 64-Bit OSX Cocoa only:
-	// Turns out to be a bit unreliable, and of limited use when it
-	// works.
-	#ifdef __LP64__
-	SetUserFocusWindow(NULL);
-	#endif
+	// the CGDisplayCapture()/CGDisplayRelease(). Turns out to be a bit unreliable,
+    // and of limited use when it works, but anyway...
+	PsychCocoaSetUserFocusWindow(NULL);
 
 	return;
 }

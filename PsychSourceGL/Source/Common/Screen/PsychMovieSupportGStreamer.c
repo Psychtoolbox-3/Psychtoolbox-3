@@ -95,9 +95,12 @@ static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
 static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
 
+#if !GLIB_CHECK_VERSION (2, 31, 0)
 #if PSYCH_SYSTEM == PSYCH_OSX
 // This is the function prototype for compile against GLib 2.32.0 "deprecated":
 extern void g_thread_init(gpointer vtable) __attribute__((weak_import));
+extern gboolean g_thread_supported(void) __attribute__((weak_import));
+#endif
 #endif
 
 /*
@@ -115,6 +118,12 @@ void PsychGSMovieInit(void)
     }    
     numMovieRecords = 0;
 
+    // Note: This is deprecated and not needed anymore on GLib 2.31.0 and later, as
+    // GLib's threading system auto-initializes on first use since that version. We
+    // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
+    // conditionally on the GLib version we build against:
+#if !GLIB_CHECK_VERSION (2, 31, 0)
+    
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // On Windows, we need to delay-load the GLib DLL's. This loading
     // and linking will automatically happen downstream. However, if delay loading
@@ -123,8 +132,7 @@ void PsychGSMovieInit(void)
     // likely succeed. If the following LoadLibrary() call fails and returns NULL,
     // then we know we would end up crashing. Therefore we'll output some helpful
     // error-message instead:
-    if (((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) &&
-        ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll")))) {
+    if ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) {
         // Failed: GLib and its threading support isn't installed. This means that
         // GStreamer won't work as the relevant .dll's are missing on the system.
         // We silently return, skpipping the GLib init, as it is completely valid
@@ -156,11 +164,9 @@ void PsychGSMovieInit(void)
     #endif
     
     // Initialize GLib's threading system early:
-    // Note: This is deprecated and not needed anymore on GLib 2.32.0 and later, as
-    // GLib's threading system auto-initializes on first use since that version. We
-    // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
-    // for the time being...
-    g_thread_init(NULL);
+    if (!g_thread_supported()) g_thread_init(NULL);
+
+#endif
 
     return;
 }
@@ -613,12 +619,19 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (firsttime) {        
         // Initialize GStreamer: The routine is defined in PsychVideoCaptureSupportGStreamer.c
         PsychGSCheckInit("movie playback");
+
         firsttime = FALSE;
     }
 
     if (win && !PsychIsOnscreenWindow(win)) {
         if (printErrors) PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window."); else return;
     }
+
+    // As a side effect of some PsychGSCheckInit() some broken GStreamer runtimes can change
+    // the OpenGL context binding behind our back to some GStreamer internal context.                                                                                                                                                                                              
+    // Make sure our own context is bound after return from PsychGSCheckInit() to protect                                                                                                                                                                                          
+    // against the state bleeding this would cause:                                                                                                                                                                                                                                
+    if (win) PsychSetGLContext(win);
 
     if (NULL == moviename) {
         if (printErrors) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of moviename passed!"); else return;
