@@ -4,7 +4,7 @@
 
     PLATFORMS:	
 
-    This is the OS X 64-Bit Cocoa version only.
+    OSX
  
     TARGETS:
  
@@ -16,26 +16,17 @@
  
     DESCRIPTION:
  
-    Glue code for window management for the 64-Bit Psychtoolbox,
-    using Objective-C wrappers to use Cocoa.
+    Glue code for window management using Objective-C wrappers to use Cocoa.
  
-    These functions are called by PsychWindowGlue.c. Some are
-    specific to Cocoa window management. Some are drop-in replacements
-    for missing Carbon 32-Bit functions.
+    These functions are called by PsychWindowGlue.c.
  
     NOTES:
  
     The setup code for multiple OpenGL contexts per Cocoa window makes
     use of functions only supported on OSX 10.6 "Snow Leopard" and later.
-    Therefore, full windowed mode functionality is only available with
-    10.6 and later. 10.5 only provides restricted basic 2D/3D drawing
-    contexts with hard-coded pixelformat parameters and no resource sharing
-    across onscreen windows.
+    Therefore 10.6 Snow Leopard or later is required for this to work.
 
 */
-
-/* Only use Cocoa glue on 64-Bit OSX for now */
-#ifdef __LP64__
 
 #include "Screen.h"
 #include "PsychCocoaGlue.h"
@@ -43,17 +34,17 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <Cocoa/Cocoa.h>
 
-PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
-                           PsychRectType      screenRect,
-                           const Rect *       contentBounds,
-                           WindowClass        wclass,
-                           WindowAttributes   addAttribs,
-                           WindowRef *        outWindow,
-                           psych_bool         enableTransparentGL)
+PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windowLevel, void** outWindow)
 {
     char windowTitle[100];
     NSWindow *cocoaWindow;
-
+    PsychRectType screenRect;
+    int screenHeight;
+    
+    // Query height of primary screen for y-coord remapping:
+    PsychGetGlobalScreenRect(0, screenRect);
+    screenHeight = (int) PsychGetHeightFromRect(screenRect);
+    
     // Zero-Init NSOpenGLContext-Pointers for our private Cocoa OpenGL contexts:
     windowRecord->targetSpecific.nsmasterContext = NULL;
     windowRecord->targetSpecific.nsswapContext = NULL;
@@ -72,7 +63,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     // Define size of client area - the actual stimulus display area:
     // The window itself will resize and reposition itself so that the size of
     // the content area is preserved/honored, adjusting for the thickness of window decorations.
-    NSRect windowRect = NSMakeRect(0, 0, (contentBounds->right - contentBounds->left), (contentBounds->bottom - contentBounds->top));
+    NSRect windowRect = NSMakeRect(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
 
     NSUInteger windowStyle = 0;
     if (windowRecord->specialflags & kPsychGUIWindow) {
@@ -92,8 +83,8 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     }
 
     [cocoaWindow setTitle:[NSString stringWithUTF8String:windowTitle]];
-    
-    if (enableTransparentGL) {
+
+    if ((windowLevel >= 1000) && (windowLevel < 2000)) {
         // Set window as non-opaque, with a transparent window background color:
         // This together with the OpenGL context setup for transparency allows the OpenGL
         // colorbuffer alpha-channel to determine window opacity at a per-pixel level, so
@@ -105,14 +96,19 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     }
     
     // Make window "transparent" for mouse events like clicks and drags, if requested:
-    if (addAttribs & kWindowIgnoreClicksAttribute) [cocoaWindow setIgnoresMouseEvents:true];
+    // For levels 1000 to 1499, where the window is a partially transparent
+    // overlay window with global alpha 0.0 - 1.0, we disable reception of mouse
+    // events. --> Can move and click to windows behind the window!
+    // A range 1500 to 1999 would also allow transparency, but block mouse events:
+    psych_bool ignoreMouse = ((windowLevel >= 1000) && (windowLevel < 1500)) ? TRUE : FALSE;
+    if (ignoreMouse) [cocoaWindow setIgnoresMouseEvents:true];
 
     // In non-GUI mode we want the window to be above all other regular windows, so the
     // stimulus doesn't get occluded. If we make ourselves transparent to mouse clicks, we
     // must be above all other windows, as otherwise any mouse-click that "goes through"
     // to an underlying window will raise that window above ours and we get occluded, ie.,
     // any actual passed-through mouse-click would defeat the purpose of pass-through mode:
-    if (!(windowRecord->specialflags & kPsychGUIWindow) || (addAttribs & kWindowIgnoreClicksAttribute)) {
+    if (!(windowRecord->specialflags & kPsychGUIWindow) || ignoreMouse) {
         // Set level of window to be in front of every regular window:
         [cocoaWindow setLevel:NSScreenSaverWindowLevel];
     }
@@ -125,30 +121,33 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     // as a hint. It tries to position as requested, but places the window differently if required
     // to make sure the full windowRect content area is displayed. It doesn't allow the window to
     // overlap the menu bar or dock area by default.
-    NSPoint winPosition = NSMakePoint(contentBounds->left, screenRect[kPsychBottom] - contentBounds->top);
+    NSPoint winPosition = NSMakePoint(windowRecord->rect[kPsychLeft], screenHeight - windowRecord->rect[kPsychTop]);
     [cocoaWindow setFrameTopLeftPoint:winPosition];
     
     // Query and translate content rect of final window to a PTB rect:
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
-    PsychMakeRect(windowRecord->rect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
+    PsychMakeRect(windowRecord->rect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width,              screenRect[kPsychBottom] - clientRect.origin.y);
 
     // Drain the pool:
     [pool drain];
     
     // Return window pointer, packed into an old-school Carbon window ref:
-    *outWindow = (WindowRef) cocoaWindow;
+    *outWindow = (void*) cocoaWindow;
 
     // Return success:
     return(PsychError_none);
 }
 
-OSStatus
-GetWindowBounds(
-                WindowRef          window,
-                WindowRegionCode   regionCode,
-                Rect *             globalBounds)
+void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds)
 {
-    NSWindow *cocoaWindow = (NSWindow*) window;
+    PsychRectType screenRect;
+    double screenHeight;
+    
+    // Query height of primary screen for y-coord remapping:
+    PsychGetGlobalScreenRect(0, screenRect);
+    screenHeight = PsychGetHeightFromRect(screenRect);
+
+    NSWindow* cocoaWindow = (NSWindow*) window;
     
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -156,26 +155,13 @@ GetWindowBounds(
     // Query and translate content rect of final window to a PTB rect:
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
     
-    globalBounds->left = clientRect.origin.x;
-    globalBounds->right = clientRect.origin.x + clientRect.size.width;
-    NSRect screenRect = [[cocoaWindow screen] frame];
-    globalBounds->top = screenRect.size.height - (clientRect.origin.y + clientRect.size.height);
-    globalBounds->bottom = globalBounds->top + clientRect.size.height;
+    globalBounds[kPsychLeft]   = clientRect.origin.x;
+    globalBounds[kPsychRight]  = clientRect.origin.x + clientRect.size.width;
+    globalBounds[kPsychTop]    = screenHeight - (clientRect.origin.y + clientRect.size.height);
+    globalBounds[kPsychBottom] = globalBounds[kPsychTop] + clientRect.size.height;
 
     // Drain the pool:
     [pool drain];
-    
-    return(0);
-}
-
-void ShowWindow(WindowRef window)
-{
-    PsychCocoaShowWindow(window);
-}
-
-WindowGroupRef GetWindowGroup(WindowRef inWindow)
-{
-    return((WindowGroupRef) inWindow);
 }
 
 pid_t GetHostingWindowsPID(void)
@@ -259,25 +245,25 @@ hwinpidout:
     return(pid);
 }
 
-// SetUserFocusWindow() is a drop-in replacement for Carbon's function.
-OSStatus SetUserFocusWindow(WindowRef inWindow)
+// PsychCocoaSetUserFocusWindow is a replacement for Carbon's SetUserFocusWindow().
+void PsychCocoaSetUserFocusWindow(void* window)
 {
-    NSWindow* focusWindow = (NSWindow*) inWindow;
-    
+    NSWindow* focusWindow = (NSWindow*) window;
+
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     // Special flag: Try to restore main apps focus:
-    if (inWindow == kUserFocusAuto) {
+    if (focusWindow == (NSWindow*) 0x1) {
         focusWindow = [[NSApplication sharedApplication] mainWindow];
     }
 
     // Direct keyboard input focus to window 'inWindow':
-    [focusWindow makeKeyAndOrderFront: nil];
+    if (focusWindow) [focusWindow makeKeyAndOrderFront: nil];
 
     // Special handle NULL provided? Try to regain keyboard focus rambo-style for
     // our hosting window for octave / matlab -nojvm in terminal window:
-    if (inWindow == NULL) {
+    if (focusWindow == NULL) {
         // This works to give keyboard focus to a process other than our (Matlab/Octave) runtime, if
         // the process id (pid_t) of the process is known and valid for a GUI app. E.g., passing in
         // the pid of the XServer process X11.app or the Konsole.app will restore the xterm'inal windows
@@ -301,14 +287,10 @@ OSStatus SetUserFocusWindow(WindowRef inWindow)
 
     // Drain the pool:
     [pool drain];
-    
-    return((OSStatus) 0);
 }
 
-// GetUserFocusWindow() is a drop-in replacement for Carbon's function.
-// TODO FIXME: This totally doesn't work for some reason. It always
-// returns a focusWindow of NULL.
-WindowRef GetUserFocusWindow(void)
+// PsychCocoaGetUserFocusWindow is a replacement for Carbon's GetUserFocusWindow() function.
+void* PsychCocoaGetUserFocusWindow(void)
 {
     NSWindow* focusWindow = NULL;
     
@@ -323,7 +305,7 @@ WindowRef GetUserFocusWindow(void)
     // Drain the pool:
     [pool drain];
 
-    return((WindowRef) focusWindow);
+    return((void*) focusWindow);
 }
 
 void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
@@ -349,13 +331,11 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
 
     // Drain the pool:
     [pool drain];
-    
-    return;
 }
 
-void PsychCocoaShowWindow(WindowRef window)
-{
-    NSWindow *cocoaWindow = (NSWindow*) window;
+void PsychCocoaShowWindow(void* window)
+{    
+    NSWindow* cocoaWindow = (NSWindow*) window;
     
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -368,21 +348,17 @@ void PsychCocoaShowWindow(WindowRef window)
     
     // Drain the pool:
     [pool drain];
-    
-    return;   
 }
 
-psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef window, PsychWindowRecordType *windowRecord)
+psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, PsychWindowRecordType *windowRecord)
 {
+    NSWindow* cocoaWindow = (NSWindow*) window;
+
     GLint opaque = 0;
     NSOpenGLContext *masterContext = NULL;
     NSOpenGLContext *gluserContext = NULL;
     NSOpenGLContext *glswapContext = NULL;
     
-    NSWindow *cocoaWindow = (NSWindow*) window;
-    
-    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: MacOSX 10.6+ primary window display path enabled. Should be fully functional.\n");
-
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
@@ -395,14 +371,12 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
     [masterContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
     [masterContext setView:[cocoaWindow contentView]];
     [masterContext makeCurrentContext];
-    // printf("MasterContext created & Made current!\n");
     
     // Ditto for potential gl userspace rendering context:
     if (windowRecord->targetSpecific.glusercontextObject) {
         gluserContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glusercontextObject];
         [gluserContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
         [gluserContext setView:[cocoaWindow contentView]];
-        // printf("GLUserContext created!\n");
     }
     
     // Ditto for potential glswapcontext for async flips and frame sequential stereo:
@@ -410,11 +384,8 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
         glswapContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glswapcontextObject];
         [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
         [glswapContext setView:[cocoaWindow contentView]];
-        // printf("GLSwapContext created!\n");
     }
 
-    // printf("Refcounts: window=%i , view=%i , mc=%i mccgl=%i sc=%i sccgl=%i\n", [cocoaWindow retainCount], [[cocoaWindow contentView] retainCount], [masterContext retainCount], CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), [glswapContext retainCount], CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
-    
     // Assign contexts for use in window close sequence later on:
     windowRecord->targetSpecific.nsmasterContext = (void*) masterContext;
     windowRecord->targetSpecific.nsswapContext = (void*) glswapContext;
@@ -427,85 +398,9 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
     return(false);
 }
 
-
-psych_bool PsychCocoaSetupAndAssignLegacyOpenGLContext(WindowRef window, PsychWindowRecordType *windowRecord)
+void PsychCocoaSendBehind(void* window)
 {
-    GLint opaque = 0;
-    NSOpenGLContext *masterContext = NULL;
-    NSOpenGLContext *gluserContext = NULL;
-    NSOpenGLContext *glswapContext = NULL;
-    
-    NSWindow *cocoaWindow = (NSWindow*) window;
-    
-    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: MacOSX 10.5 legacy window display mode for backward compatibility enabled. Functionality will be limited.\n");
-    
-    // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-
-    // Enable opacity for OpenGL contexts if underlying window is opaque:
-    if ([cocoaWindow isOpaque] == true) opaque = 1;
-
-    // Define a pixelformat for the context. We use a hard-coded "one size fits all"
-    // format which is used in legacy mode for OSX 10.5 and covers the most common use cases:
-    NSOpenGLPixelFormatAttribute attrs[] = {
-        NSOpenGLPFADoubleBuffer,
-        NSOpenGLPFADepthSize, 24,
-        NSOpenGLPFAStencilSize, 8,
-        0
-    };
-    
-    NSOpenGLPixelFormat* cocoaPixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
-    if (cocoaPixelFormat == nil) {
-        printf("PTB-ERROR: Could not create NSOpenGLPixelFormat!\n");
-        return(true);
-    }
-    
-    // Build NSOpenGLContexts as wrappers around existing CGLContexts already
-    // created in calling routine:
-    masterContext = [[NSOpenGLContext alloc] initWithFormat: cocoaPixelFormat shareContext:nil];
-    [masterContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
-    [masterContext setView:[cocoaWindow contentView]];
-    [masterContext makeCurrentContext];
-    windowRecord->targetSpecific.contextObject = [masterContext CGLContextObj];
-    CGLRetainContext(windowRecord->targetSpecific.contextObject);
-    // printf("Legacy:MasterContext created & Made current!\n");
-    
-    // Ditto for potential glswapcontext for async flips and frame sequential stereo:
-    glswapContext = [[NSOpenGLContext alloc] initWithFormat: cocoaPixelFormat shareContext:masterContext];
-    [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
-    [glswapContext setView:[cocoaWindow contentView]];
-    windowRecord->targetSpecific.glswapcontextObject = [glswapContext CGLContextObj];
-    CGLRetainContext(windowRecord->targetSpecific.glswapcontextObject);
-    // printf("Legacy:GLSwapContext created!\n");
-    
-    // Ditto for potential gl userspace rendering context:
-    gluserContext = [[NSOpenGLContext alloc] initWithFormat: cocoaPixelFormat shareContext:masterContext];
-    [gluserContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
-    [gluserContext setView:[cocoaWindow contentView]];
-    windowRecord->targetSpecific.glusercontextObject = [gluserContext CGLContextObj];
-    CGLRetainContext(windowRecord->targetSpecific.glusercontextObject);
-    // printf("Legacy:GLUserContext created!\n");
-    
-    // Don't need the pixelformat object anymore:
-    [cocoaPixelFormat release];
-    
-    // printf("Legacy:Refcounts: window=%i , view=%i , mc=%i mccgl=%i sc=%i sccgl=%i\n", [cocoaWindow retainCount], [[cocoaWindow contentView] retainCount], [masterContext retainCount],CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), [glswapContext retainCount], CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
-           
-    // Assign contexts for use in window close sequence later on:
-    windowRecord->targetSpecific.nsmasterContext = (void*) masterContext;
-    windowRecord->targetSpecific.nsswapContext = (void*) glswapContext;
-    windowRecord->targetSpecific.nsuserContext = (void*) gluserContext;
-
-    // Drain the pool:
-    [pool drain];
-
-    return(false);
-}
-
-void SendBehind(WindowRef   window,
-                WindowRef   behindWindow)
-{
-    NSWindow *cocoaWindow = (NSWindow*) window;
+    NSWindow* cocoaWindow = (NSWindow*) window;
     
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -515,15 +410,11 @@ void SendBehind(WindowRef   window,
     
     // Drain the pool:
     [pool drain];
-    
-    return;    
 }
 
-OSStatus SetWindowGroupLevel(
-                             WindowGroupRef   inGroup,
-                             SInt32           inLevel)
+void PsychCocoaSetWindowLevel(void* window, int inLevel)
 {
-    NSWindow *cocoaWindow = (NSWindow*) inGroup;
+    NSWindow* cocoaWindow = (NSWindow*) window;
     
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -533,59 +424,45 @@ OSStatus SetWindowGroupLevel(
     
     // Drain the pool:
     [pool drain];
-    
-    return 0;
 }
 
-OSStatus SetWindowAlpha(
-                        WindowRef   inWindow,
-                        CGFloat     inAlpha)
+void PsychCocoaSetWindowAlpha(void* window, float inAlpha)
 {
-    NSWindow *cocoaWindow = (NSWindow*) inWindow;
+    NSWindow* cocoaWindow = (NSWindow*) window;
     
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     
     // Set Window transparency:
-    [cocoaWindow setAlphaValue: (float) inAlpha];
+    [cocoaWindow setAlphaValue: inAlpha];
     
     // Drain the pool:
     [pool drain];
-    
-    return(0);
 }
 
-OSStatus SetThemeCursor(ThemeCursor inCursor)
+void PsychCocoaSetThemeCursor(int inCursor)
 {
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     switch(inCursor) {
-        case kThemeArrowCursor:
+        case 0:
             [[NSCursor arrowCursor] set];
         break;
             
-        case kThemeIBeamCursor:
+        case 4:
             [[NSCursor IBeamCursor] set];
         break;
 
-        case kThemeCrossCursor:
+        case 5:
             [[NSCursor crosshairCursor] set];
         break;
 
-        case kThemePointingHandCursor:
+        case 10:
             [[NSCursor pointingHandCursor] set];
         break;
-
-        default:
-            // Failed - Unknown cursor type:
-            return(1);
     }
 
     // Drain the pool:
     [pool drain];
-    
-    return(0);
 }
-
-#endif

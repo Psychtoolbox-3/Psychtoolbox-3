@@ -85,7 +85,7 @@ try
             
             %This check breaks the loop after deltaT if pkt was always empty
             if GetSecs>(loopStart+deltaT)
-                pkt = zeros(8,1); %Dummy data representing a missed data point
+                pkt = zeros(9,1); %Dummy data representing a missed data point
                 break;
             end
         end

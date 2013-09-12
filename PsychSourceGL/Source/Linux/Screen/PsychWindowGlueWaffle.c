@@ -746,7 +746,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         }
 
         // Setup window transparency for user input (keyboard and mouse events):
-        if (xfixes_available && (windowLevel < 1500)) {
+        if (xfixes_available && (windowLevel >= 1000) && (windowLevel < 1500)) {
             // Define region as an empty input region:
             XserverRegion region = XFixesCreateRegion(dpy, NULL, 0);
 
@@ -943,10 +943,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         XSync(dpy, False);
 
         // If windowLevel is zero, lower it to the bottom of the stack of windows:
-        if (windowLevel <= 0) XLowerWindow(dpy, win);
+        if (windowLevel == 0) XLowerWindow(dpy, win);
 
         // Setup window transparency for user input (keyboard and mouse events):
-        if ((windowLevel < 1500) && (windowLevel != -1)) {
+        if ((windowLevel < 1500) && (windowLevel >= 1000)) {
             // Need to try to be transparent for keyboard events and mouse clicks:
             XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
         }

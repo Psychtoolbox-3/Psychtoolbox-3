@@ -1486,21 +1486,16 @@ void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
 // MS-Windows:
 #include <locale.h>
 
-// When building against Octave-3, we don't have support for
-// _locale_t datatype and associated functions like mbstowcs_l. Therefore
-// we use setlocale() and mbstowcs() instead to set/query/use the global
-// process-wide locale instead. This should be ok, as Octave does not implement
-// locale processing itself on Windows, so we cannot interfere here.
-#if defined(PTBOCTAVE3MEX)
-#define _locale_t	char*
-#endif
-
-static	_locale_t	drawtext_locale = NULL;
+// When building against Octave-3 or the Microsoft Windows common C runtime MSCRT.dll,
+// we don't have support for _locale_t datatype and associated functions like mbstowcs_l.
+// Therefore we always use setlocale() and mbstowcs() instead to set/query/use the global
+// process-wide locale instead to avoid special cases. Our code will backup the old/current locale,
+// then apply the requested locale and use it for text conversion, then restore the old locale,
+// so that the process global locale setting is only temporarily changed during execution of our
+// text conversion function on the main thread. This should hopefully be fine:
+static  char		oldmswinlocale[256] = { 0 };
 static	char		drawtext_localestring[256] = { 0 };
 unsigned int		drawtext_codepage = 0;
-
-// Define mbstowcs_l (Posix) to the corresponding name on Windows CRT:
-#define	mbstowcs_l	_mbstowcs_l
 
 // PsychSetUnicodeTextConversionLocale():
 //
@@ -1525,73 +1520,10 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 {
 	unsigned int	mycodepage;
 
-#if !defined(PTBOCTAVE3MEX)
-	_locale_t		myloc = NULL;
-
 	// Was only destruction/release of current locale requested?
 	if (NULL == mnewlocale) {
-		// Destroy/Release old locale, if any:
-		if (drawtext_locale) {
-			_free_locale(drawtext_locale);
-			drawtext_locale = NULL;
-		}
-		drawtext_localestring[0] = 0;
-		drawtext_codepage = 0;
-		
-		// Done after destruction:
-		return(TRUE);
-	}
-
-	// Special # symbol to directly set a codepage provided?
-	if (strstr(mnewlocale, "#") && (sscanf(mnewlocale, "#%i", &mycodepage) > 0)) {
-		// Yes, parse numeric codepage id and assign it:
-		strcpy(drawtext_localestring, mnewlocale);
-		drawtext_codepage = mycodepage;
-		return(TRUE);
-	}
-	else {
-		// Special case "UTF-8" string provided?
-		if (PsychMatch((char*) mnewlocale, "UTF-8")) {
-			// Yes: Switch to UTF-8 codepage:
-			strcpy(drawtext_localestring, mnewlocale);
-			drawtext_codepage = CP_UTF8;
-			return(TRUE);
-		}
-	}
-	
-	// Setting of a new locale requested:
-	myloc = _create_locale(LC_CTYPE, mnewlocale);
-	if (myloc) {
-		// Destroy/Release old locale, if any:
-		if (drawtext_locale) {
-			_free_locale(drawtext_locale);
-			drawtext_locale = NULL;
-		}
-
 		drawtext_codepage = 0;
 		drawtext_localestring[0] = 0;
-		if (strlen(mnewlocale) < 1) {
-			// Special locale "" given: Set namestring to current system
-			// default locale:
-			strcpy(drawtext_localestring, setlocale(LC_CTYPE, NULL));
-		}
-		else {
-			// Named locale given: Assign its namestring:
-			strcpy(drawtext_localestring, mnewlocale);
-		}
-		drawtext_locale = myloc;
-		
-		return(TRUE);
-	}
-	
-	// Failed! No settings changed:
-	return(FALSE);
-#else
-	// Was only destruction/release of current locale requested?
-	if (NULL == mnewlocale) {
-		// Revert process global locale to system default:
-		setlocale(LC_CTYPE, "");
-		drawtext_codepage = 0;
 		return(TRUE);
 	}
 
@@ -1615,8 +1547,16 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 	// Setting of a new locale requested: Try to set it globally for the
 	// whole process, return success status:
 	drawtext_codepage = 0;
-	return( (setlocale(LC_CTYPE, mnewlocale) == NULL) ? FALSE : TRUE );
-#endif
+
+	if (strlen(mnewlocale) < 1) {
+		// Special locale "" given: Set namestring to current system
+		// default locale:
+		strcpy(drawtext_localestring, setlocale(LC_CTYPE, NULL));
+		return(TRUE);
+	}
+
+	strcpy(drawtext_localestring, mnewlocale);
+	return(TRUE);
 }
 
 // PsychGetUnicodeTextConversionLocale(): 
@@ -1627,15 +1567,7 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 // Returns NULL on error, a const char* string with the current locale setting on success.
 const char* PsychGetUnicodeTextConversionLocale(void)
 {
-#if !defined(PTBOCTAVE3MEX)
 	return(&drawtext_localestring[0]);
-#else
-	// Return encoded codepage:
-	if (drawtext_codepage) return(&drawtext_localestring[0]);
-
-	// Query process global locale:
-	return(setlocale(LC_CTYPE, NULL));
-#endif
 }
 
 #else
@@ -1807,11 +1739,18 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 			}
 			else {
 				// Locale-based text conversion:
-				#if defined(PTBOCTAVE3MEX)
-						*textLength = mbstowcs(NULL, textCString, 0);
-				#else
-						*textLength = (int) mbstowcs_l(NULL, textCString, 0, drawtext_locale);
-				#endif
+
+				// Create backup copy of currently set process global locale:
+				sprintf(oldmswinlocale, "%s", setlocale(LC_CTYPE, NULL));
+
+				// Set process global locale to wanted locale:
+				setlocale(LC_CTYPE, drawtext_localestring);
+
+				// Perform text conversion:
+				*textLength = mbstowcs(NULL, textCString, 0);
+
+				// Reset process global locale to old setting:
+				setlocale(LC_CTYPE, oldmswinlocale);
 			}
 		#else
 			// Unix: OS/X, Linux:
@@ -1837,12 +1776,14 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 				}
 			}
 			else {
+				// Set process global locale to wanted locale:
+				setlocale(LC_CTYPE, drawtext_localestring);
+
 				// Locale-based text conversion:
-				#if defined(PTBOCTAVE3MEX)
-					mbstowcs(textUniString, textCString, (*textLength + 1));
-				#else
-					mbstowcs_l(textUniString, textCString, (*textLength + 1), drawtext_locale);
-				#endif
+				mbstowcs(textUniString, textCString, (*textLength + 1));
+
+				// Reset process global locale to old setting:
+				setlocale(LC_CTYPE, oldmswinlocale);
 			}
 		#else
 			// Unix:

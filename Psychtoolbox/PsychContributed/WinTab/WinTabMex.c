@@ -8,45 +8,47 @@ WinTab SDK from Wacom in order to compile this MEX file.
 
 Compile with:
 
-mex -v WinTabMex.c -IPATHTOWTK\INCLUDE user32.lib PATHTOWTK\LIB\I386\wintab32.lib
+mex -v WinTabMex.c -IPATHTOWTK\INCLUDE 
 where PATHTOWTK must be the filesystem path to the installation folder of
-the WintabSDK, aka where the wtkit126.zip has been extracted to.
+the WintabSDK, aka where the file wintab.h is
 
 Example: Assume you copied the WinTabMex.c file into the main folder of
 the Wintab SDK, then you can simply cd into that directory in Matlab,
 then type:
 
-mex -v WinTabMex.c -IINCLUDE user32.lib LIB\I386\wintab32.lib
-
-This would be used if you want runtime linking instead:
-
-mex -v WinTabMex.c -IINCLUDE -DUSE_X_LIB user32.lib LIB\I386\wntab32x.lib
+mex -v WinTabMex.c -IINCLUDE
 
 If you want to compile on Octave, do this:
 
-mex -v WinTabMex.c -DPTBOCTAVE3MEX -IINCLUDE LIB\I386\wintab32.lib
+mex -v WinTabMex.c -DPTBOCTAVE3MEX -IINCLUDE
 
 
 ------------------------------------------------------------------------------
 
-    WinTabMex.c is Copyright (C) 2008, 2009 Mario Kleiner
+    WinTabMex.c is Copyright (C) 2008 - 2013 Mario Kleiner
+    with contributions       (C) 2013 by Jason Friedman
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+    It is licensed to you under the MIT free and open source software license:
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to permit
+    persons to whom the Software is furnished to do so, subject to the
+    following conditions:
 
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+    The above copyright notice and this permission notice shall be included
+    in all copies or substantial portions of the Software.
 
-	One copy of the license can be found in the License.txt file inside the
-	Psychtoolbox-3 top level folder.
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+    NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+    USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 ------------------------------------------------------------------------------*/
 
 /* Windows includes: */
@@ -82,6 +84,24 @@ static unsigned int initialized = 0;
 static HCTX hTab = NULL;
 static FIX32 scale[2];
 
+// Define function pointer for the wintab functions we will use
+typedef UINT ( API * WTINFOA ) ( UINT, UINT, LPVOID );
+typedef UINT ( API * WTENABLE )  ( HCTX, BOOL );
+typedef HCTX ( API * WTOPENA )( HWND, LPLOGCONTEXTA, BOOL );
+typedef BOOL ( API * WTCLOSE ) ( HCTX );
+typedef int  ( API * WTPACKETSGET ) (HCTX, int, LPVOID);
+typedef BOOL ( API * WTQUEUESIZESET ) ( HCTX, int );
+typedef int ( API * WTQUEUESIZEGET ) ( HCTX);
+
+WTENABLE gpWTEnable = NULL;
+WTOPENA gpWTOpenA = NULL;
+WTINFOA gpWTInfoA = NULL;
+WTCLOSE gpWTClose = NULL;
+WTPACKETSGET gpWTPacketsGet = NULL;
+WTQUEUESIZESET gpWTQueueSizeSet = NULL;
+WTQUEUESIZEGET gpWTQueueSizeGet = NULL;
+
+HINSTANCE ghWintab = NULL;
 
 /* -------------------------------------------------------------------------- */
 HCTX static NEAR TabletInit(HWND hWnd, FIX32 scale[])
@@ -89,7 +109,7 @@ HCTX static NEAR TabletInit(HWND hWnd, FIX32 scale[])
 	LOGCONTEXT lcMine;
 
 	/* get default region */
-	WTInfo(WTI_DEFCONTEXT, 0, &lcMine);
+	gpWTInfoA(WTI_DEFCONTEXT, 0, &lcMine);
 
 	/* modify the digitizing region */
 	strcpy(lcMine.lcName, "Psychtoolbox-3 WinTab MEX driver");
@@ -104,7 +124,7 @@ HCTX static NEAR TabletInit(HWND hWnd, FIX32 scale[])
 	lcMine.lcOutExtY = INT(scale[1] * lcMine.lcInExtY);
 
 	/* open the region */
-	return WTOpen(hWnd, &lcMine, FALSE);
+	return gpWTOpenA(hWnd, &lcMine, FALSE);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -116,9 +136,9 @@ static void TabletScaling(FIX32 scale[])
 	UINT wDevice;
 
 	/* get the data */
-	WTInfo(WTI_DEFCONTEXT, CTX_DEVICE, &wDevice);
-	WTInfo(WTI_DEVICES+wDevice, DVC_X, &aXY[0]);
-	WTInfo(WTI_DEVICES+wDevice, DVC_Y, &aXY[1]);
+	gpWTInfoA(WTI_DEFCONTEXT, CTX_DEVICE, &wDevice);
+	gpWTInfoA(WTI_DEVICES+wDevice, DVC_X, &aXY[0]);
+	gpWTInfoA(WTI_DEVICES+wDevice, DVC_Y, &aXY[1]);
 
 	/* calculate the scaling factors */
 	for (i = 0; i < 2; i++) {
@@ -137,7 +157,7 @@ void shutDownWinTab(void)
 	if (!initialized) return;
 	
 	/* Release WinTAB context: */
-	WTClose(hTab);
+	gpWTClose(hTab);
 	hTab = NULL;
 	
 	/* Release library: */
@@ -145,12 +165,42 @@ void shutDownWinTab(void)
 	_UnlinkWintab();
 	#endif
 
+	if (ghWintab)
+	  FreeLibrary( ghWintab );
+
+	ghWintab = NULL;
+
 	mexPrintf("WinTabMex shutdown complete.\n");
 	
 	/* Reset state to offline: */
 	initialized = 0;
 	
 	return;
+}
+
+/* -------------------------------------------------------------------------- */
+
+/* Load the wintab library and the functions used */
+void loadWinTab(void) {
+        ghWintab = LoadLibrary( "Wintab32.dll" );
+	if ( !ghWintab ) {
+	  mexErrMsgTxt("Unable to load Wintab32.dll library. Is it installed on your system?");
+	}
+
+	gpWTEnable = (WTENABLE) GetProcAddress( ghWintab, "WTEnable" );
+	if ( !gpWTEnable ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTOpenA = (WTOPENA) GetProcAddress( ghWintab, "WTOpenA" );
+	if ( !gpWTOpenA ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTInfoA = (WTINFOA) GetProcAddress( ghWintab, "WTInfoA" );
+	if ( !gpWTInfoA ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTClose = (WTCLOSE) GetProcAddress( ghWintab, "WTClose" );
+	if ( !gpWTClose ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTPacketsGet = (WTPACKETSGET) GetProcAddress( ghWintab, "WTPacketsGet" );
+	if ( !gpWTPacketsGet ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTQueueSizeSet = (WTQUEUESIZESET) GetProcAddress( ghWintab, "WTQueueSizeSet" );
+	if ( !gpWTQueueSizeSet ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTQueueSizeGet = (WTQUEUESIZEGET) GetProcAddress( ghWintab, "WTQueueSizeGet" );
+	if ( !gpWTQueueSizeGet ) { mexErrMsgTxt("Error load Wintab library."); }
 }
 
 /* This is the main entry point from Matlab: */
@@ -173,9 +223,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 	const char* me = mexFunctionName();
 
 	if(nrhs<1) {
-		mexPrintf("WinTabMex: A simple Matlab/Octave MEX file for driving touch tablets which are\n");
+		mexPrintf("WinTabMex: A simple MEX file for driving touch tablets which are\n");
 		mexPrintf("compatible with the WinTAB API on Microsoft Windows.\n\n");
-		mexPrintf("(C) 2008, 2009 by Mario Kleiner -- Licensed to you under GPLv2 or any later version.\n");
+		mexPrintf("(C) 2008-2013 by Mario Kleiner and Jason Friedman -- Licensed to you under MIT license.\n");
 		mexPrintf("This file is part of Psychtoolbox-3 but should also work independently.\n");
 		mexPrintf("\n");
 		mexPrintf("Usage:\n\n");
@@ -212,6 +262,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         return;
 	}
 	
+	// Load the library
+	if (!ghWintab) loadWinTab();
+
 	/* First argument must be the command code: */
 	cmd = (int) mxGetScalar(prhs[0]);
 
@@ -270,27 +323,27 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 		
 		case 2: // Clear event queue and enable scanning.
 			// Empty queue of pending events, if any:
-			WTPacketsGet(hTab, WTQueueSizeGet(hTab), NULL);
+			gpWTPacketsGet(hTab, gpWTQueueSizeGet(hTab), NULL);
 			
 			// Enable scanning:
-			WTEnable(hTab, (BOOL) 1);
+			gpWTEnable(hTab, (BOOL) 1);
 		break;
 		
 		case 3: // Disable scanning.
-			WTEnable(hTab, (BOOL) 0);
+		        gpWTEnable(hTab, (BOOL) 0);
 		break;
 		
 		case 4: // Resize queue:
 			plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
-			*mxGetPr(plhs[0]) = (double) WTQueueSizeGet(hTab);
-			if (nrhs >= 2) WTQueueSizeSet(hTab, (int) mxGetScalar(prhs[1]));
+			*mxGetPr(plhs[0]) = (double) gpWTQueueSizeGet(hTab);
+			if (nrhs >= 2) gpWTQueueSizeSet(hTab, (int) mxGetScalar(prhs[1]));
 			plhs[1] = mxCreateDoubleMatrix(1, 1, mxREAL);
-			*mxGetPr(plhs[1]) = (double) WTQueueSizeGet(hTab);
+			*mxGetPr(plhs[1]) = (double) gpWTQueueSizeGet(hTab);
 		break; 
 		
 		case 5: // Query oldest event packet:
 			// Any news from the tablet? Poll it:
-			if (WTPacketsGet(hTab, 1, &pkt)) {
+			if (gpWTPacketsGet(hTab, 1, &pkt)) {
 				// Yep. Return packet data to Matlab:
 				plhs[0]=mxCreateDoubleMatrix(9, 1, mxREAL);
 				out = mxGetPr(plhs[0]);

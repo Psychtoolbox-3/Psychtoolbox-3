@@ -409,24 +409,42 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	}
 	#endif
 
-	// Decide if 10 bpc framebuffer should be enabled by our own kernel driver trick:
+	// Decide if 10 bpc framebuffer should be enabled by our own kernel driver trick, or
+    // if the OS + graphics drivers has done proper work already:
 	if ((*windowRecord)->depth == 30) {
-		// Support for kernel driver available?
+        // Ask the OS what it thinks it has set atm.:
+        glGetIntegerv(GL_RED_BITS, &bpc);
+        
+		// Support for kernel driver available? Only on Linux and OSX:
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+        // Linux with a card that isn't supported by our MMIO/kernel driver tricks?
 		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_VENDOR), "nouveau") ||
 		    strstr((char*) glGetString(GL_VENDOR), "Intel") ||
 		    ((strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD")) && strstr((char*) glGetString(GL_RENDERER), "Fire")))) {
-			// NVidia/Intel GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
+			// Yes: NVidia GPU or Intel GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
+            // Give some boilerplate info:
 			printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on Linux.");
-			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI/AMD FireGL/FirePro and NVidia cards may support this with some drivers,");
-			printf("\nPTB-INFO: but you must enable it manually in the Catalyst control center or NVidia control center (somewhere under ''Workstation settings'')\n");
+			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI/AMD FireGL/FirePro and NVidia");
+            printf("\nPTB-INFO: cards may support this with some drivers, as well as the latest Intel HD graphics cards on very recent Linux distributions,");
+			printf("\nPTB-INFO: but you must enable it manually somewhere, e.g., in the Catalyst control center or NVidia control center.\n");
+            if (bpc >= 10) printf("PTB-INFO: Linux native 10 bit per color framebuffer requested, and the OS claims it is working.\n");
 		}
+        else if ((PSYCH_SYSTEM == PSYCH_OSX) && (bpc >= 10)) {
+            // OSX and the OS claims it runs at at least 10 bpc. Good, take
+            // it at face value. Note: As of Sept 2013, no shipping OSX version supports this,
+            // presumably not even the upcoming 10.9 Mavericks:
+            printf("PTB-INFO: OSX native 10 bit per color framebuffer requested, and the OS claims it is working.\n");
+        }
+        else if ((PSYCH_SYSTEM == PSYCH_LINUX) && (bpc >= 10)) {
+            // Linux and the OS claims it runs at at least 10 bpc. Good, take it at face value.
+            printf("PTB-INFO: Linux native 10 bit per color framebuffer requested, and the OS claims it is working.\n");
+        }
 		else {
-			// Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
+			// No native 10 bpc support. Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
 			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) ||
 			    !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
 			    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
-				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
+				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded or does not support this on your GPU.\n");
 				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
 				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for setup information.\n");
@@ -444,7 +462,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		if (PsychPrefStateGet_ConserveVRAM() & kPsychEnforce10BitFramebufferHack) {
 			printf("PTB-INFO: Override: Will try to enable 10 bpc framebuffer mode regardless if i think it is needed/sensible or not.\n");
 			printf("PTB-INFO: Override: Doing so because you set the kPsychEnforce10BitFramebufferHack flag in Screen('Preference','ConserveVRAM').\n");
-			printf("PTB-INFO: Override: Cross your fingers, this may end badly...\n");
+			printf("PTB-INFO: Override: Cross your fingers, this may end badly if your GPU is not one of the supported ones...\n");
 			(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
 		}
 #else
@@ -457,6 +475,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on MS-Windows.");
 		printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
 		printf("\nPTB-INFO: but you must enable it manually in the Catalyst or Quadro Control center (somewhere under ''Workstation settings'')\n");
+        if (bpc >= 10) printf("PTB-INFO: Windows native 10 bit per color framebuffer requested, and the OS claims it is working.\n");
 #endif
 	}
 
