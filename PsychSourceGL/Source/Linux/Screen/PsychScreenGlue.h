@@ -93,6 +93,10 @@ int                         PsychOSIsDWMEnabled(int screenNumber);
 psych_bool 					PsychScreenMapRadeonCntlMemory(void);
 void 						PsychScreenUnmapDeviceMemory(void);
 
+// Locking of XLib calls et al.:
+void PsychLockDisplay(void);
+void PsychUnlockDisplay(void);
+
 // Linux only: Retrieve modeline and crtc_info for a specific output on a specific screen:
 XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc);
 double PsychOSVRefreshFromMode(XRRModeInfo *mode);

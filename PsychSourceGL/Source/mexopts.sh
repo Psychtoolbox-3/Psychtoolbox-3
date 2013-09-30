@@ -201,7 +201,7 @@ echo "Error: Did not imbed 'options.sh' code"; exit 1 #imbed options.sh mac 12
             # CkeyVersion:
             CC='llvm-gcc-4.2'
             SDKROOT='/Developer/SDKs/MacOSX10.6.sdk'
-            MACOSX_DEPLOYMENT_TARGET='10.5'
+            MACOSX_DEPLOYMENT_TARGET='10.6'
             ARCHS='x86_64'
             # MK DISABLED, use below without -isysroot: CFLAGS="-fno-common -no-cpp-precomp -arch $ARCHS -isysroot $SDKROOT -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
             CFLAGS="-fno-common -no-cpp-precomp -arch $ARCHS -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"

@@ -16,10 +16,6 @@
  *
  * Building for OS/X:
  *
- * Old style: Needs runtimes and development headers of libfreetype2, libfontconfig, libglft build with Unicode+QT4 support, and the QT4 SDK installed:
- *
- * g++ -g -framework QtCore -DQT_CORE_LIB -DQT_GUI_LIB -DOGLFT_QT_VERSION=4 -I /usr/local/include/OGLFT/ -I/opt/local/include/ -I /usr/X11R6/include/freetype2/ -I /Library/Frameworks/QtGui.framework/Headers/ -I /Library/Frameworks/QtCore.framework/Headers/ -L/opt/local/lib/ -framework OpenGL -l fontconfig -l oglft -l freetype -dynamiclib -o libptbdrawtext_ftgl.dylib libptbdrawtext_ftgl.cpp 
- *
  * New style:	Includes our own - slightly modified - version of OGLFT.h/cpp for libglft support, thereby avoiding runtime
  *				dependencies on a properly configured & built libglft (Many binary installs of this library are built without unicode support).
  *
@@ -34,11 +30,7 @@
  *							for simple Unicode string handling.
  *
  *
- * The OS/X build assumes you have libfreetype2 and libfontconfig from the OS/X DarwinPorts project installed. See: http://darwinports.com/
- * 
- * g++ -g -DHAVE_OPENGL_DIR -DGLU_TESS_CALLBACK_TRIPLEDOT -I.  -I/opt/local/include/ -I/opt/local/include/freetype2/ -L/opt/local/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp
- *
- * The alternative OS/X 64-Bit build on 10.7 Lion assumes the default install locations for libfontconfig and libfreetype in /usr/X11R6/include and /usr/X11R6/lib:
+ * The OS/X 64-Bit build on 10.7 Lion assumes the default install locations for libfontconfig and libfreetype in /usr/X11R6/include and /usr/X11R6/lib:
  *
  * g++ -g -DHAVE_OPENGL_DIR -I.  -I/usr/X11R6/include/ -I/usr/X11R6/include/freetype2/ -L/usr/X11R6/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp
  *
@@ -82,41 +74,154 @@
 #include "fontconfig/fontconfig.h"
 #include "fontconfig/fcfreetype.h"
 
-int _antiAliasing = 1;
+// Maximum number of cacheable font settings, combined over all onscreen windows
+// font family names, sizes, styles and anti-aliasing settings. E.g., a setting of 40 means
+// you could quickly switch between up to 40 different combinations of font name, size,
+// style and anti-aliasing setting without speed penalty, due to caching. This is a tradeoff
+// between memory consumption and switchability, so choose wisely.
+// If usercode requests more than those number, caching for the given context (window)
+// will use LRU replacement to recycle slots and switching between fonts in that context
+// (aka window) will slow down by about a factor of 10x to 15x, unless the LRU will do a good
+// job of finding a new steady state. It will still be reasonably fast though.
+#define MAX_CACHE_SLOTS 40
+
+// Guarantee correct text rendering on at least 10 different contexts (aka onscreen windows).
+// This limit makes sure that as long as there aren't more than 10 contexts, none of them can
+// starve of resources because another one is too greedy. When this limit is reached, the cache
+// turns to agressive LRU replacement instead of allocating new slots for new font configurations.
+// Note: 10 is a good number, because Screen() allows for maximum 10 screens, so therefore at most
+// 10 fullscreen onscreen windows, so guaranteeing for 10 onscreen windows should be good enough.
+#define MIN_GUARANTEED_CONTEXTS 10
+
+unsigned int nowtime = 0;
+unsigned int hitcount = 0;
 unsigned int _verbosity = 2;
 bool _firstCall = true;
-bool _needsRebuild = true;
 bool _useOwnFontmapper = false;
 unsigned _mapperFlags;
+int _antiAliasing = 1;
 double _vxs, _vys, _vw, _vh;
-char _fontName[4096] = { 0 };
+char _fontName[FILENAME_MAX] = { 0 };
 unsigned int _fontStyle = 0;
-char _fontFileName[4096] = { 0 };
-int _faceIndex = 0;
 double _fontSize = 0.0;
 GLfloat _fgcolor[4];
 GLfloat _bgcolor[4];
 
-OGLFT::TranslucentTexture	*faceT = NULL;
-OGLFT::MonochromeTexture	*faceM = NULL;
-static FT_Face ft_face = NULL;
+typedef struct fontCacheItem_t {
+int contextId;
+unsigned int timestamp;
+int antiAliasing;
+char fontName[FILENAME_MAX];
+char fontRealName[FILENAME_MAX];
+unsigned int fontStyle;
+double fontSize;
+OGLFT::TranslucentTexture	*faceT;
+OGLFT::MonochromeTexture	*faceM;
+FT_Face ft_face;
+} fontCacheItem;
+fontCacheItem cache[MAX_CACHE_SLOTS];
 
 extern "C" {
 
 int PsychInitText(void);
-int PsychShutdownText(void);
-int PsychRebuiltFont(void);
-int PsychSetTextFont(const char* fontName);
-int PsychSetTextStyle(unsigned int fontStyle);
-int PsychSetTextSize(double fontSize);
-void PsychSetTextFGColor(double* color);
-void PsychSetTextBGColor(double* color);
+int PsychShutdownText(int context);
+int PsychRebuildFont(fontCacheItem* fi);
+int PsychSetTextFont(int context, const char* fontName);
+const char* PsychGetTextFont(int context);
+int PsychSetTextStyle(int context, unsigned int fontStyle);
+int PsychSetTextSize(int context, double fontSize);
+void PsychSetTextFGColor(int context, double* color);
+void PsychSetTextBGColor(int context, double* color);
 void PsychSetTextUseFontmapper(unsigned int useMapper, unsigned int mapperFlags);
-void PsychSetTextViewPort(double xs, double ys, double w, double h);
-int PsychDrawText(double xStart, double yStart, int textLen, double* text);
-int PsychMeasureText(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax);
+void PsychSetTextViewPort(int context, double xs, double ys, double w, double h);
+int PsychDrawText(int context, double xStart, double yStart, int textLen, double* text);
+int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax);
 void PsychSetTextVerbosity(unsigned int verbosity);
-void PsychSetTextAntiAliasing(int antiAliasing);
+void PsychSetTextAntiAliasing(int context, int antiAliasing);
+
+fontCacheItem* getForContext(int contextId)
+{
+    int lruslotid = -1;
+    unsigned int lruage = 0;
+    int freeslot = -1;
+    int freecount = 0;
+    fontCacheItem* fi = NULL;
+
+    // Update running "time" for LRU replacement:
+    nowtime++;
+
+    // Search for matching cached font object:
+    for (int i = 0; i < MAX_CACHE_SLOTS; i++) {
+        // Only look at slots for requested contextId:
+        if (contextId == cache[i].contextId) {
+            // This one is for our contextId.
+            fi = &(cache[i]);
+
+            //  LRU updating, in case we need to replace:
+            if (nowtime - fi->timestamp > lruage) {
+                lruslotid = i;
+                lruage = nowtime - fi->timestamp;
+            }
+
+            // Matching attributes for current requested attributes?
+            // We match requested fontName against both, the originally requested fontName for this cache slot,
+            // and the real effective fontRealName that libfontconfig actually gave us. Otherwise, as fontRealName
+            // is returned to Screen(), we could get into a funny loop which causes false cache misses if the loaded font
+            // doesn't match exactly the required one.
+            if ((fi->antiAliasing == _antiAliasing) && (fi->fontStyle == _fontStyle) && (fi->fontSize == _fontSize) &&
+                ((strcmp(fi->fontName, _fontName) == 0) || (strcmp(fi->fontRealName, _fontName) == 0))) {
+                // Match! We have cached OGLFT font objects for this font on this context. Return them:
+                hitcount++;
+
+                if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Cache hit for contextId %i at slot %i. Hit ratio is %f%%\n", contextId, i, (double) hitcount / (double) nowtime * 100);
+
+                // Update last access timestamp for LRU:
+                fi->timestamp = nowtime;
+
+                return(fi);
+            }
+        }
+        else if (cache[i].contextId == -1) {
+            if (freeslot == -1) freeslot = i;
+            freecount++;
+        }
+    }
+
+    // No match. We need to (re-)create a matching object.
+
+    // Free slots available?
+    if ((freeslot >= 0) && ((lruslotid == -1) || (freecount > MIN_GUARANTEED_CONTEXTS))) {
+        // Yes. Fill it with new font object of matching properties:
+        fi = &(cache[freeslot]);
+        if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Nothing cached for contextId %i. Using new slot %i. %i free slots remaining.\n", contextId, freeslot, freecount);
+    }
+    else if (lruslotid >= 0) {
+        // No. Overwrite least recently used font object for current contextId:
+        fi = &(cache[lruslotid]);
+        if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Nothing cached for contextId %i but cache full. LRU replacing slot %i, age %i. %i free slots remaining.\n", contextId, lruslotid, lruage, freecount);
+    }
+    else {
+        // Cache full, with no possibility to even LRU replace on this new context (aka window). Game over!
+        if (_verbosity > 0) fprintf(stderr, "libptbdrawtext_ftgl: ERROR when trying to setup new drawtext context %i: Font cache full with no way to free up resources! Text drawing will fail!\n", contextId);
+        return(NULL);
+    }
+
+    // Rebuild or create font objects for slot fi. Return NULL on failure:
+    if (PsychRebuildFont(fi)) return(NULL);
+
+    // Update tags:
+    fi->contextId = contextId;
+    fi->antiAliasing = _antiAliasing;
+    fi->fontStyle = _fontStyle;
+    fi->fontSize = _fontSize;
+    strcpy(fi->fontName, _fontName);
+
+    // Update last access timestamp for LRU:
+    fi->timestamp = nowtime;
+
+    // Return new font objects:
+    return(fi);
+}
 
 void PsychSetTextVerbosity(unsigned int verbosity)
 {
@@ -124,30 +229,31 @@ void PsychSetTextVerbosity(unsigned int verbosity)
 	return;
 }
 
-void PsychSetTextAntiAliasing(int antiAliasing)
+void PsychSetTextAntiAliasing(int context, int antiAliasing)
 {
-	if (_antiAliasing != antiAliasing) _needsRebuild = true;
-	
 	_antiAliasing = antiAliasing;
 	return;
 }
 
-int PsychRebuildFont(void)
+int PsychRebuildFont(fontCacheItem* fi)
 {
+    int faceIndex = 0;
+    char fontFileName[FILENAME_MAX] = { 0 };
+
 	// Destroy old font object, if any:
-	if (faceT || faceM) {
+	if (fi->faceT || fi->faceM) {
 		// Delete OGLFT face object:
-		if (faceT) delete(faceT);
-		faceT = NULL;
+		if (fi->faceT) delete(fi->faceT);
+		fi->faceT = NULL;
 		
-		if (faceM) delete(faceM);
-		faceM = NULL;
+        if (fi->faceM) delete(fi->faceM);
+        fi->faceM = NULL;
 
 		if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Destroying old font face...\n");
 		
 		// Delete underlying FreeType representation:
-		FT_Done_Face(ft_face);
-		ft_face = NULL;
+        FT_Done_Face(fi->ft_face);
+        fi->ft_face = NULL;
 	}
 
 	if (_useOwnFontmapper) {
@@ -218,16 +324,28 @@ int PsychRebuildFont(void)
 			return(1);
 		}
 
-		strcpy(_fontFileName, (char*) localfontFileName);
+		strcpy(fontFileName, (char*) localfontFileName);
 
 		// Retrieve faceIndex within fontfile:
-		if (FcPatternGetInteger(matched, FC_INDEX, 0, &_faceIndex) != FcResultMatch)  {
+		if (FcPatternGetInteger(matched, FC_INDEX, 0, &faceIndex) != FcResultMatch)  {
 			// Failed!
-			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig did not find faceIndex for font file %s, family %s, size %f pts and style flags %i.\n", _fontFileName, _fontName, (float) _fontSize, _fontStyle);
+			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig did not find faceIndex for font file %s, family %s, size %f pts and style flags %i.\n", fontFileName, _fontName, (float) _fontSize, _fontStyle);
 			FcPatternDestroy(target);
 			FcPatternDestroy(matched);
 			return(1);
 		}
+
+		// Retrieve font family name for matched font:
+		if (FcPatternGetString(matched, FC_FAMILY, 0, (FcChar8**) &localfontFileName) != FcResultMatch) {
+            // Failed!
+            if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig did not return actual font family name for font with requested family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
+            FcPatternDestroy(target);
+            FcPatternDestroy(matched);
+            return(1);
+        }
+
+        // Store it as actual name in fi:
+        strcpy(fi->fontRealName, (char*) localfontFileName);
 
 		// Release target pattern and matched pattern objects:
 		FcPatternDestroy(target);
@@ -235,47 +353,50 @@ int PsychRebuildFont(void)
 	}
 	else {
 		// Use "raw" values as passed by calling client code:
-		strcpy(_fontFileName, _fontName);
-		_faceIndex = (int) _fontStyle;
+		strcpy(fontFileName, _fontName);
+        strcpy(fi->fontRealName, fontFileName);
+        faceIndex = (int) _fontStyle;
 	}
 	
 	// Load & Create new font and face object, based on current spec settings:
 	// We directly use the Freetype library, so we can spec the faceIndex for selection of textstyle, which wouldn't be
 	// possible with the higher-level OGLFT constructor...
-	FT_Error error = FT_New_Face( OGLFT::Library::instance(), _fontFileName, _faceIndex, &ft_face );
+	FT_Error error = FT_New_Face( OGLFT::Library::instance(), fontFileName, faceIndex, &fi->ft_face );
 	if (error) {
-		if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not load face with index %i from font file %s.\n", _faceIndex, _fontFileName);
+		if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not load face with index %i from font file %s.\n", faceIndex, fontFileName);
 		return(1);
 	}
 	else {
-		if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Freetype loaded face %p with index %i from font file %s.\n", ft_face, _faceIndex, _fontFileName);
+        if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Freetype loaded face %p with index %i from font file %s.\n", fi->ft_face, faceIndex, fontFileName);
 	}
 
 	// Create FTGL face from Freetype face with given size and a 72 DPI resolution, aka _fontSize == pixelsize:
 	if (_antiAliasing != 0) {
-		faceT = new OGLFT::TranslucentTexture(ft_face, _fontSize, 72);
+        fi->faceT = new OGLFT::TranslucentTexture(fi->ft_face, _fontSize, 72);
 		// Test the created face to make sure it will work correctly:
-		if (!faceT->isValid()) {
+        if (!fi->faceT->isValid()) {
 			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not recognize %s as a font file.\n", _fontName);
+            delete(fi->faceT);
+            fi->faceT = NULL;
 			return(1);
 		}
 	}
 	else {
-		faceM = new OGLFT::MonochromeTexture(ft_face, _fontSize, 72);
+        fi->faceM = new OGLFT::MonochromeTexture(fi->ft_face, _fontSize, 72);
 		// Test the created face to make sure it will work correctly:
-		if (!faceM->isValid()) {
+        if (!fi->faceM->isValid()) {
 			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not recognize %s as a font file.\n", _fontName);
+            delete(fi->faceM);
+            fi->faceM = NULL;
 			return(1);
 		}
 	}
 
 	// Ready!
-	_needsRebuild = false;
-	
 	return(0);
 }
 
-void PsychSetTextFGColor(double* color)
+void PsychSetTextFGColor(int context, double* color)
 {
 	_fgcolor[0] = color[0];
 	_fgcolor[1] = color[1];
@@ -285,7 +406,7 @@ void PsychSetTextFGColor(double* color)
 	return;
 }
 
-void PsychSetTextBGColor(double* color)
+void PsychSetTextBGColor(int context, double* color)
 {
 	_bgcolor[0] = color[0];
 	_bgcolor[1] = color[1];
@@ -299,7 +420,7 @@ void PsychSetTextBGColor(double* color)
 // Assumption is that origin is bottom-left, x-axis pointing right, y-axis pointint up.
 // The plugin needs to remap or setup proper OpenGL transformations if its underlying
 // renderbackend needs a different geometric setup:
-void PsychSetTextViewPort(double xs, double ys, double w, double h)
+void PsychSetTextViewPort(int context, double xs, double ys, double w, double h)
 {
 	_vxs = xs;
 	_vys = ys;
@@ -320,30 +441,37 @@ void PsychSetTextUseFontmapper(unsigned int useMapper, unsigned int mapperFlags)
 }
 
 // Select font Name:
-int PsychSetTextFont(const char* fontName)
+int PsychSetTextFont(int context, const char* fontName)
 {
-	if (strcmp(_fontName, fontName)) _needsRebuild = true;
 	strcpy(_fontName, fontName);
 	return(0);
 }
 
 // Select font Style:
-int PsychSetTextStyle(unsigned int fontStyle)
+int PsychSetTextStyle(int context, unsigned int fontStyle)
 {
-	if (_fontStyle != fontStyle) _needsRebuild = true;
 	_fontStyle = fontStyle;
 	return(0);
 }
 
 // Select font Size:
-int PsychSetTextSize(double fontSize)
+int PsychSetTextSize(int context, double fontSize)
 {
-	if (_fontSize != fontSize) _needsRebuild = true;
 	_fontSize = fontSize;
 	return(0);
 }
 
-int PsychDrawText(double xStart, double yStart, int textLen, double* text)
+const char* PsychGetTextFont(int context)
+{
+    // Check if rebuild of font face needed due to parameter
+    // change. Reload/Rebuild font face if so, check for errors:
+    fontCacheItem *fi = getForContext(context);
+    if (!fi) return(NULL);
+
+    return(fi->fontRealName);
+}
+
+int PsychDrawText(int context, double xStart, double yStart, int textLen, double* text)
 {
 	int i;
 	GLuint ti;
@@ -355,10 +483,11 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 		_firstCall = false;
 		glGenTextures(1, &ti);
 	}
-	
+
 	// Check if rebuild of font face needed due to parameter
 	// change. Reload/Rebuild font face if so, check for errors:
-	if (_needsRebuild && PsychRebuildFont()) return(1);
+	fontCacheItem *fi = getForContext(context);
+	if (!fi) return(1);
 
 	// Synthesize Unicode QString from double vector:
 	for(i = 0; i < textLen; i++) {
@@ -380,28 +509,28 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 	glMatrixMode(GL_MODELVIEW);
 	
 	// Set text color: This will be filtered by OGLFT for redundant settings:
-	if (faceT) {
-		faceT->setForegroundColor( _fgcolor[0], _fgcolor[1], _fgcolor[2], _fgcolor[3]);
+	if (fi->faceT) {
+        fi->faceT->setForegroundColor( _fgcolor[0], _fgcolor[1], _fgcolor[2], _fgcolor[3]);
 	}
 	else {
-		faceM->setForegroundColor( _fgcolor[0], _fgcolor[1], _fgcolor[2], _fgcolor[3]);
+        fi->faceM->setForegroundColor( _fgcolor[0], _fgcolor[1], _fgcolor[2], _fgcolor[3]);
 	}
 
 	// Rendering of background quad requested? -- True if background alpha > 0.
 	if (_bgcolor[3] > 0) {
 		// Yes. Compute bounding box of "to be drawn" text and render a quad in background color:
 		float xmin, ymin, xmax, ymax;
-		PsychMeasureText(textLen, text, &xmin, &ymin, &xmax, &ymax);
+		PsychMeasureText(context, textLen, text, &xmin, &ymin, &xmax, &ymax);
 		glColor4fv(&(_bgcolor[0]));
 		glRectf(xmin + xStart, ymin + yStart, xmax + xStart, ymax + yStart);
 	}
 	
 	// Draw the text at selected start location:
-	if (faceT) {
-		faceT->draw(xStart, yStart, uniCodeText);
+	if (fi->faceT) {
+        fi->faceT->draw(xStart, yStart, uniCodeText);
 	}
 	else {
-		faceM->draw(xStart, yStart, uniCodeText);
+        fi->faceM->draw(xStart, yStart, uniCodeText);
 	}
 	
 	glMatrixMode(GL_PROJECTION);
@@ -415,14 +544,15 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 	return(0);	
 }
 
-int PsychMeasureText(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax)
+int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax)
 {
 	int i;
 	QChar* myUniChars = new QChar[textLen];
 	
-	// Check if rebuild of font face needed due to parameter
-	// chage. Reload/Rebuild font face if so, check for errors:
-	if (_needsRebuild && PsychRebuildFont()) return(1);
+    // Check if rebuild of font face needed due to parameter
+    // change. Reload/Rebuild font face if so, check for errors:
+    fontCacheItem *fi = getForContext(context);
+    if (!fi) return(1);
 
 	// Synthesize Unicode QString from double vector:
 	for(i = 0; i < textLen; i++) {
@@ -432,7 +562,7 @@ int PsychMeasureText(int textLen, double* text, float* xmin, float* ymin, float*
 	delete [] myUniChars;
 
 	// Compute its bounding box:
-	OGLFT::BBox box = (faceT) ? faceT->measure(uniCodeText) : faceM->measure(uniCodeText);
+    OGLFT::BBox box = (fi->faceT) ? fi->faceT->measure(uniCodeText) : fi->faceM->measure(uniCodeText);
 	
 	*xmin = box.x_min_;
 	*ymin = box.y_min_;
@@ -445,20 +575,21 @@ int PsychMeasureText(int textLen, double* text, float* xmin, float* ymin, float*
 int PsychInitText(void)
 {
 	_firstCall = true;
-	_needsRebuild = true;
-	faceT = NULL;
-	faceM = NULL;
-	ft_face = NULL;
 
 	// Try to initialize libfontconfig - our fontMapper library for font matching and selection:
 	if (!FcInit()) {
 		if (_verbosity > 0) fprintf(stderr, "libptbdrawtext_ftgl: FontMapper initialization failed!\n");
 		return(1);
 	}
-	
+
+	// Clear cache of all fonts instances:
+	memset(&cache, 0, sizeof(cache));
+    for (int i = 0; i < MAX_CACHE_SLOTS; i++) cache[i].contextId = -1;
+
 	if (_verbosity > 2)	{
 		fprintf(stderr, "libptbdrawtext_ftgl: External 'DrawText' text rendering plugin initialized.\n");
-		fprintf(stderr, "libptbdrawtext_ftgl: This plugin uses multiple excellent free software libraries to do its work:\n");
+        fprintf(stderr, "libptbdrawtext_ftgl: Maximum number of cacheable fonts is %i, minimum number of supported concurrent windows is %i.\n", MAX_CACHE_SLOTS, MIN_GUARANTEED_CONTEXTS);
+        fprintf(stderr, "libptbdrawtext_ftgl: This plugin uses multiple excellent free software libraries to do its work:\n");
 		fprintf(stderr, "libptbdrawtext_ftgl: OGLFT (http://oglft.sourceforge.net/) the OpenGL-FreeType library.\n");
 		fprintf(stderr, "libptbdrawtext_ftgl: The FreeType-2 (http://freetype.sourceforge.net/) library.\n");
 		fprintf(stderr, "libptbdrawtext_ftgl: The FontConfig (http://www.fontconfig.org) library.\n");
@@ -468,27 +599,41 @@ int PsychInitText(void)
 	return(0);
 }
 
-int PsychShutdownText(void)
+int PsychShutdownText(int context)
 {
-	if (faceT || faceM) {
-		if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: In shutdown: faceT = %p faceM = %p\n", faceT, faceM);
-	
-		// Delete OGLFT face objects:
-		if (faceT) delete(faceT);
-		faceT = NULL;
-		
-		if (faceM) delete(faceM);
-		faceM = NULL;
+    // Delete specific context?
+    if (context >= 0) {
+        // Yes. Delete all objects for this context:
+        for (int i = 0; i < MAX_CACHE_SLOTS; i++) {
+            // Is this slot to be destructed?
+            if (cache[i].contextId == context) {
+                fontCacheItem *fi = &(cache[i]);
+                fi->contextId = -1;
 
-		// Delete Freetype face object:
-		if (ft_face) FT_Done_Face(ft_face);
-		ft_face = NULL;
-		if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Shutting down.\n");
-	}
-	
-	_needsRebuild = true;
-	_firstCall = false;
-	
+                if (fi->faceT || fi->faceM) {
+                    if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: In shutdown for context %i, slot %i:  faceT = %p faceM = %p\n", context, i, fi->faceT, fi->faceM);
+
+                    // Delete OGLFT face objects:
+                    if (fi->faceT) delete(fi->faceT);
+                    fi->faceT = NULL;
+
+                    if (fi->faceM) delete(fi->faceM);
+                    fi->faceM = NULL;
+
+                    // Delete Freetype face object:
+                    if (fi->ft_face) FT_Done_Face(fi->ft_face);
+                    fi->ft_face = NULL;
+                }
+            }
+        }
+
+        return(0);
+    }
+
+    // Complete shutdown for the plugin:
+    if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Shutting down. Overall cache hit ratio was %f%%\n", (double) hitcount / (double) nowtime * 100);
+    _firstCall = false;
+
 	// Shutdown fontmapper library:
 	// Actually, don't! Some versions of octave also use fontconfig internally, and there is only
 	// one shared library instance in the process. Calling FcFini() here will shutdown that instance

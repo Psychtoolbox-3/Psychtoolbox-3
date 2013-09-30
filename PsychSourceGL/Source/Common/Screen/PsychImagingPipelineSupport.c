@@ -343,6 +343,22 @@ char passthroughshadersrc[] =
 "    gl_FragColor.a = 1.0;\n"
 "}\n\0";
 
+char multisampletexfetchshadersrc[] =
+" \n"
+"#extension GL_ARB_texture_multisample : enable \n"
+" \n"
+"uniform sampler2DMS Image1; \n"
+"uniform int nrsamples;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    vec4 color = vec4(0.0);\n"
+"    for (int i = 0; i < nrsamples; i++) {\n"
+"      color += texelFetch(Image1, ivec2(gl_TexCoord[0].st), i);\n"
+"    }\n"
+"    gl_FragColor = color / vec4(nrsamples);\n"
+"}\n\0";
+
 // This array maps hook point name strings to indices. The symbolic constants in
 // PsychImagingPipelineSupport.h define symbolic names for the indices for fast
 // lookup by name:
@@ -519,10 +535,9 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				printf("PTB-WARNING: You also requested use of the imaging pipeline. Unfortunately, your combination of operating system, graphics hardware and driver does not\n");
 				printf("PTB-WARNING: support simultaneous use of the imaging pipeline and multisampled anti-aliasing.\n");
 				printf("PTB-WARNING: Will therefore continue without anti-aliasing...\n\n");
-				printf("PTB-WARNING: A driver upgrade may resolve this issue. Users of MacOS-X need at least OS/X 10.5.2 Leopard for support on recent ATI hardware.\n\n");
 			}
-		}    // Panel scaling requested? If so we need support for scaled multisample resolve blits to satisfy needs of multisampling and scaling:
-        else if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit)) {
+		}    // Panel scaling requested? If so we need support for scaled multisample resolve blits or multisample textures to satisfy needs of multisampling and scaling:
+        else if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit) && !glewIsSupported("GL_ARB_texture_multisample")) {
             // Not supported by GPU. Disable multisampling to satisfy at least the requirement for panelscaling,
             // which is probably more important, as usercode usually only uses panel scaling to workaround serious
             // trouble with experimental setups, ie., it is more urgent:
@@ -535,10 +550,25 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				printf("PTB-WARNING: You also requested use of the imaging pipeline and of the GPU panel-fitter / rescaler via the 'clientRect' argument.\n");
                 printf("PTB-WARNING: Unfortunately, your combination of operating system, graphics hardware and driver does not support simultaneous\n");
 				printf("PTB-WARNING: use of multisampled anti-aliasing and the panel-fitter. I assume your request for panel fitting is more important.\n");
-				printf("PTB-WARNING: Will therefore continue without anti-aliasing to make the panel-fitter work.\n");
+				printf("PTB-WARNING: I will therefore continue without anti-aliasing to make the panel-fitter work.\n");
                 printf("PTB-WARNING: You would need a graphics card, os or graphics driver that supports the GL_EXT_framebuffer_multisample_blit_scaled\n");
-                printf("PTB-WARNING: extension to avoid this degradation of functionality.\n\n");
+                printf("PTB-WARNING: extension or GL_ARB_texture_multisample extension to avoid this degradation of functionality.\n\n");
 			}
+        }
+        else if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit)) {
+            // Panelfitter wanted and at least multisample texture support works for basic fitter functionality, ie.,
+            // framebuffer rotation and some multisample resolve and rescaling via texture blitting. However, the scaledresolveblit
+            // extension is not supported. This means selection or cropping of source regions won't work. A minor limitation for most
+            // use cases, luckily.
+			if (PsychPrefStateGet_Verbosity() > 1) {
+				printf("PTB-WARNING: You requested stimulus anti-aliasing by multisampling by setting the multiSample parameter of Screen('OpenWindow', ...) to a non-zero value.\n");
+				printf("PTB-WARNING: You also requested use of the imaging pipeline and of the GPU panel-fitter / rescaler via the 'clientRect' argument.\n");
+                printf("PTB-WARNING: Unfortunately, your combination of operating system, graphics hardware and driver has limited support for simultaneous\n");
+				printf("PTB-WARNING: use of multisampled anti-aliasing and the panel-fitter. Certain panelfitter scaling modes won't work properly, specifically\n");
+				printf("PTB-WARNING: the ones that use a non-default source region, e.g., for cropping or scrolling. Most functionality will work though.\n");
+                printf("PTB-WARNING: You would need a graphics card, os or graphics driver that supports the GL_EXT_framebuffer_multisample_blit_scaled\n");
+                printf("PTB-WARNING: extension to avoid this small degradation of functionality.\n\n");                
+            }            
         }
 	}
 
@@ -759,7 +789,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             clientheight = (int) PsychGetHeightFromRect(windowRecord->clientrect);
             
             if (PsychPrefStateGet_Verbosity() > 2) {
-                printf("PTB-INFO: Enabling panel fitter. Rescaling from %i x %i pixels virtual size to real framebuffer resolution.\n", clientwidth, clientheight);
+                printf("PTB-INFO: Enabling panel fitter. Using virtual framebuffer of %i x %i pixels virtual size.\n", clientwidth, clientheight);
             }
         }
         else {
@@ -769,8 +799,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         }
 
 		// These FBO's may need a z-buffer or stencil buffer as well if 3D rendering is
-		// enabled:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 0)) {
+		// enabled. Try twice, first with specialFlags 2, to get multisample textures for multisample colorbuffers, then with
+		// specialFlags 0 with classic multisample renderbuffers, as a fallback for extra robustness. This will always alloc
+		// standard textures if no multisampling is requested:
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 2) &&
+            !PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 		}
@@ -785,7 +818,9 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		
 		// If we are in stereo mode, we'll need a 2nd buffer for the right-eye channel:
 		if (windowRecord->stereomode > 0) {
-			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 0)) {
+			// Try twice, with specialFlags 2 and as fallback to 0 for multisample textures, then multisample renderbuffers, in case of multisampling:
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 2) &&
+                !PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 			}
@@ -1433,6 +1468,9 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
  * (if needzbuffer is true) it also creates and attaches suitable z-buffer and stencil-buffer attachments.
  * It checks for correct setup and then stores all relevant information in the PsychFBO struct, pointed by
  * fbo. On success it returns true, on failure it returns false.
+ *
+ * 'specialFlags' 1 = Use GL_TEXTURE_2D texture, GL_TEXTURE_RECTANGLE texture otherwise.
+ *                2 = Use multisample texture for multisample colorbuffer attachments, use a multisample renderbuffer otherwise.
  */
 psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool needzbuffer, int width, int height, int multisample, int specialFlags)
 {
@@ -1444,6 +1482,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
     GLenum glerr;
     int twidth, theight;
     psych_bool multisampled_cb = FALSE;
+    psych_bool multisampled_coltex = FALSE;
 
 	// Eat all GL errors:
 	PsychTestForGLErrors();
@@ -1460,6 +1499,16 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
     }
 
     texturetarget = (specialFlags & 0x1) ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_EXT;
+
+    // Use of special multisample-textures as color buffer attachment for multisampling requested,
+    // instead of classic multisample renderbuffers? Multisample textures supported?
+    if ((multisample > 0) && (specialFlags & 0x2) && glewIsSupported("GL_ARB_texture_multisample")) {
+        // Yes: Mark use of multisample textures as colorbuffer attachments. Depth-/Stencil will still
+        // use multisample renderbuffers.
+        multisampled_coltex = TRUE;
+        
+        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCreateFBO(): Using multisample texture for color buffer attachment.\n");
+    }
 
 	// If fboInternalFormat!=1 then we need to allocate and assign a proper PsychFBO struct first:
 	if (fboInternalFormat!=1) {
@@ -1564,14 +1613,22 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
         multisampled_cb = FALSE;
 	}
 	else {
-		// Multisampled FBO: Setup a multisampled renderbuffer as color attachment;
+		// Multisampled FBO: Setup a multisampled renderbuffer or texture as color attachment;
 		if (fboInternalFormat == (GLenum) 1) PsychErrorExitMsg(PsychError_internal, "Tried to setup a multisampled FBO, but fboInternalFormat was == 1. PTB implementation bug!");
 
-		glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->coltexid));
-		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->coltexid);
-
+        if (multisampled_coltex) {
+            // Multisample textures:
+            glGenTextures(1, (GLuint*) &((*fbo)->coltexid));
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, (*fbo)->coltexid);
+        }
+        else {
+            // Multisample renderbuffers:
+            glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->coltexid));
+            glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->coltexid);
+        }
+        
         // Query maximum supported number of samples for multi-sampling:
-        glGetIntegerv(GL_MAX_SAMPLES_EXT, &maxSamples);
+        glGetIntegerv((multisampled_coltex) ? GL_MAX_COLOR_TEXTURE_SAMPLES : GL_MAX_SAMPLES_EXT, &maxSamples);
         
         // Clamp multisample level to maximum, warn user if she aimed to high:
         if (multisample > maxSamples) {
@@ -1586,8 +1643,15 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
         // Try creating multisampled renderbuffers. On failure, decrease requested sample count.
         // Hardware may deny requests if insufficient memory is available.
 		do {
-            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychCreateFBO(): Trying to alloc multisample renderbuffer with %i samples.\n", multisample);
-			glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample--, fboInternalFormat, width, height);
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychCreateFBO(): Trying to alloc multisample %s with %i samples.\n",
+                                                          (multisampled_coltex) ? "texture" : "renderbuffer", multisample);
+
+            if (multisampled_coltex) {
+                glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, (GLsizei) multisample--, fboInternalFormat, width, height, TRUE);
+            }
+            else {
+                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample--, fboInternalFormat, width, height);
+            }
 		} while (((glerr = glGetError()) != GL_NO_ERROR) && (multisample >= 0));
 		
         // Worked? Worst case we should have gotten at least a renderbuffer with multisample == 0,
@@ -1595,7 +1659,9 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
         // totally out of memory and we have to give up:
 		if (glerr != GL_NO_ERROR) {
             if (PsychPrefStateGet_Verbosity() > 0) {
-                printf("PTB-ERROR: Failed to setup internal framebuffer objects color buffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                printf("PTB-ERROR: Failed to setup internal framebuffer objects color buffer attachment as a multisampled %s for imaging pipeline!\n",
+                       (multisampled_coltex) ? "texture" : "renderbuffer");
+                
                 if (glerr == GL_OUT_OF_MEMORY) {
                     printf("PTB-ERROR: Reason seems to be an out of graphics memory condition.\n");
                 }
@@ -1604,16 +1670,29 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 }
             }
             
-            glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+            if (multisampled_coltex) {
+                glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+            } else {
+                glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+            }
 			return(FALSE);
 		}
 
-		// Got some renderbuffer. Query real number of samples for renderbuffer:
-		glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
+        if (multisampled_coltex) {
+            // Got some texture. Query real number of samples for texture:
+            glGetTexLevelParameteriv(GL_TEXTURE_2D_MULTISAMPLE, 0, GL_TEXTURE_SAMPLES, &multisample);
+            
+            // Unbind, we're done with setup:
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+        }
+        else {
+            // Got some renderbuffer. Query real number of samples for renderbuffer:
+            glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
+            
+            // Unbind, we're done with setup:
+            glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+        }
         
-		// Unbind, we're done with setup:
-		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
-
         if ((multisample < (*fbo)->multisample) && (PsychPrefStateGet_Verbosity() > 1)) {
             printf("PTB-WARNING: Could only get %i samples instead of requested %i samples for multi-sampling from hardware.\n", multisample, (*fbo)->multisample);
         }
@@ -1633,9 +1712,9 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 	glGenFramebuffersEXT(1, (GLuint*) &((*fbo)->fboid));
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, (*fbo)->fboid);
 	
-	if (!multisampled_cb) {
+	if (!multisampled_cb || multisampled_coltex) {
 		// Attach the texture as color buffer zero:
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, texturetarget, (*fbo)->coltexid, 0);
+		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, (multisampled_coltex) ? GL_TEXTURE_2D_MULTISAMPLE : texturetarget, (*fbo)->coltexid, 0);
 	}
 	else {
 		// Attach the multi-sampled renderbuffer as color buffer zero:
@@ -2096,6 +2175,10 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 
 	// Test all GL errors:
 	PsychTestForGLErrors();
+    
+    // Override texture target for color buffer texture if a multi-sample texture
+    // is in use:
+    if (multisampled_coltex) (*fbo)->textarget = GL_TEXTURE_2D_MULTISAMPLE;
 
 	// Well done.
 	return(TRUE);
@@ -2201,17 +2284,14 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
     
 	// The source texture sourceRecord could be in any of PTB's supported
 	// internal texture orientations. It may be upright as an Offscreen window,
-	// or flipped upside down as some textures from the video grabber or Quicktime,
+	// or flipped upside down as some textures from the video grabber,
 	// or transposed, as textures from Matlab/Octave. However, handling all those
 	// cases for image processing would be a debug and maintenance nightmare.
 	// Therefore we check the format of the source texture and require it to be
 	// a normal upright orientation. If this isn't the case, we perform a preprocessing
-	// step to transform the texture into normalized orientation. We also perform a
-	// preprocessing step on any CoreVideo texture from Quicktime. Although such a
-	// texture may be properly oriented, it is of a non-renderable YUV color format, so
-	// we need to recreate it in a RGB renderable format. Non-planar textures would also
+	// step to transform the texture into normalized orientation. Non-planar textures would also
     // wreak havoc if not converted into standard pixel-interleaved format:
-	if (sourceRecord->textureOrientation != 2 || sourceRecord->targetSpecific.QuickTimeGLTexture != NULL || isplanar) {
+	if (sourceRecord->textureOrientation != 2 || isplanar) {
 		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap or format conversion for source gl-texture %i --> ", sourceRecord->textureNumber);
 		
 		// Soft-reset drawing engine in a safe way:
@@ -2253,7 +2333,7 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		glGetTexLevelParameteriv(PsychGetTextureTarget(sourceRecord), 0, GL_TEXTURE_INTERNAL_FORMAT, &fboInternalFormat);
 
 		// Need to query real size of underlying texture, not the logical size from sourceRecord->rect, otherwise we'd screw
-		// up for padded textures (from Quicktime movie/vidcap) where the real texture is a bit bigger than its logical size.
+		// up for padded textures where the real texture is a bit bigger than its logical size.
 		if (sourceRecord->textureOrientation > 1) {
 			// Non-transposed textures, width and height are correct:
 			glGetTexLevelParameteriv(PsychGetTextureTarget(sourceRecord), 0, GL_TEXTURE_WIDTH, &width);
@@ -2397,11 +2477,12 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 
 		// At this point the color attachment of the sourceRecords FBO contains the properly oriented texture.
 		// Delete the old texture, attach the FBO texture as new one:
-		if (sourceRecord->targetSpecific.QuickTimeGLTexture != NULL) {
-			// Special case: CoreVideo texture:
-			PsychFreeMovieTexture(sourceRecord);
-		}
-		else {
+        
+        // Make sure movie textures are recycled instead of freed if possible:
+        PsychFreeMovieTexture(sourceRecord);
+        
+        // Really free the texture if needed:
+		if (sourceRecord->textureNumber) {
 			// Standard case:
 			glDeleteTextures(1, &(sourceRecord->textureNumber));
 		}
@@ -3119,6 +3200,14 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 	if (gfxprocessing) {
 		// Disable renderflow:
 		PsychPipelineSetupRenderFlow(NULL, NULL, NULL, scissor_ignore);
+        
+        // A bit of a hack: If srcfbo1 has a multisample texture as colorbuffer,
+        // then unbind it to disable multisample texturetarget. We currently only
+        // support multisample colorbuffer textures on srcfbo1 and texture unit zero,
+        // hence this special case for efficiency.
+        if (mysrcfbo1 && (mysrcfbo1->textarget == GL_TEXTURE_2D_MULTISAMPLE)) {
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+        }
 		
 		// Restore old FBO bindings:
 		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, restorefboid);
@@ -3404,15 +3493,19 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 
 		// Set texture application mode to replace:
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-		
-		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		
-		glDisable(GL_TEXTURE_2D);
-		glDisable(GL_TEXTURE_RECTANGLE_EXT);
-		glEnable(srcfbo1->textarget);
+
+        glDisable(GL_TEXTURE_2D);
+        glDisable(GL_TEXTURE_RECTANGLE_EXT);
+
+        // No sampler state setup or glEnable() for 2D multisample texture targets!
+        // Such textures are only accessible from within shaders via texelFetch().
+        if (srcfbo1->textarget != GL_TEXTURE_2D_MULTISAMPLE) {
+            glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glEnable(srcfbo1->textarget);
+        }
 	}
 	else {
 		// srcfbo1 doesn't exist: Unbind and deactivate 1st unit:
@@ -3660,7 +3753,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
 	int w, h, x, y, wf, hf;
-	float sx, sy, wt, ht;
+	float sx, sy, wt, ht, angle, cx, cy;
 	char* strp;
 	psych_bool bilinearfiltering;
 
@@ -3696,6 +3789,23 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
         ht = (float) h / (float) hf;
     }
 
+    // Multisample texture? Needs special shader treatment.
+    if ((*srcfbo1)->textarget == GL_TEXTURE_2D_MULTISAMPLE) {
+        // This is a multisample texture. It needs a special shader to fetch texels from,
+        // as it can't get accessed by the fixed function pipeline in a conventional way.
+        if (windowRecord->multiSampleFetchShader == 0) {
+            // No fetch shader yet for this onscreen window. Create and assign one:
+            windowRecord->multiSampleFetchShader = PsychCreateGLSLProgram(multisampletexfetchshadersrc, NULL, NULL);
+        }
+
+        // Bind fetch shader for texture mapping:
+        if (glUseProgram && windowRecord->multiSampleFetchShader) {
+            glUseProgram(windowRecord->multiSampleFetchShader);
+            // Assign number of samples for this multisample texture, so shader can do proper averaging:
+            glUniform1i(glGetUniformLocation(windowRecord->multiSampleFetchShader, "nrsamples"), (*srcfbo1)->multisample);
+        }
+    }
+
 	// Check for override width x height parameter in the blitterString: An integral (w,h)
 	// size the blit. This allows to blit a target quad with a size different from srcfbo1, without
 	// scaling or filtering it. Mostly useful in conjunction with specific shaders.
@@ -3706,8 +3816,8 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		}
 	}
 
-	// Bilinear filtering of srcfbo1 texture requested?
-	if (strstr(pString1, "Bilinear")) {
+	// Bilinear filtering of srcfbo1 texture requested? Obey request, unless multisample texture is in use - doesn't support this:
+	if (strstr(pString1, "Bilinear") && ((*srcfbo1)->textarget != GL_TEXTURE_2D_MULTISAMPLE)) {
 		// Yes. Enable it.
 		bilinearfiltering = TRUE;
 		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -3737,19 +3847,46 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		}
 	}
 
-	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
+	// Check for rotation angle parameter:
+	angle = 0.0;
+	if (strp=strstr(pString1, "Rotation:")) {
+		// Parse and assign rotation angle:
+		if (sscanf(strp, "Rotation:%f", &angle)!=1) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Rotation: blit string parameter is invalid! Parse error...\n");
+		}
+	}
+
+    cx = (float) w / 2;
+    cy = (float) h / 2;
+	if (strp=strstr(pString1, "RotCenter:")) {
+		// Parse and assign rotation angle:
+		if (sscanf(strp, "RotCenter:%f:%f", &cx, &cy)!=2) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): RotCenter: blit string parameter is invalid! Parse error...\n");
+		}
+	}
+    
+	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0 || angle!=0.0) {
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
 		
 		// Apply global (x,y) offset:
 		glTranslatef((float) x, (float) y, 0);
 		
+        // Apply rotation around center:
+        if (angle != 0.0) {
+            glTranslatef(cx, cy, 0);        
+            glRotatef(angle, 0.0, 0.0, 1.0);
+            glTranslatef(-cx, -cy, 0);
+        }
+        
 		// Apply scaling:
-		glScalef(sx, sy, 1);
+		glScalef(sx, sy, 1);        
 	}
 	
-	if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychBlitterIdentity: Blitting x=%i y=%i sx=%f sy=%f w=%i h=%i\n", x, y, sx, sy, w, h);
-	
+	if (PsychPrefStateGet_Verbosity()>4) {
+        printf("PTB-DEBUG: PsychBlitterIdentity: Blitting x=%i y=%i sx=%f sy=%f w=%i h=%i angle=%f, rx=%f, ry=%f\n", x, y, sx, sy, w, h, angle, cx, cy);
+	}
+    
     if (PsychIsGLClassic(windowRecord)) {
         // OpenGL-1/2: Do the blit, using a rectangular quad:
         glBegin(GL_QUADS);
@@ -3802,7 +3939,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     }
 
-	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
+	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0 || angle!=0.0) {
 		glPopMatrix();
 	}
 
@@ -3811,6 +3948,11 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
+
+    // Disable special fetch shader if it was used for multisample texture:
+    if (((*srcfbo1)->textarget == GL_TEXTURE_2D_MULTISAMPLE) && glUseProgram) {
+        glUseProgram(0);
+    }
 
 	// Done.
 	return(TRUE);

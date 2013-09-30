@@ -144,8 +144,8 @@ typedef struct {
 	int recording_active;             // Movie file recording requested?
 	unsigned int recordingflags;      // recordingflags, as passed to 'OpenCaptureDevice'.
 	PsychRectType roirect;            // Region of interest rectangle - denotes subarea of full video capture area.
-	double avg_decompresstime;        // Average time spent in Quicktime/Sequence Grabber decompressor.
-	double avg_gfxtime;               // Average time spent in GWorld --> OpenGL texture conversion and statistics.
+	double avg_decompresstime;        // Average time spent in decompressor.
+	double avg_gfxtime;               // Average time spent in buffer --> OpenGL texture conversion and statistics.
 	int nrgfxframes;                  // Count of fetched textures.
 	char* targetmoviefilename;        // Filename of a movie file to record.
 	char* cameraFriendlyName;         // Camera friendly device name.
@@ -239,17 +239,6 @@ void PsychGSCheckInit(const char* engineName)
                 printf("PTB-ERROR: instructions.\n\n");
                 printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is disabled for this session.\n\n", engineName);
 
-                // Quicktime supported on this setup?
-                #if (PSYCH_SYSTEM != PSYCH_LINUX) && defined(PSYCHQTAVAIL)
-                    // Yes. Give user a hint about this alternative, at least for movie playback or video capture,
-                    // but not for movie writing:
-                    if (NULL == strstr(engineName, "movie writing")) {
-                        printf("PTB-TIP: As a stop-gap measure until you've installed or fixed GStreamer on your system,\n");
-                        printf("PTB-TIP: you could try to use the legacy Quicktime based %s engine instead via use of the\n", engineName);
-                        printf("PTB-TIP: override Screen('Preference', ...); switches 'DefaultVideoCaptureEngine' and\n");
-                        printf("PTB-TIP: 'OverrideMultimediaEngine'.\n\n");
-                    }
-                #endif
                 PsychErrorExitMsg(PsychError_user, "GStreamer initialization failed due to library loading problems. Aborted.");
             }
         #endif
@@ -4275,9 +4264,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    PsychMakeRect(out_texture->rect, 0, 0, w, h);    
         PsychCopyRect(out_texture->clientrect, out_texture->rect);
 
-	    // Set NULL - special texture object as part of the PTB texture record:
-	    out_texture->targetSpecific.QuickTimeGLTexture = NULL;
-	    
 	    // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
 	    out_texture->textureOrientation = 3;
 	    

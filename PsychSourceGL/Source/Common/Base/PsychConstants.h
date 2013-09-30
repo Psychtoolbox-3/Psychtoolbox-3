@@ -73,16 +73,6 @@
 // i.e., 1 byte per value on each platform:
 typedef unsigned char		psych_bool;
 
-// Master enable switch for use of Apple Quicktime technology:
-// Starting July 2012, we only enable Quicktime on 32-Bit Apple-OSX build.
-// We no longer enable it on 32-Bit MS-Windows build, as we did in the past.
-// We never support it on any 64-Bit build.
-#if (PSYCH_SYSTEM != PSYCH_LINUX) && (PSYCH_SYSTEM != PSYCH_WINDOWS)
-#if !defined(__LP64__) && !defined(_M_IA64) && !defined(_WIN64)
-#define PSYCHQTAVAIL 1
-#endif
-#endif
-
 //abstract up simple data types. 
 #if PSYCH_SYSTEM == PSYCH_LINUX
         typedef int64_t                         psych_int64;
@@ -92,9 +82,8 @@ typedef unsigned char		psych_bool;
         typedef unsigned short                  psych_uint16;
         typedef char                            Str255[256];
 
-        // We don't have Quicktime for Linux, so we provide a little hack to
+        // We don't have these types for Linux, so we provide a little hack to
         // make the compiler happy:
-        typedef void*                           CVOpenGLTextureRef;
         typedef int CGDisplayCount;
         // CGDirectDisplayID is typedef'd to a X11 display connection handle:
         typedef Display* CGDirectDisplayID;
@@ -122,18 +111,16 @@ typedef unsigned char		psych_bool;
         #define __func__ __FUNCTION__
         #endif
 
-        // Hack to make compiler happy until QT7 Windows supports this:
-        typedef void* CVOpenGLTextureRef;
+        // Hack to make compiler happy:
         typedef int CGDisplayCount;
         typedef HDC CGDirectDisplayID;
         typedef int CGDisplayErr;
 
-        // Define missing types if Quicktime is not enabled on Windows:
-        #ifndef PSYCHQTAVAIL
+        // Define missing types on Windows:
         typedef char         Str255[256];
         typedef unsigned int CFDictionaryRef;                
-        #endif
-		// Datatype for condition variables:
+
+        // Datatype for condition variables:
 		typedef HANDLE					psych_condition;		
 		// Datatype for Mutex Locks:
 		typedef CRITICAL_SECTION		psych_mutex;

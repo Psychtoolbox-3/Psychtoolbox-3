@@ -16,9 +16,6 @@
 		Psychtoolbox functions for dealing with movie editing. The implementation
 		of the actual functions is elsewhere and platform dependent.
 		
-		Currently OS/X and Windows 32 bit architectures are supported via
-		Quicktime in the file PsychMovieWritingSupportQuicktime.c
-
 	AUTHORS:
 
         Mario Kleiner   mk  mario.kleiner at tuebingen.mpg.de

@@ -145,15 +145,22 @@ PsychError SCREENConfigureDisplay(void)
 		// Map screenNumber and outputIdx to dpy, rootwindow and RandR output:
 		PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
 
+        PsychLockDisplay();
 		backlight_new    = XInternAtom(dpy, "Backlight", True);
 		backlight_legacy = XInternAtom(dpy, "BACKLIGHT", True);
+        PsychUnlockDisplay();
+
 		if (backlight_new == None && backlight_legacy == None) {
 			PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. System does not support brightness query and setting.");
 		}
 
 		screen = PsychGetXScreenIdForScreen(screenNumber);
+
+        PsychLockDisplay();
 		Window root = RootWindow(dpy, screen);
 		XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+        PsychUnlockDisplay();
+
 		if (resources == NULL) PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Feature not supported.");
 		if (outputId < 0 || outputId >= resources->noutput) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
 		RROutput output = resources->outputs[outputId];
@@ -169,15 +176,20 @@ PsychError SCREENConfigureDisplay(void)
 		double cur, new;
 		double min, max;
     
+        PsychLockDisplay();
+
 		backlight = backlight_new;
 		if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) {
 			backlight = backlight_legacy;
-			if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success)
+			if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) {
+                PsychUnlockDisplay();
 				PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+            }
 		}
 
 		if (actual_type != XA_INTEGER || nitems != 1 || actual_format != 32) {
 			XFree(prop);
+            PsychUnlockDisplay();
 			PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
 		} else {
 			value = *((long *) prop);
@@ -216,10 +228,13 @@ PsychError SCREENConfigureDisplay(void)
 			XFree(info);
 		} else {
 			if (info) XFree(info);
+            PsychUnlockDisplay();
 			PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
 		}
 
 		XRRFreeScreenResources(resources);
+
+        PsychUnlockDisplay();
 
 		#endif
 
@@ -285,7 +300,11 @@ PsychError SCREENConfigureDisplay(void)
 
 	// Query current video mode of this output:
 	XRRCrtcInfo *crtc_info = NULL;
+
+    PsychLockDisplay();
 	XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, outputId, &crtc_info);
+    PsychUnlockDisplay();
+
 	if (NULL == mode) PsychErrorExitMsg(PsychError_user, "Could not query video mode for this output. Invalid outputId or unsupported function on this system?");
 
 	// Get (x,y) top-left corner of crtc's viewport -- panning info:

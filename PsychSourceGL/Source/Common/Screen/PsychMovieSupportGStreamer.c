@@ -1668,9 +1668,6 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // Build a standard PTB texture record:
         PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);    
 
-        // Set NULL - special texture object as part of the PTB texture record:
-        out_texture->targetSpecific.QuickTimeGLTexture = NULL;
-
         // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
         out_texture->textureOrientation = 3;
 
@@ -1916,11 +1913,10 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 }
 
 /*
- *  PsychGSFreeMovieTexture() - Release texture memory for a Quicktime texture.
+ *  PsychGSFreeMovieTexture() - Release texture memory for a texture.
  *
  *  This routine is called by PsychDeleteTexture() in PsychTextureSupport.c
- *  It performs the special cleanup necessary for Quicktime created textures.
- *  As this ain't Quicktime but GStreamer there ain't nothing to do for us.
+ *  It performs the special cleanup necessary for cached movie textures.
  */
 void PsychGSFreeMovieTexture(PsychWindowRecordType *win)
 {

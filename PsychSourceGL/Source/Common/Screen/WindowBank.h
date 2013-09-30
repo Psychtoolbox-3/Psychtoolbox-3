@@ -207,7 +207,6 @@ typedef struct{
         CGLPixelFormatObj	pixelFormatObject;
 		CGLContextObj		glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
 		CGLContextObj		glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-        CVOpenGLTextureRef  QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
         void*				deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
         // NSWindow* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
         void*               windowHandle;			// Handle for Cocoa window when using windowed mode. (NULL in non-windowed mode).
@@ -228,8 +227,6 @@ typedef struct{
   PIXELFORMATDESCRIPTOR   pixelFormatObject;  // The context's pixel format object.
   HGLRC					  glusercontextObject;	   // OpenGL context for userspace rendering code, e.g., moglcore...
   HGLRC                   glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-  CVOpenGLTextureRef      QuickTimeGLTexture; // Used for textures returned by movie routines in PsychMovieSupport.c
-  // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;
 #endif 
 
@@ -245,8 +242,6 @@ typedef struct {
   Window                    xwindowHandle;       // Associated X-Window if any.
   struct waffle_context*	glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
   struct waffle_context*	glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-  CVOpenGLTextureRef        QuickTimeGLTexture;  // Used for textures returned by movie routines in PsychMovieSupport.c
-  // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;
 #else
 // Definition of Linux/X11 specific information:
@@ -259,8 +254,6 @@ typedef struct{
   Window            xwindowHandle;       // Associated X-Window if any.
   GLXContext		glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
   GLXContext		glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-  CVOpenGLTextureRef QuickTimeGLTexture; // Used for textures returned by movie routines in PsychMovieSupport.c
-  // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;
 #endif
 #endif 
@@ -322,6 +315,7 @@ typedef struct _PsychWindowRecordType_{
 		GLint				texturePlanarShader[4]; // Optional GLSL program handles for shaders to apply to planar storage textures - 4 handles for 4 possible channel counts.
         GLint               textureI420PlanarShader; // Optional GLSL program handle for shader to convert a YUV-I420 planar texture into a standard RGBA8 texture.
         GLint               textureI800PlanarShader; // Optional GLSL program handle for shader to convert a Y8-I800 planar texture into a standard RGBA8 texture.
+        GLint               multiSampleFetchShader; // Optional GLSL program handler for shader to fetch from multisample texture.
 
         psych_bool          needsViewportSetup;     // Set on userspace OpenGL contexts of onscreen windows to signal need for glViewport setup and other one-time
                                                     // stuff on first Screen('BeginOpenGL'). Also (ab)used for textures and offscreen windows to track "dirty" state.
@@ -434,7 +428,7 @@ typedef struct _PsychWindowRecordType_{
 	GLuint					swapGroup;								// Swap group handle of swap group for this window, zero if none assigned.
 	GLuint					swapBarrier;							// Swap barrier handle of swap barrier for this window, zero if none assigned.
     
-    GLint                   panelFitterParams[8];                   // Parameters used for the glBlitFramebuffer call during panel scaling.
+    GLint                   panelFitterParams[11];                  // Parameters used for panel fitting.
 	
 	// Used only when this structure holds a window:
 	// CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of

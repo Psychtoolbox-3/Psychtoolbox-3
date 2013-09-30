@@ -78,8 +78,8 @@ typedef struct {
   int frame_ready;                  // Signals availability of new frames for conversion into GL-Texture.
   int grabber_active;               // Grabber running?
   PsychRectType roirect;            // Region of interest rectangle - denotes subarea of full video capture area.
-  double avg_decompresstime;        // Average time spent in Quicktime/Sequence Grabber decompressor.
-  double avg_gfxtime;               // Average time spent in GWorld --> OpenGL texture conversion and statistics.
+  double avg_decompresstime;        // Average time spent in decompressor.
+  double avg_gfxtime;               // Average time spent in buffer --> OpenGL texture conversion and statistics.
   int nrgfxframes;                  // Count of fetched textures.
 } PsychVidcapRecordType;
 
@@ -1302,9 +1302,6 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Only setup if really a texture is requested (non-benchmarking mode):
     if (out_texture) {
 		PsychMakeRect(out_texture->rect, 0, 0, w, h);    
-		
-		// Set NULL - special texture object as part of the PTB texture record:
-		out_texture->targetSpecific.QuickTimeGLTexture = NULL;
 		
 		// Set texture orientation as if it were an inverted Offscreen window: Upside-down.
 		out_texture->textureOrientation = 3;

@@ -186,17 +186,14 @@ if nargin < 2
     mouseDev = [];
 end
 
-if IsLinux && (nargout >= 6)
-    [globalX, globalY, rawButtons, focus, valuators, valinfo] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev); %#ok<ASGLU>
+% Read the mouse position and  buttons:
+if (nargout >= 6) && IsLinux
+    % Get optional valinfo:
+    [globalX, globalY, rawButtons, focus, valuators, valinfo] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev);
 else
+    % Do not get optional valinfo:
     valinfo = [];
-end
-
-%read the mouse position and  buttons
-if ~isempty(windowPtrOrScreenNumber)
     [globalX, globalY, rawButtons, focus, valuators] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev);
-else
-    [globalX, globalY, rawButtons, focus, valuators] = Screen('GetMouseHelper', numMouseButtons, [], mouseDev);
 end
 
 buttons=logical(rawButtons);

@@ -94,7 +94,7 @@ void PsychDetectTextureTarget(PsychWindowRecordType *win)
                 printf("\nPTB-WARNING: Your graphics hardware & driver doesn't support OpenGL rectangle textures.\n");
                 printf("PTB-WARNING: This won't affect the correctness or visual accuracy of image drawing, but it can significantly\n");
                 printf("PTB-WARNING: degrade performance/speed and increase memory consumption of images by up to a factor of 4!\n");
-                printf("PTB-WARNING: If you use a lot of image stimuli (DrawTexture, Offscreen windows, Stereo display, Quicktime movies)\n");
+                printf("PTB-WARNING: If you use a lot of image stimuli (DrawTexture, Offscreen windows, Stereo display, movies)\n");
                 printf("PTB-WARNING: and you are unhappy with the performance, then please upgrade your graphics driver and possibly\n");
                 printf("PTB-WARNING: your gfx hardware if you need higher performance...\n");
             }
@@ -109,9 +109,6 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 	win->textureNumber=0;
 	win->textureMemorySizeBytes=0;
 
-    // NULL-Out special texture handle for Quicktime Movie textures (see PsychMovieSupport.c)
-    win->targetSpecific.QuickTimeGLTexture = NULL;
-
     // Setup initial texture orientation: 0 = Transposed texture == Format of Matlab image matrices.
     // This number defines how the height and width of a texture need to be interpreted and how
     // texture coordinates are assigned in PsychBlitTextureToDisplay().
@@ -119,9 +116,8 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 
 	// Set to default minus 1-value (== disabled): Meaning of this field is specific for source of texture. It should
 	// somehow identify the cache data structure for textures of specifif origin in a unique way.
-	// If this is a cached texture for use by the PsychMovieSupport Quicktime subsystem and we
-	// use GWorld rendering, then this points to the movieRecord of the movie which is associated
-	// with this texture...
+	// If this is a cached texture for use by the PsychMovieSupport subsystem then this points to
+    // the movieRecord of the movie which is associated with this texture...
 	win->texturecache_slot=-1;
 
     // Explicit storage of the type of texture target for this texture: Zero means - Autodetect.
@@ -198,7 +194,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	// If the texture already has a handle assigned then this means that we shouldn't
 	// create and setup a new OpenGL texture from scratch, but bind and recycle the
 	// given texture object. Just bind it and update its content via glTexSubImage()... calls.
-	// Updating textures is potentially faster than recreating them -> Quicktime movie playback
+	// Updating textures is potentially faster than recreating them -> movie playback
 	// and the Videocapture code et al. will benefit from this...
 	if (win->textureNumber == 0) {
 		glGenTextures(1, &win->textureNumber);
@@ -792,8 +788,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             sourceYEnd=sourceRect[kPsychRight];
         }
     
-		// Overrides for special cases: Corevideo textures from Quicktime-subsystem or upside-down
-        // texture from Quicktime GWorld or Sequence-Grabber...
+		// Overrides for special cases: Upside-down texture.
         if (source->textureOrientation == 3) {
             sourceHeight=PsychGetHeightFromRect(source->rect);
 			sourceWidth=PsychGetWidthFromRect(source->rect);
@@ -1149,8 +1144,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // in some rotated and mirrored order. This is way faster, as the GPU is optimized for such things...
         glBegin(GL_QUADS);
         // Coordinate assignments depend on internal texture orientation...
-        // Override for special case: Corevideo texture from Quicktime-subsystem.
-        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture ||
+        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 ||
             source->textureOrientation == 3 || source->textureOrientation == 4) {
             // Use "normal" coordinate assignments, so that the rotation == 0 deg. case
             // is the fastest case --> Most common orientation has highest performance.
@@ -1200,8 +1194,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 
         GLBEGIN(GL_TRIANGLE_STRIP);
         // Coordinate assignments depend on internal texture orientation...
-        // Override for special case: Corevideo texture from Quicktime-subsystem.
-        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture ||
+        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 ||
             source->textureOrientation == 3 || source->textureOrientation == 4) {
             // Use "normal" coordinate assignments, so that the rotation == 0 deg. case
             // is the fastest case --> Most common orientation has highest performance.
@@ -1353,9 +1346,8 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
         sourceY=*ty;
     }
     
-    // Override for special case: Corevideo texture from Quicktime-subsystem or upside-down
-    // texture from Quicktime GWorld or Sequence-Grabber...
-    if (tex->targetSpecific.QuickTimeGLTexture || tex->textureOrientation == 3) {
+    // Override for special case: Upside-Down texture
+    if (tex->textureOrientation == 3) {
         sourceHeight=PsychGetHeightFromRect(tex->rect);
         sourceWidth=PsychGetWidthFromRect(tex->rect);
         sourceX=*tx;

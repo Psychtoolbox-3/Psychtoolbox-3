@@ -1,13 +1,18 @@
 function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % DownloadPsychtoolbox([targetdirectory][, flavor][, targetRevision])
 %
-% This script downloads the latest Mac OSX, GNU/Linux or Windows
+% This script downloads the latest GNU/Linux, Mac OSX, or Windows
 % Psychtoolbox-3, version 3.0.10 or later, from our git-server to your
 % disk, creating your working copy, ready to use as a new toolbox in your
 % MATLAB/OCTAVE application. Subject to your permission, any old
 % installation of the Psychtoolbox is first removed. It's a careful
 % program, checking for all required resources and privileges before it
 % starts.
+%
+% Note: If you use a Debian derives Linux distribution, e.g., Debian or
+% Ubuntu, consider installing the package octave-psychtoolbox-3 or
+% matlab-psychtoolbox-3 instead from http://neuro.debian.net - This is more
+% convenient ans will provide you with automatic updates.
 %
 % CAUTION: Psychtoolbox *will not work* with GNU/Octave on MS-Windows, or
 % with 32-Bit Octave on OSX, as support for these setups has been cancelled
@@ -66,17 +71,16 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % instructions. If in doubt, follow instructions on the Wiki!
 %
 % 1. If you don't already have it, you must install the Subversion client.
-% For Mac OSX 10.4, download the latest Mac OSX Subversion client from:
-% web http://metissian.com/projects/macosx/subversion/
-% (You can ignore the Subversion README file. If you do read it, you can
-% skip the instruction to manually add /usr/local/bin to your unix path.
-% That's tricky to do, and not needed for installation and updates because
-% we always specify the full path.) Please note that OS/X 10.5 "Leopard"
-% and later already have Subversion preinstalled, so you may be able to
-% skip step 1.
+% For Mac OSX 10.6 and later, download the latest Mac OSX Subversion client
+% from: http://www.wandisco.com/subversion/download#osx
+% If you have the XCode command line tools installed, you won't need to
+% install subversion as it is included in these tools.
+% 
+% For Windows, download the Windows Subversion client from one of these:
 %
-% For Windows, download the Windows Subversion client from:
-% web http://subversion.apache.org/packages.html#windows
+% http://subversion.apache.org/packages.html#windows
+% http://www.wandisco.com/subversion/download#windows
+%
 % Install the Subversion client on your machine by double-clicking the
 % installer and following the instructions. After installation of the
 % Subversion client, you will need to exit and restart Matlab or Octave, so
@@ -94,6 +98,10 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % installed into D:\MyOwnFolder\Subversion\ . Then you can do this:
 % addpath('D:\MyOwnFolder\Subversion\'). Our installer should find the
 % client then.
+%
+% For Linux, just install the subversion package from your package
+% management tool.
+%
 %
 % 2. On MacOS/X, to install the Psychtoolbox in the default location
 % (/Applications or, failing that, /Users/Shared). Just type:

@@ -142,9 +142,7 @@ int PsychFreeFontList(void)
 void PsychInitFontList(void)
 {
     ATSFontRef			tempATSFontRef;
-#ifdef __LP64__
     CTFontRef           tempCTFontRef;
-#endif
     //for font structures
     PsychFontStructPtrType	fontListHead, fontRecord, previousFontRecord;
     //for ATI font iteration
@@ -194,10 +192,6 @@ void PsychInitFontList(void)
             printf("\nPTB-HINT: =============================================================================================================================\n");
             printf("PTB-HINT: At least one font on this system has issues and can not be accessed by Psychtoolbox. If you want to know which font(s) make\n");
             printf("PTB-HINT: trouble, do a 'clear all' and rerun your script with Screen()'s verbosity level set to at least 4 for more diagnostic output.\n");
-#ifndef __LP64__
-            printf("PTB-HINT: On 32-Bit Matlab under OSX it is quite normal that a few fonts can't be enumerated and used properly and there is no known\n");
-            printf("PTB-HINT: way to fix this, so the following tips will not help you to resolve this issues, but upgrading to 64-Bit Psychtoolbox helps.\n");
-#endif
             printf("PTB-HINT: The following tips may help you to resolve font issues:\n");
             printf("PTB-HINT: Go to the Application folder and open the 'Font Book' application. It allows you to check and repair your font database.\n");
             printf("PTB-HINT: Run its 'Validate' function on all installed fonts. Another thing you could try is downloading and running the free\n");
@@ -217,10 +211,6 @@ void PsychInitFontList(void)
             fontRecord->fontATSRef=tempATSFontRef; 
             fontRecord->fontFMRef=FMGetFontFromATSFontRef(fontRecord->fontATSRef);
 
-#ifndef __LP64__
-            fmStatus=FMGetFontFamilyInstanceFromFont(fontRecord->fontFMRef, &(fontRecord->fontFamilyFMRef), &fmStyle);
-            fontRecord->fontFamilyATSRef = FMGetATSFontFamilyRefFromFontFamily(fontRecord->fontFamilyFMRef);
-#else            
             // Create CTFont from given ATSFontRef. Available since OSX 10.5
             tempCTFontRef = CTFontCreateWithPlatformFont(fontRecord->fontATSRef, 0.0, NULL, NULL);
             if (tempCTFontRef) {
@@ -259,7 +249,6 @@ void PsychInitFontList(void)
                 trouble = TRUE;
                 continue;
             }
-#endif
 
             //get the font name and set the the corresponding field of the struct
             if (ATSFontGetName(fontRecord->fontATSRef, kATSOptionFlagsDefault, &cfFontName)!=noErr) {
@@ -297,32 +286,15 @@ void PsychInitFontList(void)
             fontRecord->fontFamilyQuickDrawName[0] = 0;
             fontFamilyQuickDrawNamePString[0] = 0;
             ATSFontFamilyGetQuickDrawName(fontRecord->fontFamilyATSRef, fontFamilyQuickDrawNamePString);
-            #ifndef __LP64__
-            CopyPascalStringToC(fontFamilyQuickDrawNamePString, (char*) fontRecord->fontFamilyQuickDrawName);
-            #else
             for (j = 0; j < fontFamilyQuickDrawNamePString[0]; j++) fontRecord->fontFamilyQuickDrawName[j] = fontFamilyQuickDrawNamePString[j+1];
             fontRecord->fontFamilyQuickDrawName[j] = 0;
-            #endif
 
-            #ifndef __LP64__
-            // Get the font file used for this font
-            osStatus = ATSFontGetFileSpecification(fontRecord->fontATSRef, &fontFileSpec);
-            if(osStatus != noErr) {
-				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to get the font file specifier for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
-				trouble = TRUE;
-				continue;
-			}
-
-            FSpMakeFSRef(&fontFileSpec, &fontFileRef);
-            #else
-            // 64-Bit version, available since OSX 10.5:
             osStatus = ATSFontGetFileReference(fontRecord->fontATSRef, &fontFileRef);
             if(osStatus != noErr) {
 				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to get the font file specifier for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
 				continue;
 			}
-            #endif
 
             osStatus= FSRefMakePath(&fontFileRef, (UInt8*) fontRecord->fontFile, (UInt32)(kPsychMaxFontFileNameChars - 1));
             if(osStatus!=noErr){
@@ -365,22 +337,7 @@ void PsychInitFontList(void)
             fontRecord->verticalMetrics.italicAngle=			verticalMetrics.italicAngle;
             fontRecord->verticalMetrics.underlinePosition=		verticalMetrics.underlinePosition;
             fontRecord->verticalMetrics.underlineThickness=		verticalMetrics.underlineThickness;
-            fontRecord->verticalMetrics.underlineThickness=		verticalMetrics.underlineThickness;
-
-            // On 32-Bit use Font Manager to get the FM  font family name font style.
-            // This has been already done above for 64-Bit:
-            #ifndef __LP64__
-            fmStatus=FMGetFontFamilyName(fontRecord->fontFamilyFMRef, fmFontFamilyNamePString);
-            if(fmStatus!=noErr){
-                // Sadly, this failure is now expected behaviour for a few fonts under 32-Bit runtime when used on modern OSX versions, e.g., 10.5 and later,
-                // see forum message #16109 for the symptoms:
-				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to get the fontFMFamilyName for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
-				trouble = TRUE;
-				continue;
-            }
-            CopyPascalStringToC(fmFontFamilyNamePString, (char*) fontRecord->fontFMFamilyName);
-            #endif
-            
+            fontRecord->verticalMetrics.underlineThickness=		verticalMetrics.underlineThickness;            
             fontRecord->fontFMStyle=fmStyle;
             fontRecord->fontFMNumStyles=PsychFindNumFMFontStylesFromStyle(fmStyle);
             fontRecord->fontFMNumStyles= fontRecord->fontFMNumStyles ? fontRecord->fontFMNumStyles : 1; //because the name is "normal" even if there are no styles.  

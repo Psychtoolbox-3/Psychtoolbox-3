@@ -256,7 +256,7 @@ PsychError SCREENOpenMovie(void)
                     if (moviehandle < 0) {
                         // Movie loading failed for some reason.
                         printf("PTB-ERROR: When trying to asynchronously load movie %s, the operation failed: ", asyncmovieinfo.moviename);
-                        PsychErrorExitMsg(PsychError_user, "Asynchronous loading of the Quicktime movie failed.");
+                        PsychErrorExitMsg(PsychError_user, "Asynchronous loading of the movie failed.");
                     }
                     
                     // We can fall out of the switch statement and continue with the standard synchronous load code as if

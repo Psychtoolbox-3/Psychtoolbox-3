@@ -1,20 +1,10 @@
-function linuxmakeitoctave3_ubuntugutsy(mode)
+function linuxmakeitoctave3(mode)
 % This is the GNU/Linux version of makeit to build the Linux
-% version of PTB's binary plugins for GNU/Octave V3.2.0 and later.
-% This version is adapted to build on the "funky" Laptop under Ubuntu Linux
-% 10.10 Maverick or any Linux system with similar configuration.
-%
-% CAUTION: You *MUST* make sure that the MEX files are compiled *without*
-% compiler optimization, ie., with a level of -O0 !!! Otherwise the files
-% will be *miscompiled* !!! At first glance they seem to work, but the will
-% malfunction and mysteriously crash in many ways, almost impossible to debug!!
-%
-% UPDATE: This seems to be no longer true for Octave 3.2.4 built on 10.10.
-%         Our compiler settings are -O2 on this system and so far no bugs
-%         or miscompiles were found during daily use and testing.
-%
-%         However, as -O2 never showed a significant speedup vs. -O0, it
-%         pretty much doesn't matter if we do optimized builds or not.
+% mex files for Octave on Linux.
+
+if ~IsLinux || ~IsOctave
+    error('This script is for Octave on Linux only!');
+end
 
 if nargin < 1
     mode = 0;
@@ -59,7 +49,7 @@ if mode==0
 end;
 
 if mode==100
-    % Build Screen.mex with Waffle display backend, for embedded/android devices:
+    % Build Screen.mex with Waffle display backend, for desktop Linux:
     fprintf('Hmm, me likes some Waffle with this Screen :-)\n');
     mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_WAFFLE -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/x86_64-linux-gnu/ -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib  Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1
 
@@ -163,5 +153,8 @@ if mode==9
     cd(curdir);
     striplibsfrommexfile([PsychtoolboxRoot target 'moalcore.mex']);
 end;
+
+% Remove stale object files:
+delete('*.o');
 
 return;

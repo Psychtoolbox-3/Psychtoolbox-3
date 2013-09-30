@@ -276,7 +276,7 @@ try
         WaitSecs(0.001);
 
         % Abort demo on keypress our mouse-click:
-        if KbCheck || find(buttons) % break out of loop
+        if KbCheck || any(buttons) % break out of loop
             break;
         end;
     end;

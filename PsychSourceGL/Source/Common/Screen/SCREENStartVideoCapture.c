@@ -30,7 +30,7 @@ static char synopsisString[] =  "Start video capture device specified by 'captur
                                 "requested one, depending on the capabilities of your capture device. For professional "
                                 "firewire cameras when used with the IIDC-1394 videocapture engine, PTB tries "
                                 "to select the closest supported framerate that is at least as high as the requested "
-                                "one. For other videocapture engines, e.g., GStreamer and Quicktime, the result is "
+                                "one. For other videocapture engines, e.g., GStreamer, the result is "
                                 "camera dependent. It may choose the closest supported rate, or the maximum supported "
                                 "framerate. The real capture rate is returned as return argument 'fps'.\n"
                                 "If you pass the special value realmax, then PTB will try to select the highest "

@@ -83,7 +83,7 @@ void ScreenCloseAllWindows(void)
 	// Check for stale texture ressources:
 	PsychRessourceCheckAndReminder(TRUE);	
 	
-    // Shutdown Quicktime subsystems if active:
+    // Shutdown multi-media subsystems if active:
 	PsychExitMovieWriting();
     PsychExitMovies();
     PsychExitVideoCapture();

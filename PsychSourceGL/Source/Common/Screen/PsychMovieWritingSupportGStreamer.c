@@ -23,10 +23,7 @@
 
 #include "Screen.h"
 
-// GStreamer support enabled and no Quicktime support? If so, we use GStreamer based movie writing.
-// The only system config left with QT support is 32-Bit OSX. This guarantees we use QT on that
-// config:
-#if defined(PTB_USE_GSTREAMER) && !defined(PSYCHQTAVAIL)
+#if defined(PTB_USE_GSTREAMER)
 
 // GStreamer includes:
 #include <gst/gst.h>
@@ -733,4 +730,39 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 }
 
 // End of GStreamer routines.
+#else
+
+// Surrogates to prevent linker failure if built without GStreamer:
+void PsychMovieWritingInit(void) { return; }
+void PsychExitMovieWriting(void) { return; }
+void PsychDeleteAllMovieWriters(void) { return; }
+int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, char* movieoptions)
+{
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
+    return(0);
+}
+
+int PsychFinalizeNewMovieFile(int movieHandle) {
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
+    return FALSE;
+}
+int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown)
+{
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
+    return(1);
+}
+
+unsigned char*	PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight)
+{
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
+    return(NULL);
+}
+
+psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, unsigned int nrSamples, double* buffer)
+{
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
+    return FALSE;
+}
+
+// End of surrogate routines.
 #endif

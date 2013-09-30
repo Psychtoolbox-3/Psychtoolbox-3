@@ -45,8 +45,8 @@
 % less than 100 microseconds under normal operating conditions. For special
 % needs, there exist multiple methods of improving timing down to
 % microsecond level, although some of time require some advanced
-% programming skills. If Psychtoolbox runs on any recent AMD/ATI, NVidia or
-% Intel graphics card, it will utilize beamposition queries for even better
+% programming skills. If Psychtoolbox runs on any recent AMD/ATI, or NVidia
+% graphics card, it will utilize beamposition queries for even better
 % timing precision. If your Linux system uses an open-source graphics
 % driver for NVidia ("nouveau"), AMD/ATI ("radeon") or Intel GPU's, as well
 % as on various embedded GPU's (Smartphones and Tablets, embedded systems
@@ -54,18 +54,22 @@
 % which is even more robust and precise than Psychtoolbox beamposition
 % timestamping.
 %
-% On MacOS-X, whose timing accuracy is somewhere between Linux and Windows,
-% and luckily closer to Linux quality than to Windows timing. We use
-% beamposition queries to improve accuracy of our timestamps, either with
-% the native support on PowerPC computers and IntelMacs with NVidia
-% graphics, or with the help of the PsychtoolboxKernelDriver (see "help
-% PsychtoolboxKernelDriver") on cards from AMD/ATI, Intel and optionally
-% for NVidia. An alternative mechanism, based on vertical blank interrupts,
-% is implemented on OS/X up to 10.6, should the beamposition mechanism
-% malfunction or become unavailable. Another backup mechanism is CoreVideo
-% timestamping, employed on 10.7 "Lion" and later as a backup solution.
-% However this backup solution is not very robust, so we basically always
-% recommend installing the PsychtoolboxKernelDriver for best results.
+% On MacOSX, whose timing accuracy is somewhere between Linux and Windows,
+% and luckily closer to Linux quality than to Windows timing, we use
+% beamposition queries to improve accuracy of our timestamps, either on
+% IntelMacs with native support for NVidia graphics, or with the help of
+% the PsychtoolboxKernelDriver (see "help PsychtoolboxKernelDriver") on
+% cards from AMD/ATI and optionally for NVidia. An alternative mechanism,
+% based on vertical blank interrupts, is implemented on OS/X up to v10.6,
+% should the beamposition mechanism malfunction or be unavailable. Another
+% backup mechanism is CoreVideo timestamping, employed on 10.7 "Lion" and
+% later. However this backup solution is not very robust, so we basically
+% always recommend installing the PsychtoolboxKernelDriver for best
+% results. Intel graphics cards on MacOSX are problematic: Our
+% PsychtoolboxkernelDriver can't handle them without the severe danger of
+% causing a hard system crash, and the backup CoreVideo timestamping is
+% extremely fragile and unreliable in our experience, leaving you with
+% rather unreliable or inaccurate visual stimulus onset timestamps.
 %
 % This is how beamposition queries are used:
 %
@@ -85,31 +89,31 @@
 % PerceptualVBLSyncTest. PTB also performs continuous runtime checking to
 % detect possible problems caused by defective graphics card drivers.
 %
-% In case that beamposition queries should not work properly or are not supported,
-% PTB will use different fallback strategies:
+% In case that beamposition queries should not work properly or are not
+% supported, PTB will use different fallback strategies:
 %
 % On Microsoft Windows, only a normal - possibly noisy - timestamp is taken.
 %
 % On MacOS-X, PTB tries to get low-level access to the kernel interrupt
 % handlers for the VBL interrupts for OSX versions prior to 10.7 "Lion", or
-% CoreVideo CVDisplayLink timestamps on 10.7 and later and uses its values
-% for timestamping the time of buffer- swap. This method is slightly less
+% CoreVideo CVDisplayLink timestamps on 10.7 and later, and uses their
+% values for timestamping the time of buffer- swap. This method is less
 % accurate and robust than the bemposition method, but should be still
-% suitable for most applications on OSX 10.6 and earlier. The robustness and
-% correctness of CVDisplayLink timestamps is not that great on 10.7 and later,
-% therefore this fallback mechanism may be removed in a future PTB release.
-% If these queries should fail as well, PTB falls back to pure timestamping
-% without any correction.
+% suitable for most applications on OSX 10.6 and earlier. The robustness,
+% precision and correctness of CVDisplayLink timestamps is not that great
+% on 10.7 and later, therefore this fallback mechanism may be removed in a
+% future PTB release. If these queries should fail as well, PTB falls back
+% to pure timestamping without any correction.
 %
 % To get best precision and reliability on OSX 10.7 and later we strongly
-% recommend you install the PsychtoolboxKernelDriver and use the
-% Screen('Preference','ConserveVRAM') setting 2^16
-% (kPsychDontUseNativeBeamposQueries -- see "help ConserveVRAMSettings").
+% recommend you install the PsychtoolboxKernelDriver and use a NVidia or
+% AMD graphics card, not an Intel graphics card.
 %
-% On Linux, built-in OpenML timestamping has the highest priority and is
-% available on the open-source graphics drivers (intel, radeon, nouveau).
-% Should that functionality be missing, beamposition timestamping is used
-% on NVidia, AMD/ATI and (optionally) Intel with the proprietary graphics
+% On Linux, built-in OpenML timestamping has the highest priority,
+% robustness and precision and is available on the open-source graphics
+% drivers (intel, radeon, nouveau). Should that functionality be missing,
+% because you installed the proprietary graphics drivers, beamposition
+% timestamping is used on NVidia and AMD/ATI with the proprietary graphics
 % drivers, followed by the equivalent of kernel-level vbl timestamping
 % should that fail as well for some reason, followed by uncorrected
 % timestamping.
@@ -120,48 +124,71 @@
 %
 % -1 = Disable all cleverness, take noisy timestamps. This is the behaviour
 %      you'd get from any other psychophysics toolkit, as far as we know.
+%
 %  0 = Disable kernel-level/CoreVideo fallback method (OSX and Linux), use
-%      either beamposition or noisy stamps if beamposition is unavailable.
-%  1 = Use beamposition. Should it fail, switch to use of kernel-level interrupt
-%      timestamps. If that fails as well or is unavailable, use noisy stamps.
-%  2 = Use beamposition, but cross-check with kernel-level timestamps.
+%      either beamposition stamps or noisy stamps if beamposition is
+%      unavailable.
+%
+%  1 = Use beamposition. Should it fail, switch to use of kernel-level/CoreVideo
+%      timestamps. If that fails as well or is unavailable, use noisy
+%      stamps.
+%
+%  2 = Use beamposition, but cross-check with kernel-level/CoreVideo timestamps.
 %      Use noisy stamps if beamposition mode fails. This is for the paranoid
 %      to check proper functioning.
-%  3 = Always use kernel-level timestamping, fall back to noisy stamps if it fails.
-%  4 = Use OpenML OML_sync_control extension for high-precision timestamping on
-%      supported system configuration. This is currently a Linux only feature on
-%      some specific systems.
+%
+%  3 = Always use kernel-level/CoreVideo timestamping, fall back to noisy
+%      stamps if it fails.
+%
+%  4 = Use OpenML OML_sync_control extension for high-precision timestamping
+%      on supported system configuration, fall back on beamposition queries
+%      if the OpenML mechanism is unavailable. OpenML timestamping is
+%      currently a Linux only feature on the free open-source graphics
+%      drivers.
 %
 % The default on OS-X and Windows is "1", and "4" on Linux.
 %
-% If the beamposition query test fails, you will see some warning message about
-% "SYNCHRONIZATION TROUBLE" in the Matlab/Octave command window or other
-% error messages, as diagnostics is performed at various stages of setup
-% and operation.
+% If the beamposition query test fails, you will see some warning message
+% about "SYNCHRONIZATION TROUBLE" in the Matlab/Octave command window or
+% other error messages, as diagnostics is performed at various stages of
+% setup and operation.
 %
-% There are two possible causes for failure:
+% There are multiple possible causes for failure:
 %
-% 1. System overload: Too many other applications are running in parallel to
-% Psychtoolbox, introducing severe timing noise into the calibration and test loop.
-% See 'help SyncTrouble' on what to do. This happens rather seldomly.
+% 1. Running digital displays like flat panels or projectors at non-native
+% resolution, ie., anything other than their rated maximum resolution, or
+% using display rotation by 90/180/270 degrees, e.g., putting the display
+% from landscape into portrait orientation. This will violate various
+% assumptions our timestamping code makes and introduce interference of the
+% graphics driver with visual stimulus onset timing. If you want to use
+% your panel at a non-native resolution or orientation, leave it set at its
+% native maximum settings and orientation and then use the panelfitter and
+% display rotation functions of PsychImaging(). See the demo
+% PanelFitterDemo.m and its "help PanelFitterDemo" for further explanation
+% on how to use the panelfitter.
 %
-% 2. Driver bug: Not much you can do, except submit a bug report to Apple or Microsoft
-% for your specific hardware + software setup. This is by far the most
-% common cause of failure. Psychtoolbox tries to enable work-arounds for
-% some common problems if possible. Usually you should update your graphics
-% card driver to see if that resolves the problems.
+% 2. System overload: Too many other applications are running in parallel
+% to Psychtoolbox, introducing severe timing noise into the calibration and
+% test loop. See 'help SyncTrouble' on what to do. This happens rather
+% seldomly.
+%
+% 3. Driver bug: Not much you can do, except submit a bug report to Apple
+% or Microsoft for your specific hardware + software setup. This is by far
+% the most common cause of failure. Psychtoolbox tries to enable
+% work-arounds for some common problems if possible. Usually you should
+% update your graphics card driver to see if that resolves the problems.
 %
 % Note: Apple's Retina MacBook Pro's ship with a broken NVidia graphics
-% driver that causes beamposition timestamping to fail. Please install the
-% PsychtoolboxKernelDriver on such systems and set the kPsychDontUseNativeBeamposQuery
-% flag in Screen('Preference', 'ConserveVRAM', x); ie., x must include the
-% value 2^16, e.g., add this to the top of your script:
-%
-% v = bitor(2^16, Screen('Preference','ConserveVRAM'));
-% Screen('Preference','ConserveVRAM', v);
-%
-% This will cause PTB to use our own implementation of beamosition queries,
-% which apparently isn't as shoddy as Apple's work.
+% driver that causes beamposition timestamping to fail on any display that
+% is not a VGA analog monitor, ie., a CRT monitor. Please install the
+% PsychtoolboxKernelDriver on such systems. This will cause PTB to use our
+% own implementation of beamosition queries, which apparently isn't as
+% shoddy as Apple's work. Additionally beamposition timestamping doesn't
+% work well on Retina panels at their typical preferred resolutions. You
+% either have to do without high precision timestamping, or use 3rd party
+% tools like SwitchResX to set the panels resolution to its true maximum
+% resolution - makes timestamping work, but breaks the user experience and
+% makes everyday work with such a display difficult.
 %
 % Note: As of Spring/Summer 2008, many graphics cards + driver combos from
 % ATI and NVidia on WindowsXP have bugs which cause beamposition queries to
@@ -176,7 +203,8 @@
 % of your display in scanlines (including the invisible VBL interval)
 % anymore. Exact height is important for spot-on timestamps. Psychtoolbox
 % uses some safe, conservative value for its internal computations, so
-% results will be consistent and useable, but contain a small constant offset.
+% results will be consistent and useable, but contain a small constant
+% offset.
 %
 % In some rare cases, PTB's automatic test fails to detect the bug and
 % doesn't enable the workaround by itself. You can manually enable the
@@ -202,8 +230,9 @@
 % How to find out about VTOTAL? One way is to search the display control
 % panel on Windows for some area with "Advanced Timing" or "Custom Timing"
 % settings. The shareware utility "PowerStrip" (http://www.entechtaiwan.com/util/ps.shtm)
-% also allows to change and display these parameters in the Advanced Timing
-% -> Vertical Geometry -> "Total" field.
+% also allows to change and display these parameters in the Display
+% Profiles -> Configure -> Advanced Timing -> Vertical Geometry -> "Total"
+% field.
 %
 % Accuracy of beamposition method:
 %
@@ -215,18 +244,20 @@
 %
 % Initial checking on two Window PC's (Dell Inspiron 8000 Laptop, Geforce
 % 2Go, Windows 2000, and some 3.2 Ghz Pentium-4 with NVidia Geforce 7800
-% GTX) shows a precision of about 30 microseconds. No further testing on
-% Windows has been performed yet by us, but multiple users performed
+% GTX) shows a precision of about 30 microseconds. Multiple users performed
 % similar testing procedures on their setups and confirmed the high
 % accuracy and reliability for various MacOSX and Windows setups.
 %
 % The results of systematic studies can be found in the PsychDocumentation/
-% subfolder, the ECVP Timingprecision poster as a pdf file. They confirm
-% the robustness and high precision of beamposition timestamping and Linux
-% built in timestamping on a variety of tested hardware + operating system
-% combinations in various system configurations.
+% subfolder in the file ECVP2010Poster_VisualTimingPrecision.pdf. They
+% confirm the robustness and high precision of beamposition timestamping
+% and especially of Linux's builtin timestamping on a variety of tested
+% hardware + operating system combinations in various system
+% configurations. The pdf also provides further tips for precise visual
+% onset timing.
 %
-% Also check the FAQ section of http://www.psychtoolbox.org for latest infos.
+% Also check the FAQ section of http://www.psychtoolbox.org for latest
+% infos.
 %
 
 % History:
@@ -235,3 +266,5 @@
 %  7.07.2008 More infos and troubleshooting tips. (MK)
 %  3.01.2013 Some updates and cleanups. (MK)
 %  6.01.2013 Add info about OSX driver bugs with Retina displays. (MK)
+% 29.09.2013 Update info to current state. (MK)
+

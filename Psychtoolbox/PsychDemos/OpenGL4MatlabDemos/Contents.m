@@ -19,7 +19,7 @@
 % SpinningMovieCube      -- Extends SpinningCubeDemo with cube faces that play back
 %                           a Quicktime movie file, demonstrating exchange of textures
 %                           between Psychtoolbox and Matlab OpenGL.
-%
+% SuperShapeDemo            Render so called SuperShapes in OpenGL.
 % MorphDemo              -- This demo shows how to load premade 3D objects from filesystem and
 %                           how to morph them into each other via the Psychtoolbox function
 %                           moglmorpher(). Psychtoolbox can load simple Alias-Wavefront OBJ

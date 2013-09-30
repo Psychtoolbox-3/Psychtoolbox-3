@@ -55,19 +55,19 @@ static psych_bool drawtext_plugin_firstcall = TRUE;
 
 // Function prototypes for functions exported by drawtext plugins: Will be dynamically bound & linked:
 int (*PsychPluginInitText)(void) = NULL;
-int (*PsychPluginShutdownText)(void) = NULL;
-int (*PsychPluginRebuiltFont)(void) = NULL;
-int (*PsychPluginSetTextFont)(const char* fontName) = NULL;
-int (*PsychPluginSetTextStyle)(unsigned int fontStyle) = NULL;
-int (*PsychPluginSetTextSize)(double fontSize) = NULL;
-void (*PsychPluginSetTextFGColor)(double* color) = NULL;
-void (*PsychPluginSetTextBGColor)(double* color) = NULL;
+int (*PsychPluginShutdownText)(int context) = NULL;
+int (*PsychPluginSetTextFont)(int context, const char* fontName) = NULL;
+const char* (*PsychPluginGetTextFont)(int context) = NULL;
+int (*PsychPluginSetTextStyle)(int context, unsigned int fontStyle) = NULL;
+int (*PsychPluginSetTextSize)(int context, double fontSize) = NULL;
+void (*PsychPluginSetTextFGColor)(int context, double* color) = NULL;
+void (*PsychPluginSetTextBGColor)(int context, double* color) = NULL;
 void (*PsychPluginSetTextUseFontmapper)(unsigned int useMapper, unsigned int mapperFlags) = NULL;
-void (*PsychPluginSetTextViewPort)(double xs, double ys, double w, double h) = NULL;
-int (*PsychPluginDrawText)(double xStart, double yStart, int textLen, double* text) = NULL;
-int (*PsychPluginMeasureText)(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax) = NULL;
+void (*PsychPluginSetTextViewPort)(int context, double xs, double ys, double w, double h) = NULL;
+int (*PsychPluginDrawText)(int context, double xStart, double yStart, int textLen, double* text) = NULL;
+int (*PsychPluginMeasureText)(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax) = NULL;
 void (*PsychPluginSetTextVerbosity)(unsigned int verbosity) = NULL;
-void (*PsychPluginSetTextAntiAliasing)(int antiAliasing) = NULL;
+void (*PsychPluginSetTextAntiAliasing)(int context, int antiAliasing) = NULL;
 
 // External renderplugins not yet supported on MS-Windows:
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
@@ -1400,8 +1400,8 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 		// Dynamically bind all functions to their proper plugin entry points:
 		PsychPluginInitText = dlsym(drawtext_plugin, "PsychInitText");
 		PsychPluginShutdownText = dlsym(drawtext_plugin, "PsychShutdownText");
-		PsychPluginRebuiltFont = dlsym(drawtext_plugin, "PsychRebuiltFont");
 		PsychPluginSetTextFont = dlsym(drawtext_plugin, "PsychSetTextFont");
+        PsychPluginGetTextFont = dlsym(drawtext_plugin, "PsychGetTextFont");
 		PsychPluginSetTextStyle = dlsym(drawtext_plugin, "PsychSetTextStyle");
 		PsychPluginSetTextSize = dlsym(drawtext_plugin, "PsychSetTextSize");
 		PsychPluginSetTextFGColor = dlsym(drawtext_plugin, "PsychSetTextFGColor");
@@ -1417,7 +1417,7 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 		PsychPluginSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
 
 		// Try to initialize plugin:
-		if (PsychPluginInitText()) PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, PsychInitText() failed!");
+        if (PsychPluginInitText()) PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, PsychInitText() failed!");
 		
 		// Enable use of plugins internal fontMapper for selection of font file, face type and rendering
 		// parameters, based on the font/text spec provided by us:
@@ -1465,10 +1465,13 @@ void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
 		// Do we have an external text rendering plugin installed and initialized?
 		if (drawtext_plugin) {
 			// Yes.
-			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCleanupTextRenderer: Releasing text renderer plugin.\n");
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCleanupTextRenderer: Releasing text renderer plugin completely.\n");
 
-			// Call plugin shutdown routine:
-			PsychPluginShutdownText();
+			// Call plugin shutdown routine for this window:
+            PsychPluginShutdownText((PsychGetParentWindow(windowRecord))->windowIndex);
+
+            // Call master shutdown:
+            PsychPluginShutdownText(-1);
 
 			#if PSYCH_SYSTEM != PSYCH_WINDOWS
 			// Jettison plugin:
@@ -1478,6 +1481,17 @@ void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
 			drawtext_plugin = NULL;
 		}
 	}
+	else {
+        // Not the last onscreen window. Only do per window cleanup:
+        // Do we have an external text rendering plugin installed and initialized?
+        if (drawtext_plugin) {
+            // Yes.
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCleanupTextRenderer: Releasing text renderer plugin resources for window %i.\n", windowRecord->windowIndex);
+
+            // Call plugin shutdown routine for this window:
+            PsychPluginShutdownText((PsychGetParentWindow(windowRecord))->windowIndex);
+        }
+    }
 
 	return;
 }
@@ -1841,14 +1855,15 @@ void PsychDrawCharText(PsychWindowRecordType* winRec, const char* textString, do
 
 PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, int swapTextDirection)
 {
-	GLdouble		backgroundColorVector[4];
-	GLdouble		colorVector[4];
-    GLenum			normalSourceBlendFactor, normalDestinationBlendFactor;
-	float			xmin, ymin, xmax, ymax;
-	double			myyp;
-	double			dummy;
+	GLdouble backgroundColorVector[4];
+	GLdouble colorVector[4];
+    GLenum normalSourceBlendFactor, normalDestinationBlendFactor;
+	float xmin, ymin, xmax, ymax;
+	double myyp;
+	double dummy;
 	unsigned int	i;
-	int				rc = 0;
+    int ctx;
+	int rc = 0;
 
 	// Invert text string (read it "backwards") if swapTextDirection is requested:
 	if (swapTextDirection) {
@@ -1866,33 +1881,39 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 
 		// Use external dynamically loaded plugin:
 
+        // Get ctx context id for this window:
+        ctx = (int) (PsychGetParentWindow(winRec))->windowIndex;
+
 		// Assign current level of verbosity:
 		PsychPluginSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
 
 		// Assign current anti-aliasing settings:
-		PsychPluginSetTextAntiAliasing(PsychPrefStateGet_TextAntiAliasing());
+        PsychPluginSetTextAntiAliasing(ctx, PsychPrefStateGet_TextAntiAliasing());
 
 		// Assign font family name of requested font:
-		PsychPluginSetTextFont((const char*) winRec->textAttributes.textFontName);
+        PsychPluginSetTextFont(ctx, (const char*) winRec->textAttributes.textFontName);
 
 		// Assign style settings, e.g., bold, italic etc.:
-		PsychPluginSetTextStyle(winRec->textAttributes.textStyle);
+        PsychPluginSetTextStyle(ctx, winRec->textAttributes.textStyle);
 
 		// Assign text size in pixels:
-		PsychPluginSetTextSize((double) winRec->textAttributes.textSize);
+        PsychPluginSetTextSize(ctx, (double) winRec->textAttributes.textSize);
+
+        // Retrieve true text font family name:
+        sprintf(winRec->textAttributes.textFontName, "%s", PsychPluginGetTextFont(ctx));
 
 		// Assign viewport settings for rendering:
-		PsychPluginSetTextViewPort(winRec->clientrect[kPsychLeft], winRec->clientrect[kPsychTop], PsychGetWidthFromRect(winRec->clientrect), PsychGetHeightFromRect(winRec->clientrect));
+        PsychPluginSetTextViewPort(ctx, winRec->clientrect[kPsychLeft], winRec->clientrect[kPsychTop], PsychGetWidthFromRect(winRec->clientrect), PsychGetHeightFromRect(winRec->clientrect));
 
 		// Compute and assign text background color:
 		PsychCoerceColorMode(backgroundColor);
 		PsychConvertColorToDoubleVector(backgroundColor, winRec, backgroundColorVector);
-		PsychPluginSetTextBGColor(backgroundColorVector);
+        PsychPluginSetTextBGColor(ctx, backgroundColorVector);
 		
 		// Compute and assign text foreground color - the actual color of the glyphs:
 		PsychCoerceColorMode(textColor);
 		PsychConvertColorToDoubleVector(textColor, winRec, colorVector);
-		PsychPluginSetTextFGColor(colorVector);
+        PsychPluginSetTextFGColor(ctx, colorVector);
 		
 		// Enable this windowRecords framebuffer as current drawingtarget:
 		PsychSetDrawingTarget(winRec);
@@ -1920,7 +1941,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		#endif
 		
 		// Compute bounding box of drawn string:
-		rc = PsychPluginMeasureText(stringLengthChars, textUniDoubleString, &xmin, &ymin, &xmax, &ymax);
+        rc = PsychPluginMeasureText(ctx, stringLengthChars, textUniDoubleString, &xmin, &ymin, &xmax, &ymax);
 
 		// Handle definition of yp properly: Is it the text baseline, or the top of the text bounding box?
 		if (yPositionIsBaseline) {
@@ -1937,7 +1958,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		}
 		else {
 			// Draw text by calling into the plugin:
-			rc += PsychPluginDrawText(*xp, winRec->clientrect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
+            rc += PsychPluginDrawText(ctx, *xp, winRec->clientrect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
 		}
 		
 		// Restore alpha-blending settings if needed:

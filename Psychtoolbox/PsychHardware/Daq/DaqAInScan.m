@@ -471,29 +471,63 @@ if options.begin
     
     if Is1608
         SN = AllHIDDevices(daq).product;
+        
+        % Fill empty .product fields with filler, otherwise the
+        % following strvcat deletes them!
+        for kk = 1:length(AllHIDDevices)
+            if isempty(AllHIDDevices(kk).product)
+                AllHIDDevices(kk).product = 'xoxo';
+            end
+        end
+        
         AllSNs = strvcat(AllHIDDevices.product);
         InterfaceInds = strmatch(SN,AllSNs);
         if length(InterfaceInds) ~= 7 || ~all(InterfaceInds' == (daq-6):daq)
-            error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+            % Horrible hack for the horrible 64-Bit OSX:
+            if ~IsOSX(1)
+                error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+            else
+                warning('Not all 7 interfaces found. Will fake most common interface config and hope for the best. Run "help DaqReset" for suggestions.');
+            end
         end
         IndexRange = -1:-1:-6;
     else
         % Find all other interfaces of device 'daq', by looking for devices
         % with the same serial number:
         SN = AllHIDDevices(daq).product;
+
+        % Fill empty .product fields with filler, otherwise the
+        % following strvcat deletes them!
+        for kk = 1:length(AllHIDDevices)
+            if isempty(AllHIDDevices(kk).product)
+                AllHIDDevices(kk).product = 'xoxo';
+            end
+        end
+
         AllSNs = strvcat(AllHIDDevices.product);
         InterfaceInds = transpose(strmatch(SN,AllSNs));
         if length(InterfaceInds) ~= 4
-            error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+            % Horrible hack for the horrible 64-Bit OSX:
+            if ~IsOSX(1)
+                error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+            else
+                warning('Not all 4 interfaces found. Will fake most common interface config and hope for the best. Run "help DaqReset" for suggestions.');
+            end
         end
         
         % Throw out the primary interface with index 'daq':
-        InterfaceInds = InterfaceInds(find(InterfaceInds ~= daq)); 
+        InterfaceInds = InterfaceInds(find(InterfaceInds ~= daq));
         
         % Convert to indices/range relative to 'daq', as needed later on:
         IndexRange = InterfaceInds - daq;
+        
+        % Horrible hack for the horrible 64-Bit OSX:
+        if IsOSX(1)
+          % Hardcode index range, in the hope it helps that brain-dead os:
+          IndexRange = -1:-1:-3;
+        end
     end
-    
+
     % Flush any stale reports.
     for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
         err=PsychHID('ReceiveReports',daq+d);

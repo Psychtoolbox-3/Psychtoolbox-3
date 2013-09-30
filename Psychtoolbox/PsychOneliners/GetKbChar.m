@@ -94,7 +94,7 @@ elseif length(ch) > 2
     if strcmpi(ch, 'space')
         ch = char(32);
     end
-    if strcmpi(ch, 'DELETE')
+    if strcmpi(ch, 'DELETE') || strcmpi(ch, 'BackSpace')
         ch = char(8);
     end
     

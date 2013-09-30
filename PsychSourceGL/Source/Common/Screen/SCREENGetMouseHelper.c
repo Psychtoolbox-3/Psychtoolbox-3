@@ -624,9 +624,10 @@ PsychError SCREENGetMouseHelper(void)
 
 			// Map screenNumber to X11 display handle and screenid:
 			PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
-
 		} else {
+            PsychLockDisplay();
 			mywin = RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber));
+            PsychUnlockDisplay();
 		}
 	}
 
@@ -659,7 +660,9 @@ PsychError SCREENGetMouseHelper(void)
 		// touch area, tilt etc. for digitizer tablets, touch pads etc. For master pointers,
 		// the primary 2 axis for 2D (x,y) position and the button/modifier state will be
 		// queried via a dedicated XIQueryPointer() call, so that info gets overriden.
+		PsychLockDisplay();
 		indevs = XIQueryDevice(dpy, indevs[mouseIndex].deviceid, &numButtons);
+        PsychUnlockDisplay();
 		modifiers_return.effective = 0;
 
 		// Query real number of mouse buttons and the raw button and axis state
@@ -702,9 +705,11 @@ PsychError SCREENGetMouseHelper(void)
 				// Assign valuator info struct, if requested:
 				if (valuatorStruct) {
 					if (axis->label != None) {
+                        PsychLockDisplay();
 						char* atomlabel =  XGetAtomName(dpy, axis->label);
 						PsychSetStructArrayStringElement("label", axis->number, atomlabel, valuatorStruct);
 						XFree(atomlabel);
+                        PsychUnlockDisplay();
 					} else {
 						PsychSetStructArrayStringElement("label", axis->number, "None", valuatorStruct);
 					}
@@ -725,8 +730,10 @@ PsychError SCREENGetMouseHelper(void)
 		// A real master pointer: Use official query for mouse devices.
 		if (indevs->use == XIMasterPointer) {
 			// Query pointer location and state:
+            PsychLockDisplay();
 			XIQueryPointer(dpy, indevs->deviceid, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mxd, &myd, &dxd, &dyd,
 				       &buttons_return, &modifiers_return, &group_return);
+            PsychUnlockDisplay();
 		}
 
 		// Copy out mouse x and y position:
@@ -758,8 +765,10 @@ PsychError SCREENGetMouseHelper(void)
 	  }
 	  else {
 		// Old school core protocol query of virtual core pointer:
+        PsychLockDisplay();
 		XQueryPointer(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mx, &my, &dx, &dy, &mask_return);
-	  
+        PsychUnlockDisplay();
+
 		// Copy out mouse x and y position:
 		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) mx);
 		PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) my);
@@ -789,7 +798,9 @@ PsychError SCREENGetMouseHelper(void)
 
 	  // Return optional 4th argument: Focus state. Returns 1 if our window has
 	  // keyboard input focus, zero otherwise:
+	  PsychLockDisplay();
 	  XGetInputFocus(dpy, &rootwin, &i);
+      PsychUnlockDisplay();
 	  PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (rootwin == mywin) ? 1 : 0);
 
 	  // Return optional valuator values:
@@ -811,14 +822,18 @@ PsychError SCREENGetMouseHelper(void)
 
 	    // Switch X-Server into synchronous mode: We need this to get
 	    // a higher timing precision.
+        PsychLockDisplay();
 	    XSynchronize(dpy, TRUE);
+        PsychUnlockDisplay();
 
 	    do {
 	      // Reset overall key state to "none pressed":
 	      keysdown=0;
 
 	      // Request current keyboard state from X-Server:
+          PsychLockDisplay();
 	      XQueryKeymap(dpy, keys_return);
+          PsychUnlockDisplay();
 
 	      // Request current time of query:
 	      PsychGetAdjustedPrecisionTimerSeconds(&timestamp);
@@ -863,37 +878,21 @@ PsychError SCREENGetMouseHelper(void)
 
 	    for(i=0; i<256; i++) {
 	      // Map keyboard scan code to KeySym:
+          PsychLockDisplay();
 	      keystring = XKeysymToString(XKeycodeToKeysym(dpy, i, 0));
+          PsychUnlockDisplay();
 	      if (keystring) {
-		// Character found: Return its ASCII name string:
-		PsychSetCellVectorStringElement(i, keystring, kbNames);
+            // Character found: Return its ASCII name string:
+            PsychSetCellVectorStringElement(i, keystring, kbNames);
 	      }
-	      else {
-		// No character for this keycode:
-		PsychSetCellVectorStringElement(i, "", kbNames);
-	      }
+          else {
+            // No character for this keycode:
+            PsychSetCellVectorStringElement(i, "", kbNames);
+          }
 	    }
 	  }
 	  else if (numButtons == -4) {
-	    // GetChar() emulation.
-
-/* 	    do { */
-/* 	      // Fetch next keypress event from queue, block if none is available... */
-/* 	      keystring = NULL; */
-/* 	      XNextEvent(dpy, &event_return); */
-/* 	      // Check for valid keypress event and extract character: */
-/* 	      if (event_return.type == KeyPress) { */
-/* 		keypressevent = (XKeyPressedEvent) event_return; */
-/* 		keystring = NULL; */
-/* 		keystring = XKeysymToString(XKeycodeToKeysym(dpy, keypressevent.keycode, 0)); */
-/* 	      } */
-/* 	      // Repeat until a valid char is returned. */
-/* 	    } while (keystring == NULL); */
-
-/* 	    // Copy out character: */
-/* 	    PsychCopyOutCharArg(1, kPsychArgOptional, (char) keystring); */
-/* 	    // Copy out time: */
-/* 	    PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) keypressevent.time); */
+	    // GetChar() emulation. Dead.
 	  }
 	  else if (numButtons==-5) {
 		// Priority() - helper mode: The 2nd argument is the priority level:
