@@ -106,9 +106,7 @@ PsychError SCREENGetMovieImage(void)
     while (rc==0) {
 		// With some backends (GStreamer), we can use a checkForImage of type 2 if a blocking wait is
 		// requested. Type 2 actually blocks inside the backend, to minimize cpu load and achieve lowest signalling delay
-		// once a new frame becomes available. Type 1 only polls. With the deprecated Quicktime backend, a type 1 and type 2
-		// check are the same - they translate into a poll for new image, and this while() loop needs to emulate a blocking
-		// wait via a poll-sleep cycle:
+		// once a new frame becomes available. Type 1 only polls.
         rc = PsychGetTextureFromMovie(windowRecord, moviehandle, (waitForImage != 0) ? 2 : 1, requestedTimeIndex, NULL, NULL);
 		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
         if (rc<0 || ((tnow > deadline) && (waitForImage != 0))) {

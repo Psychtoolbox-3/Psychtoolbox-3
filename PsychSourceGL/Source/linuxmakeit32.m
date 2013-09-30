@@ -1,7 +1,11 @@
-function linuxmakeit_ubuntugutsy(mode)
+function linuxmakeit32(mode)
 % This is the GNU/Linux version of makeit to build the Linux
-% version of PTB's Screen - command.
-% This version is adapted to build on the "funky" Laptop under Ubuntu Linux 10.10 Maverick against Matlab R2007a and later 
+% mex files for 32-Bit Matlab on Linux.
+
+if ~IsLinux || Is64Bit || IsOctave
+    error('This script is for 32-Bit Linux on Matlab only!');
+end
+
 if nargin < 1
     mode = 0
 end;

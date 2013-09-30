@@ -141,10 +141,10 @@
 %
 %
 % 8192 == kPsychUseAGLForFullscreenWindows
-% Tell PTB on Mac OS/X to always use the AGL API for OpenGL system setup,
-% even if the requested onscreen window is a fullscreen window. Normally
-% PTB would use the CGL API for fullscreen windows, but this is broken for
-% dual-display operations on some systems running 10.5.3 - 10.5.6 at least.
+% Tell PTB on Mac OS/X to always use the Cocoa/NSOpenGL API for OpenGL
+% system setup, even if the requested onscreen window is a fullscreen
+% window. Normally PTB would use the CGL API for fullscreen windows for
+% higher efficiency.
 %
 %
 % 16384 == kPsychUseCompositorForFullscreenWindows
@@ -164,11 +164,11 @@
 % PsychDebugWindowConfiguration() function was used to switch to debug
 % mode.
 %
-% On Mac OS/X this will cause PTB to always use the AGL API for OpenGL
+% On Mac OS/X this will cause PTB to always use the Cocoa API for OpenGL
 % system setup, and to always use Quartz composited regular windows instead
 % of fullscreen contexts, even if the requested onscreen window is a
 % fullscreen window. Normally PTB would use the CGL API for fullscreen
-% windows, but this is broken for dual-display operations on some systems
+% windows, but this was broken for dual-display operations on some systems
 % running OS/X Leopard 10.5 with all modern NVidia cards. Stimulus onset
 % timing, animations and timestamping precision will be horrible in this
 % mode. Only suitable for presentation of mostly static stimuli with no

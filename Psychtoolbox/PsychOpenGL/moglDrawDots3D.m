@@ -89,7 +89,7 @@ end
 nvc = size(xyz, 1);
 nrdots = size(xyz, 2);
 
-if ~ismember(nvc, [3,4]) || nrdots < 1
+if ~(nvc == 3 || nvc == 4) || nrdots < 1
     error('"xyz" argument must have 3 or 4 rows for x,y,z or x,y,z,w components and at least 1 column for at least one dot to draw!');
 end
 
@@ -114,7 +114,7 @@ if ~isempty(dotcolor)
 
     ncolors = size(dotcolor, 2);
     ncolcomps = size(dotcolor, 1);
-    if  ~ismember(ncolcomps, [3,4]) || (ncolors~=1 && ncolors~=nrdots)
+    if  ~(ncolcomps == 3 || ncolcomps == 4) || (ncolors~=1 && ncolors~=nrdots)
         error('"dotcolor" must be a matrix with 3 or 4 rows and at least 1 column, or as many columns as dots to draw!');
     end
 else

@@ -91,7 +91,7 @@ static char synopsisString[] =
 	"only affect textures and offscreen windows created *after* this function call, not ones created "
 	"before. It's therefore recommended to execute this function immediately after creating an onscreen "
 	"window to guarantee consistent behaviour of your code. Color values provided as uint8 arrays or as "
-	"textures, e.g., from video capture, Quicktime movies or Screen('MakeTexture') are not rescaled, as"
+	"textures, e.g., from video capture, movies or Screen('MakeTexture') are not rescaled, as"
 	"they are (expected) to be in a proper format for the given color depth already. However, the "
 	"Screen('MakeTexture') command has an optional flag 'floatprecision' that allows you to pass image "
 	"matrices unclamped and with either 16 bpc or 32 bpc floating point color precision if you want.\n"

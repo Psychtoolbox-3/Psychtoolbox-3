@@ -140,6 +140,37 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
 %
 %
+% * 'UseDisplayRotation' Ask to use builtin panel fitter exclusively for
+%   rotating the framebuffer. This is useful if you want to turn your
+%   display device from landscape (= normal upright) orientation into
+%   portrait orientation (= rotated by 90 degrees clockwise or
+%   counterclockwise). In such a case you will want to rotate the
+%   framebuffer by 90 degrees as well, but you should *not* use the "rotate
+%   monitor" function of your operating system for this purpose, as this
+%   will very likely interfere with visual stimulus presentation timing and
+%   timestamping! Use this task instead. It will perform rotation in a
+%   similar way, but without severe interference to timing. However, there
+%   is one limitation to this method: Multisample anti-aliasing currently
+%   does not work if you use our framebuffer rotation.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseDisplayRotation', angle);
+%
+%   'angle' is the desired rotation angle. The only values which will give
+%   well defined and useful results are multiples of 90 degrees, useful
+%   values are essentially 0, +90, -90 and 180 degrees for no rotation,
+%   clockwise rotation, counterclockwise rotation and upside down rotation.
+%
+%   This function is mutually exclusive with 'UsePanelFitter', but if you
+%   need to use both, you can omit 'UseDisplayRotation' and pass the
+%   'angle' parameter to 'UsePanelFitter' instead, which also accepts an
+%   'angle' parameter with the same meaning.
+%
+%   This function is not very mature yet: If you want to use the
+%   panelfitter for anything beyond simple framebuffer rotation by 90
+%   degree increments, you will likely hit bugs or limitations which will
+%   require significant tinkering by you.
+%
+%
 % * 'UsePanelFitter' Ask to use builtin panel fitter. This allows you to
 %   define a virtual size for your onscreen window. The window will behave
 %   as if it had that virtual size wrt. all size queries and drawing
@@ -152,12 +183,12 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   if you want to display a stimulus designed for a specific display
 %   resolution on a display device of different higher or lower resolution.
 %   Given that size and shape of the virtual framebuffer and real display
-%   window will not match, the function provides you with multiple possible
+%   window may not match, the function provides you with multiple possible
 %   choices on how to rescale your stimulus image, e.g., to maximize
 %   display area, or to preserve the aspect ratio of the original image,
 %   trading off displayed area etc.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'UsePanelFitter', size, strategy [, srcRect, dstRect]);
+%   Usage: PsychImaging('AddTask', 'General', 'UsePanelFitter', size, strategy [, srcRect, dstRect][, angle]);
 %
 %   'size' is a [width, height] vector defining the width x height of the
 %   virtual window in pixels.
@@ -188,6 +219,17 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %              virtual framebuffer and display it in the 'dstRect' region.
 %              'srcRect' and 'dstRect' are given in typical [left, top, right, bottom]
 %              format.
+%
+%   'angle' is an optional rotation angle. If provided and non-zero, the
+%   panelfitter will also rotate the output framebuffer by the given
+%   rotation angle. Note: This doesn't work very well yet with most
+%   framebuffer sizes and scaling strategies. What does work is if the
+%   specified 'size' is identical to the onscreen windows size, or is its
+%   transposed size (ie., if window is width x height pixels, then height x
+%   width pixels will work as 'size' parameter) and the rotation angle is a
+%   multiple of 90 degrees. This is mostly useful for display rotation from
+%   landscape orientation into portrait orientation. Your mileage with
+%   other configurations or rotation angles will vary.
 %
 %   Example: Suppose your real window covers a 1920 x 1080 display.
 %
@@ -1002,12 +1044,13 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 23.12.2012  Add support for 'SideBySideCompressedStereo' stereo mode. (MK)
 %
-% 13.12.2013  Add support for 'UsePanelFitter' Screen panelfitter setup. (MK)
+% 23.12.2012  Add support for 'UsePanelFitter' Screen panelfitter setup. (MK)
 %
 % 15.04.2013  Add support for 'UseGPGPUCompute', currently via GPUmat. (MK)
 %
 % 03.07.2013  Call PsychJavaSwingCleanup via onscreen window close hook. (MK)
 %
+% 28.09.2013  Add support for 'UseDisplayRotation' via panelfitter. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -1244,6 +1287,61 @@ if strcmpi(cmd, 'OpenWindow')
     else
         clientRect = varargin{10};
     end
+
+    if ~isempty(find(mystrcmp(reqs, 'UseDisplayRotation'))) %#ok<*EFIND>
+        % Yes. Extract parameters:
+        floc = find(mystrcmp(reqs, 'UseDisplayRotation'));
+        if length(floc) > 1
+            error('PsychImaging: Multiple definitions of task "UseDisplayRotation"! There can be only one.');
+        end
+        
+        % Check for collisions with mutually exclusive "UsePanelFitter" task:
+        if ~isempty(find(mystrcmp(reqs, 'UsePanelFitter')))
+            fprintf('\n\n');
+            fprintf('PsychImaging: You can not use both "UseDisplayRotation" and "UsePanelFitter" at the same time. However, you can pass\n');
+            fprintf('PsychImaging: the rotation angle you wanted to use for "UseDisplayRotation" to "UsePanelFitter" instead, so "UsePanelFitter"\n');
+            fprintf('PsychImaging: will also do the job of "UseDisplayRotation" for you. This works because "UseDisplayRotation" is only\n');
+            fprintf('PsychImaging: a simple convenience shortcut to "UsePanelFitter".\n');
+            error('PsychImaging: Task "UsePanelFitter" also requested, but you can only use either "UsePanelFitter" or "UseDisplayRotation".');
+        end
+        
+        [row cols] = ind2sub(size(reqs), floc); %#ok<NASGU>
+        rotAngle = reqs{row, 3};
+        
+        if isempty(rotAngle) || ~isnumeric(rotAngle) || ~isscalar(rotAngle)
+            error('PsychImaging: For task "UseDisplayRotation", required rotation angle parameter missing or not a scalar angle in degrees.');
+        end
+        
+        % Get full size of output framebuffer:
+        if isempty(winRect)
+            [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid);
+        else
+            clientRes = [RectWidth(winRect), RectHeight(winRect)];
+        end
+        
+        % Rotation into a portrait orientation?
+        if (round(rotAngle / 90) == (rotAngle / 90))
+            if (mod(round(rotAngle / 90), 2) > 0)
+                % Yes. Switch width and height of clientRes:
+                clientRes = [clientRes(2), clientRes(1)];
+            end
+        else
+            fprintf('PsychImaging: Provided rotation angle for task "UseDisplayRotation" is not a multiple of 90 degrees.\n');
+            fprintf('PsychImaging: You are probably in for a bit of trouble for such rotation angles...\n');
+        end
+        
+        % No-Op for rotation angle of 0 degrees, as that does nothing.
+        if rotAngle ~= 0
+            % Build a 'UsePanelFitter' task from our tasks parameters by
+            % overwriting our own task spec:
+            reqs{row, 2} = 'UsePanelFitter';
+            reqs{row, 3} = clientRes;
+            reqs{row, 4} = 'Full';
+            reqs{row, 5} = [];
+            reqs{row, 6} = [];
+            reqs{row, 7} = rotAngle;
+        end
+    end
     
     % Use and high-level setup of panelfitter requested?
     if ~isempty(find(mystrcmp(reqs, 'UsePanelFitter'))) %#ok<*EFIND>
@@ -1299,6 +1397,40 @@ if strcmpi(cmd, 'OpenWindow')
         if bitand(imagingMode, kPsychNeedTwiceWidthWindow)
             dstFit(RectRight) = dstFit(RectRight) * 2;
         end
+        
+        winCenter = [RectWidth(dstFit)/2, RectHeight(dstFit)/2];
+        
+        % Extract rotation angle to use for display rotation:
+        rotX = [];
+        rotY = [];
+        rotAngle = reqs{row, 7};
+        rot90Deg = 0;
+
+        if isempty(rotAngle)
+            % No rotation angle == zero rotation == no rotation.
+            rotAngle = 0;
+        else
+            % Round to full degrees:
+            rotAngle = round(rotAngle);
+            
+            if rotAngle ~= 0
+                fprintf('PsychImaging: PanelFitter will apply a display rotation of %i degrees.\n', rotAngle);
+                
+                % Check if rotation angle is -90, +90, -270, +270, ... degrees,
+                % ie. the image is effectively tilted by 90 degrees clockwise
+                % or counter-clockwise:
+                if (round(rotAngle / 90) == (rotAngle / 90)) && (mod(round(rotAngle / 90), 2) > 0)
+                    % Yes. This is classic panel rotation. Exchange width and
+                    % height of clientRect, so it is "rotated" accordingly and
+                    % the various scaling and centering strategies will
+                    % peacefully cooperate with display rotation via panel
+                    % fitting:
+                    rot90Deg = 1;
+                    clientRect = [0, 0, clientRes(2), clientRes(1)];
+                    fprintf('PsychImaging: Applying special setup for display rotation by 90 degrees into portrait orientation.\n');
+                end
+            end
+        end
 
         % Which strategy to use?
         if strcmpi(fitterStrategy, 'Custom')
@@ -1311,11 +1443,7 @@ if strcmpi(cmd, 'OpenWindow')
             
             if ~isnumeric(dstFit) || length(dstFit) ~= 4
                 error('PsychImaging: Mandatory parameter "dstRect" of task "UsePanelFitter" for fitting strategy "Custom" missing or not a 4 element rect.');
-            end
-            
-            % Just concatenate source and destination rectangle and we're done:
-            fitterParams = [srcFit , dstFit];
-            
+            end            
         elseif strcmpi(fitterStrategy, 'Centered')
             % Don't rescale but blit one-to-one. Center in target
             % framebuffer, crop if neccessary:
@@ -1328,28 +1456,22 @@ if strcmpi(cmd, 'OpenWindow')
                 % No. We need to crop/clip it to fit in:
                 dstFit = ClipRect(srcFit, dstFit);
                 srcFit = CenterRect(dstFit, clientRect);
-                fprintf('PsychImaging: For Centered fitting, needed to crop source framebuffer to central region [%i,%i,%i,%i]. Borders will be missing.\n', srcFit(1), srcFit(2), srcFit(3), srcFit(4));
+                fprintf('PsychImaging: For centered fitting, i needed to crop the source framebuffer to central region [%i,%i,%i,%i]. Borders will be missing.\n', srcFit(1), srcFit(2), srcFit(3), srcFit(4));
             else
                 % Yes: Center in destination framebuffer:
                 dstFit = srcFit;
                 srcFit = clientRect;
             end
-            
-            fitterParams = [srcFit , dstFit];
-            
         elseif strcmpi(fitterStrategy, 'Full')
             % Rescale source framebuffer to full target framebuffer, not
             % taking aspect ratio into account:
             srcFit = clientRect;
             
             if RectWidth(srcFit) / RectHeight(srcFit) ~= RectWidth(dstFit) / RectHeight(dstFit)
-                fprintf('PsychImaging: Using full resolution fitting strategy, scaling will not preserve aspect ratio of original stimulus!\n');
+                fprintf('PsychImaging: Using full resolution fitting strategy. Scaling will not preserve aspect ratio of original stimulus!\n');
             else
                 fprintf('PsychImaging: Using full resolution fitting strategy. Aspect ratio is preserved.\n');
             end
-            
-            fitterParams = [srcFit , dstFit];
-            
         elseif strcmpi(fitterStrategy, 'AspectWidth') || strcmpi(fitterStrategy, 'AspectHeight') || strcmpi(fitterStrategy, 'Aspect')
             % Rescale aspect ratio preserving:
             
@@ -1371,7 +1493,7 @@ if strcmpi(cmd, 'OpenWindow')
                 sfw = RectWidth(dstFit) / RectWidth(clientRect);
                 sfh = RectHeight(dstFit) / RectHeight(clientRect);
                 sf = min(sfw, sfh);
-                fprintf('PsychImaging: Using scaling to maximum size which preserves aspect ratio. There may be black borders.\n');
+                fprintf('PsychImaging: Using scaling to the most maximal size which still preserves aspect ratio. There may be borders.\n');
             end
             
             % Compute scaled size target rectangle:
@@ -1391,12 +1513,27 @@ if strcmpi(cmd, 'OpenWindow')
             % Center properly sized source rectangle in clientRect source
             % framebuffer to compute final srcRect for scaling blit:
             srcFit = CenterRect(scaleFit, clientRect);
-            
-            fitterParams = [srcFit , dstFit];
-            
         else
             error('PsychImaging: Mandatory parameter "strategy" of task "UsePanelFitter" has invalid setting ''%s''.', fitterStrategy);
         end
+
+        if rotAngle ~= 0
+            [rotX, rotY] = RectCenter(clientRect);
+        end
+                
+        if rot90Deg
+            % Offset compensation for multiple of 90 degrees rotations:
+            degrad = 2 * pi * rotAngle / 360;
+            rotOffset(1) = -(winCenter(2) - rotX) * sin(degrad);
+            rotOffset(2) =  (winCenter(1) - rotY) * sin(degrad);            
+            dstFit = OffsetRect(dstFit, rotOffset(1), rotOffset(2));
+        end
+        
+        % Build final fitterParams vector:
+        fitterParams = [srcFit dstFit rotAngle rotX rotY];
+        
+        % Restore clientRect to original one:
+        clientRect = [0, 0, clientRes(1), clientRes(2)];
     else
         % No panel fitter in use. Or at least, none we would set up:
         fitterParams = [];

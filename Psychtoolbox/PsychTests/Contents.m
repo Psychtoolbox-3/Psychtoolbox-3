@@ -17,6 +17,7 @@
 %   ConvolutionKernelTest           - Test routine for correctness, accuracy and speed of PTB imaging convolution shaders.
 %   DeinterlacerTest                - Simple correctness test for GLSL video image deinterlacer. INCOMPLETE.
 %   DrawingIntoTexturesTest         - Tests if using a texture as an offscreen window, i.e., for drawing, works.
+%   DrawTextFontSwitchSpeedTest - Test speed of text drawing when switching between different font type/style/size settings.
 %   DriftTexturePrecisionTest       - Test subpixel accuracy of texture interpolators: What is the smallest
 %                                     fraction of a pixel that one can scroll, using built-in bilinear interpolation?
 %   FitCumNormYNTest                - Fit a cumulative normal to yes-no data.

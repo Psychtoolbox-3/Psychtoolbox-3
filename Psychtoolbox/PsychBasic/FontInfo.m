@@ -35,9 +35,4 @@ function FontInfo
 
 % Give an error on all platforms if MATLAB fails to find the mex file and
 % executes this help  file instead.
-AssertMex;
-
-
-
-
-
+AssertMex('FontInfo.m');

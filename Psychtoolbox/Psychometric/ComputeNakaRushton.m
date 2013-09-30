@@ -27,6 +27,9 @@ function [response] = ComputeNakaRushton(params,contrast)
 % 8/2/07    dhb         Rewrote to allow several different forms depending
 %                       on length of params.
 % 12/5/10   dhb         Expanded comment.  Error check on input length
+% 9/23/13   dhb         Fix BAD bug.  This wasn't computing what the comments said it was.
+%                       Not sure when that crept in.  The contrast in the numerator was
+%                       being divided by sigma before being raised to the power n.  No idea why.
 
 % Extract parameter vector into meaningful variables
 if (length(params) == 2)
@@ -59,7 +62,7 @@ if (sigma < 0 || exponent < 0 || exponent1 < 0)
 else
 
     % Now pump the linear response through a non-linearity
-    expContrast = (contrast./sigma).^exponent;
+    expContrast = (contrast).^exponent;
     expContrast1 = contrast.^exponent1;
     sigma1 = sigma.^exponent1;
     response = A*(expContrast ./ (expContrast1 + sigma1));

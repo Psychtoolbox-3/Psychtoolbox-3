@@ -1135,6 +1135,43 @@ void InitPsychtoolboxKernelDriverInterface(void)
 
             // Query and assign GPU info:
             PsychOSKDGetGPUInfo(connect, numKernelDrivers);
+            
+            // Skip Intel gpu's, unless the PSYCH_ALLOW_DANGEROUS env variable is set:
+            // Intel IGP's have a design defect which can cause machine hard lockup if multiple
+            // regs are accessed simultaneously! As we can't serialize our MMIO reads with the
+            // kms-driver, using our MMIO code on Intel is unsafe. Horrible crashes are reported
+            // against Haswell on the freedesktop bug tracker for this issue.
+            if ((fDeviceType[numKernelDrivers] == kPsychIntelIGP) && !getenv("PSYCH_ALLOW_DANGEROUS")) {
+                if (PsychPrefStateGet_Verbosity() > 2) {
+                    printf("PTB-INFO: Disconnecting from kernel driver instance #%i for detected Intel GPU for safety reasons. setenv('PSYCH_ALLOW_DANGEROUS', '1') to override.\n", numKernelDrivers);
+                }
+
+                displayConnectHandles[numKernelDrivers] = IO_OBJECT_NULL;
+
+                // Call shutdown method:
+                kern_return_t kernResult = IOConnectMethodScalarIScalarO(connect, kMyUserClientClose, 0, 0);
+                if (kernResult == KERN_SUCCESS) {
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing was successfull.\n");
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing failed with kernel return code 0x%08x.\n\n", kernResult);
+                }
+                
+                // Close IOService:
+                kernResult = IOServiceClose(connect);
+                if (kernResult == KERN_SUCCESS) {
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose() was successfull.\n");
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose returned 0x%08x\n\n", kernResult);
+                }		
+                
+                connect = IO_OBJECT_NULL;
+                
+                // Closed connection to Intel-instance of the driver. Skip to beginning of
+                // enumeration loop to see if we get some alternative, e.g., discrete GPU:
+                continue;
+            }
 
             // Perform auto-detection of screen to head mappings:
             // Disabled - Does not work as expected, coded to a no-op if called: PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
@@ -1187,7 +1224,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
       activeGPU = atoi(getenv("PSYCH_USE_GPUIDX"));
       if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to use GPU number %i for low-level access during this session, as requested by usercode.\n", activeGPU);
     }
-    
+
 error_abort:
     
     // Release the io_iterator_t now that we're done with it.
@@ -1485,6 +1522,9 @@ int PsychOSKDGetBeamposition(int screenId)
         return(PsychOSKDGetBeamposition(screenId));
     }
 
+    // Catch still invalid values and map to "unsupported":
+    if (beampos > 16384) return(-1);
+    
 	// Apply corrective offsets if any (i.e., if non-zero):
 	PsychGetBeamposCorrection(screenId, &vblbias, &vbltotal);
 	beampos = beampos - vblbias;

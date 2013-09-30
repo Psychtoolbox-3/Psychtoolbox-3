@@ -581,7 +581,6 @@ PsychError SCREENGetImage(void)
                 glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, framepixels);
             }
 			if (PsychAddVideoFrameToMovie(moviehandle, frameduration, TRUE) != 0) {
-				printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
 				PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed with error above!");
 			}
 		}

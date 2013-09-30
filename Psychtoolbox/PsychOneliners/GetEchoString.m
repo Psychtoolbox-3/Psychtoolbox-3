@@ -59,7 +59,7 @@ end
 % Enable user defined alpha blending if a text background color is
 % specified. This makes text background colors actually work, e.g., on OSX:
 if ~isempty(bgColor)
-    oldalpha = Screen('Preference', 'TextAlphaBlending', 1);
+    oldalpha = Screen('Preference', 'TextAlphaBlending', 1-IsLinux);
 end
 
 if nargin < 5

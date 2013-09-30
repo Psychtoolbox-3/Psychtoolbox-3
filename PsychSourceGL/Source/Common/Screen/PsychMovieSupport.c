@@ -17,19 +17,9 @@
 
 		This is the master dispatcher. Function herein get called by
 		other parts of Psychtoolbox, most notably the SCREENxxx functions
-		for movie playback. It dispatches into either the QuickTime based
-		or GStreamer based implementations of the movie playback functions,
-		depending on OS/Availability/Chosen configuration.
-
-		On OS/X and Windows with 32-bit Matlab/Octave, usually Quicktime is
-		used as movie playback engine. If GStreamer is supported on that
-		platforms and enabled via Screen('Preference','OverrideMultimediaEngine', 1);
-		then GStreamer is used.
-
-		On all other platforms it is either GStreamer or nothing, as Quicktime
-		isn't supported. These platforms are Window and OS/X with 64-bit Matlab/Octave,
-		and Linux. As of 30.11.2010, only Linux is supported, 64-bit OS/X and
-		Windows are planned.
+		for movie playback.
+ 
+		On all platforms it is currently GStreamer or nothing.
 
 	NOTES:
 
@@ -37,60 +27,9 @@
 
 #include "Screen.h"
 
-#ifdef PSYCHQTAVAIL
-#include "PsychMovieSupportQuickTime.h"
-#endif
-
-// Detect if this is a 64-Bit build system:
-#if defined(__LP64__) || defined(_M_IA64) || defined(_WIN64)
-#define PSYCHOTHER64BIT 1
-#else
-#define PSYCHOTHER64BIT 0
-#endif
-
 #ifdef PTB_USE_GSTREAMER
 #include "PsychMovieSupportGStreamer.h"
-#define USE_GSTREAMER 1
-#else
-#define USE_GSTREAMER 0
 #endif
-
-static psych_bool firstTime = TRUE;
-static psych_bool doUsegs   = FALSE;
-
-static psych_bool usegs(void) {
-	// First invocation since module load time?
-	if (firstTime) {
-		// Yes. Need to probe which engine to use:
-		firstTime = FALSE;
-
-		// Default to Quicktime instead of GStreamer,
-		// override in detection code below if appropriate:
-		doUsegs = FALSE;
-
-		// We always use GStreamer if we are running on
-		// Linux, Windows, or 64-Bit builds on OS/X, as
-		// these systems only support GStreamer, but they
-		// support it consistently:
-		if ((PSYCH_SYSTEM == PSYCH_LINUX) || (PSYCH_SYSTEM == PSYCH_WINDOWS) || PSYCHOTHER64BIT) {
-			// Yep: Unconditionally use GStreamer:
-			doUsegs = TRUE;
-		} else {
-			// This is a 32-bit build on OS/X.
-			// We use GStreamer if it is supported and usercode
-			// wants to use it, according to preference setting:
-			if (USE_GSTREAMER && (PsychPrefStateGet_UseGStreamer()==1)) {
-				doUsegs = TRUE;
-			}
-		}
-        
-        // Signal use of GStreamer to userspace via preference setting:
-        if (doUsegs) PsychPrefStateSet_UseGStreamer(1);
-	}
-
-	// Return cached engine use flag:
-	return(doUsegs);
-}
 
 /*
  *     PsychMovieInit() -- Initialize movie subsystem.
@@ -105,26 +44,14 @@ void PsychMovieInit(void)
 	PsychGSMovieInit();
 	#endif
 
-	#ifdef PSYCHQTAVAIL
-	PsychQTMovieInit();
-	#endif
-
-	// Reset firstTime flag:
-	firstTime = TRUE;
 	return;
 }
 
 int PsychGetMovieCount(void)
 {
-	if (usegs()) {
 	#ifdef PTB_USE_GSTREAMER
 	return(PsychGSGetMovieCount());
 	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	return(PsychQTGetMovieCount());
-	#endif
-	}
 
 	return(0);
 }
@@ -138,7 +65,7 @@ int PsychGetMovieCount(void)
  *      Then it returns those info and terminates.
  *      -> By calling PsychCreateMovie from the run-function of a dedicated
  *      Posix-Thread which runs independent of the main Matlab/PTB Thread with
- *      non-realtime priority, we can do the work of opening a Quicktime movie
+ *      non-realtime priority, we can do the work of opening a movie
  *      in the background, hopefully not affecting the timing of the main PTB
  *      thread too much.
  */
@@ -172,7 +99,7 @@ void* PsychAsyncCreateMovie(void* inmovieinfo)
 /*
  *      PsychCreateMovie() -- Create a movie object.
  *
- *      This function tries to open a Quicktime-Moviefile and create an
+ *      This function tries to open a moviefile and create an
  *      associated movie object for it.
  *
  *      win = Pointer to window record of associated onscreen window.
@@ -181,17 +108,10 @@ void* PsychAsyncCreateMovie(void* inmovieinfo)
  */
 void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads)
 {
-    if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
-        PsychGSCreateMovie(win, moviename, preloadSecs, moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads);
-        return;
-        #endif
-    } else {
-        #ifdef PSYCHQTAVAIL
-        PsychQTCreateMovie(win, moviename, preloadSecs, moviehandle, specialFlags1);
-        return;
-        #endif
-    }
+    #ifdef PTB_USE_GSTREAMER
+    PsychGSCreateMovie(win, moviename, preloadSecs, moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads);
+    return;
+    #endif
 
     PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 }
@@ -210,20 +130,12 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
  */
 void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes, double* aspectRatio)
 {
-	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
-	PsychGSGetMovieInfos(moviehandle, width, height, framecount, durationsecs, framerate, nrdroppedframes, aspectRatio);
-	return;
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	PsychQTGetMovieInfos(moviehandle, width, height, framecount, durationsecs, framerate, nrdroppedframes);
-	if (aspectRatio) *aspectRatio = 1.0;
-	return;
-	#endif
-	}
+    #ifdef PTB_USE_GSTREAMER
+    PsychGSGetMovieInfos(moviehandle, width, height, framecount, durationsecs, framerate, nrdroppedframes, aspectRatio);
+    return;
+    #endif
 
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 }
 
 /*
@@ -231,17 +143,10 @@ void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecoun
  */
 void PsychDeleteMovie(int moviehandle)
 {
-	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
-	PsychGSDeleteMovie(moviehandle);
-	return;
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	PsychQTDeleteMovie(moviehandle);
-	return;
-	#endif
-	}
+    #ifdef PTB_USE_GSTREAMER
+    PsychGSDeleteMovie(moviehandle);
+    return;
+    #endif
 
 	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 }
@@ -251,19 +156,12 @@ void PsychDeleteMovie(int moviehandle)
  */
 void PsychDeleteAllMovies(void)
 {
-	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
-	PsychGSDeleteAllMovies();
-	return;
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	PsychQTDeleteAllMovies();
-	return;
-	#endif
-	}
+    #ifdef PTB_USE_GSTREAMER
+    PsychGSDeleteAllMovies();
+    return;
+    #endif
 
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 }
 
 /*
@@ -281,40 +179,27 @@ void PsychDeleteAllMovies(void)
  */
 int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp)
 {
-	if (usegs()) {
-	#ifdef PTB_USE_GSTREAMER
-	return(PsychGSGetTextureFromMovie(win, moviehandle, checkForImage, timeindex, out_texture, presentation_timestamp));
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	return(PsychQTGetTextureFromMovie(win, moviehandle, checkForImage, timeindex, out_texture, presentation_timestamp));
-	#endif
-	}
+    #ifdef PTB_USE_GSTREAMER
+    return(PsychGSGetTextureFromMovie(win, moviehandle, checkForImage, timeindex, out_texture, presentation_timestamp));
+    #endif
 
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
-	return(-1);
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+    return(-1);
 }
 
 /*
- *  PsychFreeMovieTexture() - Release texture memory for a Quicktime texture.
+ *  PsychFreeMovieTexture() - Release texture memory for a movie texture.
  *
  *  This routine is called by PsychDeleteTexture() in PsychTextureSupport.c
- *  It performs the special cleanup necessary for Quicktime created textures.
+ *  It performs the special cleanup necessary for movie cached textures.
  *
  */
 void PsychFreeMovieTexture(PsychWindowRecordType *win)
 {
-	if (usegs()) {
-	#ifdef PTB_USE_GSTREAMER
-	PsychGSFreeMovieTexture(win);
-	return;
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	PsychQTFreeMovieTexture(win);
-	return;
-	#endif
-	}
+    #ifdef PTB_USE_GSTREAMER
+    PsychGSFreeMovieTexture(win);
+    return;
+    #endif
 }
 
 /*
@@ -329,43 +214,29 @@ void PsychFreeMovieTexture(PsychWindowRecordType *win)
  */
 int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume)
 {
-	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
-	return(PsychGSPlaybackRate(moviehandle, playbackrate, loop, soundvolume));
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	return(PsychQTPlaybackRate(moviehandle, playbackrate, loop, soundvolume));
-	#endif
-	}
+    #ifdef PTB_USE_GSTREAMER
+    return(PsychGSPlaybackRate(moviehandle, playbackrate, loop, soundvolume));
+    #endif
 
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
-	return(0);
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+    return(0);
 }
 
 /*
  *  void PsychExitMovies() - Shutdown handler.
  *
  *  This routine is called by Screen('CloseAll') and on clear Screen time to
- *  do final cleanup. It deletes all Quicktime textures and releases all Quicktime
- *  movie objects. Then it shuts down the Quicktime subsystem.
+ *  do final cleanup. It deletes all textures and releases all movie objects.
+ *  Then it shuts down the movie subsystem.
  *
  */
 void PsychExitMovies(void)
 {
-	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
-	PsychGSExitMovies();
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	PsychQTExitMovies();
-	#endif
-	}
+    #ifdef PTB_USE_GSTREAMER
+    PsychGSExitMovies();
+    #endif
 
-	// Reset firstTime flag:
-	firstTime = TRUE;
-	return;
+    return;
 }
 
 /*
@@ -373,19 +244,12 @@ void PsychExitMovies(void)
  */
 double PsychGetMovieTimeIndex(int moviehandle)
 {
+    #ifdef PTB_USE_GSTREAMER
+    return(PsychGSGetMovieTimeIndex(moviehandle));
+    #endif
 
-	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
-	return(PsychGSGetMovieTimeIndex(moviehandle));
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	return(PsychQTGetMovieTimeIndex(moviehandle));
-	#endif
-	}
-
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
-	return(0.0);
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+    return(0.0);
 }
 
 /*
@@ -393,16 +257,10 @@ double PsychGetMovieTimeIndex(int moviehandle)
  */
 double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames)
 {
-	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
-	return(PsychGSSetMovieTimeIndex(moviehandle, timeindex, indexIsFrames));
-	#endif
-	} else {
-	#ifdef PSYCHQTAVAIL
-	return(PsychQTSetMovieTimeIndex(moviehandle, timeindex, indexIsFrames));
-	#endif
-	}
+    #ifdef PTB_USE_GSTREAMER
+    return(PsychGSSetMovieTimeIndex(moviehandle, timeindex, indexIsFrames));
+    #endif
 
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
-	return(0.0);
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+    return(0.0);
 }

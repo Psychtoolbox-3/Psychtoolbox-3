@@ -262,7 +262,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // Connect it to the chosen or default display device:
         if ((windowRecord->winsysType == WAFFLE_PLATFORM_GLX) || (windowRecord->winsysType == WAFFLE_PLATFORM_X11_EGL)) {
             // X11 backend: Use X11 display as specified by our Psychtoolbox screenId:
+            PsychLockDisplay();
             wdpy = waffle_display_connect(DisplayString(dpy));
+            PsychUnlockDisplay();
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Waffle to display '%s'.\n", DisplayString(dpy));
         }
         else {
@@ -441,11 +443,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     windowRecord->targetSpecific.privDpy = dpy;
 
     // XFixes extension version 2.0 or later available and initialized?
+    PsychLockDisplay();
     if (useX11 && XFixesQueryExtension(dpy, &xfixes_event_base1, &xfixes_event_base2) && XFixesQueryVersion(dpy, &major, &minor) && (major >= 2)) xfixes_available = TRUE;
     major = minor = 0;
+    PsychUnlockDisplay();
+
 
     if (useX11 && useGLX) {
         // Init GLX extension, get its version, determine if at least V1.3 supported:
+        PsychLockDisplay();
         useGLX13 = (glXQueryExtension(dpy, &glx_error_base, &glx_event_base) && glXQueryVersion(dpy, &major, &minor) && ((major > 1) || ((major == 1) && (minor >= 3))));
 
         // Initialze GLX-1.3 protocol support. Use if possible:
@@ -465,6 +471,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         } else {
             useGLX13 = TRUE;
         }
+        PsychUnlockDisplay();
     }
     else {
         // GLX backend not used, therefore also GLX-1.3 disabled:
@@ -586,6 +593,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Finalize attrib array:
     attrib[attribcount++] = 0;
 
+    PsychLockDisplay();
+
     // Choose waffle configuration for attrib's - the equivalent of
     // a pixelformat or framebuffer config in GLX speak:
     config = waffle_config_choose(wdpy, attrib);
@@ -670,6 +679,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (!config) {
         // Game over:
         if (PsychPrefStateGet_Verbosity() > 0) printf("\nPTB-ERROR[waffle_config_choose() failed]: Couldn't get any suitable visual from display backend.\n\n");
+        PsychUnlockDisplay();
         return (FALSE);
     }
 
@@ -767,6 +777,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if ((windowRecord->slaveWindow) && (windowRecord->slaveWindow->screenNumber != screenSettings->screenNumber)) {
         // Ohoh! Let's abort with some more helpful error message than a simple hard application crash:
         if (PsychPrefStateGet_Verbosity() > 0) printf("\nPTB-ERROR:[waffle_context_create() resource sharing] Our peer window resides on a different screen, which is forbidden. Aborting.\n\n");
+        PsychUnlockDisplay();
         return (FALSE);
     }
 
@@ -776,6 +787,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     ctx = waffle_context_create(config, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL));
     if (!ctx) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("\nPTB-ERROR:[waffle_context_create() failed] OpenGL context creation failed: %s\n\n", waffle_error_to_string(waffle_error_get_code()));
+        PsychUnlockDisplay();
         return (FALSE);
     }
 
@@ -797,6 +809,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     windowRecord->targetSpecific.glswapcontextObject = waffle_context_create(config, windowRecord->targetSpecific.contextObject);
     if (windowRecord->targetSpecific.glswapcontextObject == NULL) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("\nPTB-ERROR[SwapContextCreation failed]: Creating a private OpenGL context for async flips failed for unknown reasons.\n\n");
+        PsychUnlockDisplay();
         return (FALSE);
     }
 
@@ -811,6 +824,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         windowRecord->targetSpecific.glusercontextObject = waffle_context_create(config, windowRecord->targetSpecific.contextObject);
         if (windowRecord->targetSpecific.glusercontextObject == NULL) {
             if (PsychPrefStateGet_Verbosity() > 0) printf("\nPTB-ERROR[UserContextCreation failed]: Creating a private OpenGL context for MOGL failed for unknown reasons.\n\n");
+            PsychUnlockDisplay();
             return (FALSE);
         }
     }
@@ -990,7 +1004,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (GLEW_OK != glerr) {
         /* Problem: glewInit failed, something is seriously wrong. */
         if (PsychPrefStateGet_Verbosity() > 0) printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n", glewGetErrorString(glerr));
-        fflush(NULL);
     } else {
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
     }
@@ -1020,7 +1033,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
         printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
     }
-    fflush(NULL);
 
     // Check for availability of VSYNC extension:
     if (useX11 && useGLX) {
@@ -1062,24 +1074,27 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
                 printf("PTB-WARNING: dependent on the type of gfx-card and driver. Google is your friend...\n");
             }
         }
-        fflush(NULL);
     }
     else if (!egl_display && !useGLX && (PsychPrefStateGet_Verbosity() > 1)) {
         printf("PTB-WARNING: The current display backend does not allow me to control synchronization of bufferswap to vertical retrace.\n"); 
     }
 
-    // First opened onscreen window? If so, we try to map GPU MMIO registers
-    // to enable beamposition based timestamping and other special goodies:
-    if (open_windowcount == 1) PsychScreenMapRadeonCntlMemory();
+    // Wait for X-Server to settle...
+    if (useX11) XSync(dpy, False);
+
+    PsychUnlockDisplay();
 
     // Ok, we should be ready for OS independent setup...
     fflush(NULL);
 
-    // Wait for X-Server to settle...
-    if (useX11) XSync(dpy, False);
+    // First opened onscreen window? If so, we try to map GPU MMIO registers
+    // to enable beamposition based timestamping and other special goodies:
+    if (open_windowcount == 1) PsychScreenMapRadeonCntlMemory();
 
     // Wait 250 msecs extra to give desktop compositor a chance to settle:
     PsychYieldIntervalSeconds(0.25);
+
+    PsychLockDisplay();
 
     // Retrieve modeline of current video mode on primary crtc for the screen to which
     // this onscreen window is assigned. Could also query useful info about crtc, but let's not
@@ -1109,12 +1124,20 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     if (useX11) XSync(dpy, False);
 
+    PsychUnlockDisplay();
+
     // Try to enable swap event delivery to us:
     if (PsychOSSwapCompletionLogging(windowRecord, 2, 0) && (PsychPrefStateGet_Verbosity() > 3)) {
         printf("PTB-INFO: INTEL_swap_event support for additional swap completion correctness checks enabled.\n");
     }
 
-    if (useX11) XSync(dpy, False);
+    if (useX11) {
+        PsychLockDisplay();
+        XSync(dpy, False);
+        PsychUnlockDisplay();
+    }
+
+    // Display unlocked from here on...
 
     // OpenGL-ES bindings needed?
     if (PsychIsGLES(windowRecord)) {
@@ -1244,27 +1267,7 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
 {
     Display *dpy = windowRecord->targetSpecific.privDpy;
 
-    // Check if we are trying to close the window after it had an "odd" (== non-even)
-    // number of bufferswaps. If so, we execute one last bufferswap to make the count
-    // even. This means that if this window was swapped via page-flipping, the system
-    // should end with the same backbuffer-frontbuffer assignment as the one prior
-    // to opening the window. This may help sidestep certain bugs in compositing desktop
-    // managers (e.g., Compiz).
-    /*    if (PsychOSGetPostSwapSBC(windowRecord) % 2) {
-        // Uneven count. Submit a swapbuffers request and wait for it to truly finish:
-
-        // We have to rebind the OpenGL context for this swapbuffers call to work around some
-        // mesa bug for intel drivers which would cause a crash without context:
-        glXMakeCurrent(dpy, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
-
-        PsychOSFlipWindowBuffers(windowRecord);
-        PsychOSGetPostSwapSBC(windowRecord);
-    }
-
-    if (PsychPrefStateGet_Verbosity() > 5) {
-        printf("PTB-DEBUG:PsychOSCloseWindow: Closing with a final swapbuffers count of %i.\n", (int)PsychOSGetPostSwapSBC(windowRecord));
-    }
-    */
+    PsychLockDisplay();
 
     if (useX11) XSync(dpy, False);
 
@@ -1291,12 +1294,16 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
     windowRecord->targetSpecific.windowHandle = 0;
     windowRecord->targetSpecific.xwindowHandle = 0;
 
+    PsychUnlockDisplay();
+
     // Decrement global count of open onscreen windows:
     open_windowcount--;
 
     // Was this the last window?
     if (open_windowcount <= 0) {
         open_windowcount = 0;
+
+        PsychLockDisplay();
 
         // Release our shared waffle display connection:
         waffle_display_disconnect(windowRecord->targetSpecific.deviceContext);
@@ -1307,6 +1314,8 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
         if (useX11) XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
+
+        PsychUnlockDisplay();
 
         // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
         PsychScreenUnmapDeviceMemory();
@@ -1430,7 +1439,10 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     PsychExecuteBufferSwapPrefix(windowRecord);
 
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
+    PsychLockDisplay();
     waffle_window_swap_buffers(windowRecord->targetSpecific.windowHandle);
+    PsychUnlockDisplay();
+
     windowRecord->target_sbc = 0;
 
     return;
@@ -1446,6 +1458,8 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 
     // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
     windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
+
+    PsychLockDisplay();
 
     // Classix X11/GLX?
     if (useGLX) {
@@ -1481,6 +1495,8 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
         }
     }
 
+    PsychUnlockDisplay();
+
     return;
 }
 
@@ -1504,6 +1520,8 @@ void PsychOSSetGLContext(PsychWindowRecordType * windowRecord)
             if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
         }
 
+        PsychLockDisplay();
+
         if (useX11) XSync(windowRecord->targetSpecific.privDpy, False);
 
         // Switch to new context: Skip surface bind if forbidden by higher-level code, e.g., for multi-threaded EGL use.
@@ -1516,6 +1534,8 @@ void PsychOSSetGLContext(PsychWindowRecordType * windowRecord)
             // Update context tracking:
             currentContext = windowRecord->targetSpecific.contextObject;
         }
+
+        PsychUnlockDisplay();
     }
 
     return;
@@ -1541,10 +1561,12 @@ void PsychOSUnsetGLContext(PsychWindowRecordType * windowRecord)
         currentContext = NULL;
     }
 
+    PsychLockDisplay();
     if (useX11) XSync(windowRecord->targetSpecific.privDpy, False);
 
     // Detach context:
     waffle_make_current(windowRecord->targetSpecific.deviceContext, NULL, NULL);
+    PsychUnlockDisplay();
 
     return;
 }
@@ -1563,6 +1585,7 @@ void PsychOSSetUserGLContext(PsychWindowRecordType * windowRecord, psych_bool co
     // glBindFrameBufferEXT(0) calls without switching away from context -- something
     // that would completely mess up imaging pipeline state!
     if (currentContext != windowRecord->targetSpecific.glusercontextObject) {
+        PsychLockDisplay();
 
         if (useX11) XSync(windowRecord->targetSpecific.privDpy, False);
 
@@ -1581,6 +1604,8 @@ void PsychOSSetUserGLContext(PsychWindowRecordType * windowRecord, psych_bool co
             // Update context tracking:
             currentContext = windowRecord->targetSpecific.glusercontextObject;
         }
+
+        PsychUnlockDisplay();
     }
 
     return;
@@ -1617,4 +1642,3 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 
 /* End of PTB_USE_WAFFLE */
 #endif
-
