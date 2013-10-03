@@ -96,10 +96,19 @@ static psych_threadid	masterthread = (psych_threadid) NULL;
 // Count of currently async-flipping onscreen windows:
 static unsigned int	asyncFlipOpsActive = 0;
 
+// Count of onscreen windows which have our own threaded frameseq stereo implementation active:
+static unsigned int frameSeqStereoActive = 0;
+
 // Return count of currently async-flipping onscreen windows:
 unsigned int PsychGetNrAsyncFlipsActive(void)
 {
 	return(asyncFlipOpsActive);
+}
+
+// Return count of currently frameseq stereo threaded onscreen windows:
+unsigned int PsychGetNrFrameSeqStereoWindowsActive(void)
+{
+    return(frameSeqStereoActive);
 }
 
 psych_bool PsychIsMasterThread(void)
@@ -889,8 +898,14 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // First we query what the OS thinks is our monitor refresh interval:
     if (PsychGetNominalFramerate(screenSettings->screenNumber) > 0) {
         // Valid nominal framerate returned by OS: Calculate nominal IFI from it.
-        ifi_nominal = 1.0 / ((double) PsychGetNominalFramerate(screenSettings->screenNumber));        
+        ifi_nominal = 1.0 / ((double) PsychGetNominalFramerate(screenSettings->screenNumber));
     }
+
+    // Make sure the lockedflush workaround is applied before we first touch
+    // the framebuffer of this brand new onscreen window for real via the
+    // glClear() call sequence below. The assumption is that the first access
+    // to the drawable will also trigger a X11 roundtrip for fb validation:
+    PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
     // This is pure eye-candy: We clear both framebuffers to a background color,
     // just to get rid of the junk that's in the framebuffers.
@@ -925,13 +940,22 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
         PsychOSFlipWindowBuffers(*windowRecord);
 
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
-        PsychOSFlipWindowBuffers(*windowRecord);
+        // Protect against multi-threading trouble if needed:
+        PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         glClear(GL_COLOR_BUFFER_BIT);
         if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
         PsychOSFlipWindowBuffers(*windowRecord);
+
+        // Protect against multi-threading trouble if needed:
+        PsychLockedTouchFramebufferIfNeeded(*windowRecord);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+        PsychOSFlipWindowBuffers(*windowRecord);
+
+        // Protect against multi-threading trouble if needed:
+        PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         // We do it again for right backbuffer to clear possible stereo-contexts as well...
         if ((*windowRecord)->stereomode==kPsychOpenGLStereo) {
@@ -939,13 +963,24 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             glClear(GL_COLOR_BUFFER_BIT);
             if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
             PsychOSFlipWindowBuffers(*windowRecord);
+
+            // Protect against multi-threading trouble if needed:
+            PsychLockedTouchFramebufferIfNeeded(*windowRecord);
+
             glClear(GL_COLOR_BUFFER_BIT);
             if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
             PsychOSFlipWindowBuffers(*windowRecord);
+
+            // Protect against multi-threading trouble if needed:
+            PsychLockedTouchFramebufferIfNeeded(*windowRecord);
+
             glClear(GL_COLOR_BUFFER_BIT);
             if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
             PsychOSFlipWindowBuffers(*windowRecord);
-        }    
+
+            // Protect against multi-threading trouble if needed:
+            PsychLockedTouchFramebufferIfNeeded(*windowRecord);
+        }
 
         glPixelZoom(1, 1);
         glDrawBuffer(GL_BACK);
@@ -996,13 +1031,22 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
         PsychOSFlipWindowBuffers(*windowRecord);
 
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
-        PsychOSFlipWindowBuffers(*windowRecord);
+        // Protect against multi-threading trouble if needed:
+        PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         glClear(GL_COLOR_BUFFER_BIT);
         if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
         PsychOSFlipWindowBuffers(*windowRecord);
+
+        // Protect against multi-threading trouble if needed:
+        PsychLockedTouchFramebufferIfNeeded(*windowRecord);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
+        PsychOSFlipWindowBuffers(*windowRecord);
+
+        // Protect against multi-threading trouble if needed:
+        PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         // Done. Delete splash-image texture:
         PsychFreeTextureForWindowRecord(textureRecord);
@@ -1770,11 +1814,15 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 
 				// Execute hook chain for final non-OpenGL related shutdown:
 				PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPostGLShutdown, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
-				
+
+                // Reduce count of onscreen windows with our own threaded framesequential stereo mode active:
+                if (windowRecord->stereomode == kPsychFrameSequentialStereo) frameSeqStereoActive--;
+
 				// If this was the last onscreen window then we reset the currentRendertarget etc. to pre-Screen load time:
 				if (PsychIsLastOnscreenWindow(windowRecord)) {
 					currentRendertarget = NULL;
 					asyncFlipOpsActive = 0;
+                    frameSeqStereoActive = 0;
 				}
     }
     else if(windowRecord->windowType==kPsychTexture) {
@@ -1914,6 +1962,10 @@ void PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord)
 				flipRequest->opmode = 2;
 				recursionlevel++;
 				PsychFlipWindowBuffersIndirect(windowRecord);
+
+                // Protect against multi-threading trouble if needed:
+                PsychLockedTouchFramebufferIfNeeded(windowRecord);
+
 				recursionlevel--;
 			}
 			else {
@@ -2330,6 +2382,9 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 				// Trigger a doublebuffer swap in sync with vblank:
 				PsychOSFlipWindowBuffers(windowRecord);
 
+                // Protect against multi-threading trouble if needed:
+                PsychLockedTouchFramebufferIfNeeded(windowRecord);
+
 				if (PsychPrefStateGet_Verbosity() > 10) {
 					printf("PTB-DEBUG: Idle-Swap tnow = %f >= deadline = %f  delta = %f  [lastvbl = %f]\n", tnow, lastvbl, tnow - lastvbl, windowRecord->time_at_last_vbl);
 				}
@@ -2338,7 +2393,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 				if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &(windowRecord->time_at_last_vbl)) > 0))) {
 					// OpenML swap completion timestamping unsupported, disabled, or failed.
 					// Use our standard trick instead.
-                    PsychWaitPixelSyncToken(windowRecord);
+					PsychWaitPixelSyncToken(windowRecord, FALSE);
 					PsychGetAdjustedPrecisionTimerSeconds(&(windowRecord->time_at_last_vbl));
 				}
 
@@ -2526,6 +2581,9 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			// Set initial thread state to "inactive, not initialized at all":
 			flipRequest->flipperState = 0;
 			
+            // Increment count of onscreen windows with our own threaded framesequential stereo mode active, if this is such a window:
+            if (windowRecord->stereomode == kPsychFrameSequentialStereo) frameSeqStereoActive++;
+
 			// Create and startup thread:
 			if ((rc=PsychCreateThread(&(flipRequest->flipperThread), NULL, PsychFlipperThreadMain, (void*) windowRecord))) {
 				printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): Could not create flipper  [%s].\n", strerror(rc));
@@ -3291,6 +3349,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
 		  PsychSetGLContext(windowRecord->slaveWindow);
 		  PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
+
+          // Protect against multi-threading trouble if needed:
+          PsychLockedTouchFramebufferIfNeeded(windowRecord->slaveWindow);
+
 		  PsychSetGLContext(windowRecord);
 		}
 
@@ -3303,6 +3365,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
 				  PsychSetGLContext(windowRecordArray[i]);
 				  PsychOSFlipWindowBuffers(windowRecordArray[i]);
+
+                  // Protect against multi-threading trouble if needed:
+                  PsychLockedTouchFramebufferIfNeeded(windowRecordArray[i]);
 				}
 			}
 			PsychSetGLContext(windowRecord);
@@ -3318,7 +3383,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	// Store timestamp of swaprequest submission:
 	windowRecord->time_at_swaprequest = time_at_swaprequest;
 	windowRecord->time_post_swaprequest = time_post_swaprequest;
-	
+
+    // Protect against multi-threading trouble if needed:
+    PsychLockedTouchFramebufferIfNeeded(windowRecord);
+
     // Pause execution of application until start of VBL, if requested:
     if (sync_to_vbl) {
 		// Init tSwapComplete to undefined:
@@ -3365,7 +3433,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
 				// We draw our single pixel with an alpha-value of zero - so effectively it doesn't
 				// change the color buffer - just the z-buffer if z-writes are enabled...
-                PsychWaitPixelSyncToken(windowRecord);
+				PsychWaitPixelSyncToken(windowRecord, FALSE);
 			}
 			
             #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -3429,6 +3497,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
 				  PsychSetGLContext(windowRecordArray[i]);
 				  PsychOSFlipWindowBuffers(windowRecordArray[i]);
+                  PsychLockedTouchFramebufferIfNeeded(windowRecordArray[i]);
 				}
 			}
 			// Restore to our context:
@@ -4137,7 +4206,10 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 		
 		// Schedule a buffer-swap on next VBL:
 		PsychOSFlipWindowBuffers(windowRecord);
-		
+
+        // Protect against multi-threading trouble if needed:
+        PsychLockedTouchFramebufferIfNeeded(windowRecord);
+
         // Take samples during consecutive refresh intervals:
         // We measure until either:
         // - A maximum measurment time of maxsecs seconds has elapsed... (This is the emergency switch to prevent infinite loops).
@@ -4146,12 +4218,15 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             // Schedule a buffer-swap on next VBL:
             PsychOSFlipWindowBuffers(windowRecord);
 
+            // Protect against multi-threading trouble if needed:
+            PsychLockedTouchFramebufferIfNeeded(windowRecord);
+
             if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tnew) > 0))) {
                 // OpenML swap completion timestamping unsupported, disabled, or failed.
                 // Use our standard trick instead.
 
                 // Wait for it, aka VBL start: See PsychFlipWindowBuffers for explanation...
-                PsychWaitPixelSyncToken(windowRecord);
+                PsychWaitPixelSyncToken(windowRecord, FALSE);
 
                 // At this point, start of VBL has happened and we can continue execution...
                 // We take our timestamp here:
@@ -4348,10 +4423,16 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT);
     PsychOSFlipWindowBuffers(windowRecord);
+    // Protect against multi-threading trouble if needed:
+    PsychLockedTouchFramebufferIfNeeded(windowRecord);
     glClear(GL_COLOR_BUFFER_BIT);
     PsychOSFlipWindowBuffers(windowRecord);
+    // Protect against multi-threading trouble if needed:
+    PsychLockedTouchFramebufferIfNeeded(windowRecord);
     glClear(GL_COLOR_BUFFER_BIT);
     PsychOSFlipWindowBuffers(windowRecord);
+    // Protect against multi-threading trouble if needed:
+    PsychLockedTouchFramebufferIfNeeded(windowRecord);
     
     if (belltype==3) {
         // Test-Sheet mode: Need smaller warning triangle...
@@ -4422,10 +4503,13 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         
         // Initiate back-front buffer flip:
         PsychOSFlipWindowBuffers(windowRecord);
-        
+
+        // Protect against multi-threading trouble if needed:
+        PsychLockedTouchFramebufferIfNeeded(windowRecord);
+
         // Our old VBL-Sync trick again... We need sync to VBL to visually check if
         // beamposition is locked to VBL:
-        PsychWaitPixelSyncToken(windowRecord);
+        PsychWaitPixelSyncToken(windowRecord, FALSE);
 
         // Query and visualize scanline immediately after VBL onset, aka return of glFinish();
         scanline = (float) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);    
@@ -5873,27 +5957,67 @@ int PsychSetShader(PsychWindowRecordType *windowRecord, int shader)
  */
 void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 {
-	psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
-	
-	psych_bool nvidia = FALSE;
-	psych_bool ati = FALSE;
-	psych_bool intel = FALSE;
+    psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
+
+    psych_bool nvidia = FALSE;
+    psych_bool ati = FALSE;
+    psych_bool intel = FALSE;
     psych_bool llvmpipe = FALSE;
-	GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
-	GLboolean nativeStereo = FALSE;
+    GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
+    GLboolean nativeStereo = FALSE;
 
-	// Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
-	// so use at most 7 letters!
-	memset(&(windowRecord->gpuCoreId[0]), 0, 8);
+    // Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
+    // so use at most 7 letters!
+    memset(&(windowRecord->gpuCoreId[0]), 0, 8);
 
-	if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
-	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
-	if (strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") || strstr((char*) glGetString(GL_RENDERER), "Intel")) { intel = TRUE; sprintf(windowRecord->gpuCoreId, "Intel"); }
-	if (strstr((char*) glGetString(GL_VENDOR), "VMware") || strstr((char*) glGetString(GL_RENDERER), "llvmpipe")) { llvmpipe = TRUE; sprintf(windowRecord->gpuCoreId, "gllvm"); }
+    if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) {
+        ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100");
+    }
+    
+    if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau")) {
+        nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10");
+    }
+    
+    if (strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") || strstr((char*) glGetString(GL_RENDERER), "Intel")) {
+        intel = TRUE; sprintf(windowRecord->gpuCoreId, "Intel");
+    }
+    
+    if (strstr((char*) glGetString(GL_VENDOR), "VMware") || strstr((char*) glGetString(GL_RENDERER), "llvmpipe")) {
+        llvmpipe = TRUE; sprintf(windowRecord->gpuCoreId, "gllvm");
+    }
 
-	// Detection code for Linux DRI driver stack with ATI GPU:
-	if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
+    // Detection code for Linux DRI driver stack with ATI GPU:
+    if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) {
+        ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100");
+    }
 	
+    // Check if this is an open-source (Mesa/Gallium) graphics driver on Linux with X11
+    // backend in use. If so, we must emit a single pixel write into the backbuffer, followed
+    // by a pipeline glFlush after each scheduled double-buffer swap, all protected by the
+    // display lock. Why? Because each scheduled/pending bufferswap invalidates the drawable
+    // of the associated onscreen window, so the first write or read of the system framebuffer
+    // after a scheduled swap will require a buffer revalidation, which will require a roundtrip
+    // to the X-Server via our shared X11 x-display connection. Any operation on this connection
+    // must be lock protected for thread-safety. We normally wouldn't know when the first access
+    // to the framebuffer happens after swap and we can't lock-protect everything, so we intentionally
+    // do a dummy-write immediately after each swap, under lock protection, so we know this revalidation
+    // roundtrip will happen under proper lock protection. Without this, we'd get crashes on the
+    // FOSS drivers. This hack is probably not needed on other non-X11 display backends. It is definitely
+    // not needed with the NVidia proprietary drivers, as they do their buffer revalidation without
+    // involvement of the X11 protocol. The situation with AMD Catalyst is unknown.
+    //
+    // So the rules are: If this onscreen window is using a X11 display connection for its operation
+    // and the graphics driver is not in a white-list of known multithread-safe drivers (ie., it is
+    // not the NVidia binary blob), we assume locking is required after each scheduled swap:
+    if (windowRecord->specialflags & kPsychIsX11Window) {
+        // X11 display backend in use. Lock-protect unless it is the white-listed NVidia blob:
+        if (!strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
+            // Driver requires locked framebuffer dummy-write + flush:
+            windowRecord->specialflags |= kPsychNeedPostSwapLockedFlush;
+            if (verbose) printf("PTB-DEBUG: Linux X11 backend with FOSS drivers - Enabling locked pixeltoken-write + flush workaround for XLib thread-safety.\n");
+        }
+    }
+
 	while (glGetError());
 	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
 	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &maxcolattachments);
@@ -6360,4 +6484,47 @@ int	PsychFindFreeSwapGroupId(int maxGroupId)
 	PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
 	
 	return(rc);
+}
+
+/* Make sure the lockedflush workaround is applied before we first touch
+ * the framebuffer of this brand new onscreen window for real via the
+ * glClear() call sequence below. The assumption is that the first access
+ * to the drawable will also trigger a X11 roundtrip for fb validation:
+ *
+ */
+void PsychLockedTouchFramebufferIfNeeded(PsychWindowRecordType *windowRecord)
+{
+    // Is this workaround needed at all to avoid multi-threading corruption on the
+    // shared x-display connection?
+    // If so, is it needed now? It is needed if there is any chance a parallel background flipper
+    // thread is active and executing at this moment, ie. if any of this is true:
+    // a) We are executing on a flipper thread, ie., not the master thread.
+    // b) Any async flips ops are active on any window.
+    // c) Any framesequential stereo flipping threads are active on any window.
+    if ((windowRecord->specialflags & kPsychNeedPostSwapLockedFlush) &&
+        (!PsychIsMasterThread() || (PsychGetNrAsyncFlipsActive() > 0) || (PsychGetNrFrameSeqStereoWindowsActive() > 0))
+        ) {
+        // Workaround needed.
+
+        // Try to wait for double-buffer swap completion in a non-blocking way, if this is supported,
+        // e.g., via OpenML OML_sync_control extension. Calling with a (0, NULL) pair will just wait
+        // for swap completion in a poll-waiting way without blocking the x-connection much. The
+        // function will fall-through and noop if OpenML is unsupported or broken.
+        PsychOSGetSwapCompletionTimestamp(windowRecord, 0, NULL);
+
+        if (PsychPrefStateGet_Verbosity() > 15) {
+            printf("PTB-DEBUG: PsychLockedTouchFramebufferIfNeeded()! isMaster = %i   AsyncFlips = %i   StereoWindows = %i\n",
+                   PsychIsMasterThread(), PsychGetNrAsyncFlipsActive(), PsychGetNrFrameSeqStereoWindowsActive());
+            fflush(NULL);
+        }
+
+        // Touch the framebuffer for framebuffer revalidation roundtrip to X-Server,
+        // with the display lock held, to make future access to this onscreen windows
+        // framebuffer thread-safe on XLib:
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+        PsychLockDisplay();
+        PsychWaitPixelSyncToken(windowRecord, TRUE);
+        PsychUnlockDisplay();
+        #endif
+    }
 }
