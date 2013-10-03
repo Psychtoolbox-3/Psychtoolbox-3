@@ -1439,6 +1439,7 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     PsychExecuteBufferSwapPrefix(windowRecord);
 
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
+    // This must be lock-protected for use with X11/XLib.
     PsychLockDisplay();
     waffle_window_swap_buffers(windowRecord->targetSpecific.windowHandle);
     PsychUnlockDisplay();

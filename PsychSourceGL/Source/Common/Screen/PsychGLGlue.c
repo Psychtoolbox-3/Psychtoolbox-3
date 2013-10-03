@@ -633,8 +633,11 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
  * systems where we don't have better system-provided timestamping and syncing
  * methods. This needs different implementations on classic OpenGL vs. non-
  * immediate mode OpenGL.
+ *
+ * A 'flushOnly' flag of TRUE will only flush, not wait.
+ *
  */
-void PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord)
+void PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord, psych_bool flushOnly)
 {
     // Classic desktop OpenGL in use?
     if (PsychIsGLClassic(windowRecord)) {
@@ -643,7 +646,6 @@ void PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord)
         glColor4f(0, 0, 0, 0);
         glVertex2i(10, 10);
         glEnd();
-        glFinish();
     }
     else {
         // No. Avoid immediate mode functions, they won't work:
@@ -652,8 +654,19 @@ void PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord)
         glEnableClientState(GL_VERTEX_ARRAY);
         glDrawArrays(GL_POINTS, 0, 1);
         glDisableClientState(GL_VERTEX_ARRAY);
+    }
+
+    // flushOnly flag - Don't wait for write to happen, just flush it:
+    if (!flushOnly) {
+        // Wait for write completion - Used for sync and timestamping:
         glFinish();
     }
+    else {
+        // Only flush:
+        glFlush();
+    }
+
+    if (flushOnly && (PsychPrefStateGet_Verbosity() > 15)) printf("PTB-DEBUG: PixelSyncToken write + glFlush().\n");
 }
 
 GLenum PsychGLFloatType(PsychWindowRecordType *windowRecord)

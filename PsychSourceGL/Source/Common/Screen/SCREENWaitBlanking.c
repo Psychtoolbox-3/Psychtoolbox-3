@@ -238,9 +238,12 @@ PsychError SCREENWaitBlanking(void)
             
             // Trigger bufferswap in sync with retrace:
             PsychOSFlipWindowBuffers(windowRecord);
-            
+
+            // Protect against multi-threading trouble if needed:
+            PsychLockedTouchFramebufferIfNeeded(windowRecord);
+
             // Wait for swap-completion, aka beginning of VBL:
-            PsychWaitPixelSyncToken(windowRecord);
+            PsychWaitPixelSyncToken(windowRecord, FALSE);
             
             // VBL happened - Take system timestamp:
             PsychGetAdjustedPrecisionTimerSeconds(&tvbl);
@@ -251,6 +254,9 @@ PsychError SCREENWaitBlanking(void)
                 PsychOSSetVBLSyncLevel(windowRecord, 0);                
                 // Swap buffers immediately without vsync:
                 PsychOSFlipWindowBuffers(windowRecord);
+
+                // Protect against multi-threading trouble if needed:
+                PsychLockedTouchFramebufferIfNeeded(windowRecord);
             }
             
             // Decrement remaining number of frames to wait:

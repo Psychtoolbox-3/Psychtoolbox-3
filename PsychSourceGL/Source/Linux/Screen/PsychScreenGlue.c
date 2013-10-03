@@ -335,8 +335,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 {
 	struct pci_device_iterator *iter;
 	struct pci_device *dev;
-	struct pci_mem_region *region;
-	int ret;
+	struct pci_mem_region *region = NULL;
+	int ret = 0;
 	int screenId = 0;
 	int currentgpuidx = 0, targetgpuidx = -1;
 
@@ -481,14 +481,22 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			fNumDisplayHeads = 3;
 		}
 
-		// Try to MMAP MMIO registers with write access, assign their base address to gfx_cntl_mem on success:
-		if (PsychPrefStateGet_Verbosity() > 4) {
-			printf("PTB-DEBUG: Mapping GPU BAR address %p ...\n", region->base_addr);
-			printf("PTB-DEBUG: Mapping %p bytes...\n", region->size);
-			fflush(NULL);
-		}
-
-		ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);		
+        if (region) {
+            // Try to MMAP MMIO registers with write access, assign their base address to gfx_cntl_mem on success:
+            if (PsychPrefStateGet_Verbosity() > 4) {
+                printf("PTB-DEBUG: Mapping GPU BAR address %p ...\n", region->base_addr);
+                printf("PTB-DEBUG: Mapping %p bytes...\n", region->size);
+                fflush(NULL);
+            }
+            
+            ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);
+        }
+        else {
+            // Unsupported GPU type:
+            gfx_cntl_mem = NULL;
+            ret = 0;
+        }
+        
 		if (ret || (NULL == gfx_cntl_mem)) {
 			if (PsychPrefStateGet_Verbosity() > 1) {
 				printf("PTB-INFO: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
@@ -687,14 +695,28 @@ void InitPsychtoolboxKernelDriverInterface(void);
  * rather sparse documentation available...
  */
 psych_mutex displayLock;
+double tLockDisplay;
 
 void PsychLockDisplay(void)
 {
     PsychLockMutex(&displayLock);
+    
+    if (PsychPrefStateGet_Verbosity() > 15) {
+        printf("PTB-DEBUG: PsychLockDisplay(): Display locked!\n");
+        fflush(NULL);
+        PsychGetAdjustedPrecisionTimerSeconds(&tLockDisplay);
+    }
 }
 
 void PsychUnlockDisplay(void)
 {
+    if (PsychPrefStateGet_Verbosity() > 15) {
+        double tUnlockDisplay;
+        PsychGetAdjustedPrecisionTimerSeconds(&tUnlockDisplay);
+        printf("PTB-DEBUG: PsychUnlockDisplay(): Display unlocked! Lock hold time was %f msecs.\n", 1000 * (tUnlockDisplay - tLockDisplay));
+        fflush(NULL);
+    }
+
     PsychUnlockMutex(&displayLock);
 }
 
@@ -1304,7 +1326,7 @@ int PsychGetNumDisplays(void)
 
 void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 {
-  int* x11_depths;
+  int* x11_depths = NULL;
   int  i, count = 0;
 
   if(screenNumber>=numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
@@ -1319,7 +1341,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 
   PsychUnlockDisplay();
 
-  if (depths && count > 0) {
+  if (x11_depths && depths && count > 0) {
     // Query successful: Add all values to depth struct:
     for(i=0; i<count; i++) PsychAddValueToDepthStruct(x11_depths[i], depths);
     XFree(x11_depths);
@@ -1384,6 +1406,8 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
       numPossibleModes += nrates;
     }
 
+    PsychUnlockDisplay();
+
     // Allocate output arrays: These will get auto-released at exit from Screen():
     *widths  = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
     *heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
@@ -1393,17 +1417,17 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
     // Reiterate and fill all slots:
     numPossibleModes = 0;
     for (i = 0; i < nsizes; i++) {
-      short* rates = XRRRates(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), i, &nrates);
-      for (j = 0; j < nrates; j++) {
-        (*widths)[numPossibleModes]  = (long) scs[i].width;
-	(*heights)[numPossibleModes] = (long) scs[i].height;
-	(*hz)[numPossibleModes]      = (long) rates[j];
-	(*bpp)[numPossibleModes]     = (long) PsychGetScreenDepthValue(screenNumber);
-	numPossibleModes++;
-      }
+        PsychLockDisplay();
+        short* rates = XRRRates(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), i, &nrates);
+        PsychUnlockDisplay();
+        for (j = 0; j < nrates; j++) {
+            (*widths)[numPossibleModes]  = (long) scs[i].width;
+            (*heights)[numPossibleModes] = (long) scs[i].height;
+            (*hz)[numPossibleModes]      = (long) rates[j];
+            (*bpp)[numPossibleModes]     = (long) PsychGetScreenDepthValue(screenNumber);
+            numPossibleModes++;
+        }
     }
-
-    PsychUnlockDisplay();
 
     // Done:
     return(numPossibleModes);

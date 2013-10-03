@@ -64,7 +64,9 @@ int	PsychGetCurrentShader(PsychWindowRecordType *windowRecord);
 void	PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendertarget);
 int	PsychFindFreeSwapGroupId(int maxGroupId);
 unsigned int PsychGetNrAsyncFlipsActive(void);
+unsigned int PsychGetNrFrameSeqStereoWindowsActive(void);
 psych_bool PsychIsMasterThread(void);
+void PsychLockedTouchFramebufferIfNeeded(PsychWindowRecordType *windowRecord);
 
 //end include once
 #endif

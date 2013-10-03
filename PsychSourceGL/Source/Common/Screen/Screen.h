@@ -112,7 +112,7 @@ char		*PsychGetGLErrorNameString(GLenum errorConstant);
 void		PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName);
 GLdouble	*PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdouble *vertex);
 void		PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos, int* coords_count, double** xy, int colors_pos, int* colors_count, int* colorcomponent_count, double** colors, unsigned char** bytecolors, int sizes_pos, int* sizes_count, double** size, psych_bool usefloat);
-void		PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord);
+void		PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord, psych_bool flushOnly);
 psych_bool	PsychIsGLClassic(PsychWindowRecordType *windowRecord);
 GLenum		PsychGLFloatType(PsychWindowRecordType *windowRecord);
 #define PSYCHGLFLOAT PsychGLFloatType(windowRecord)
