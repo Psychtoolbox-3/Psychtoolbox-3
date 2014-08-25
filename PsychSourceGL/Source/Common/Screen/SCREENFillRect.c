@@ -118,6 +118,7 @@ PsychError SCREENFillRect(void)
 		PsychSetShader(windowRecord, 0);
 
 		PsychConvertColorToDoubleVector(&color, windowRecord, windowRecord->clearColor);
+   		printf("PTB-INFO: Setting new clear color by fullscreen Screen('FillRect'): [%.2f %.2f %.2f %.2f].\n",windowRecord->clearColor[0],windowRecord->clearColor[1],windowRecord->clearColor[2],windowRecord->clearColor[3]);
 		PsychGLClear(windowRecord);
 
 		// Fixup possible low-level framebuffer layout changes caused by commands above this point. Needed from native 10bpc FB support to work reliably.
@@ -149,6 +150,7 @@ PsychError SCREENFillRect(void)
 			}
 			PsychCoerceColorMode( &color);
 			PsychConvertColorToDoubleVector(&color, windowRecord, windowRecord->clearColor);
+            printf("PTB-INFO: Setting new clear color by fullscreen Screen('FillRect'): [%.2f %.2f %.2f %.2f].\n",windowRecord->clearColor[0],windowRecord->clearColor[1],windowRecord->clearColor[2],windowRecord->clearColor[3]);
 		}
 	  } else {
 	    // Partial fill: Draw provided rects:
