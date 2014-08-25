@@ -71,8 +71,7 @@ function oldType = ShowCursor(type, screenid, mouseid)
 % 11/16/04 awi Renamed Screen("ShowCursor") to Screen("ShowCursorHelper").
 % 10/4/05  awi Note here that dgp made unnoted cosmetic changes between 11/16/04 and 10/4/05.
 % 09/21/07 mk  Added code for selecting 'type' - the shape of a cursor - on supported systems.
-
-oldType = 0;
+% 08/14/14 dcn Fixed typo and simplified
 
 % We default to setup of display screen zero, if no
 % screenid provided. This argument is ignored on
@@ -94,6 +93,8 @@ end
 if nargin < 1
     type = [];
 else
+    % Cursor shape change requested as well. Mapping of
+    % types to shapes is highly OS dependent...
     if ischar(type)
         % Name string provided. We can map a few symbolic names to proper
         % id's for the different operating systems:
@@ -146,22 +147,15 @@ else
         end
 
         if ischar(type)
-            sca;
             error('Unknown "type" shape specification passed to ShowCursor()!');
         end
+    else
+        error('type argument provided to ShowCursor() was not numeric or text');
     end
 end
 
-% New cursor shape requested?
-if isempty(type)
-    % Only unhide / show cursor, don't modify its shape:
-    % Use Screen to emulate ShowCursor.mex
-    Screen('ShowCursorHelper', screenid, [], mouseid);
-else
-    % Cursor shape change requested as well. Mapping of
-    % types to shapes is highly OS dependent...
-    Screen('ShowCursorHelper', screenid, type, mouseid);
-end
+% Use Screen to emulate ShowCursor.mex
+Screen('ShowCursorHelper', screenid, type, mouseid);
 
 % Return a dummy oldtype, we don't have this info...
-oldtype = 0;
+oldType = 0;
