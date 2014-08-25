@@ -1,4 +1,4 @@
-function varargout = Screen(varargin) %#ok<STOUT>
+function varargout = Screen(varargin)
 % Screen is a MEX file for precise control of the video display. Screen has
 % many functions; type "Screen" for a list:
 % 	Screen

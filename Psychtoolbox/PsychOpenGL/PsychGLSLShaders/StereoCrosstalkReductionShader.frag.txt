@@ -1,0 +1,47 @@
+/* StereoCrosstalkReductionShader.frag.txt
+ *
+ * A fragment shader that receives a stereo input image pair and computes
+ * a corrected stereo output image for one stereo channel in which stereo
+ * crosstalk is suppressed to some degree.
+ *
+ * 'Image1' is the primary stereo input image, which should be written back
+ * as output image. 'Image2' is the unrelated input image for the other eye,
+ * whose influence onto the output image should be reduced, ie., Image2 is
+ * the reason for ghosting in the eye related to 'Image1'.
+ *
+ * This shader somehow combines both input images into a new output image with
+ * the aim of reducing the ghosting. The shader will get called by Screen's
+ * image processing pipeline twice, once for the left eye, once for the right
+ * eye, with reversed roles for Image1 and Image2, to achieve suppression for
+ * both eyes.
+ *
+ * (c) 2014 by Diederick Niehorster and Mario Kleiner, licensed under MIT license.
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect Image1;
+uniform sampler2DRect Image2;
+uniform float crossTalkParam1;
+
+void main()
+{
+    vec3 outcolor;
+    vec2 inpos = gl_TexCoord[0].st;
+
+    /* Get current input image pixe color values for both input images at
+     * current location inpos: */
+    vec4 targetimage = texture2DRect(Image1, inpos);
+    vec4 suppressedimage = texture2DRect(Image2, inpos);
+
+    /* Do the math on the rgb color channels to get outcolor: */
+
+    /* As a simple example, simpy subtract a gain-corrected suppressedimage from
+     * targetimage, using crossTalkParam1 as gain. Obviously, HERE STARTS YOUR TASK :)
+     */
+    outcolor = targetimage.rgb - suppressedimage.rgb * crossTalkParam1;
+
+    /* Write output pixel color corresponding to a de-ghosted Image1: */
+    gl_FragColor.rgb = outcolor;
+    gl_FragColor.a = targetimage.a;
+}

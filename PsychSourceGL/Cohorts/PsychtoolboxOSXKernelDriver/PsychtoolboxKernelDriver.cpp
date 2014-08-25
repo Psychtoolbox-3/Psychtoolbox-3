@@ -93,30 +93,33 @@
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for year 2013 (last update e-mail patch / commit 23-12-2013). Would need updates for anything after start of January 2014 */
+/* Mappings up to date for August 2014 (last update e-mail patch / commit 2014-05-06). Would need updates for anything after start of September 2014 */
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE8(void)
 {
-	bool isDCE8 = false;
-    
-	// Everything >= BONAIRE is DCE8 -- This is part of the "Sea Islands" GPU family.
-    
+    bool isDCE8 = false;
+
+    // Everything >= BONAIRE is DCE8 -- This is part of the "Sea Islands" GPU family.
+
     // BONAIRE in 0x664x - 0x665x range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x6640) isDCE8 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x6650) isDCE8 = true;
-    
+    if ((fPCIDeviceId & 0xFFF0) == 0x6640) isDCE8 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6650) isDCE8 = true;
+
     // KABINI in 0x983x range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x9830) isDCE8 = true;
-    
+    if ((fPCIDeviceId & 0xFFF0) == 0x9830) isDCE8 = true;
+
     // KAVERI in 0x13xx range:
-	if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE8 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE8 = true;
 
     // HAWAII in 0x67Ax - 0x67Bx range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x67A0) isDCE8 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x67B0) isDCE8 = true;
-    
-	return(isDCE8);
+    if ((fPCIDeviceId & 0xFFF0) == 0x67A0) isDCE8 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x67B0) isDCE8 = true;
+
+    // MULLINS in 0x985x range:
+    if ((fPCIDeviceId & 0xFFF0) == 0x9850) isDCE8 = true;
+
+    return(isDCE8);
 }
 
 /* Is a given ATI/AMD GPU a DCE6.4 type ASIC, i.e., with the new display engine? */

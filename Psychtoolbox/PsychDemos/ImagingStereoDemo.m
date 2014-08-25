@@ -1,5 +1,5 @@
-function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie)
-% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0][, writeMovie = 0])
+function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalk)
+% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0][, writeMovie = 0][, reduceCrossTalk = 0])
 %
 % Demo on how to use OpenGL-Psychtoolbox to present stereoscopic stimuli
 % when the Psychtoolbox imaging pipeline is enabled. Use of the imaging
@@ -110,6 +110,10 @@ if isempty(writeMovie)
     writeMovie = 0;
 end
 
+if nargin < 4 || isempty(reduceCrossTalk)
+    reduceCrossTalk = 0;
+end
+
 % This script calls Psychtoolbox commands available only in OpenGL-based
 % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
 % only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
@@ -175,7 +179,7 @@ end
 % display the background color in all remaining areas, thereby saving
 % some computation time for pixel processing: We select the center
 % 512x512 pixel area of the screen:
-if ~ismember(stereoMode, [100, 101, 102])
+if ~ismember(stereoMode, [100, 101, 102]) && ~reduceCrossTalk
     PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
 end
 
@@ -206,6 +210,14 @@ if stereoMode == 10
     % Tell PsychImaging that the 2nd window for output of the right-eye view should be
     % opened on 'slaveScreen':
     PsychImaging('AddTask', 'General', 'DualWindowStereo', slaveScreen);
+end
+
+% Experimental stereo crosstalk reduction requested?
+if reduceCrossTalk
+    % Yes setup reduction for both view channels, using reduceCrossTalk as 1st parameter
+    % itself:
+    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', reduceCrossTalk);
+    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', reduceCrossTalk);
 end
 
 % Consolidate the list of requirements (error checking etc.), open a

@@ -305,7 +305,7 @@
 % your Psychtoolbox against potential bugs in future operating systems.
 % Bugs were present in Linux versions 3.13 - 3.15 for a short period of
 % time between April and July 2014 which made this workaround neccessary.
-% However, the workaround was automatically enabled on such Linux versions
+% However, the workaround is automatically enabled on such Linux versions
 % without the need for this conservevram setting. The relevant Linux bugs
 % have been fixed by mid-July 2014, ie., at the time of this writing, in all
 % versions of the Linux kernel (Linux >= 3.13.11.5+, 3.14.12+, 3.15.5+, 3.16+).

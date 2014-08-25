@@ -4917,7 +4917,10 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 					// srcfbos are read-only, swizzling forbidden, 2nd srcfbo doesn't exist (only needed for stereo merge op),
 					// We provide a bounce-buffer... We could bind the 2nd channel in steromode if we wanted. Should we?
 					// TODO: Define special userdata struct, e.g., for C-Callbacks or scripting callbacks?
-					PsychPipelineExecuteHook(windowRecord, hookchainid, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]),  (windowRecord->processedDrawBufferFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[2]]) : NULL);
+					PsychPipelineExecuteHook(windowRecord, hookchainid, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]),
+                                             (windowRecord->imagingMode & kPsychNeedOtherStreamInput) ? &(windowRecord->fboTable[windowRecord->inputBufferFBO[1 - viewid]]) : NULL,
+                                             &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]),
+                                             (windowRecord->processedDrawBufferFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[2]]) : NULL);
 				}
 				else {
 					// Hook chain disabled by userspace or doesn't contain any instructions.
@@ -4997,11 +5000,18 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 					}
 
 					// Use proper per view output formatting chain:
-					PsychPipelineExecuteHook(windowRecord, ((viewid > 0) ? kPsychFinalOutputFormattingBlit1 : kPsychFinalOutputFormattingBlit0), NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
+					PsychPipelineExecuteHook(windowRecord, ((viewid > 0) ? kPsychFinalOutputFormattingBlit1 : kPsychFinalOutputFormattingBlit0), NULL, NULL, TRUE, FALSE,
+                                             &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]),
+                                             ((windowRecord->imagingMode & kPsychNeedOtherStreamInput) && (windowRecord->preConversionFBO[1-viewid]>=0)) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[1 - viewid]]) : NULL,
+                                             &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]),
+                                             (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
 				}
 				else {
 					// Single unified formatting chain to be used:
-					PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
+					PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, TRUE, FALSE,
+                                             &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]),
+                                             ((windowRecord->imagingMode & kPsychNeedOtherStreamInput) && (windowRecord->preConversionFBO[1-viewid]>=0)) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[1 - viewid]]) : NULL,
+                                             &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
 				}
 			}
 			else {
