@@ -3730,14 +3730,33 @@ if ~isempty(floc)
             % Shared setup code.
 
             % Parameter 1 at 3, 2 at 4, ...
-            crosstalkReductionParameter1 = reqs{row, 3};
-            if isempty(crosstalkReductionParameter1)
-                crosstalkReductionParameter1 = 0.0;
+            crosstalkGain = reqs{row, 3};
+            if isempty(crosstalkGain)
+                crosstalkGain = 0.0;
+            end
+            if isscalar(crosstalkGain)
+                % same gain for all three colors
+                crosstalkGain = [crosstalkGain crosstalkGain crosstalkGain];
+            else
+                assert(numel(crosstalkGain)==3,'in StereoCrosstalkReduction: provided gain should be a scalar or a 3-element vector');
+            end
+            crosstalkBackGroundClr = reqs{row, 4};
+            if isempty(crosstalkBackGroundClr)
+                % i will not check if the background color is all zero
+                % here. The algorithm won't work as I planned as contrast
+                % can't be inverted around a zero background level, but its
+                % the user's choice.
+                error('in StereoCrosstalkReduction: the color of the background of your image should be provided');
+            end
+            crosstalkTargetOverwrites = reqs{row, 5};
+            if isempty(crosstalkTargetOverwrites)
+                % assume black
+                crosstalkTargetOverwrites = 0.0;
             end
 
             % Load and build shader from files StereoCrosstalkReductionShader.vert.txt and/or
             % StereoCrosstalkReductionShader.frag.txt in the shader directory:
-            shader = LoadGLSLProgramFromFiles('StereoCrosstalkReductionShader', 1);
+            shader = LoadGLSLProgramFromFiles('StereoCrosstalkReductionShader', 2);
 
             % Init the shader: Assign mapping of images:
             glUseProgram(shader);
@@ -3750,7 +3769,9 @@ if ~isempty(floc)
 
             % Just as example. Assign scalar float parameter crosstalkReductionParameter1 to the
             % shader variable 'uniform float crossTalkParam1' for use as a input constant in shader:
-            glUniform1f(glGetUniformLocation(shader, 'crossTalkParam1'), crosstalkReductionParameter1);
+            glUniform3fv(glGetUniformLocation(shader, 'crosstalkGain'), 1, crosstalkGain);
+            glUniform3fv(glGetUniformLocation(shader, 'backGroundClr'), 1, crosstalkBackGroundClr);
+            glUniform1f(glGetUniformLocation(shader, 'frontOverwrites'), crosstalkTargetOverwrites);
 
             % Shader setup done:
             glUseProgram(0);

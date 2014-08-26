@@ -110,8 +110,8 @@ if isempty(writeMovie)
     writeMovie = 0;
 end
 
-if nargin < 4 || isempty(reduceCrossTalk)
-    reduceCrossTalk = 0;
+if nargin < 4
+    reduceCrossTalk = [];
 end
 
 % This script calls Psychtoolbox commands available only in OpenGL-based
@@ -179,7 +179,7 @@ end
 % display the background color in all remaining areas, thereby saving
 % some computation time for pixel processing: We select the center
 % 512x512 pixel area of the screen:
-if ~ismember(stereoMode, [100, 101, 102]) && ~reduceCrossTalk
+if ~ismember(stereoMode, [100, 101, 102]) && isempty(reduceCrossTalk)
     PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
 end
 
@@ -213,18 +213,20 @@ if stereoMode == 10
 end
 
 % Experimental stereo crosstalk reduction requested?
-if reduceCrossTalk
+if ~isempty(reduceCrossTalk)
     % Yes setup reduction for both view channels, using reduceCrossTalk as 1st parameter
-    % itself:
-    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', reduceCrossTalk);
-    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', reduceCrossTalk);
+    % itself. Second parameter sets the background luminance level and
+    % third sets whether contrast in the target view overwrites any of the
+    % ghost suppression contrast from the other view.
+    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', reduceCrossTalk, [.5 .5 .5], 0.);
+    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', reduceCrossTalk, [.5 .5 .5], 0.);
 end
 
 % Consolidate the list of requirements (error checking etc.), open a
 % suitable onscreen window and configure the imaging pipeline for that
 % window according to our specs. The syntax is the same as for
 % Screen('OpenWindow'):
-[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
+[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, 127, [], [], [], stereoMode);
 
 if ismember(stereoMode, [4, 5])
     % This uncommented bit of code would allow to exercise the
@@ -280,10 +282,15 @@ end
 
 % Initially fill left- and right-eye image buffer with black background
 % color:
+if ~isempty(reduceCrossTalk)
+    bgColor = GrayIndex(scrnNum);
+else
+    bgColor = BlackIndex(scrnNum);
+end
 Screen('SelectStereoDrawBuffer', windowPtr, 0);
-Screen('FillRect', windowPtr, BlackIndex(scrnNum));
+Screen('FillRect', windowPtr, bgColor);
 Screen('SelectStereoDrawBuffer', windowPtr, 1);
-Screen('FillRect', windowPtr, BlackIndex(scrnNum));
+Screen('FillRect', windowPtr, bgColor);
 
 % Show cleared start screen:
 Screen('Flip', windowPtr);
@@ -474,7 +481,7 @@ Screen('CloseAll')
 t = t(1:count);
 dt = t(2:end) - t(1:end-1);
 disp(sprintf('N.Dots\tMean (s)\tMax (s)\t%%>20ms\t%%>30ms\n')); %#ok<DSPS>
-disp(sprintf('%d\t%5.3f\t%5.3f\t%5.2f\t%5.2f\n', numDots, mean(dt), max(dt), sum(dt > 0.020)/length(dt), sum(dt > 0.030)/length(dt))); %#ok<DSPS>
+disp(sprintf('%d\t%5.3f\t%5.3f\t%5.0f\t%5.0f\n', numDots, mean(dt), max(dt), sum(dt > 0.020)/length(dt)*100, sum(dt > 0.030)/length(dt)*100)); %#ok<DSPS>
 
 % We're done.
 return;

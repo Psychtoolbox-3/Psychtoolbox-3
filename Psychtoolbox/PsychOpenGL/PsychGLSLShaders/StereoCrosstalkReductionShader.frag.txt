@@ -1,4 +1,5 @@
-/* StereoCrosstalkReductionShader.frag.txt
+/* vim: syntax=glsl
+ * StereoCrosstalkReductionShader.frag.txt
  *
  * A fragment shader that receives a stereo input image pair and computes
  * a corrected stereo output image for one stereo channel in which stereo
@@ -9,11 +10,21 @@
  * whose influence onto the output image should be reduced, ie., Image2 is
  * the reason for ghosting in the eye related to 'Image1'.
  *
- * This shader somehow combines both input images into a new output image with
+ * This shader combines both input images into a new output image with
  * the aim of reducing the ghosting. The shader will get called by Screen's
  * image processing pipeline twice, once for the left eye, once for the right
  * eye, with reversed roles for Image1 and Image2, to achieve suppression for
  * both eyes.
+ *
+ * Ghost suppression is achieved either by a summing (or a mixing) of
+ * the inverted contrast in the suppressed image (scaled by a contrast
+ * gain) and the contrast in the target image (targetOverwrites==0.0) or
+ * by overwriting the inverted contrast in the suppressed image by
+ * anything in the target image (targetOverwrites==1.0).
+ *
+ * background luminance / color level (set by backGroundClr uniform)
+ * should not be zero as then there is no way to invert contrast w.r.t.
+ * the background.
  *
  * (c) 2014 by Diederick Niehorster and Mario Kleiner, licensed under MIT license.
  */
@@ -22,26 +33,45 @@
 
 uniform sampler2DRect Image1;
 uniform sampler2DRect Image2;
-uniform float crossTalkParam1;
+uniform vec3  crosstalkGain;
+uniform vec3  backGroundClr;
+uniform float targetOverwrites;
 
 void main()
 {
-    vec3 outcolor;
+    vec3 outcolor1, outcolor2;
     vec2 inpos = gl_TexCoord[0].st;
 
-    /* Get current input image pixe color values for both input images at
-     * current location inpos: */
+    /* Get current input image pixel color values for both input images
+     * at current location inpos: */
     vec4 targetimage = texture2DRect(Image1, inpos);
     vec4 suppressedimage = texture2DRect(Image2, inpos);
 
-    /* Do the math on the rgb color channels to get outcolor: */
+    /* Get contrast in suppressed image and scale by gain: */
+    suppressedimage.rgb -=  backGroundClr;
+    suppressedimage.rgb *= -crosstalkGain;
 
-    /* As a simple example, simpy subtract a gain-corrected suppressedimage from
-     * targetimage, using crossTalkParam1 as gain. Obviously, HERE STARTS YOUR TASK :)
-     */
-    outcolor = targetimage.rgb - suppressedimage.rgb * crossTalkParam1;
+    /* prepare first output option: sum/mix contrast in target image and
+     * suppressed image */
+    outcolor1 = targetimage.rgb + suppressedimage.rgb;
 
-    /* Write output pixel color corresponding to a de-ghosted Image1: */
-    gl_FragColor.rgb = outcolor;
+
+
+    /* second output option, where contrast in target image overwrites
+     * anything in suppressed image instead of mixing with it. */
+
+    /* Get contrast in target image */
+    targetimage.rgb -=  backGroundClr;
+
+    /* determine if any contrast in target image */
+    float val  = dot(targetimage.rgb,targetimage.rgb);
+    float which= step(-0.0001, val) * (1.0 - step(0.0001, val));    /* 1 if no contrast in target image (val==0), 0 otherwise */
+
+    /* choose contrast from which image to write to output */
+    outcolor2 = backGroundClr + which*suppressedimage.rgb + (1.0-which)*targetimage.rgb;
+
+    /* Write output pixel color corresponding to a de-ghosted Image1,
+     * choosing the requested output option */
+    gl_FragColor.rgb = outcolor2*targetOverwrites + (1.0-targetOverwrites)*outcolor1;
     gl_FragColor.a = targetimage.a;
 }
