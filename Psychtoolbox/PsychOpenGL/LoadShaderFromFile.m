@@ -97,7 +97,21 @@ else
     glShaderSource(handle, shadersrc);
 end;
 
-glCompileShader(handle);
+if debug > 1
+    % We need to temporarily raise moglcores debuglevel to 2 to get extended
+    % error/validation information:
+    oldDebug = InitializeMatlabOpenGL(-1);
+    moglcore('DEBUGLEVEL', 2);
+
+    % Compile the shader:
+    glCompileShader(handle);
+
+    % Restore old debuglevel for moglcore:
+    moglcore('DEBUGLEVEL', oldDebug);
+else
+    % Compile the shader without raised debug level for moglcore:
+    glCompileShader(handle);
+end
 
 % Done.
 return;
