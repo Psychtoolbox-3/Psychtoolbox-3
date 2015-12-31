@@ -28,7 +28,7 @@ function varargout = Screen(varargin)
 % entire desktop (all your screens) as one big screen, with the origin at 
 % upper left of the main screen, which has the menu bar. Historically we've
 % had two different orderings of the elements of rect, so, for general
-% compatibility, all of the Psychophysics Toolbox refers to the elements
+% compatibility, you can index Psychophysics Toolbox rect elements
 % symbolically, through RectLeft, RectTop, etc. Since 2/97, we use Apple's
 % standard ordering: RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
 % 

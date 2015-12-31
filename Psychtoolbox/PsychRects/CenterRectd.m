@@ -1,7 +1,8 @@
-function [rect,dh,dv] = CenterRect(rect,fixedRect)
-% [rect,dh,dv] = CenterRect(rect,fixedRect)
+function [rect,dh,dv] = CenterRectd(rect,fixedRect)
+% [rect,dh,dv] = CenterRectd(rect,fixedRect)
 % 
-% Center the first rect in the second by adding an integer offset.
+% Center the first rect in the second. It does the same as CenterRect but
+% without rounding to integer pixel position for the rect corners.
 %
 % rect and fixedRect can both be Mx4 or 4xM rect arrays, but either for one
 % of them M must be 1, or rect and fixedRect must have the same shape. If
@@ -21,10 +22,11 @@ function [rect,dh,dv] = CenterRect(rect,fixedRect)
 % 7/23/97 dgp  Round the offset.
 % 5/4/00  dhb  Return dh and dv as well as centered rect.
 % 7/26/15 dcn  Vectorized
+% 7/27/15 dcn  Trivially derived from CenterRect
 % 7/29/15 dcn  Now handles 4xM and Mx4 inputs
 
 if nargin~=2
-	error('Usage:  rect=CenterRect(rect,fixedRect)');
+	error('Usage:  rect=CenterRectd(rect,fixedRect)');
 end
 if (size(rect,2)==4 && size(fixedRect,2)~=4) || (size(rect,2)~=4 && size(fixedRect,2)==4)
 	% orientation of first rect(-array) is leading for orientation of
@@ -43,6 +45,6 @@ else
     % Something weird and unknown:
     error('Given matrix of rects not of required 4-by-n or n-by-4 format.');
 end
-rect=OffsetRect(rect,round(dh),round(dv));
+rect=OffsetRect(rect,dh,dv);
 
 

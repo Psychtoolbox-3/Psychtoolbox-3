@@ -1,18 +1,17 @@
 function [x, y] = RectCenter(r)
-%   [x,y] = RectCenter(rect);
+% [x,y] = RectCenter(rect);
 %
-%	RectCenter returns the integer x,y point closest to the center of a rect.  
+% RectCenter returns the integer x,y point closest to the center of a rect.
+% rect can be a rect-array, in which case the center for each rect is
+% returned.
 %
-%	See also PsychRects, CenterRectOnPoint.
+% See also PsychRects/Contents, RectCenterd, CenterRectOnPoint.
 
 %	9/13/99	Allen Ingling wrote it.
 %	10/6/99	dgp Fixed bug.
-%   5/18/08 mk Vectorized.
-%   5/30/09 mk Bugfix in vectorization.
-
-if nargout~=2
-	error('Usage: [x, y] = RectCenter(rect);');
-end
+%   5/18/08 mk  Vectorized.
+%   5/30/09 mk  Bugfix in vectorization.
+%   7/29/15 dcn Removed check that called with two output arguments.
 
 if PsychNumel(r) == 4
     % Single rect:
@@ -24,14 +23,12 @@ else
         % Multi-column array with one 4-comp. rect per column:
         x = round(0.5*(r(1,:)+r(3,:)));
         y = round(0.5*(r(2,:)+r(4,:)));
+    elseif (size(r, 2)==4) && (size(r,1)>=1)
+        % Multi-row array with one 4-comp. rect per row:
+        x = round(0.5*(r(:,1)+r(:,3)));
+        y = round(0.5*(r(:,2)+r(:,4)));
     else
-        if (size(r, 2)==4) && (size(r,1)>=1)
-            % Multi-row array with one 4-comp. rect per row:
-            x = round(0.5*(r(:,1)+r(:,3)));
-            y = round(0.5*(r(:,2)+r(:,4)));
-        else
-            % Something weird and unknown:
-            error('Given matrix of rects not of required 4-by-n or n-by-4 format.');
-        end
+        % Something weird and unknown:
+        error('Given matrix of rects not of required 4-by-n or n-by-4 format.');
     end
 end

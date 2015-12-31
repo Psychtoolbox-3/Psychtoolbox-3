@@ -226,8 +226,8 @@ buttons=logical(rawButtons);
 % but actually harmful:
 if ~isempty(windowPtrOrScreenNumber)
     screenRect=Screen('GlobalRect',windowPtrOrScreenNumber);
-    x=globalX-screenRect(RectLeft);
-    y=globalY-screenRect(RectTop);
+    x=globalX-screenRect(1);
+    y=globalY-screenRect(2);
 else
     x=globalX;
     y=globalY;

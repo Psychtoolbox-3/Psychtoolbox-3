@@ -555,32 +555,32 @@
 % PsychProbability/URandSel.m
 % PsychProbability/UniqueAndN.m
 % PsychProbability/UniqueNoSorting.m
-% PsychRects/AdjoinRect.m
-% PsychRects/AlignRect.m
+% PsychRects/AdjoinRect.m                                               - Rects_Test.m 
+% PsychRects/AlignRect.m                                                - Rects_Test.m 
 % PsychRects/ArrangeRects.m
-% PsychRects/CenterRect.m
-% PsychRects/CenterRectOnPoint.m
-% PsychRects/CenterRectOnPointd.m
-% PsychRects/ClipRect.m
-% PsychRects/GrowRect.m
-% PsychRects/InsetRect.m
-% PsychRects/IsEmptyRect.m
-% PsychRects/IsInRect.m
-% PsychRects/OffsetRect.m
-% PsychRects/RectBottom.m
-% PsychRects/RectCenter.m
-% PsychRects/RectCenterd.m
-% PsychRects/RectHeight.m
-% PsychRects/RectLeft.m
-% PsychRects/RectOfMatrix.m
-% PsychRects/RectRight.m
-% PsychRects/RectSize.m
-% PsychRects/RectTop.m
-% PsychRects/RectWidth.m
-% PsychRects/ScaleRect.m
-% PsychRects/SetRect.m
-% PsychRects/SizeOfRect.m
-% PsychRects/UnionRect.m
+% PsychRects/CenterRect.m                                               - Rects_Test.m 
+% PsychRects/CenterRectOnPoint.m                                        - Rects_Test.m 
+% PsychRects/CenterRectOnPointd.m                                       - Rects_Test.m 
+% PsychRects/ClipRect.m                                                 - Rects_Test.m 
+% PsychRects/GrowRect.m                                                 - Rects_Test.m 
+% PsychRects/InsetRect.m                                                - Rects_Test.m 
+% PsychRects/IsEmptyRect.m                                              - Rects_Test.m 
+% PsychRects/IsInRect.m                                                 - Rects_Test.m 
+% PsychRects/OffsetRect.m                                               - Rects_Test.m 
+% PsychRects/RectBottom.m                                               - trivial 
+% PsychRects/RectCenter.m                                               - Rects_Test.m 
+% PsychRects/RectCenterd.m                                              - Rects_Test.m 
+% PsychRects/RectHeight.m                                               - Rects_Test.m 
+% PsychRects/RectLeft.m                                                 - trivial 
+% PsychRects/RectOfMatrix.m                                             - Rects_Test.m 
+% PsychRects/RectRight.m                                                - trivial 
+% PsychRects/RectSize.m                                                 - Rects_Test.m 
+% PsychRects/RectTop.m                                                  - trivial 
+% PsychRects/RectWidth.m                                                - Rects_Test.m 
+% PsychRects/ScaleRect.m                                                - Rects_Test.m 
+% PsychRects/SetRect.m                                                  - Rects_Test.m 
+% PsychRects/SizeOfRect.m                                               - Rects_Test.m 
+% PsychRects/UnionRect.m                                                - Rects_Test.m 
 % PsychSignal/ATand2.m
 % PsychSignal/ATand360.m
 % PsychSignal/AllAll.m

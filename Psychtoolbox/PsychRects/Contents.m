@@ -31,6 +31,13 @@
 %     SizeOfRect          - Accept a Psychtoolbox rect and return the
 %                           corresponding image's MATLAB array size.
 %     UnionRect           - Smallest rect containing two given rects.
+%
+% In general, inputs for most functions can be rects or rect-arrays. Rect
+% arrays are 4xM or Mx4 matrices in which each row is a rect. The function
+% help will clarify how rect arrays are treated in the function.
+% NB: 4x4 inputs will be treated as 4xM input, which means it is not
+% advisable to use Mx4 rect arrays unless you are sure that M will never be
+% 4.
 
-% Copyright (c) 1997-2010 by David Brainard & Denis Pelli and the PTB
+% Copyright (c) 1997-2015 by David Brainard & Denis Pelli and the PTB
 % developers.

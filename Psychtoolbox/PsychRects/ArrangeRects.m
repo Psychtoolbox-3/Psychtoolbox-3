@@ -1,4 +1,4 @@
-function cellRects=ArrangeRects(n,objectRect,windowRect,rightToLeft);
+function cellRects=ArrangeRects(n,objectRect,windowRect,rightToLeft)
 % cellRects=ArrangeRects(n,objectRect,windowRect,[rightToLeft]);
 %
 % Returns an array of n contiguous rects that achieve a visually 
@@ -9,7 +9,8 @@ function cellRects=ArrangeRects(n,objectRect,windowRect,rightToLeft);
 % Otherwise they are ordered left to right (like English letters).
 % The result depends on the proportions of the objectRect, but is 
 % independent of its size and position.
-% Also see PsychRects.
+%
+% See also PsychRects/Contents.
 
 % 5/12/96 dgp Wrote it, based on my Alphabet.c in TextInNoise.
 % 5/16/96 dgp Updated it to work with 1x4, instead of 4x1, rect.
