@@ -57,8 +57,8 @@ ndx = [1:size(x,1)].';
 % calling function to continue with the higher priority sorting.
 ndim = length(dim);
 if ndim > 1
-	col     = dim(2:end);
-	[x,xi]  = SortCell(x, col);
+    col     = dim(2:end);
+    [x,xi]  = SortCell(x, col);
     ndx     = ndx(xi);
 end
 
@@ -72,7 +72,7 @@ col     = dim(1);
 b       = x(:,col);
 
 % Check each cell in cell array 'b' to see if it contains either a
-% character string or numeric value. 
+% character string or numeric value.
 qchar   = cellfun(@(x)isa(x,'char') , b);
 classes = cellfun(@class            , b,'UniformOutput',false);
 
@@ -87,7 +87,7 @@ elseif length(unique(classes))==1 && ismember(unique(classes),{'logical','single
     % Contents and change 'b' to a numeric array.
     b = [b{:}];
 else
-	error('This column (%d) is mixed so sorting cannot be completed.',dim(1));
+    error('This column (%d) is mixed so sorting cannot be completed.',dim(1));
 end
 
 % Sort the current array and return the new index.
