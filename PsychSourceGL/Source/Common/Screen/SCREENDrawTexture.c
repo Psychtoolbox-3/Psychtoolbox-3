@@ -442,7 +442,7 @@ PsychError SCREENDrawTextures(void)
     if (batchIt) {
         // Signal start of new batch with numRef drawn textures, all sourced from source and
         // drawn into windo target with filterMode:
-        PsychBatchBlitTexturesToDisplay(0, numRef, source, target, NULL, NULL, 0, filterMode, 1.0);
+        PsychBatchBlitTexturesToDisplay(0, numRef, source, target, NULL, NULL, 0, (int) filterMode, 1.0);
     }
 
     // Texture blitting loop:
@@ -600,7 +600,7 @@ PsychError SCREENDrawTextures(void)
 
     if (batchIt) {
         // Finalize batch drawing:
-        PsychBatchBlitTexturesToDisplay(1, numRef, source, target, NULL, NULL, 0, filterMode, 1.0);
+        PsychBatchBlitTexturesToDisplay(1, numRef, source, target, NULL, NULL, 0, (int) filterMode, 1.0);
     }
 
     // Mark end of drawing op. This is needed for single buffered drawing:

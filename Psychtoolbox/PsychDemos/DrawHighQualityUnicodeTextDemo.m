@@ -207,12 +207,21 @@ try
         % Draw text baseline in green...
         Screen('DrawLine', w, [0 255 0], 100, count, 1400, count);
         % Compute texts bounding box...
-        [normRect realRect] = Screen('TextBounds', w, 'Hit any key to exit.', 100, count);
+        [normRect realRect, ~, xAdvance] = Screen('TextBounds', w, 'Hit any key to exit.', 100, count);
+
         % Draw the text...
-        Screen('DrawText', w, 'Hit any key to exit.', 100, count, [255, 0, 0, 255]);
+        newX = Screen('DrawText', w, 'Hit any key to exit.', 100, count, [255, 0, 0, 255]);
         Screen('DrawText', w, 'This is yellow.', [], [], [255, 255, 0, 255]);
+
         % Visualize its bounding box:
         Screen('FrameRect', w, [255 0 255], realRect);
+
+        % Visualize the horizontal advance to the next text string:
+        realRect(1) = realRect(3);
+
+        % This 100 + xAdvance aka oldX + xAdvance should be the same as newX after text drawing:
+        realRect(3) = 100 + xAdvance;
+        Screen('FrameRect', w, [255 255 0], realRect);
 
         % Update count and show frame...
         count=count+1;

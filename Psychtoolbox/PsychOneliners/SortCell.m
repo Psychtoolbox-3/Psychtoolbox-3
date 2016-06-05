@@ -1,21 +1,22 @@
-function y = SortCell(x, dim)
+function [y,ndx] = SortCell(x, dim)
 % SortCell    Sort a cell array in ascending order.
 %
 % Description: SortCell sorts the input cell array according to the
 %   dimensions (columns) specified by the user.
 %
-% Usage: Y = SortCell(X, DIM)
+% Usage: [Y,NDX] = SortCell(X, DIM)
 %
 % Input:
-%	   X: the cell array to be sorted.
+%	 X: the cell array to be sorted.
 %  DIM: (optional) one or more column numbers. Simply an array of one or
 %       more column numbers.  The first number is the primary column on
 %       which to sort. Extra column numbers may be supplied if secondary
-%       sorting is required. The defuault value is 1, if no dimension
+%       sorting is required. The default value is 1, if no dimension
 %       array is supplied.
 %
 % Output:
 %     Y: the sorted cell array.
+%   NDX: indices such that Y = X(NDX,:).
 %
 % Example:    Y = SortCell(X, [3 2])
 %
@@ -27,6 +28,7 @@ function y = SortCell(x, dim)
 %   Last Updated:  Jan. 25, 2007
 %   2008 DN v1.1:  Added support for numerical datatypes other than char
 %                  and double
+%   2016 DN v1.2:  Now also outputs index into input to create output.
 
 
 % Check input arguments
@@ -45,6 +47,9 @@ if ~iscell(x)
     error('the first input argument is not a cell array.  a cell array is expected.');
 end
 
+% prepare output
+ndx = [1:size(x,1)].';
+
 % Now find out if the cell array is being sorted on more than one column.
 % If it is then use recursion to call the SortCell function again to sort
 % the less important columns first. Repeat calls to SortCell until only one
@@ -52,8 +57,9 @@ end
 % calling function to continue with the higher priority sorting.
 ndim = length(dim);
 if ndim > 1
-	col = dim(2:end);
-	x   = SortCell(x, col);
+    col     = dim(2:end);
+    [x,xi]  = SortCell(x, col);
+    ndx     = ndx(xi);
 end
 
 % Get the dimensions of the input cell array.
@@ -66,7 +72,7 @@ col     = dim(1);
 b       = x(:,col);
 
 % Check each cell in cell array 'b' to see if it contains either a
-% character string or numeric value. 
+% character string or numeric value.
 qchar   = cellfun(@(x)isa(x,'char') , b);
 classes = cellfun(@class            , b,'UniformOutput',false);
 
@@ -81,12 +87,13 @@ elseif length(unique(classes))==1 && ismember(unique(classes),{'logical','single
     % Contents and change 'b' to a numeric array.
     b = [b{:}];
 else
-	error('This column (%d) is mixed so sorting cannot be completed.',dim(1));
+    error('This column (%d) is mixed so sorting cannot be completed.',dim(1));
 end
 
 % Sort the current array and return the new index.
-[ix,ix] = sort(b);
+[~,xi] = sort(b);
 
 % Using the index from the sorted array, update the input cell array and
 % return it.
-y = x(ix,:);
+y   = x(xi,:);
+ndx = ndx(xi,:);

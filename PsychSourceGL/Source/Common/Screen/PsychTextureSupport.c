@@ -1384,8 +1384,6 @@ void PsychBatchBlitTexturesToDisplay(unsigned int opMode, unsigned int count, Ps
     static int tWidth = 0, tHeight = 0;
     static double oldRotationAngle;
     static GLdouble sourceWidth, sourceHeight;
-
-    GLint attrib;
     GLdouble sourceX, sourceY, sourceXEnd, sourceYEnd;
 
     if (opMode == 0) {
@@ -1804,14 +1802,14 @@ void PsychBatchBlitTexturesToDisplay(unsigned int opMode, unsigned int count, Ps
         if (!(source->specialflags & kPsychUseTextureMatrixForRotation)) {
             // Standard case: Transform quad vertex coordinates:
             useXForm = 1;
-            transX=(targetRect[kPsychRight] + targetRect[kPsychLeft]) * 0.5;
-            transY=(targetRect[kPsychTop] + targetRect[kPsychBottom]) * 0.5;
+            transX = (float) ((targetRect[kPsychRight] + targetRect[kPsychLeft]) * 0.5);
+            transY = (float) ((targetRect[kPsychTop] + targetRect[kPsychBottom]) * 0.5);
         }
         else {
             // Transform texture coordinates:
             useXForm = 2;
-            transX=(sourceX + sourceXEnd) * 0.5;
-            transY=(sourceY + sourceYEnd) * 0.5;
+            transX = (float) ((sourceX + sourceXEnd) * 0.5);
+            transY = (float) ((sourceY + sourceYEnd) * 0.5);
         }
 
         // Avoid redundant updates of rotation transform 2D "matrix":
@@ -1820,8 +1818,8 @@ void PsychBatchBlitTexturesToDisplay(unsigned int opMode, unsigned int count, Ps
 
             // New angle. Update rotation matrix coefficients:
             rotAngleRad = rotationAngle * M_PI / 180.0;
-            crt = cos(rotAngleRad);
-            srt = sin(rotAngleRad);
+            crt = (float) cos(rotAngleRad);
+            srt = (float) sin(rotAngleRad);
         }
     }
     else {

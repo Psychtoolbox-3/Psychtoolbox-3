@@ -277,18 +277,25 @@ else
                 % A good default at least on OS/X is type 1:
                 gfxhwtype = 1;
 
-                if (IsWin || IsLinux) && ~isempty(strfind(winfo.GPUCoreId, 'R600'))
+                if IsWin && ~isempty(strfind(winfo.GPUCoreId, 'R600'))
                     % At least the Radeon HD 3470 under Windows Vista and Linux needs type 0
                     % LUT's. Let's assume for the moment this is true for all R600
                     % cores, ie., all Radeon HD series cards.
                     fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Using type-0 LUT.\n');
                     gfxhwtype = 0;
                 elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD')))
-                    % At least the Radeon R3xx/4xx/5xx under Linux with DRI2 Mesa needs type 0
-                    % LUT's. Let's assume for the moment this is true for all R600
-                    % cores, ie., all Radeon HD series cards.
-                    fprintf('LoadIdentityClut: ATI Radeon on Linux DRI2 detected. Using type-0 LUT.\n');
-                    gfxhwtype = 0;
+                    if ~isempty(strfind(winfo.GPUCoreId, 'R600'))
+                        % At least the Radeon R9 380 Tonga Pro with DCE10 display engine under Linux with DRI2 Mesa needs type 3
+                        % LUT's. Let's assume for the moment this is true for all such R600+ cores, ie., all Radeon HD series cards.
+                        fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later on Linux DRI2/DRI3 detected. Using type-3 LUT.\n');
+                        gfxhwtype = 3;
+                    else
+                        % At least the Radeon R3xx/4xx/5xx under Linux with DRI2 Mesa needs type 0
+                        % LUT's. Let's assume for the moment this is true for all R600
+                        % cores, ie., all Radeon HD series cards.
+                        fprintf('LoadIdentityClut: ATI Radeon on Linux DRI2 detected. Using type-0 LUT.\n');
+                        gfxhwtype = 0;
+                    end
                 elseif IsOSX && (~isempty(strfind(winfo.GLRenderer, 'Radeon HD 5')))
                     % At least on OS/X 10.6 with ATI Radeon HD-5000 series,
                     % type 2 seems to be the correct choice, according to Cesar

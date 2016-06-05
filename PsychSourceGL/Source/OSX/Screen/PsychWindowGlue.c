@@ -301,6 +301,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         printf("PTB-INFO: Onscreen window is configured as regular GUI window.\n");
     }
 
+    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 1) && CGDisplayIsInMirrorSet(cgDisplayID)) {
+        printf("PTB-WARNING: Onscreen window is displayed on a display with display mirroring enabled. This will likely ruin visual timing.\n");
+    }
+
     // Create onscreen Cocoa window of requested position and size:
     if (PsychCocoaCreateWindow(windowRecord, windowLevel, &cocoaWindow)) {
         printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Cocoa onscreen window\n\n");

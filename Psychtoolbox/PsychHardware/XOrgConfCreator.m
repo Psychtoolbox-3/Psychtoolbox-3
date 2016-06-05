@@ -295,7 +295,7 @@ try
     end
 
     % Is the use of DRI3/Present safely possible with this combo of Mesa and X-Server?
-    if ~strcmp(xdriver, 'modesetting') && strfind(winfo.GLVersion, 'Mesa') && (bitand(winfo.SpecialFlags, 2^24) > 0)
+    if ~strcmp(xdriver, 'modesetting') && ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
       % Yes. Propose it:
       fprintf('\n\nDo you want to allow the use of the new DRI3/Present display backend?\n');
       fprintf('DRI3 is a new method of displaying content which is potentially more efficient\n');

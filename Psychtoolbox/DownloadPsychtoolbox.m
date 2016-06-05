@@ -14,6 +14,14 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % matlab-psychtoolbox-3 instead from http://neuro.debian.net - This is more
 % convenient and will provide you with automatic updates.
 %
+% CAUTION: Psychtoolbox 3.0.13 will not work anymore with 32-Bit Octave-4
+% on MS-Windows, or with OSX versions earlier than 10.10 "Yosemite".
+% Psychtoolbox will likely work with versions of Microsoft Windows older
+% than Windows-10, but it is not tested on such systems anymore and not
+% supported at all on Windows versions earlier than Windows-7. For best
+% compatibility you should probably use Windows-10 with all upgrades
+% installed.
+%
 % CAUTION: Psychtoolbox 3.0.12 will not work anymore with 32-Bit Matlab, or
 % with OSX versions earlier than 10.8 "Mountain Lion". Psychtoolbox may
 % work with versions of Microsoft Windows older than Windows-7, but it is
@@ -295,6 +303,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 10/04/15 mk  Compatibility fixes for Octave-4, cosmetic cleanups.
 % 10/28/15 mk  32-Bit Octave-4 support for MS-Windows reestablished.
 % 04/01/16 mk  64-Bit Octave-4 support for MS-Windows established.
+% 06/01/16 mk  32-Bit Octave-4 support for MS-Windows removed.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -327,6 +336,14 @@ if strcmp(computer, 'i686-pc-mingw32')
     fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
     fprintf('an old legacy copy of Psychtoolbox-3.0.9 which did support 32-Bit Octave 3.2 on Windows.\n');
     error('Tried to setup on Octave, which is no longer supported on MS-Windows.');
+end
+
+% Check if this is 32-Bit Octave-4 on Windows, which we don't support at all:
+if isempty(strfind(computer, 'x86_64')) && ~isempty(strfind(computer, 'mingw32'))
+    fprintf('Psychtoolbox 3.0.13 and later do no longer work with 32-Bit GNU/Octave-4 on MS-Windows.\n');
+    fprintf('You need to use 64-Bit Octave-4 if you want to use Psychtoolbox with Octave on Windows.\n');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.12'', does support 32-Bit Octave-4 on Windows.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on Windows.');
 end
 
 if strcmp(computer,'MAC')

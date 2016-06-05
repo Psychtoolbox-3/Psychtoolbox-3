@@ -30,6 +30,8 @@
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 // Try to cut down compile time on Windows by only including important headers:
 #define WINDOWS_LEAN_AND_MEAN
+// Otherwise no math constants like M_PI defined in math.h et al. under MSVC:
+#define _USE_MATH_DEFINES
 #endif
 
 //bring in the standard c and system headers 

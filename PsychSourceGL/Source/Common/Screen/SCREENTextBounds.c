@@ -27,8 +27,8 @@
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[normBoundsRect, offsetBoundsRect, textHeight]= Screen('TextBounds', windowPtr, text [,x] [,y] [,yPositionIsBaseline] [,swapTextDirection]);";
-//                          1               2                 3                                 1          2      3    4    5                      6
+static char useString[] = "[normBoundsRect, offsetBoundsRect, textHeight, xAdvance] = Screen('TextBounds', windowPtr, text [,x] [,y] [,yPositionIsBaseline] [,swapTextDirection]);";
+//                          1               2                 3           4                                1          2      3    4    5                      6
 static char synopsisString[] = 
     "Accepts a window pointer and a 'text' string.  Return in 'normBoundsRect' a rect defining the size of the text "
     "in units of pixels. Returns in 'offsetBoundsRect' offsets of the text bounds from the origin, assuming "
@@ -37,6 +37,8 @@ static char synopsisString[] =
     "on Windows and Linux return a bounding box which doesn't take letters with descenders into account "
     "- Descenders are outside the returned box.\n"
     "\"textHeight\" optionally return height of current text string. May return zero if this is "
+    "not supported by the current text renderer.\n"
+    "\"xAdvance\" optionally return horizontal advance after drawing the text string. May return zero if this is "
     "not supported by the current text renderer.\n"
     "See help for Screen('DrawText') for info about accepted text string formats and all additional parameters... ";
 
@@ -50,6 +52,7 @@ PsychError SCREENTextBounds(void)
     int                         stringLengthChars;
     double*                     textUniDoubleString;
     double                      theight = 0;
+    double                      xAdvance = 0;
 
     //all subfunctions should have these two lines.
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -58,7 +61,7 @@ PsychError SCREENTextBounds(void)
     //check for correct the number of arguments before getting involved
     PsychErrorExit(PsychCapNumInputArgs(6));
     PsychErrorExit(PsychRequireNumInputArgs(2));
-    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumOutputArgs(4));
 
     // Get the window record:
     PsychAllocInWindowRecordArg(1, kPsychArgRequired, &winRec);
@@ -84,7 +87,7 @@ PsychError SCREENTextBounds(void)
     PsychCopyInIntegerArg(6, kPsychArgOptional, &swapTextDirection);
 
     // This will perform the bounding box measurement and return the absolute bounding box in "resultPsychRect":
-    PsychDrawUnicodeText(winRec, &resultPsychRect, stringLengthChars, textUniDoubleString, &(winRec->textAttributes.textPositionX), &(winRec->textAttributes.textPositionY), &theight, yPositionIsBaseline, &(winRec->textAttributes.textColor), &(winRec->textAttributes.textBackgroundColor), swapTextDirection);
+    PsychDrawUnicodeText(winRec, &resultPsychRect, stringLengthChars, textUniDoubleString, &(winRec->textAttributes.textPositionX), &(winRec->textAttributes.textPositionY), &theight, &xAdvance, yPositionIsBaseline, &(winRec->textAttributes.textColor), &(winRec->textAttributes.textBackgroundColor), swapTextDirection);
 
     // Create normalized version with top-left corner in (0,0):
     PsychNormalizeRect(resultPsychRect, resultPsychNormRect);
@@ -93,6 +96,7 @@ PsychError SCREENTextBounds(void)
     PsychCopyOutRectArg(1, FALSE, resultPsychNormRect);
     PsychCopyOutRectArg(2, FALSE, resultPsychRect);
     PsychCopyOutDoubleArg(3, FALSE, theight);
+    PsychCopyOutDoubleArg(4, FALSE, xAdvance);
 
     return(PsychError_none);
 }

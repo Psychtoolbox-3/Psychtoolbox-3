@@ -65,6 +65,9 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 03/15/2016 Need liboctave-dev package for symlinks liboctinterp.so -> Octave specific liboctinterp.x.so (MK)
 % 04/01/2016 64-Bit Octave-4 support for MS-Windows established. (MK)
 % 05/13/2016 Add new rpath fixup for Octave on OSX - Copy runtime libs to search dirs. (MK)
+% 06/01/2016 32-Bit Octave-4 support for MS-Windows removed. (MK)
+%            64-Bit Octave-3 support for OSX removed. (MK)
+%            OSX 10.8 and 10.9 support removed. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -152,13 +155,14 @@ catch
 end
 
 % 32-Bit Octave or 32-Bit Matlab on OSX? This is unsupported as of Version 3.0.11.
-if IsOSX && ~Is64Bit
-    fprintf('Psychtoolbox 3.0.11 and later do no longer work with 32-Bit versions of Octave or Matlab on OSX.\n');
-    fprintf('You need to upgrade to a 64-Bit version of Octave or Matlab on OSX, which is fully supported.\n');
+if (IsOSX || IsWin) && ~Is64Bit
+    fprintf('Psychtoolbox 3.0.13 and later versions do no longer work with 32-Bit versions of Octave or Matlab on OSX or Windows.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave or Matlab on these systems, which is fully supported.\n');
     fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
     fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX, or use\n');
     fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.10'', which does support 32-Bit Matlab on OSX.\n');
-    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.12'', does support 32-Bit Octave-4 on Windows.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX or Windows.');
 end
 
 if ~Is64Bit && ~IsOctave
@@ -230,19 +234,19 @@ if IsOSX
         minorver = inf;
     end
 
-    % Is the operating system version < 10.8?
-    if minorver < 8
-        % Yes. This is MacOSX 10.7 or earlier, i.e., older than 10.8
-        % Mountain Lion. PTB will not work on such an old system:
+    % Is the operating system version < 10.10?
+    if minorver < 10
+        % Yes. This is MacOSX 10.9 or earlier, i.e., older than 10.10
+        % Yosemite. PTB will not work on such an old system:
         fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
         fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
         fprintf('This release of Psychtoolbox-3 is not compatible\n');
-        fprintf('to OSX versions older than 10.8 "Mountain Lion".\n');
+        fprintf('to OSX versions older than 10.10 "Yosemite".\n');
         fprintf('That means that almost all functionality will not work!\n\n');
         fprintf('You could download an older version of Psychtoolbox\n');
         fprintf('onto your system to get better results. See our Wiki for help.\n');
         fprintf('Better though, update your operating system to at least version\n');
-        fprintf('10.8.5 or later, better the very latest OSX version.\n');
+        fprintf('10.11.5 or later, better the very latest OSX version.\n');
         fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
         fprintf('Press any key on keyboard to try to continue with setup, although\n');
         fprintf('this will likely fail soon and leave you with a dysfunctional toolbox.\n\n');
@@ -301,8 +305,20 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles64']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4OSXFiles64']);
+        end
+
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64']);
         end
 
         % Encode prefix and Octave major version of proper folder:
@@ -362,17 +378,14 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (IsWin && (octavemajorv < 4)) || (octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 2)
+    if (~IsLinux && (octavemajorv < 4)) || (octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 2)
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is obsolete. We strongly recommend\n', version);
         if IsLinux
             % On Linux everything >= 3.2 is fine:
             fprintf('WARNING: using the latest stable version of the Octave 3.2.x series or later for use with Psychtoolbox.\n');
-        elseif IsOSX
-            % On OSX we only care about >= 3.8 atm:
-            fprintf('WARNING: using the latest stable version of the Octave 3.8.x series or later for use with Psychtoolbox.\n');
         else
-            % On Windows we only care about >= 4.0 atm:
+            % On Windows/OSX we only care about >= 4.0 atm:
             fprintf('WARNING: using the latest stable version of the Octave 4.0.x series for use with Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
@@ -424,7 +437,7 @@ if IsOctave
             fprintf('ERROR: might by missing, causing our mex files to fail to load with linker errors.\n');
         end
         fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);
-        fprintf('ERROR: use of the latest stable version of Octave-3 or 4 as announced on the www.octave.org website.\n');
+        fprintf('ERROR: use of the latest stable version of Octave-4 as announced on the www.octave.org website.\n');
         fprintf('ERROR: Another conceivable reason would be missing or incompatible required system libraries on your system.\n\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
@@ -562,7 +575,9 @@ try
         fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
 
         % Additional setup instructions for embedded/mobile devices with ARM cpu required?
-        if IsARM
+        % No point anymore. Not needed for RaspberryPi, and our Nexus-7
+        % support is essentially dead...
+        if 0 && IsARM
             fprintf('Additionally, as this is a device with ARM processor, the helper library\n');
             fprintf('libwaffle-1.so needs to be installed in a system library folder for Screen\n');
             fprintf('to work. You can find a copy of the library in the PsychContributed/ArmArch/\n');

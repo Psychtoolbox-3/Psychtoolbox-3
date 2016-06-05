@@ -72,7 +72,7 @@ fi
 : ${FPICFLAG="-fPIC"}
 #: ${CC="/usr/local/octave/3.8.0/bin/gcc-mp-4.7"}
 : ${CC="gcc"}
-: ${CFLAGS="-pipe -Os -m64 -D_THREAD_SAFE -pthread -lc -mmacosx-version-min='10.8'"}
+: ${CFLAGS="-pipe -Os -m64 -D_THREAD_SAFE -pthread -lc -mmacosx-version-min='10.10'"}
 : ${CPICFLAG="-fPIC"}
 #: ${CXX="/usr/local/octave/3.8.0/bin/g++-mp-4.7"}
 : ${CXX="g++"}

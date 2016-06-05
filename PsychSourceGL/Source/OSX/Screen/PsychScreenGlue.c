@@ -123,7 +123,7 @@ void InitializePsychDisplayGlue(void)
             // larger problems and side effects somewhere else (haha, hope against hope,
             // this would be the first time a dirty hack wouldn't bite us when dealing with
             // Apples crappy products).
-            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Redirecting stderr to work around broken OSX 10.11. This may have unpleasant side-effects.\n");
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: Redirecting stderr to work around broken OSX 10.11. This may have unpleasant side-effects.\n");
             freopen(((getenv("PSYCH_REDIRECT_STDERR_PATH")) ? getenv("PSYCH_REDIRECT_STDERR_PATH") : "/dev/null"), "a", stderr);
         }
     #endif

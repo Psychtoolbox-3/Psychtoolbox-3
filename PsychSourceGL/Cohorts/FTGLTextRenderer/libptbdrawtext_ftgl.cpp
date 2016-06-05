@@ -146,7 +146,7 @@ OGLFT_API void PsychSetTextBGColor(int context, double* color);
 OGLFT_API void PsychSetTextUseFontmapper(unsigned int useMapper, unsigned int mapperFlags);
 OGLFT_API void PsychSetTextViewPort(int context, double xs, double ys, double w, double h);
 OGLFT_API int PsychDrawText(int context, double xStart, double yStart, int textLen, double* text);
-OGLFT_API int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax);
+OGLFT_API int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax, float* xadvance);
 OGLFT_API void PsychSetTextVerbosity(unsigned int verbosity);
 OGLFT_API void PsychSetTextAntiAliasing(int context, int antiAliasing);
 OGLFT_API void PsychSetAffineTransformMatrix(int context, double matrix[2][3]);
@@ -581,8 +581,8 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     // Rendering of background quad requested? -- True if background alpha > 0.
     if (_bgcolor[3] > 0) {
         // Yes. Compute bounding box of "to be drawn" text and render a quad in background color:
-        float xmin, ymin, xmax, ymax;
-        PsychMeasureText(context, textLen, text, &xmin, &ymin, &xmax, &ymax);
+        float xmin, ymin, xmax, ymax, xadvance;
+        PsychMeasureText(context, textLen, text, &xmin, &ymin, &xmax, &ymax, &xadvance);
         glColor4fv(&(_bgcolor[0]));
         glRectf(xmin + xStart, ymin + yStart, xmax + xStart, ymax + yStart);
     }
@@ -621,7 +621,7 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     return(0);
 }
 
-int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax)
+int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax, float* xadvance)
 {
     int i;
     QChar* myUniChars;
@@ -649,6 +649,11 @@ int PsychMeasureText(int context, int textLen, double* text, float* xmin, float*
     *ymin = box.y_min_;
     *xmax = box.x_max_;
     *ymax = box.y_max_;
+
+    // xadvance = How far to horizontally advance the x text
+    // drawing cursor position after drawing the text string:
+    // newXPos = oldXPos + xadvance
+    *xadvance = box.advance_.dx_;
 
     return(0);
 }

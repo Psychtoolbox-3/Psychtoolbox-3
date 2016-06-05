@@ -59,7 +59,7 @@ void (*PsychPluginSetTextBGColor)(int context, double* color) = NULL;
 void (*PsychPluginSetTextUseFontmapper)(unsigned int useMapper, unsigned int mapperFlags) = NULL;
 void (*PsychPluginSetTextViewPort)(int context, double xs, double ys, double w, double h) = NULL;
 int (*PsychPluginDrawText)(int context, double xStart, double yStart, int textLen, double* text) = NULL;
-int (*PsychPluginMeasureText)(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax) = NULL;
+int (*PsychPluginMeasureText)(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax, float* xadvance) = NULL;
 void (*PsychPluginSetTextVerbosity)(unsigned int verbosity) = NULL;
 void (*PsychPluginSetTextAntiAliasing)(int context, int antiAliasing) = NULL;
 void (*PsychPluginSetAffineTransformMatrix)(int context, double matrix[2][3]) = NULL;
@@ -2066,27 +2066,30 @@ void PsychDrawCharText(PsychWindowRecordType* winRec, const char* textString, do
     unsigned int ix;
     unsigned int textLength = (unsigned int) strlen(textString);
     double theight = 0; // theight unused by PsychDrawCharText().
+    double xAdvance = 0; // xAdvance unused.
     double* unicodeText = (double*) PsychCallocTemp(textLength + 1, sizeof(double));
     for (ix = 0; ix < textLength; ix++) unicodeText[ix] = (double) textString[ix];
 
     // Call Unicode text renderer:
-    PsychDrawUnicodeText(winRec, boundingbox, textLength, unicodeText, xp, yp, &theight, yPositionIsBaseline, (textColor) ? textColor :  &(winRec->textAttributes.textColor), (backgroundColor) ? backgroundColor :  &(winRec->textAttributes.textBackgroundColor), 0);
+    PsychDrawUnicodeText(winRec, boundingbox, textLength, unicodeText, xp, yp, &theight, &xAdvance, yPositionIsBaseline, (textColor) ? textColor :  &(winRec->textAttributes.textColor), (backgroundColor) ? backgroundColor :  &(winRec->textAttributes.textBackgroundColor), 0);
 
     // Done.
     return;
 }
 
-PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, double* theight, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, int swapTextDirection)
+PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, double* theight, double* xAdvance, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, int swapTextDirection)
 {
     GLdouble backgroundColorVector[4];
     GLdouble colorVector[4];
     GLenum normalSourceBlendFactor, normalDestinationBlendFactor;
-    float xmin, ymin, xmax, ymax;
+    float xmin, ymin, xmax, ymax, _xadvance;
     double myyp;
     double dummy;
-    unsigned int    i;
+    unsigned int i;
     int ctx;
     int rc = 0;
+
+    *xAdvance = 0;
 
     // Invert text string (read it "backwards") if swapTextDirection is requested:
     if (swapTextDirection) {
@@ -2167,7 +2170,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
         #endif
 
         // Compute bounding box of drawn string:
-        rc = PsychPluginMeasureText(ctx, stringLengthChars, textUniDoubleString, &xmin, &ymin, &xmax, &ymax);
+        rc = PsychPluginMeasureText(ctx, stringLengthChars, textUniDoubleString, &xmin, &ymin, &xmax, &ymax, &_xadvance);
 
         // Handle definition of yp properly: Is it the text baseline, or the top of the text bounding box?
         if (yPositionIsBaseline) {
@@ -2181,6 +2184,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
         if (boundingbox) {
             // Yes. Return it:
             PsychMakeRect((double*) boundingbox, xmin + *xp, myyp - ymax, xmax + *xp, myyp - ymin);
+            *xAdvance = (double) _xadvance;
         }
         else {
             // Draw text by calling into the plugin:
@@ -2235,6 +2239,7 @@ PsychError SCREENDrawText(void)
     int                         stringLengthChars;
     double*                     textUniDoubleString = NULL;
     double                      theight = 0;
+    double                      xAdvance = 0;
 
     // All subfunctions should have these two lines.
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -2277,7 +2282,7 @@ PsychError SCREENDrawText(void)
     PsychCopyInIntegerArg(8, kPsychArgOptional, &swapTextDirection);
 
     // Call Unicode text renderer: This will update the current text cursor positions as well.
-    PsychDrawUnicodeText(winRec, NULL, stringLengthChars, textUniDoubleString, &(winRec->textAttributes.textPositionX), &(winRec->textAttributes.textPositionY), &theight, yPositionIsBaseline, &(winRec->textAttributes.textColor), &(winRec->textAttributes.textBackgroundColor), swapTextDirection);
+    PsychDrawUnicodeText(winRec, NULL, stringLengthChars, textUniDoubleString, &(winRec->textAttributes.textPositionX), &(winRec->textAttributes.textPositionY), &theight, &xAdvance, yPositionIsBaseline, &(winRec->textAttributes.textColor), &(winRec->textAttributes.textBackgroundColor), swapTextDirection);
 
     // We jump directly to this position in the code if the textstring is empty --> No op.
 drawtext_skipped:

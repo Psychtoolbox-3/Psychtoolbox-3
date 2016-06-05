@@ -1648,8 +1648,8 @@ const char* PsychSupportStatus(void)
 		isSupported = ((osvi.dwMajorVersion == 10) || ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 1))) ? 1 : 0;
 
         if (isSupported) {
-            // Windows-7 is fully supported, Windows-8 and later only partially:
-            sprintf(statusString, "Windows version %i.%i %ssupported.", osvi.dwMajorVersion, osvi.dwMinorVersion, ((osvi.dwMajorVersion == 10) || (osvi.dwMinorVersion != 1)) ? "partially " : "");
+            // Windows-10 is fully supported, earlier Windows only partially:
+            sprintf(statusString, "Windows version %i.%i %s.", osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMajorVersion == 10) ? "supported and tested to some limited degree" : "partially supported, but no longer tested at all");
         }
         else {
             sprintf(statusString, "Windows version %i.%i is not supported.", osvi.dwMajorVersion, osvi.dwMinorVersion);
