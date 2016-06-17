@@ -1,0 +1,82 @@
+/*
+ * File: PositivesOnlyNonSymetricGaborShader.vert.txt
+ * Shader for drawing of parameterized gabor patches that are allowed to
+ * be elliptical, ie. non-circular, ie., aspect ration != 1.
+ *
+ * This is the vertex shader. It takes the attributes (parameters)
+ * provided by the Screen('DrawTexture(s)') command, performs some
+ * basic calculations on it - the calculations that only need to be
+ * done once per gabor patch and that can be reliably carried out
+ * at sufficient numeric precision in a vertex shader - then it passes
+ * results of computations and other attributes as 'varying' parameters
+ * to the fragment shader.
+ *
+ * (c) 2007, 2008 by Mario Kleiner, licensed under MIT license.
+ *		 
+ */
+
+/* Constants that we need 2*pi and square-root of 2*pi: */
+const float twopi     = 2.0 * 3.141592654;
+const float sqrtof2pi = 2.5066282746;
+
+/* Conversion factor from degrees to radians: */
+const float deg2rad = 3.141592654 / 180.0;
+
+/* Texel position of center of gabor patch: Constant, set from Matlab */
+/* once when the shader is created: */
+uniform vec2  Center;
+
+/* If disableNorm is set to 1.0, then the normalization term below is    */
+/* not applied to the gabors final values. Default is 0.0, ie. apply it. */
+uniform float disableNorm;
+
+/* Constant from setup code: Premultiply to contrast value: */
+uniform float contrastPreMultiplicator;
+
+/* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
+attribute vec4 sizeAngleFilterMode;
+attribute vec4 modulateColor;
+attribute vec4 auxParameters0;
+attribute vec4 auxParameters1;
+
+/* Information passed to the fragment shader: Attributes and precalculated per patch constants: */
+varying float Angle;
+varying vec4  baseColor;
+varying float Phase;
+varying float FreqTwoPi;
+varying float Expmultiplier;
+varying float GammaSquared;
+
+void main()
+{
+    /* Apply standard geometric transformations to patch: */
+    gl_Position = ftransform();
+
+    /* Don't pass real texture coordinates, but ones corrected for hardware offsets (-0.5,0.5) */
+    /* and so that the center of the gabor patch has coordinate (0,0): */
+    gl_TexCoord[0] = gl_MultiTexCoord0 - vec4(Center, 0.0, 0.0) + vec4(-0.5, 0.5, 0.0, 0.0);
+
+    /* Contrast value is stored in auxParameters0[3]: */
+    float Contrast = auxParameters0[3];
+
+    /* Convert Angle and Phase from degrees to radians: */
+    Angle = deg2rad * sizeAngleFilterMode.z;
+    Phase = deg2rad * auxParameters0[0];
+
+    /* Precalc a couple of per-patch constant parameters: */
+    FreqTwoPi = auxParameters0[1] * twopi;
+
+    float SpaceConstant = auxParameters0[2];
+    Expmultiplier = -0.5 / (SpaceConstant * SpaceConstant);
+
+
+    /* Conditionally apply non-standard normalization term iff disableNorm == 0.0 */
+    float mc = disableNorm + (1.0 - disableNorm) * (1.0 / (sqrtof2pi * SpaceConstant));
+
+    /* The spatial aspect ratio Gamma is stored in the 5th aux parameter. */
+    float Gamma = auxParameters1[0];
+    GammaSquared = Gamma * Gamma;
+
+    /* Premultiply the wanted Contrast to the color: */
+    baseColor = modulateColor * mc * Contrast * contrastPreMultiplicator;
+}
