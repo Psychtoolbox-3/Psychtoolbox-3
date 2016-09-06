@@ -1,4 +1,4 @@
-function [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height, nonSymmetric, backgroundColorOffset, disableNorm, contrastPreMultiplicator)
+function [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height, nonSymmetric, backgroundColorOffset, disableNorm, contrastPreMultiplicator, onlyUsePositiveModulationShader)
 % [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height [, nonSymmetric=0][, backgroundColorOffset =(0,0,0,0)][, disableNorm=0][, contrastPreMultiplicator=1])
 %
 % Creates a procedural texture that allows to draw Gabor stimulus patches
@@ -160,12 +160,31 @@ if nargin < 7 || isempty(contrastPreMultiplicator)
     contrastPreMultiplicator = 1.0;
 end
 
+if nargin < 8 || isempty(onlyUsePositiveModulationShader)
+    % Good for use when modulating patch by color, and you don't want
+    % negative modulation effects
+    onlyUsePositiveModulationShader = 0;
+end
+
 if ~nonSymmetric
-    % Load standard symmetric support shader - Faster!
-    gaborShader = LoadGLSLProgramFromFiles('BasicGaborShader', debuglevel);
+    if onlyUsePositiveModulationShader
+        % Good for use when modulating patch by color, and you don't want
+        % negative modulation effects
+        gaborShader = LoadGLSLProgramFromFiles('PositivesOnlyBasicGaborShader', debuglevel);
+    else
+        % Load standard symmetric support shader - Faster than asymmetric!
+        gaborShader = LoadGLSLProgramFromFiles('BasicGaborShader', debuglevel);
+    end
+    
 else
-    % Load extended asymmetric support shader - Slower!
-    gaborShader = LoadGLSLProgramFromFiles('NonSymetricGaborShader', debuglevel);
+    if onlyUsePositiveModulationShader
+        % Good for use when modulating patch by color, and you don't want
+        % negative modulation effects
+        gaborShader = LoadGLSLProgramFromFiles('PositivesOnlyNonSymetricGaborShader', debuglevel);
+    else
+        % Load extended asymmetric support shader - Slower!
+        gaborShader = LoadGLSLProgramFromFiles('NonSymetricGaborShader', debuglevel);
+    end
 end
 
 % Setup shader:

@@ -1,0 +1,53 @@
+/*
+ * File: PositivesOnlyNonSymetricGaborShader.frag.txt
+ * Shader for drawing of parameterized gabor patches that are allowed to
+ * be elliptical, ie. non-circular, ie., aspect ration != 1.
+ *
+ * This is the fragment shader. It gets the per-patch-constant
+ * parameters as varyings from the vertex shader and hardware
+ * interpolators, then performs per fragment calculations to
+ * compute and write the final pixel color.
+ *
+ * (c) 2007, 2008 by Mario Kleiner, licensed under MIT license.
+ *		 
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform vec4 Offset;
+
+varying float Angle;
+varying vec4  baseColor;
+varying float Phase;
+varying float FreqTwoPi;
+varying float Expmultiplier;
+varying float GammaSquared;
+
+void main()
+{
+    /* Compute sine and cosine coefficients, based on rotation angle: */
+    /* Note that this is a constant for all fragments, but we can not do it in */
+    /* the vertex shader, because the vertex shader does not have sufficient   */
+    /* numeric precision on some common hardware out there. */
+    float st = sin(Angle);
+    float ct = cos(Angle);
+
+    /* Query current output texel position wrt. to Center of Gabor: */
+    vec2 pos = gl_TexCoord[0].xy;
+
+    /* Compute x' and y' terms: */
+    float xdash = dot(vec2( ct, st), pos);
+    float ydash = dot(vec2(-st, ct), pos);
+
+    /* Evaluate sine grating at requested position, angle and phase: */
+    float sv = sin(xdash * FreqTwoPi + Phase);
+
+    /* Compute exponential hull for the gabor: */
+    float ev = exp(((xdash * xdash)  + (GammaSquared * ydash * ydash)) * Expmultiplier);
+
+    /* Multiply/Modulate base color and alpha with calculated sine/gauss      */
+    /* values, add some constant color/alpha Offset, assign as final fragment */
+    /* output color: */
+    /*gl_FragColor = (baseColor * (ev * sv )) + Offset;*/
+    gl_FragColor = (baseColor * clamp(ev * sv, 0.0, 1.0 )) + Offset;
+}

@@ -1,0 +1,45 @@
+/*
+ * File: PositivesOnlyBasicGaborShader.frag.txt
+ * Shader for drawing of basic parameterized gabor patches.
+ * Only show positive values in final grating.
+ *
+ * This is the fragment shader. It gets the per-patch-constant
+ * parameters as varyings from the vertex shader and hardware
+ * interpolators, then performs per fragment calculations to
+ * compute and write the final pixel color.
+ *
+ * (c) 2007 by Mario Kleiner, licensed under MIT license.
+ *		 
+ */
+
+uniform vec4 Offset;
+
+varying float Angle;
+varying vec4  baseColor;
+varying float Phase;
+varying float FreqTwoPi;
+varying float Expmultiplier;
+
+void main()
+{
+    /* Query current output texel position wrt. to Center of Gabor: */
+    vec2 pos = gl_TexCoord[0].xy;
+
+    /* Compute (x,y) distance weighting coefficients, based on rotation angle: */
+    /* Note that this is a constant for all fragments, but we can not do it in */
+    /* the vertex shader, because the vertex shader does not have sufficient   */
+    /* numeric precision on some common hardware out there. */
+    vec2 coeff = vec2(cos(Angle), sin(Angle)) * FreqTwoPi;
+
+    /* Evaluate sine grating at requested position, angle and phase: */
+    float sv = sin(dot(coeff, pos) + Phase);
+
+    /* Compute exponential hull for the gabor: */
+    float ev = exp(dot(pos, pos) * Expmultiplier);
+
+    /* Multiply/Modulate base color and alpha with calculated sine/gauss      */
+    /* values, add some constant color/alpha Offset, assign as final fragment */
+    /* output color: */
+    /*gl_FragColor = (baseColor * (ev * sv )) + Offset;*/
+    gl_FragColor = (baseColor * clamp(ev * sv, 0.0, 1.0 )) + Offset;
+}
