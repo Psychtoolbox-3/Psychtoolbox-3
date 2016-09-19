@@ -754,7 +754,7 @@ p=fullfile(targetdirectory,'Psychtoolbox');
 pt = strcat('"',p,'"');
 
 if ~strcmp(flavor, 'trunk')
-    dflavor = ['branches/' flavor];
+    dflavor = ['tree/' flavor];
 else
     dflavor = flavor;
 end
