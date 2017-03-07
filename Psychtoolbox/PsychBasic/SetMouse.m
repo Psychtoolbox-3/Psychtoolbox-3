@@ -65,5 +65,8 @@ end
 if nargin < 5 || isempty(detachFromMouse)
   detachFromMouse = 0;
 end
-
-Screen('SetMouseHelper', windowPtrOrScreenNumber, round(x), round(y), mouseid, detachFromMouse);
+if isunix && ~ismac
+    Screen('SetMouseHelper', windowPtrOrScreenNumber, round(x), round(y), mouseid);
+else
+    Screen('SetMouseHelper', windowPtrOrScreenNumber, round(x), round(y), mouseid, detachFromMouse);
+end
