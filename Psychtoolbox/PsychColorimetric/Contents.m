@@ -16,6 +16,7 @@
 %   AbsorptanceToAbsorbance - Convert absorptance to absorbance spectrum.
 %   CheckWls            - Check consistency of two wavelength descriptions.
 %   ComputeDE           - Compute vector length between matrix columns.
+%   ComputeDE2000_Lab   - Compute deltaE values (CIEDE200) for color pairs given in L*a*b* coordinates.
 %   ComputeDKL_M        - Compute transformation matrix for DKL color space.
 %   ComputeAxialDensity - Compute axial optical density from specific density and path length.
 %   ComputePhotopigmentBleaching - Compute fraction of photopigment bleached.
