@@ -11,7 +11,7 @@ function [photonAbsorptionRate] =...
 % to convert your incident spectrum to these units.  The retinal irradiance is passed in quantal units.  Note
 % that routines EnergyToQuanta and QuantaToEnergy are available for your converting pleasure.
 %
-% Can handle multiple photorceptor types.  Put each absrorbtance spectrum in a row of matrix
+% Can handle multiple photoreceptor types.  Put each absopbtance spectrum in a row of matrix
 % absorptanceSpectra, put corresponding collecting diameters in column vector collectingDiameter.
 %
 % Units: 
