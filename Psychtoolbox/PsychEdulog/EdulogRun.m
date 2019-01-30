@@ -19,13 +19,9 @@ function [output] = EdulogRun(port, dur, sps, loggers)
 % (double)
 % Concern: Whether or not each sample took more than twice the specified
 % sample rate to retrieve (logical)
-% Event (optional): Whether or not an event happened at this point
-% (logical)
 % An additional field for each kind of Edulogger used, containing the
 % measurements taken at each point in data.Time. Fieldnames should line up 
 % with the names specified in "loggers".
-
-addpath(genpath('Data')) % Add the "Data" folder to the path
 
 %% Essential checks
 if ~exist('C:\neulog_api', 'dir') % If the Neulog API is not installed...
@@ -66,6 +62,7 @@ for n = 1:dur*sps % For each sample...
         end
         data.Time(n) = toc; % Record the time taken
         data.Concern(n) = round(toc, 1) > 2/sps; % Did this sample take more than twice the desired time to retrieve?
+        data.Event(n) = false;
     end
 end
 
@@ -83,4 +80,31 @@ for n = 1:dur*sps % For each sample...
     output(n).Time = data.Time(n); % Save timestamps to the output
     output(n).Concern = data.Concern(n); % Save concern matrix to the output
 end
+end
+
+
+
+function i = findnum(str)
+% Find values in a string which can be converted to numeric without
+% returning an error.
+%
+% "str" is the string in which to find numbers
+%
+% "i" is a logical matrix with the indices of numbers in the string as
+% true.
+
+i = find(... % Find indices at which str is equal to...
+    str == '0' | ... % ...0
+    str == '1' | ... % ...1
+    str == '2' | ... % ...2
+    str == '3' | ... % ...3
+    str == '4' | ... % ...4
+    str == '5' | ... % ...5
+    str == '6' | ... % ...6
+    str == '7' | ... % ...7
+    str == '8' | ... % ...8
+    str == '9' | ... % ...9
+    str == '.' | ... % ...a decimal point
+    str == '-'   ... % ...a minus sign
+    );
 end

@@ -20,31 +20,48 @@ function fig = EdulogPlot(data, loggers)
 % "fig" is a Graphics Object containing the graph generated, properties of
 % the graph can be changed by editing this object.
 
-addpath(genpath('Plotting')) % Add the folder with necessary plotting functions to the path
-
-if ~exist('piermorel-gramm-b0fc592', 'dir') % If GRAMM is not installed...
-    error('Package required: <a href="https://uk.mathworks.com/matlabcentral/fileexchange/54465-gramm-complete-data-visualization-toolbox-ggplot2-r-like">@gramm by Pier Morel</a>') % Link to GRAMM on the MATLAB Exchange
-end
-
 sDim = get(0,'screensize'); % Get screensize
 
-% Create 2-D matrix with the data from each logger on its own row
-y = [];
-for l = 1:length(loggers)
-    y = [y; [data.(loggers{l})]];
-end
-
 close all % Close any open figures
-fig = figure; % Create a blank figure
-g = gramm('x',[data.Time], 'y',y); % Create GRAMM object with .Time as its x-axis and y as it's y-axis
-g.set_names('x','Time (s)', 'y',''); % Set axis names (y is blank as logger names are included in figure titles)
-g.geom_line(); % Add data as lines
-if length(loggers) > 1 % if there are multiple loggers
-    g.facet_grid(loggers', [], 'scale','free'); % Split into seperate graphs for each logger
-end
-if isfield(data, 'Event') % if there is event data
-    g.geom_vline('xintercept', data([data.Event]).Time, 'style', 'k-') % Plot events as vertical lines
-end
-g.draw(); % Draw graphs
+
+% Create & setup a blank figure
+fig = figure; % Create figure
+fig.Name = 'Edulog Data'; % Name figure
+fig.NumberTitle = 'off'; % Remove "Figure 1" label
+fig.Color = 'white'; % White background
 fig.Position([2,4]) = [100, sDim(4) - 200]; % Resize to the height of the screen - 200
 fig.Position([1,3]) = [200, sDim(3) - 400];% Resize to the width of the screen - 400
+
+% Extract data
+m = min(length(loggers), 3); % Determine number of rows (max 3)
+n = ceil(length(loggers)/3); % Determine number of columns
+e = [data.Event]; % Find events
+c = [data.Concern]; % Find latency points
+x = [data.Time]; % Extract x data
+
+for L = 1:length(loggers)
+    % Get data
+    y = [data.(loggers{L})];
+    
+    % Setup axis
+    ax{L} = subplot(m, n, L); % Choose sub-plot to draw in
+    ax{L}.Position([1,3]) = [0.1, 0.8]; % Position plot
+    ax{L}.FontName = 'Verdana'; % Change font
+    ax{L}.XLabel.String = 'Time (s)'; % Label x-axis
+    ax{L}.YLabel.String = loggers{L}; % Label y-axis
+    ax{L}.Color = [0.98, 0.98, 1]; % Axis background
+    ax{L}.XGrid = 'on'; % Add vertical gridlines
+    ax{L}.YGrid = 'on'; % Add horizontal gridlines
+    ax{L}.GridColor = 'white'; % Make gridlines white
+    ax{L}.GridAlpha = 1; % Make gridlines opaque
+    
+    % Plot data
+    ln{L} = line(x, y, 'Color', [42, 107, 211]./255, 'LineWidth', 2); % Plot data
+    ev{L} = line([[data(e).Time]; [data(e).Time]]', ax{L}.YLim, 'Color', 'k', 'LineWidth', 2); % Plot events
+    co{L} = line([[data(c).Time]; [data(c).Time]]', ax{L}.YLim, 'Color', 'r', 'LineStyle', ':'); % Plot concern points
+    
+    % Draw legend
+    le{L} = legend({"Data", "Events", "Concern"}); % Add legend
+    le{L}.Position([1,3]) = [0.9, 0.1]; % Position legend
+    le{L}.Box = 'off'; % Remove outline
+end
