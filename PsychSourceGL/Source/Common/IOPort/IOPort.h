@@ -84,7 +84,7 @@ PsychError IOPORTOpenSerialPort(void);
 PsychError IOPORTConfigureSerialPort(void);
 
 // Initialize usage info -- function overview:
-void InitializeSynopsis(void);
+const char** InitializeSynopsis(void);
 
 // Exit function: Called at shutdown time:
 PsychError PsychExitIOPort(void);

@@ -62,6 +62,6 @@ if n>length(string)
   string='';
   return
 end
-wrapped=[wrapped string(1:n-1) sprintf('\n')];
+wrapped=[wrapped string(1:n-1) cast(10,class(string))];
 string=string(n+1:end);
 return

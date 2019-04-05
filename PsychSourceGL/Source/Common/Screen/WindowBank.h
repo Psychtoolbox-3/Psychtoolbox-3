@@ -94,6 +94,7 @@
 #define kPsychGfxCapSupportsBufferAge       (1 << 19)    // Hw supports EXT_buffer_age extension.
 #define kPsychGfxCapFBOScaledResolveBlit    (1 << 20)    // Hw supports simultaneous multisample resolve and rescaling in one framebuffer blit.
 #define kPsychGfxCapSmoothPrimitives        (1 << 21)    // Hw supports GL_POINT_SMOOTH, LINE smooth etc.
+#define kPsychGfxCapFloatToIntRound         (1 << 22)    // Hw, when converting float colors to fixed point colors, rounds to nearest instead of truncating.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
@@ -161,12 +162,14 @@
 #define kPsychSkipTimestampingForFlipOnce   (1 << 28) // 'specialflags': Perform next flip on this window without waiting for swap completion + timestamping + timing correctness checks.
 #define kPsychSkipSwapForFlipOnce           (1 << 29) // 'specialflags': Perform next flip on this window without actually performing the OpenGL bufferswap, iow. don't present to the onscreen window.
 #define kPsychSkipWaitForFlipOnce           (1 << 30) // 'specialflags': Perform next flip on this window without waiting until the 'when' target time for the flip.
+#define kPsychUseFineGrainedOnset           (1ULL << 31) // 'specialflags': Schedule flips not on a fixed refresh interval, but use some scheduling with finer time granularity if possible.
+#define kPsychNeedVBODouble12Workaround     (1ULL << 32) // 'specialflags': Gfx driver bug makes < 2 component vertex attribute buffers problematic if GL_DOUBLE is used for submission.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,S-2^25. --> Flags of 2^24 as well as 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30. --> Flags of 2^31 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,2^31,2^32. --> Flags of 2^33 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;
@@ -373,7 +376,7 @@ typedef struct _PsychWindowRecordType_{
 
     GLboolean                   colorMask[4];           // psych_bool 4 element array which encodes the glColorMask() for this window.
     unsigned int                gfxcaps;                // Bitfield of gfx-cards capabilities and limitations: See constants kPsychGfxCapXXXX above.
-    unsigned int                specialflags;           // Container for all kind of special flags...
+    psych_uint64                specialflags;           // Container for all kind of special flags...
     char                        gpuCoreId[8];           // ASCII string with name of GPU core, as detected by PsychDetectAndAssignGfxCapabilities().
     int                         maxTextureSize;         // Maximum size of a texture supported by GPU.
     int                         stereomode;             // MK: Is this a stereo window? 0=non-stereo, >0 == specific type of stero.

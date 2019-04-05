@@ -22,12 +22,29 @@ static PsychFunctionPtr baseFunctionREGISTER = NULL;
 static PsychFunctionTableEntry functionTableREGISTER[PSYCH_MAX_FUNCTIONS];
 static char ModuleNameREGISTER[PSYCH_MAX_FUNCTION_NAME_LENGTH+1]; //+1 for term null
 static char *currentFunctionNameREGISTER;
-static int numFunctionsREGISTER=0;
+static int numFunctionsREGISTER = 0;
+static psych_bool nameRegistered = FALSE;
+
 
 //file static function declarations
 static PsychError PsychRegisterModuleName(char *name);
 static PsychError PsychRegisterBase(PsychFunctionPtr baseFunc);
 
+/* PsychResetRegistry()
+ *
+ * Called by exit glue. Resets all registered functions to empty init default.
+ *
+ */
+void PsychResetRegistry(void)
+{
+    exitFunctionREGISTER = NULL;
+    baseFunctionREGISTER = NULL;
+    ModuleNameREGISTER[0] = 0;
+    currentFunctionNameREGISTER = NULL;
+    numFunctionsREGISTER = 0;
+    nameRegistered = FALSE;
+    memset(&functionTableREGISTER[0], 0, sizeof(functionTableREGISTER));
+}
 
 /*  This function is called by the special subfunction 'DescribeModuleFunctionsHelper'.
  *  It returns the full table of registered subfunction names as an array.
@@ -213,8 +230,6 @@ PsychFunctionPtr PsychGetProjectExitFunction(void)
 */
 static PsychError PsychRegisterModuleName(char *name)
 {
-	static psych_bool nameRegistered=FALSE; 
-	
 	if(nameRegistered)
 		return(PsychError_registered);
 	else{

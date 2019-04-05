@@ -240,7 +240,7 @@ void        HIDGetUsageName(const long valueUsagePage, const long valueUsage, ch
 HIDElementTypeMask HIDConvertElementTypeToMask(const long type);
 #endif
 
-void                    InitializeSynopsis();
+const char**            InitializeSynopsis(void);
 PsychError              PsychDisplayPsychHIDSynopsis(void);
 int                     PsychHIDErrors(void* device, int error, char **namePtr, char **descriptionPtr);
 void                    PsychInitializePsychHID(void); // PsychHIDHelpers.c
@@ -269,7 +269,7 @@ extern "C" {
     PsychError  PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel);
     int         PsychHIDGetDefaultKbQueueDevice(void);
 
-    PsychError  PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags);
+    PsychError  PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, unsigned int windowHandle);
     void        PsychHIDOSKbQueueRelease(int deviceIndex);
     void        PsychHIDOSKbQueueStop(int deviceIndex);
     void        PsychHIDOSKbQueueStart(int deviceIndex);

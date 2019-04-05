@@ -31,7 +31,7 @@ PsychError MODULEVersion(void)
     const char *authorFiledNames[]={"first", "middle", "last", "initials", "email", "url"};
     char 	*versionString;
     int		buildNumber;
-    int 	numVersionFieldDimensions=1, numVersionFieldNames=12, numAuthorFieldNames=6, numAuthors;
+    int 	numVersionFieldDimensions=-1, numVersionFieldNames=12, numAuthorFieldNames=6, numAuthors;
     PsychGenericScriptType	*versionStructArray, *authorStructArray;
     //we ignore the usual usage help strings and create our own based on the module name. MODULEVersion() is for use by any Psychtoolbox module. 
     char useString[256], synopsisString[256], *moduleName;

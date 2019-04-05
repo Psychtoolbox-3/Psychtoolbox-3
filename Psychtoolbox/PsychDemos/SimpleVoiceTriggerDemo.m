@@ -1,16 +1,11 @@
-function SimpleVoiceTriggerDemo(triggerlevel)
-% SimpleVoiceTriggerDemo(triggerlevel)
+function SimpleVoiceTriggerDemo(triggerlevel, device)
+% SimpleVoiceTriggerDemo([triggerlevel=0.1][, device])
 %
 % Demonstrates very basic usage of the new Psychtoolbox sound driver
 % PsychPortAudio() for implementation of a "voice trigger". This really
 % only collects the "voice response time" it doesn't actually store the
-% resonse itself. Have a look at BasicSoundInputDemo for how one can
+% response itself. Have a look at BasicSoundInputDemo for how one can
 % actually retrieve and save the sound vector with the response itself.
-%
-% The script relies on well working sound cards and drivers. It should
-% "just work" on most MacOS/X and Linux systems with standard hardware, but
-% it will need special ASIO capable sound hardware on MS-Windows for
-% accurate timing! See "help InitializePsychSound" for details.
 %
 % In any case you *must* verify correct timing of your sound hardware with
 % some external measurement equipment, e.g., in conjunction with the
@@ -39,27 +34,35 @@ function SimpleVoiceTriggerDemo(triggerlevel)
 
 % History:
 % 08/10/2008 Written (MK)
+% 11/07/2018 Auto select samplerate, allow 'device' selection. Cosmetic. (MK)
 
-if nargin < 1
+if nargin < 1 || isempty(triggerlevel)
     triggerlevel = 0.1;
     fprintf('No "triggerlevel" argument in range 0.0 to 1.0 provided: Will use default of 0.1...\n\n');
+end
+
+if nargin < 2
+    device = [];
 end
 
 % Perform basic initialization of the sound driver, initialize for
 % low-latency, high timing precision mode:
 InitializePsychSound(1);
 
-% Open the default audio device [], with mode 2 (== Only audio capture),
+% Open the audio device, with mode 2 (== Only audio capture),
 % and a required latencyclass of two 2 == low-latency mode, as well as
-% a frequency of 44100 Hz and 2 sound channels for stereo capture. We also
+% default frequency and 2 sound channels for stereo capture. We also
 % set the required latency to a pretty high 20 msecs. Why? Because we don't
 % actually need low-latency here, we only need low-latency mode of
 % operation so we get maximum timing precision -- Therefore we request
 % low-latency mode, but loosen our requirement to 20 msecs.
 %
 % This returns a handle to the audio device:
-freq = 44100;
-pahandle = PsychPortAudio('Open', [], 2, 2, freq, 2, [], 0.02);
+pahandle = PsychPortAudio('Open', device, 2, 2, [], 2, [], 0.02);
+
+% Get what freq'uency we are actually using:
+s = PsychPortAudio('GetStatus', pahandle);
+freq = s.SampleRate;
 
 fprintf('\n\nPART I - Simple "offline" response collection at end of trial.\n');
 fprintf('Each trials response period lasts 5 seconds...\n\n');
@@ -86,7 +89,6 @@ fprintf('Each trials response period lasts 5 seconds...\n\n');
 % of 10 seconds: We only need about 5 seconds, but let's be generous...
 PsychPortAudio('GetAudioData', pahandle, 10);
 
-
 % Do five trials:
 for trial = 1:5
     % Start audio capture immediately and wait for the capture to start.
@@ -97,10 +99,10 @@ for trial = 1:5
     % Tell user to shout:
     fprintf('Make noise! Make noise!          ');
     tStim = GetSecs;
-    
+
     % Wait for about 5 seconds, so user has time to shout:
     WaitSecs(5);
-    
+
     % Stop sound capture: End of response period.
     PsychPortAudio('Stop', pahandle);
 
@@ -109,8 +111,8 @@ for trial = 1:5
 
     % Ok, last fetched chunk was above threshold!
     % Find exact location of first above threshold sample.
-    idx = min(find(abs(audiodata(1,:)) >= triggerlevel)); %#ok<MXFND>
-        
+    idx = min(find(abs(sum(audiodata)) >= triggerlevel)); %#ok<MXFND>
+
     % Any response?
     if isempty(idx)
         fprintf('No response at all within 5 seconds?!?\n\n');
@@ -121,7 +123,7 @@ for trial = 1:5
         % Print RT:
         fprintf('---> Reaction time is %f milliseconds.\n', (tOnset - tStim)*1000);
     end
-        
+
     % Next trial after 2 seconds:
     WaitSecs(2);
 end
@@ -142,7 +144,6 @@ end
 % we're only chewing on small chunks of audio data, the total duration of
 % response collection is not in any way limited by available memory or
 % such.
-
 fprintf('\n\nPART II - The saga continues... This time with a polling method.\n\n');
 
 % Do ten trials:
@@ -159,11 +160,11 @@ for trial = 1:10
     % Tell user to shout:
     fprintf('Make noise! Make noise!          ');
     tStim = GetSecs;
-    
+
     % Wait in a polling loop until some sound event of sufficient loudness
     % is captured:
     level = 0;
-    
+
     % Repeat as long as below trigger-threshold:
     while level < triggerlevel
         % Fetch current audiodata:
@@ -171,11 +172,11 @@ for trial = 1:10
 
         % Compute maximum signal amplitude in this chunk of data:
         if ~isempty(audiodata)
-            level = max(abs(audiodata(1,:)));
+            level = max(abs(sum(audiodata)));
         else
             level = 0;
         end
-        
+
         % Below trigger-threshold?
         if level < triggerlevel
             % Wait for five milliseconds before next scan:
@@ -185,21 +186,21 @@ for trial = 1:10
 
     % Ok, last fetched chunk was above threshold!
     % Find exact location of first above threshold sample.
-    idx = min(find(abs(audiodata(1,:)) >= triggerlevel)); %#ok<MXFND>
-        
+    idx = min(find(abs(sum(audiodata)) >= triggerlevel)); %#ok<MXFND>
+
     % Compute absolute event time:
     tOnset = tCaptureStart + ((offset + idx - 1) / freq);
-    
+
     % Stop sound capture:
     PsychPortAudio('Stop', pahandle);
-    
+
     % Fetch all remaining audio data out of the buffer - Needs to be empty
     % before next trial:
     PsychPortAudio('GetAudioData', pahandle);
-    
+
     % Print RT:
     fprintf('---> Reaction time is %f milliseconds.\n', (tOnset - tStim)*1000);
-    
+
     % Next trial after 2 seconds:
     WaitSecs(2);
 end

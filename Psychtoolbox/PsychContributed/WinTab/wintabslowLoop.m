@@ -11,7 +11,7 @@ function slowLoop(samplingRate)
 % This queue begins filling up after a call to WinTabMex(2), which empties the queue, and can be used to record movement data during 
 % stimulus presentation in a 'fast loop' (see fastLoop.m). 
 %
-% pkt is a 8x1 column vector
+% pkt is a 9x1 column vector
 % 
 % tabletTestData.mat:
 %           xPos                = pkt(1), x axis position (tablet coordinates)
@@ -22,12 +22,13 @@ function slowLoop(samplingRate)
 %           tabletTimeStamp     = pkt(6), time in ms from the tablet
 %           penStatus           = pkt(7), signals various events (eg penOutOfRange)
 %           penChange           = pkt(8), flags what has changed since the last sample
+%           normalPressure      = pkt(9), pen pressure. Reported to work unreliably on some tablets.
 %           getsecTimeStamp     = the time at which the data was collected from the start of the trial, using PTB's GetSecs function
 %           pktData             = matrix of data, compiled into columns for writing to Excel
 %
 %pkt(1:6) are straightforward, pkt(7:8) need some work on figuring out what it all means
 %
-%Andrew D. Wilson, 2009 (adwkiwi@gmail.com)
+% Andrew D. Wilson, 2009 (adwkiwi@gmail.com)
 
 trialLength = 5;
 deltaT = 1/samplingRate;
@@ -41,14 +42,14 @@ spaceKeyID = KbName('space');
 try
     wPtr = Screen('OpenWindow', 0); 
     WinTabMex(0, wPtr); %Initialize tablet driver, connect it to 'wPtr'
-    
+
     %PTB things
     Priority(1);
     ListenChar(2);
     HideCursor;
     black = BlackIndex(wPtr);
     white = WhiteIndex(wPtr);
-    
+
     %*******************************************************************************************
     %Loads a window and waits for input to start recording - just for getting set up and ready
     instructions = 'Place the stylus on the tablet and press the space bar to begin recording';
@@ -60,29 +61,29 @@ try
         [keyIsDown, secs, keyCode] = KbCheck;
     end
     %*******************************************************************************************
-    
+
     record = 'The tablet is currently recording your movements...';
     [recordX recordY] = centreText(wPtr, record, 15);
     Screen('DrawText', wPtr, record, recordX, recordY, black); Screen(wPtr, 'Flip');
 
     WinTabMex(2);       %Empties the packet queue in preparation for collecting actual data
                         %Call this immediately before beginning any slow loop
-            
+
     %This loop runs for trialLength seconds. 
     start = GetSecs;
     stop  = start + trialLength;
     while GetSecs<stop
         loopStart = GetSecs;
-      
+
         %This loop runs for deltaT or until it successfully retrieves some data from the queue
         while 1  %Note this loop MUST be broken manually, as 'while 1' always returns TRUE
             pkt = WinTabMex(5);
-            
+
             %This check breaks the loop if data is recovered from the queue before deltaT is up
             if ~isempty(pkt)
                 break
             end
-            
+
             %This check breaks the loop after deltaT if pkt was always empty
             if GetSecs>(loopStart+deltaT)
                 pkt = zeros(9,1); %Dummy data representing a missed data point
@@ -91,14 +92,14 @@ try
         end
         pkt = [pkt; (GetSecs - start)];
         pktData = [pktData pkt];
-        
+
         %Waits to end of deltaT if need be
         if GetSecs<(loopStart+deltaT)
             WaitSecs('UntilTime', loopStart+deltaT);
         end
     end
     pktData = pktData';  %Assemble the data and then transpose to arrange data in columns because of Matlab memory preferences
-    
+
     WinTabMex(3); % Stop/Pause data acquisition.
     Priority(0);
 
@@ -112,32 +113,33 @@ try
         tabletTimeStamp = pktData(:,6);
         penStatus = uint32(pktData(:,7));
         penChange = uint32(pktData(:,8));
-        getsecTimeStamp = pktData(:,9);
-        
-        save tabletTestData pktData xPos yPos zPos buttonState serialNumber tabletTimeStamp penStatus penChange getsecTimeStamp
-        
+        normalPressure = pktData(:,9);
+        getsecTimeStamp = pktData(:,10);
+
+        save tabletTestData pktData xPos yPos zPos buttonState serialNumber tabletTimeStamp penStatus penChange normalPressure getsecTimeStamp
+
         xlswrite('tabletTestData', [{'x Position'} {'y Position'} {'z Position'} {'Button State'} {'Serial Number'} {'Tablet Timestamp'},...
-            {'Pen Status'} {'Pen Change'} {'PTB Timestamp (GetSecs)'}], 'Sheet1');
+            {'Pen Status'} {'Pen Change'} {'Normal pressure'} {'PTB Timestamp (GetSecs)'}], 'Sheet1');
         xlswrite('tabletTestData', pktData, 'Sheet1', 'A2');
-        
+
         disp('Your data are in two files: tabletTestData.mat and tabletTestData.xls');
     else
         disp('Error: variable ''pktData'' was empty. (tabletTest.m)');
     end
-    
+
     %Closing out stuff
     WinTabMex(1); % Shutdown driver.
     ListenChar(1);  ShowCursor;
     Screen('CloseAll');    
 catch
     disp('Quit with error (tabletTest.m)');
-    
+
     %Close tablet things
-	WinTabMex(3); WinTabMex(1); %Close out data acquisition and the handle on the driver
-    
+    WinTabMex(3); WinTabMex(1); %Close out data acquisition and the handle on the driver
+
     %Close PTB things
     ListenChar(1); ShowCursor; Priority(0); Screen('CloseAll');
-    
+
     tabletTestError = lasterror;
     message = tabletTestError(1).message
     identifier = tabletTestError(1).identifier
@@ -178,7 +180,7 @@ while x<0
 
     x = windowCentre(1) - textCentre(1);
     y = windowCentre(2) - textCentre(2);
-    
+
     if x < 0 || y < 0 %ie if the text ends up being drawn offscreen
         preferredFontSize = preferredFontSize-1;
     end

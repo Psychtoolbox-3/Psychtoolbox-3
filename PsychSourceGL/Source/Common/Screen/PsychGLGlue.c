@@ -399,7 +399,7 @@ GLdouble *PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdoubl
  * drawing commands allow to specify a list of primitives to draw instead of only a single
  * one. E.g. 'DrawDots' allows to draw thousands of dots with one single DrawDots command.
  * This helper routine is called by such batch-capable commands. It checks which input arguments
- * are provided and if its a single one or multiple ones. It sets up the rendering pipe accordingly,
+ * are provided and if it's a single one or multiple ones. It sets up the rendering pipe accordingly,
  * performing required conversion steps. The actual drawing routine just needs to perform primitive
  * specific code.
  */
@@ -460,7 +460,10 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
         if (!isArgThere) {
                 // No size provided: Use a default size of 1.0:
                 *size = (double *) PsychMallocTemp(sizeof(double));
-                *size[0] = 1;
+                if (usefloat)
+                    **((float**) size) = 1;
+                else
+                    *size[0] = 1;
                 nrsize=1;
         } else {
             if (usefloat) {

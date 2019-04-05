@@ -57,8 +57,9 @@ if onoctave == 0
 
     if what == 2
         % Build PsychPortAudio
+        % If PsychPortAudio should support the proprietary ASIO sound backend, then add a: -DPTB_USE_ASIO
         clear PsychPortAudio
-        mex -v -outdir ..\Projects\Windows\build -output PsychPortAudio -DPTBMODULE_PsychPortAudio -largeArrayDims -L..\Cohorts\PortAudio -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x64 LINKFLAGS="$LINKFLAGS /DELAYLOAD:portaudio_x64.dll"
+        mex -v -outdir ..\Projects\Windows\build -output PsychPortAudio -DPTBMODULE_PsychPortAudio -largeArrayDims -L..\Cohorts\PortAudio -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x64 LINKFLAGS="$LINKFLAGS /DELAYLOAD:portaudio_x64.dll"
         movefile(['..\Projects\Windows\build\PsychPortAudio.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
@@ -117,6 +118,18 @@ if onoctave == 0
         mex -v -outdir ..\Projects\Windows\build -output PsychOculusVRCore -DPTBMODULE_PsychOculusVRCore -largeArrayDims -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib ..\..\..\OculusSDKWin\LibOVR\Lib\Windows\x64\Release\VS2010\LibOVR.lib
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
+
+    if what == 13
+        % Build PsychOculusVRCore1 for 64-Bit Matlab:
+        % Needs the Oculus VR SDK v1.16 installed side-by-side to the Psychtoolbox-3
+        % folder, so that it shares the same parent folder as Psychtoolbox-3,
+        % and the SDK must be renamed from OculusSDK to OculusSDK1Win.
+        % CAUTION: Need exactly v1.16 SDK, no earlier or later versions, due to
+        % backwards incompatible API changes in v1.17+
+        mex -v -outdir ..\Projects\Windows\build -output PsychOculusVRCore1 -DPTBMODULE_PsychOculusVRCore1 -largeArrayDims -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDK1Win\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore1 Common\PsychOculusVRCore1\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib ..\..\..\OculusSDK1Win\LibOVR\Lib\Windows\x64\Release\VS2010\LibOVR.lib
+        movefile(['..\Projects\Windows\build\PsychOculusVRCore1.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
+
 else
     % Octave-4 build:
     if Is64Bit
@@ -145,17 +158,19 @@ else
 
     if what == 2
         % Build PsychPortAudio.mex
+        % If PsychPortAudio should support the proprietary ASIO sound backend, then add a: -DPTB_USE_ASIO
+        %
         % This needs a libportaudio_x86 compatible with mingw32 gcc. The way we do this
         % is by taking the libportaudio_x86.dll from the PsychSound folder and copying
         % it into the PsychSourceGL/Cohorts/PortAudio/MinGW32 folder, but with the file extension
         % changed from .dll to .lib, ie. libportaudio_x86.lib - Weird but true, this makes
         % mingws linker accept the file as input. Same procedure for libportaudio_x64.dll to
-        % libportaudio_x64.lib into targetfolder MinGW64.
+        % libportaudio_x64.lib into targetfolder MinGW64 for 64-Bit builds.
         clear PsychPortAudio
         if Is64Bit
-            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW64 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x64
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW64 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x64
         else
-            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW32 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x86
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW32 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x86
         end
         movefile(['..\Projects\Windows\build\PsychPortAudio.' mexext], target);
     end
@@ -307,6 +322,28 @@ else
             mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT32_0_5
         end
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], target);
+    end
+
+    if what == 13
+        % Build PsychOculusVRCore1 for 64-Bit Octave-4.4.1 or later:
+        % Needs the Oculus VR SDK v1.16 installed side-by-side to the Psychtoolbox-3
+        % folder, so that it shares the same parent folder as Psychtoolbox-3,
+        % and the SDK must be renamed from OculusSDK to OculusSDK1Win.
+        % CAUTION: Need exactly v1.16 SDK, no earlier or later versions, due to
+        % backwards incompatible API changes in v1.17+
+        try
+            % For the Octave build, we compile the OVR_CAPIshim.c shim file and
+            % other helper C files from the SDK directly into our mex file, instead
+            % of statically linking against LibOVR.lib, as that .lib import file only
+            % works with MSVC, but not with Octave's gcc based build system. The shim
+            % will locate and runtime-link against the libOVRRT_64_1.dll of the installed
+            % Oculus VR runtime during initialization:
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore1.mex -DPTBMODULE_PsychOculusVRCore1 -DPTBOCTAVE3MEX -I..\..\..\OculusSDK1Win\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore1 Common\PsychOculusVRCore1\*.c Windows\Base\*.c Common\Base\*.c ..\..\..\OculusSDK1Win\LibOVR\Src\*.c* kernel32.lib user32.lib winmm.lib
+            movefile(['..\Projects\Windows\build\PsychOculusVRCore1.' mexext], target);
+        catch %#ok<*CTCH>
+            % Empty. We just want to make sure the delete() call below is executed
+            % in both success and failure case.
+        end
     end
 
     % Remove stale object files:

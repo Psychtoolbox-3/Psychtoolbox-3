@@ -43,6 +43,8 @@ static  int ndevices = 0;
 static  int deviceIndices[PSYCH_HID_MAX_DEVICES];
 static  pRecDevice deviceRecords[PSYCH_HID_MAX_DEVICES];
 static  int defaultKeyboardIndex = 0;
+static  const UCKeyboardLayout *keyboardLayout = NULL;
+static  UInt8 kbdType = 0;
 
 // Return real deviceIndex (aka KbQueue index) and HID device record pRecDevice
 // for a given PsychHID('Devices') style input deviceIndex. *deviceIndex is an
@@ -193,7 +195,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     // Either alloc out the arguments, or redirect to
     // internal dummy variables. This to avoid mxMalloc() call overhead
     // inside the PsychAllocOutXXX() routines:
-    nout = PsychGetNumNamedOutputArgs();
+    nout = PsychGetNumOutputArgs();
 
     // keyDown flag:
     if (nout >= 1) {
@@ -747,10 +749,6 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
                     // snippets found on StackOverflow, modified to suit our needs, e.g., we track
                     // modifier keys manually, at least left and right ALT and SHIFT keys. We don't
                     // care about other modifiers.
-                    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-                    CFDataRef uchr = (CFDataRef) ((currentKeyboard) ? TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData) : NULL);
-                    const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout*) ((uchr) ? CFDataGetBytePtr(uchr) : NULL);
-
                     if (keyboardLayout) {
                         UInt32 deadKeyState = 0;
                         UniCharCount maxStringLength = 255;
@@ -759,7 +757,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 
                         OSStatus status = UCKeyTranslate(keyboardLayout,
                                                         vcKey, kUCKeyActionDown, modifierKeyState[deviceIndex],
-                                                        LMGetKbdType(), 0,
+                                                        kbdType, 0,
                                                         &deadKeyState,
                                                         maxStringLength,
                                                         &actualStringLength, unicodeString);
@@ -767,7 +765,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
                         if ((actualStringLength == 0) && deadKeyState) {
                             status = UCKeyTranslate(keyboardLayout,
                                                     kVK_Space, kUCKeyActionDown, 0,
-                                                    LMGetKbdType(), 0,
+                                                    kbdType, 0,
                                                     &deadKeyState,
                                                     maxStringLength,
                                                     &actualStringLength, unicodeString);
@@ -903,10 +901,17 @@ PsychError PsychHIDOSKbElementAdd(IOHIDElementRef element, IOHIDQueueRef queue, 
     return(PsychError_none);
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, unsigned int windowHandle)
 {
     pRecDevice deviceRecord;
     psych_bool verbose = getenv("PSYCHHID_TELLME") != NULL;
+    // Initialize keyboardLayout and kbdType, used by the keyboard queue thread for mapping keycodes to cooked characters:
+    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+    CFDataRef uchr = (CFDataRef) ((currentKeyboard) ? TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData) : NULL);
+    keyboardLayout = (const UCKeyboardLayout*) ((uchr) ? CFDataGetBytePtr(uchr) : NULL);
+    kbdType = LMGetKbdType();
+
+    (void) windowHandle;
 
     // Valid number of keys?
     if (scanKeys && (numScankeys != 256)) {

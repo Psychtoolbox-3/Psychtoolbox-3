@@ -19,8 +19,35 @@ function PsychJavaSwingCleanup
 %
 
 % History:
-% 3-July-2013  mk  Adapted from PTB forum solution.
-% 5-March-2015  mk  Use size 1x1 instead of 0x0 for RM reset.
+% 03-Jul-2013  mk  Adapted from PTB forum solution.
+% 05-Mar-2015  mk  Use size 1x1 instead of 0x0 for RM reset.
+% 14-Nov-2018  mk  Work around latest macOS Mojave bugs - Stuck onscreen
+%                  window after close.
+
+% OSX 10.14 Mojave or later?
+if IsOSX
+    c = Screen('Computer');
+    v = sscanf(c.system, 'Mac OS %i.%i.%i');
+    if v(1) == 10 && v(2) >= 14
+        % The latest Apple brain damage is some bugs likely related to
+        % window event handling, which cause PTB onscreen windows to not
+        % actually close after close, but get stuck -- The script
+        % continues, or likely finishes, but the window gets stuck on the
+        % screen like a zombie, until something kicks system event
+        % handling. Lets work around this by opening a figure window, then
+        % closing it again, because hey insane OS'es need insane
+        % workarounds:
+        h = figure;
+        drawnow;
+        if ~IsOctave
+            % On Octave, as of version 4.4.1, we can't close figure windows
+            % without crashing Octave, yay! Well, a screen filling up with
+            % empty figures is still better than one stuck on a black
+            % fullscreen PTB window...
+            close(h);
+        end
+    end
+end
 
 % Running on Matlab with Java based desktop GUI enabled? Otherwise we no-op.
 if ~IsOctave && psychusejava('desktop')

@@ -1,5 +1,5 @@
 function [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height, backgroundColorOffset, radius, contrastPreMultiplicator, sigma, useAlpha, method)
-% [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)] [, radius=inf][, contrastPreMultiplicator=1])
+% [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)] [, radius=inf] [, contrastPreMultiplicator=1] [, sigma=0] [, useAlpha=0] [, method=0])
 %
 % Creates a procedural texture that allows to draw sine grating stimulus patches
 % with a smoothed aperture in a very fast and efficient manner on modern 
@@ -26,11 +26,13 @@ function [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(
 % value will correspond to what practitioners of the field usually
 % understand to be the contrast value of a grating.
 %
-% 'sigma' edge smoothing value in pixels
+% 'sigma' Optional. Edge smoothing value in pixels. Defaults to 0.
 %
-% 'useAlpha' whether to use colour (0) or alpha (1) for smoothing channel
+% 'useAlpha' Optional, defaults to 0. Whether to use color (0) or alpha (1)
+%  for smoothing channel. Defaults to 0 (color).
 %
-% 'method' whether to use cosine (0) or smoothstep(1) smoothing function
+% 'method' Optional. Whether to use cosine (0) or smoothstep(1) smoothing 
+%  function. Defaults to 0 (cosine).
 %
 % The function returns a procedural texture handle 'gratingid' that you can
 % pass to the Screen('DrawTexture(s)', windowPtr, gratingid, ...) functions
@@ -53,15 +55,54 @@ function [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(
 % the phase of the grating in degrees, 'freq' is its spatial frequency in
 % cycles per pixel, 'contrast' is the contrast of your grating.
 %
-% For a zero degrees grating:
-% g(x,y) = modulatecolor * contrast * contrastPreMultiplicator * sin(x*2*pi*freq + phase) + Offset.
+% For a zero degrees grating without aperture (radius = inf):
+%
+% g(x,y) = modulatecolor * contrast * contrastPreMultiplicator * sin(x*2*pi*freq + phase) + Offset
+%
+% NOTE: The modulation is also applied to the alpha channel, so if you use alpha
+% blending, make sure to take this into account, e.g., by setting the alpha component
+% of modulateColor - or the globalAlpha parameter - to zero, if you don't want the
+% alpha channel modulated by a sine wave as well! Then you can use the alpha component
+% of backgroundColorOffset to write a constant alpha value. Or you can use the
+% Screen('Blendfunction', ...) to set the color write mask to prevent alpha channel
+% updates.
+%
+% For a zero degrees grating with aperture (radius = some non-infinite value) iff
+% 'useAlpha' is set to zero or false:
+%
+% g(x,y) = modulatecolor * contrast * contrastPreMultiplicator * sin(x*2*pi*freq + phase) * weight(dist(x,y), radius, sigma) + Offset
+%
+% weight(dist(x,y), radius, sigma) is a weighting function which is 1.0 for a dist(x,y)
+% position on a circle around the center within 'radius' - 'sigma', then
+% falls off to 0.0 for positions inside a circle between 'radius' - 'sigma' and
+% 'radius', in other words, the sine grating "fades out" to zero contrast at the
+% border inside 'radius' over a range of 'sigma' pixels. The specific weight()ing
+% function can be selected via the 'method' parameter: It is either a cosine falloff,
+% or a linear falloff.
+%
+% Again, alpha channel is also affected the same way.
+%
+% For a zero degrees grating with aperture (radius = some non-infinite value) iff
+% 'useAlpha' is set to 1 or true:
+%
+% g(x,y).rgb = modulatecolor.rgb * contrast * contrastPreMultiplicator * sin(x*2*pi*freq + phase) + Offset.rgb
+%
+% As you can see, the color channels rgb are calculated without an aperture applied,
+% and the aperture weight function is instead applied to the alpha channel only:
+%
+% g(x,y).a = modulateColor.a * weight(dist(x,y), radius, sigma) + Offset.a
+%
+% This makes only sense if you enable alpha blending to apply the falloff!
+%
 %
 % Make sure to use the Screen('DrawTextures', ...); function properly to
 % draw many different gratings simultaneously - this is much faster!
 %
 
 % History:
-% 06/06/2011 Modified from PTB function (Ian Andolina).
+% 06-Jun-2011 Modified from PTB function (Ian Andolina).
+% 08-Nov-2018 Update help text to explain the smoothing functions and alpha
+%             application better. (MK)
 
 debuglevel = 1;
 

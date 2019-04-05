@@ -250,6 +250,9 @@ typedef struct {
 // assume the gpu can process/interpolate vertex colors at full 32bpc float precision.
 #define kPsychAssumeGfxCapVCGood (1 << 28)
 
+// Skip wait until scanout out-of-vblank before issuing swaprequest:
+#define kPsychSkipOutOfVblankWait (1 << 29)
+
 //function protoptypes
 
 //Accessors for PsychDepthType

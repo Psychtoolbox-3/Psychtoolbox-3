@@ -44,8 +44,7 @@
 
 #include "Screen.h"
 
-#include <waffle.h>
-#include <waffle_wayland.h>
+#include <waffle-1/waffle_wayland.h>
 
 // Number of currently open onscreen windows:
 static int open_windowcount = 0;
@@ -1723,7 +1722,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                                 }
                             }
 
-                            PsychAllocOutStructArray(aux1, FALSE, 1, fieldCount, FieldNames, &s);
+                            PsychAllocOutStructArray(aux1, FALSE, -1, fieldCount, FieldNames, &s);
 
                             // Discarded / Skipped present?
                             if (sce->present_status == 2) {

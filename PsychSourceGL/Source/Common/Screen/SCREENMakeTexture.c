@@ -114,6 +114,7 @@ PsychError SCREENMakeTexture(void)
     psych_bool                  bigendian;
     psych_bool                  planar_storage = FALSE;
     double                      scaled = 1.0;
+    double                      offsetd;
 
     // Detect endianity (byte-order) of machine:
     ix=255;
@@ -139,6 +140,23 @@ PsychError SCREENMakeTexture(void)
 
     if((windowRecord->windowType!=kPsychDoubleBufferOnscreen) && (windowRecord->windowType!=kPsychSingleBufferOnscreen))
         PsychErrorExitMsg(PsychError_user, "MakeTexture called on something else than a onscreen window");
+
+    // Compute offset to add when converting double input matrices into uint8 textures, so that
+    // the uint8 texture data matches how the hardware converts floating point color values to
+    // fixed-point integer color values. When we convert a double float matrix into uint8 textures,
+    // we want to apply the same conversion behavior that the hw applies when drawing "floating point
+    // color" primitives into a fixed point framebuffer. This is important, e.g., for a uint8 texture
+    // created from double 0.5 luminance values to draw the same color value into a 8 bpc framebuffer,
+    // as a framebuffer clear command, drawdots command etc. with normalized color 0.5 does.
+    // See what happens if this goes wrong (as of Psychtoolbox 3.0.14) in forum message #23300.
+    //
+    // The original OpenGL 1.0 spec says hw should convert float -> fixed with round-to-nearest
+    // behaviour (Section 2.12.9). The OpenGL 4.5 spec leaves it up to the GL implementation if it
+    // wants to truncate, round, ceil up or down to the closest integer etc., but recommends
+    // round-to-nearest (Section 2.3.5.2). In practice, some tested AMD and NVidia hw on Linux and macOS
+    // truncates, whereas some tested Intel hw on Linux and macOS rounds to nearest, so we apparently
+    // can't rely on defined behaviour and therefore detect what the given hw does during startup.
+    offsetd = (windowRecord->gfxcaps & kPsychGfxCapFloatToIntRound) ? 0.5 : 0.0;
 
     if (windowRecord->applyColorRangeToDoubleInputMakeTexture == 1) {
         // Apply scaling to uint8 textures which are created from double input matrices, so that
@@ -351,7 +369,7 @@ PsychError SCREENMakeTexture(void)
                 iters = (size_t) xSize * (size_t) ySize * (size_t) numMatrixPlanes;
                 texturePointer_b = (GLubyte*) texturePointer;
                 for(ix = 0; ix < iters; ix++) {
-                    *(texturePointer_b++) = (GLubyte) (scaled * *(doubleMatrix++));
+                    *(texturePointer_b++) = (GLubyte) (offsetd + scaled * *(doubleMatrix++));
                 }
                 iters = (size_t) xSize * (size_t) ySize;
             }
@@ -442,7 +460,7 @@ PsychError SCREENMakeTexture(void)
         if (isImageMatrixDoubles && numMatrixPlanes==1){
             texturePointer_b=(GLubyte*) texturePointer;
             for(ix=0;ix<iters;ix++){
-                *(texturePointer_b++)= (GLubyte) (scaled * *(doubleMatrix++));
+                *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(doubleMatrix++));
             }
             textureRecord->depth=8;
         }
@@ -479,8 +497,8 @@ PsychError SCREENMakeTexture(void)
             rp=(double*) ((size_t) doubleMatrix);
             ap=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
             for(ix=0;ix<iters;ix++){
-                *(texturePointer_b++)= (GLubyte) (scaled * *(rp++));
-                *(texturePointer_b++)= (GLubyte) (scaled * *(ap++));
+                *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(rp++));
+                *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(ap++));
             }
             textureRecord->depth=16;
         }
@@ -504,9 +522,9 @@ PsychError SCREENMakeTexture(void)
             gp=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
             bp=(double*) ((size_t) gp + (size_t) iters * sizeof(double));
             for(ix=0;ix<iters;ix++){
-                *(texturePointer_b++)= (GLubyte) (scaled * *(rp++));
-                *(texturePointer_b++)= (GLubyte) (scaled * *(gp++));
-                *(texturePointer_b++)= (GLubyte) (scaled * *(bp++));
+                *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(rp++));
+                *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(gp++));
+                *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(bp++));
             }
             textureRecord->depth=24;
         }
@@ -535,19 +553,19 @@ PsychError SCREENMakeTexture(void)
             if (bigendian) {
                 // Code for big-endian machines like PowerPC:
                 for(ix=0;ix<iters;ix++){
-                    *(texturePointer_b++)= (GLubyte) (scaled * *(ap++));
-                    *(texturePointer_b++)= (GLubyte) (scaled * *(rp++));
-                    *(texturePointer_b++)= (GLubyte) (scaled * *(gp++));
-                    *(texturePointer_b++)= (GLubyte) (scaled * *(bp++));
+                    *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(ap++));
+                    *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(rp++));
+                    *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(gp++));
+                    *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(bp++));
                 }
             }
             else {
                 // Code for little-endian machines like Intel Pentium:
                 for(ix=0;ix<iters;ix++){
-                    *(texturePointer_b++)= (GLubyte) (scaled * *(bp++));
-                    *(texturePointer_b++)= (GLubyte) (scaled * *(gp++));
-                    *(texturePointer_b++)= (GLubyte) (scaled * *(rp++));
-                    *(texturePointer_b++)= (GLubyte) (scaled * *(ap++));
+                    *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(bp++));
+                    *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(gp++));
+                    *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(rp++));
+                    *(texturePointer_b++)= (GLubyte) (offsetd + scaled * *(ap++));
                 }
             }
 

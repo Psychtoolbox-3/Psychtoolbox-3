@@ -35,36 +35,42 @@ PsychError PsychInit(void)
     // Assign distinctive name to master thread:
     PsychSetThreadName("PTB mainthread");
 
+    // Record thread id of master thread:
+    PsychInitMasterThreadId();
+
     // First init Psychtoolbox libraries:
     InitPsychError();
     InitPsychAuthorList();
     PsychInitTimeGlue();
 
-    //Registration of the Psychtoolbox exit function is
-    //done in ScriptingGlue.cpp because how that is done is
-    //specific to the scripting environment. Note that registration
-    //of the project exit function is done within the project init.
+    // Registration of the Psychtoolbox exit function is
+    // done in PsychScriptingGlueXXX.c because how that is done is
+    // specific to the scripting environment. Note that registration
+    // of the project exit function is done within the project init.
 
-    //then call call the project init.
+    // Then call the project init.
     PsychModuleInit();
 
     return(PsychError_none);
 }
 
 /* PsychExit is the function invoked last before the module is
-   purged.  It is abstracted to be unspecific to the scripting
-   language.  The language-specific versions are named PsychExitGlue()
-   and they are found in SciptingGlue.cpp
+   purged. It is abstracted to be unspecific to the scripting
+   language. The XXX language-specific versions are named
+   PsychExitGlue() and they are found in PsychScriptingXXX.c
  */
 PsychError PsychExit(void)
 {
     PsychFunctionPtr projectExit;
 
     projectExit = PsychGetProjectExitFunction();
-    if(projectExit != NULL) (*projectExit)();
+    if (projectExit != NULL) (*projectExit)();
 
     // Put whatever cleanup of the Psychtoolbox is required here.
     PsychExitTimeGlue();
+
+    // Reset / Clear function and module name registry:
+    PsychResetRegistry();
 
     return(PsychError_none);
 }

@@ -17,8 +17,7 @@
   DESCRIPTION:
 
   PsychIncludes.h includes all C, system, and language binding
-  header files which a Psychtoolbox library
-  would require.
+  header files which a Psychtoolbox library would require.
 
   This file should ONLY be included by PsychConstants.h
 
@@ -32,7 +31,7 @@
 // This is needed for compiling with gcc 4.6+ if -std=gnu99
 // is set, which we need to set for OML_sync_control support
 // and other features. Fixes compile failure on Ubuntu 12.10:
-#if defined(__STDC_UTF_16__) && !defined(CHAR16_T)
+#if defined(__STDC_UTF_16__) && !defined(CHAR16_T) && (PSYCH_SYSTEM == PSYCH_LINUX)
 typedef __CHAR16_TYPE__ char16_t;
 #endif
 
@@ -40,6 +39,17 @@ typedef __CHAR16_TYPE__ char16_t;
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
     // Include File with Matlab interface API definitions:
     #include "mex.h"
+#endif
+
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    // Include File with Python API definitions:
+    #include <Python.h>
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+// Shut up the OpenGL related deprecation warnings on Apples trainwreck
+// before including glew.h:
+#define GL_SILENCE_DEPRECATION
 #endif
 
 // Platform independent include for glew: This is a catch-all
@@ -121,10 +131,7 @@ typedef __CHAR16_TYPE__ char16_t;
     #include <CoreVideo/CoreVideo.h>
     #else
     // File included from ScriptingGlue - only import minimal amount of headers...
-    // MK TODO FIXME! OCTAVE!
     #include <CoreServices/CoreServices.h>
-    // Does not work: #include <CarbonCore.framework/MacTypes.h>
-    // Used to work on Tiger/32-Bit, but does not work now: #include <CoreServices/Frameworks/CarbonCore.framework/Headers/MacTypes.h>
     #endif
 
     #if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)

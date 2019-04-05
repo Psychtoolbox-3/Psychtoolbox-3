@@ -420,7 +420,7 @@ PsychError PSYCHCVOpenEyesTrackEyePosition(void)
 	}
 
 	// Create result return struct:
-	PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &eyeStruct);
+	PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount, FieldNames, &eyeStruct);
 	PsychSetStructArrayDoubleElement("GazeX", 0, eyeResult.gaze_x, eyeStruct);
 	PsychSetStructArrayDoubleElement("GazeY", 0, eyeResult.gaze_y, eyeStruct);
 	PsychSetStructArrayDoubleElement("PupilX", 0, eyeResult.pupil_x, eyeStruct);

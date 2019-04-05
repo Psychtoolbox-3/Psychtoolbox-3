@@ -42,7 +42,7 @@ static unsigned int portRecordCount = 0;
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 // Initialize usage info -- function overview:
-void InitializeSynopsis(void)
+const char** InitializeSynopsis(void)
 {
     int i=0;
     const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
@@ -70,6 +70,8 @@ void InitializeSynopsis(void)
     if (i > MAX_SYNOPSIS_STRINGS) {
         PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
     }
+
+    return(synopsisSYNOPSIS);
 }
 
 PsychError IOPORTVerbosity(void)
@@ -162,8 +164,6 @@ PsychPortIORecord* PsychGetPortIORecord(int handle)
 PsychError PsychCloseIOPort(int handle)
 {
     PsychPortIORecord* portRecord;
-    char errmsg[1000];
-    errmsg[0] = 0;
 
     // Retrieve and assign open port for handle: Will check for invalid handles and closed ports...
     portRecord = PsychGetPortIORecord(handle);
@@ -509,7 +509,6 @@ PsychError IOPORTConfigureSerialPort(void)
 
     static char seeAlsoString[] = "'OpenSerialPort'";
     char* configString = NULL;
-    PsychSerialDeviceRecord* device = NULL;
     int handle;
 
     // Setup online help:
@@ -669,7 +668,9 @@ PsychError IOPORTWrite(void)
         break;
 
         default:
+            n = 0;
             PsychErrorExitMsg(PsychError_user, "Invalid type for 'data' vector: Must be an uint8 or char vector.");
+            return(PsychError_invalidArg_type);
     }
 
     // Get optional blocking flag: Defaults to one -- blocking.

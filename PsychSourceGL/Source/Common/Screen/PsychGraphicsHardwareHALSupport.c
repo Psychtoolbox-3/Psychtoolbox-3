@@ -1082,6 +1082,9 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
                 }
             }
 
+            if ((headId == maxHeads) && (PsychPrefStateGet_Verbosity() > 3))
+                printf(" detection failed for output %i. Sticking with heuristics result.\n", outputId);
+
             // Now restore original gamma table for that screen:
             PsychLoadNormalizedGammaTable(screenId, outputId, numEntries, redTable, greenTable, blueTable);
 

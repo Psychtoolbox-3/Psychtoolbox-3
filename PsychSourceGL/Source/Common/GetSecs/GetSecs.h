@@ -29,6 +29,7 @@
 #include "PsychTimeGlue.h"
 
 //function prototypes
+const char** InitializeSynopsis(void);
 PsychError MODULEVersion(void);
 PsychError GETSECSGetSecs(void);
 PsychError GETSECSAllClocks(void);

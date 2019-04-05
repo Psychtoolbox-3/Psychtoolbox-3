@@ -18,7 +18,7 @@ function osxsetoctaverpath(mexfname, mexpath)
 % files should always find a dylib for the currently running Octave.
 
     if ~IsOSX(1) || ~IsOctave
-        error('osxsetoctaverpath only works with a 64-Bit version of Octave-4.2 for OSX!');
+        error('osxsetoctaverpath only works with a 64-Bit version of Octave-4.4 for OSX!');
     end
 
     % If no mex filename given, iterate over 'mexpath' - or the default install
@@ -51,19 +51,19 @@ function osxsetoctaverpath(mexfname, mexpath)
     % This is how the libdir should be defined automatically:
     libdir = __octave_config_info__.octlibdir;
     
-    % This is sadly how we have to do it with Octave-4.2 on OSX 10.12 due to
-    % the latest OSX linker crap - Hardcoding the path for a Octave-4.2 install
+    % This is sadly how we have to do it with Octave-4.4 on OSX 10.13 due to
+    % the latest OSX linker crap - Hardcoding the path for a Octave-4.4 install
     % from HomeBrew. Yes, this is sad...
-    libdir = '/usr/local/opt/octave/lib/octave/4.2.0';
+    libdir = '/usr/local/opt/octave/lib/octave/4.4.1';
 
-    % Replace absolute path to liboctinterp.4.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctinterp.4.dylib @rpath/liboctinterp.4.dylib ' mexfname]);
+    % Replace absolute path to liboctinterp.6.dylib with @rpath:
+    system(['install_name_tool -change ' libdir '/liboctinterp.6.dylib @rpath/liboctinterp.6.dylib ' mexfname]);
 
-    % Replace absolute path to liboctave.4.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctave.4.dylib @rpath/liboctave.4.dylib ' mexfname]);
+    % Replace absolute path to liboctave.6.dylib with @rpath:
+    system(['install_name_tool -change ' libdir '/liboctave.6.dylib @rpath/liboctave.6.dylib ' mexfname]);
 
     % Add one single rpath: @loader_path. This is the path to our folder where our
-    % mex file is stored. If we place copies of liboctave.4.dylib and liboctinterp.4.dylib
+    % mex file is stored. If we place copies of liboctave.6.dylib and liboctinterp.6.dylib
     % there, then the linker will find them. In absence, the linker will also search the
     % users $HOME/lib/ directory as a possible fallback:
     lpaths = { '@loader_path' };

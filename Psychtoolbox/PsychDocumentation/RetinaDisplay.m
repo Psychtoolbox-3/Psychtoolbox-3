@@ -67,6 +67,11 @@
 % called "Disable display scaling on high DPI settings", then click "OK" to
 % apply the new settings and restart the application.
 %
+% See also Psychtoolbox forum message #23414 for another oddity that one user
+% needed to do to fix HiDPI on a Windows multi-display setup:
+%
+% https://groups.yahoo.com/neo/groups/PSYCHTOOLBOX/conversations/messages/23414
+%
 % Windows is not only troublesome for proper visual stimulation and
 % stimulation timing in itself, it can be especially troublesome when used
 % with HiDPI / Retina displays. Therefore it might be a good idea to switch

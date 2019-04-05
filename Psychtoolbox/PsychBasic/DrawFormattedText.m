@@ -174,6 +174,19 @@ if nargin < 2 || isempty(tstring)
     return;
 end
 
+if IsOctave
+    % char() casts of unicode values > 255 map to zero, because Octave
+    % uses UTF-8 encoding for unicode, instead of UTF-32 as Matlab. We
+    % take care of this in the code, but necessary casts() also trigger
+    % an out-of-range warning in Octave, which we can't selectively disable,
+    % as it lacks a unique warning id (duh!). Therefore disable all warnings
+    % on Octave and reenable to previous setting whenever the we exit, and
+    % therefore the canary variable reenablewarn goes out of scope:
+    warningstate = warning('query');
+    warning('off');
+    reenablewarn = onCleanup(@() restorewarningstate(warningstate));
+end
+
 wordbounds = [];
 
 % Store data class of input string for later use in re-cast ops:
@@ -636,3 +649,9 @@ if previouswin > 0
 end
 
 return;
+end
+
+% Restore warning() settings to initial at onCleanup():
+function restorewarningstate(warningstate)
+    warning(warningstate);
+end

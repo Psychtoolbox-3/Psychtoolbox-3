@@ -35,8 +35,108 @@
 #include "pa_mac_core.h"
 #endif
 
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#ifdef PTB_USE_ASIO
 #include "pa_asio.h"
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#include "pa_win_wasapi.h"
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+#include "pa_linux_alsa.h"
+#include <alsa/asoundlib.h>
+#include <dlfcn.h>
+
+void (*myjack_set_error_function)(void(*)(const char *)) = NULL;
+
+// Dummy error handler to swallow pointless ALSA debug/warning/errr messages, if handler is attached:
+static void ALSAErrorHandler(const char *file, int line, const char *function, int err, const char *fmt, ...)
+{
+}
+
+// Pseudo-Defines of Portaudio internal structs, mimicking the memory layout
+// of the true Portaudio internal structs just enough so that we can cast a PaStream*
+// into a PaAlsaStream*, then access a stream-internal variable of the buffer-processor
+// and fudge with it in the most hackish and puke inducing way to work around a bug
+// present in the audio-capture only mode setup code (ie. no playback) inside the ALSA
+// backend since 24th May 2009! This over 9 years old bug causes massive distortion if
+// one only uses audio-capture, but no playback or full-duplex mode.
+//
+// A clean way of fixing this will be to get a fix into upstream, but we need to support
+// all the existing libportaudio implementations in all Linux distributions from 2009 to
+// 2019. The only option for shipping distros therefore would be to go back to static
+// linking against our own bug-fixed variant of libportaudio, but i haven't spent the
+// better part of a week to get us to finally be able to drop our own private libportaudio
+// builds, just to reintroduce them now! Therefore ugly hack it is...
+
+typedef enum {
+    paUtilFixedHostBufferSize,
+    paUtilBoundedHostBufferSize,
+    paUtilUnknownHostBufferSize,
+    paUtilVariableHostBufferSizePartialUsageAllowed
+} PaUtilHostBufferSizeMode;
+
+typedef struct {
+    unsigned long framesPerUserBuffer;
+    unsigned long framesPerHostBuffer;
+
+    PaUtilHostBufferSizeMode hostBufferSizeMode;
+    int useNonAdaptingProcess;
+    int userOutputSampleFormatIsEqualToHost;
+    int userInputSampleFormatIsEqualToHost;
+    unsigned long framesPerTempBuffer;
+
+    unsigned int inputChannelCount;
+    unsigned int bytesPerHostInputSample;
+    unsigned int bytesPerUserInputSample;
+    int userInputIsInterleaved;
+    // More stuff follows in real data struct...
+} PseudoBufferProcessor;
+
+typedef struct {
+    double samplingPeriod;
+    double measurementStartTime;
+    double averageLoad;
+} PseudoCpuLoadMeasurer;
+
+#define PA_STREAM_MAGIC (0x18273645)
+
+typedef struct PseudoStreamRepresentation {
+    unsigned long magic;    /**< set to PA_STREAM_MAGIC */
+    struct PseudoStreamRepresentation *nextOpenStream; /**< field used by multi-api code */
+    void *streamInterface;
+    void *streamCallback;
+    void *streamFinishedCallback;
+    void *userData;
+    PaStreamInfo streamInfo;
+} PseudoStreamRepresentation;
+
+typedef struct PseudoStreamRepresentationExt {
+    unsigned long magic;    /**< set to PA_STREAM_MAGIC */
+    struct PseudoStreamRepresentationExt *nextOpenStream; /**< field used by multi-api code */
+    void *streamInterface;
+    void *streamCallback;
+    void *streamFinishedCallback;
+    void *userData;
+    PaStreamInfo streamInfo;
+    PaHostApiTypeId hostApiType;
+} PseudoStreamRepresentationExt;
+
+typedef struct PseudoAlsaStream {
+    PseudoStreamRepresentation streamRepresentation;
+    PseudoCpuLoadMeasurer cpuLoadMeasurer;
+    PseudoBufferProcessor bufferProcessor;
+    // More stuff follows in real data struct...
+} PseudoAlsaStream;
+
+typedef struct PseudoAlsaStreamExt {
+    PseudoStreamRepresentationExt streamRepresentation;
+    PseudoCpuLoadMeasurer cpuLoadMeasurer;
+    PseudoBufferProcessor bufferProcessor;
+    // More stuff follows in real data struct...
+} PseudoAlsaStreamExt;
+
 #endif
 
 // Need to define these as they aren't defined in portaudio.h
@@ -44,9 +144,26 @@
 typedef void (*PaUtilLogCallback ) (const char *log);
 void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 
-#define MAX_SYNOPSIS_STRINGS 50
+#if PSYCH_SYSTEM == PSYCH_LINUX
+void (*myPaUtil_SetDebugPrintFunction)(PaUtilLogCallback  cb) = NULL;
 
-//declare variables local to this file.
+// Wrapper implementation, as many libportaudio.so implementations seem to lack this function :(:
+void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
+{
+    // Try to get function dynamically:
+    myPaUtil_SetDebugPrintFunction = dlsym(RTLD_NEXT, "PaUtil_SetDebugPrintFunction");
+
+    if (myPaUtil_SetDebugPrintFunction)
+        myPaUtil_SetDebugPrintFunction(cb);
+
+    return;
+}
+#endif
+
+// Forward define of prototype of our own custom new PortAudio extension function for Zero latency direct input monitoring:
+PaError Pa_DirectInputMonitoring(PaStream *stream, int enable, int inputChannel, int outputChannel, double gain, double pan);
+
+#define MAX_SYNOPSIS_STRINGS 50
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 #define kPortAudioPlayBack   1
@@ -529,7 +646,7 @@ void PAStreamFinishedCallback(void *userData)
 /* Logger callback function to output PortAudio debug messages at 'verbosity' > 5. */
 void PALogger(const char* msg)
 {
-    if (verbosity > 5) printf("PTB-DEBUG: PortAudio says: %s", msg);
+    if (verbosity > 5) printf("PTB-DEBUG: PortAudio says: %s\n", msg);
     return;
 }
 
@@ -549,13 +666,13 @@ void PALogger(const char* msg)
 //       This is used to reschedule start of playback for a following slot at a later time.
 int PsychPAProcessSchedule(PsychPADevice* dev, psych_int64 *playposition, float** ret_playoutbuffer, psych_int64* ret_outsbsize, psych_int64* ret_outsboffset, double* ret_repeatCount, psych_int64* ret_playpositionlimit)
 {
-    psych_int64   loopStartFrame, loopEndFrame;
-    psych_int64  outsbsize, outsboffset;
-    psych_int64  outchannels = dev->outchannels;
-    unsigned int  slotid, cmd;
+    psych_int64     loopStartFrame, loopEndFrame;
+    psych_int64     outsbsize, outsboffset;
+    psych_int64     outchannels = dev->outchannels;
+    unsigned int    slotid, cmd;
     double          repeatCount;
-    double          reqTime;
-    psych_int64  playpositionlimit;
+    double          reqTime = 0;
+    psych_int64     playpositionlimit;
 
     // NULL-Schedule?
     if (dev->schedule == NULL) {
@@ -804,20 +921,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         // reads a few device struct variables which are all guaranteed to remain constant while the
         // engine is running.
 
-        #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        // Super ugly hack for the most broken system in existence: Force
-        // the audio thread to cpu core 1, hope that repeated redundant
-        // calls don't create scheduling overhead or excessive other overhead.
-        // The explanation for this can be found in Source/Windows/Base/PsychTimeGlue.c
-        //
-        // Update: We leave the decision to the time glue if we should lock to core zero,
-        // or some other usercode defined subset of cores, or all cores. PsychAutoLockThreadToCores()
-        // Update: No longer needed, as the job is done implicitely by the call to
-        // PsychGetAdjustedPrecisionTimerSeconds(&now);
-        //
-        // DISABLED: PsychAutoLockThreadToCores(NULL);
-        #endif
-
         // Retrieve current system time:
         PsychGetAdjustedPrecisionTimerSeconds(&now);
 
@@ -879,7 +982,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
             captureStartTime = (double) timeInfo->inputBufferAdcTime;
         }
         else {
-            // ASIO or unknown. ASIO needs to be checked, which category is correct.
             // Not yet verified how these other audio APIs behave. Play safe
             // and perform timebase remapping: This also needs our special fixed
             // PortAudio version where currentTime actually has a value:
@@ -1736,7 +1838,7 @@ void PsychPACloseStream(int id)
     return;
 }
 
-void InitializeSynopsis(void)
+const char** InitializeSynopsis(void)
 {
     int i=0;
     const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
@@ -1757,7 +1859,9 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oldOpMode = PsychPortAudio('SetOpMode', pahandle [, opModeOverride]);";
     synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
     synopsis[i++] = "[oldMasterVolume, oldChannelVolumes] = PsychPortAudio('Volume', pahandle [, masterVolume][, channelVolumes]);";
+    #if (PSYCH_SYSTEM == PSYCH_OSX) && !defined(paMacCoreChangeDeviceParameters)
     synopsis[i++] = "enable = PsychPortAudio('DirectInputMonitoring', pahandle, enable [, inputChannel = -1][, outputChannel = 0][, gainLevel = 0.0][, stereoPan = 0.5]);";
+    #endif
     synopsis[i++] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0][, startIndex=Append]);";
     synopsis[i++] = "bufferhandle = PsychPortAudio('CreateBuffer' [, pahandle], bufferdata);";
     synopsis[i++] = "PsychPortAudio('DeleteBuffer'[, bufferhandle] [, waitmode]);";
@@ -1766,7 +1870,11 @@ void InitializeSynopsis(void)
     synopsis[i++] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] [, stopTime=inf] [, resume=0]);";
     synopsis[i++] = "startTime = PsychPortAudio('RescheduleStart', pahandle, when [, waitForStart=0] [, repetitions] [, stopTime]);";
     synopsis[i++] = "status = PsychPortAudio('GetStatus' pahandle);";
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
     synopsis[i++] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs][, singleType=0]);";
+    #else
+    synopsis[i++] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs][, singleType=1]);";
+    #endif
     synopsis[i++] = "[startTime endPositionSecs xruns estStopTime] = PsychPortAudio('Stop', pahandle [,waitForEndOfPlayback=0] [, blockUntilStopped=1] [, repetitions] [, stopTime]);";
     synopsis[i++] = "PsychPortAudio('UseSchedule', pahandle, enableSchedule [, maxSize = 128]);";
     synopsis[i++] = "[success, freeslots] = PsychPortAudio('AddToSchedule', pahandle [, bufferHandle=0][, repetitions=1][, startSample=0][, endSample=max][, UnitIsSeconds=0][, specialFlags=0]);";
@@ -1775,6 +1883,8 @@ void InitializeSynopsis(void)
     if (i > MAX_SYNOPSIS_STRINGS) {
         PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
     }
+
+    return(synopsisSYNOPSIS);
 }
 
 PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
@@ -1799,13 +1909,14 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    // Try ASIO first. It's supposed to be the lowest latency API on soundcards that suppport it.
+    #ifdef PTB_USE_ASIO
+    // Try ASIO first. It's supposed to be the lowest latency Windows API on soundcards that suppport it.
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
-    // Then WDM kernel streaming (Win2000, XP, maybe Vista). This is the best working free builtin
-    // replacement for the proprietary ASIO interface.
-    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWDMKS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
-    // Then Vistas new WASAPI, which is supposed to replace WDMKS, but is still early alpha quality in PortAudio:
+    #endif
+    // Then Vistas new WASAPI, which is supposed to be usable since around Windows-7 and pretty good since Windows-10:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+    // Then WDM kernel streaming Win2000 and later. This is the best builtin sound system we get on pre Windows-7:
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWDMKS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     // Then DirectSound: Bad, but not a complete disaster if the sound card has DS native drivers:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paDirectSound))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     // Then Windows MME, a complete disaster, but better than silence...?!?
@@ -1853,7 +1964,7 @@ PsychError PsychPortAudioExit(void)
         if (err) {
             printf("PTB-FATAL-ERROR: PsychPortAudio: Shutdown of PortAudio subsystem failed. Depending on the quality\n");
             printf("PTB-FATAL-ERROR: of your operating system, this may leave the sound system of your machine dead or confused.\n");
-            printf("PTB-FATAL-ERROR: Exit and restart Matlab/Octave. Windows users additionally may want to reboot...\n");
+            printf("PTB-FATAL-ERROR: Exit and restart Matlab/Octave/Python. Windows users additionally may want to reboot...\n");
             printf("PTB-FATAL-ERRRO: PortAudio reported the following error: %s\n\n", Pa_GetErrorText(err));
         }
         else {
@@ -1863,16 +1974,29 @@ PsychError PsychPortAudioExit(void)
         // Detach our callback function for low-level debug output:
         PaUtil_SetDebugPrintFunction(NULL);
 
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+            // Disable ALSA error handler:
+            snd_lib_error_set_handler(NULL);
+            if (myjack_set_error_function) {
+                myjack_set_error_function(NULL);
+                myjack_set_error_function = NULL;
+            }
+        #endif
+
         // Restart suspended PulseAudio server if it was suspended by us:
         if (pulseaudio_isSuspended) {
+            int rc = 0;
+
             // Call external "pactl" utility via shell to ask
             // the server to resume all sinks and sources.
             // These calls should fail silently if either the
             // pactl utility isn't installed or no sound
             // server is running:
-            if (verbosity > 4) printf("PTB-INFO: Trying to resume potentially suspended PulseAudio server.\n");
-            PsychRuntimeEvaluateString("system('pactl suspend-sink 0');");
-            PsychRuntimeEvaluateString("system('pactl suspend-source 0');");
+            if (verbosity > 4) printf("PTB-INFO: Trying to resume potentially suspended PulseAudio server... ");
+            rc += system("pactl suspend-sink 0");
+            rc += system("pactl suspend-source 0");
+            if (verbosity > 4) printf("... status %i\n", rc);
+
             pulseaudio_isSuspended = FALSE;
         }
     }
@@ -1894,15 +2018,19 @@ void PsychPortAudioInitialize(void)
         // server can't interfere with device enumeration as done during
         // PortAudio init. This is a Linux only thing...
         if (pulseaudio_autosuspend && (PSYCH_SYSTEM == PSYCH_LINUX)) {
+            int rc = 0;
+
             // Call external "pactl" utility via runtime to ask
             // the server to suspend all sinks and sources,
             // hopefully releasing the underlying low-level audio
             // devices for use by use. These calls should fail silently
             // if either the pactl utility isn't installed or no sound
             // server is running:
-            if (verbosity > 4) printf("PTB-INFO: Trying to suspend potentially running PulseAudio server.\n");
-            PsychRuntimeEvaluateString("system('pactl suspend-sink 1');");
-            PsychRuntimeEvaluateString("system('pactl suspend-source 1');");
+            if (verbosity > 4) printf("PTB-INFO: Trying to suspend potentially running PulseAudio server... ");
+            rc += system("pactl suspend-sink 1");
+            rc += system("pactl suspend-source 1");
+            if (verbosity > 4) printf("... status %i\n", rc);
+
             pulseaudio_isSuspended = TRUE;
         }
 
@@ -1921,6 +2049,27 @@ void PsychPortAudioInitialize(void)
         // Setup callback function for low-level debug output:
         PaUtil_SetDebugPrintFunction(PALogger);
 
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+            // Set an error handler for ALSA debug output/errors to stop the spewage of utterly
+            // pointless ALSA warning messages to stderr. At verbosity <= 5 we sent ALSA chatter
+            // to a dummy error handler. At levels > 5 we disable our error handler, so ALSA
+            // chatter goes to stderr. The same is true for the JACK backend, which does only
+            // set its own error callback if it makes it through initialization in Pa_Initialize().
+            // During the attempt to connect to the Jack server, it doesn't set its own callback,
+            // so all error output during jack_client_open() spills into our stderr console -
+            // and considerable pointless spillage there is :( -- Try to set our own override
+            // just for the time during Pa_Initialize() -- it will get overriden, but at least
+            // prevent the ugly spillage during startup:
+            myjack_set_error_function = dlsym(RTLD_DEFAULT, "jack_set_error_function");
+            if (myjack_set_error_function)
+                myjack_set_error_function(PALogger);
+
+            if (verbosity <= 5)
+                snd_lib_error_set_handler(ALSAErrorHandler);
+            else
+                snd_lib_error_set_handler(NULL);
+        #endif
+
         if ((err=Pa_Initialize())!=paNoError) {
             printf("PTB-ERROR: Portaudio initialization failed with following port audio error: %s \n", Pa_GetErrorText(err));
             PaUtil_SetDebugPrintFunction(NULL);
@@ -1928,7 +2077,7 @@ void PsychPortAudioInitialize(void)
         }
         else {
             if(verbosity>2) {
-                printf("PTB-INFO: Using specially modified PortAudio engine, based on offical version: %s\n", Pa_GetVersionText());
+                printf("PTB-INFO: Using modified %s\n", Pa_GetVersionText());
             }
         }
 
@@ -1970,7 +2119,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "system. E.g., Windows has about five different sound subsystems. 'mode' Mode of operation. Defaults to "
     "1 == sound playback only. Can be set to 2 == audio capture, or 3 for simultaneous capture and playback of sound. "
     "Note however that mode 3 (full duplex) does not work reliably on all sound hardware. On some hardware this mode "
-    "may crash Matlab! There is also a special monitoring mode == 7, which only works for full duplex devices "
+    "may crash hard! There is also a special monitoring mode == 7, which only works for full duplex devices "
     "when using the same number of input- and outputchannels. This mode allows direct feedback of captured sounds "
     "back to the speakers with minimal latency and without involvement of your script at all, however no sound "
     "can be captured during this time and your code mostly doesn't have any control over timing etc. \n"
@@ -1981,7 +2130,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "help for subfunction 'OpenSlave' for more info.\n"
     "'reqlatencyclass' Allows to select how aggressive PsychPortAudio should be about minimizing sound latency "
     "and getting good deterministic timing, i.e. how to trade off latency vs. system load and playing nicely "
-    "with other sound applications on the system. Level 0 means: Don't care about latency, this mode works always "
+    "with other sound applications on the system. Level 0 means: Don't care about latency or timing precision. This mode works always "
     "and with all settings, plays nicely with other sound applications. Level 1 (the default) means: Try to get "
     "the lowest latency that is possible under the constraint of reliable playback, freedom of choice for all parameters and "
     "interoperability with other applications. Level 2 means: Take full control over the audio device, even if this "
@@ -1999,7 +2148,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "and some risk of overloading, which would cause audio dropouts. 'suggestedLatency' optional requested latency in "
     "seconds. PortAudio selects internal operating parameters depending on sampleRate, suggestedLatency and buffersize "
     "as well as device internal properties to optimize for low latency output. Best left alone, only here as manual "
-    "override in case all the auto-tuning cleverness fails.\n "
+    "override in case all the auto-tuning cleverness fails.\n"
     "'selectchannels' optional matrix with mappings of logical channels to device channels: If you only want to use "
     "a subset of the channels present on your sound card, e.g., only 2 playback channels on a 16 channel soundcard, "
     "then you'd set the 'channels' argument to 2. The 'selectchannels' argument allows you to select, e.g.,  which "
@@ -2012,7 +2161,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "recording are requested and 'channels' equals 2, ie, two playback channels and two capture channels. If you'd "
     "specify 'selectchannels' as [0, 6 ; 12, 14], then playback would happen to device channels zero and six, "
     "sound would be captured from device channels 12 and 14. Please note that channel selection is currently "
-    "only supported on MS-Windows with ASIO sound cards. The parameter is silently ignored for non-ASIO operation.\n\n"
+    "only supported on some sound cards. The parameter is silently ignored on non-capable hardware or driver software.\n\n"
     "'specialFlags' Optional flags: Default to zero, can be or'ed or added together with the following flags/settings:\n"
     "1 = Never prime output stream. By default the output stream is primed. Don't bother if you don't know what this means.\n"
     "2 = Always clamp audio data to the valid -1.0 to 1.0 range. Clamping is enabled by default.\n"
@@ -2026,7 +2175,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     static char seeAlsoString[] = "Close GetDeviceSettings ";
 
-    int freq, buffersize, latencyclass, mode, deviceid, i, numel, specialFlags;
+    int buffersize, latencyclass, mode, deviceid, i, numel, specialFlags;
+    double freq;
     int* nrchannels;
     int  mynrchannels[2];
     int  m, n, p;
@@ -2041,17 +2191,29 @@ PsychError PSYCHPORTAUDIOOpen(void)
     PaStream *stream = NULL;
 
     #if PSYCH_SYSTEM == PSYCH_OSX
-    paMacCoreStreamInfo hostapisettings;
+        #ifdef paMacCoreChangeDeviceParameters
+            // New style since at least 19.6.0:
+            PaMacCoreStreamInfo outhostapisettings, inhostapisettings;
+            SInt32 CoreAudioOutChannelMap[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
+            SInt32 CoreAudioInChannelMap[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
+        #else
+            // Old style:
+            paMacCoreStreamInfo hostapisettings;
+        #endif
+    #endif
+
+    #ifdef PA_ASIO_H
+        int outputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
+        int inputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
+        PaAsioStreamInfo inasioapisettings;
+        PaAsioStreamInfo outasioapisettings;
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    // Additional data structures for setup of logical -> device channel
-    // mappings on ASIO multi-channel hardware:
-    PaAsioStreamInfo  inhostapisettings;
-    PaAsioStreamInfo  outhostapisettings;
-    int                  outputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
-    int                  inputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
+        PaWasapiStreamInfo inwasapiapisettings;
+        PaWasapiStreamInfo outwasapiapisettings;
     #endif
+
     unsigned int id = PsychPANextHandle();
 
     // Setup online help:
@@ -2118,22 +2280,27 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
         // Make sure we don't choose a default audio output device which is likely to
         // send its output to nirvana. If this is the case, try to find a better alternative.
-        // Currently black listed are HDMI and DisplayPort video outputs of graphics cards
-        // with sound output over video. Is this a good idea? I don't know, time will tell...
+        // Currently blacklisted are HDMI and DisplayPort video outputs of graphics cards
+        // with sound output over video.
+        // Additionally we blacklist the "default", "sysdefault" and "pulse" devices if
+        // we operate under Linux + ALSA and the Pulseaudio sound server got suspended, as
+        // those devices most likely output their sound over Pulseaudio, which would end in
+        // a hang if PulseAudio is suspended:
         if ((mode & kPortAudioPlayBack) || (mode & kPortAudioMonitoring)) {
             outputDevInfo = Pa_GetDeviceInfo(outputParameters.device);
             if (outputDevInfo && (Pa_GetDeviceCount() > 1) &&
-                (strstr(outputDevInfo->name, "HDMI") || strstr(outputDevInfo->name, "hdmi") ||
-                 strstr(outputDevInfo->name, "isplay"))) {
+                (strstr(outputDevInfo->name, "HDMI") || strstr(outputDevInfo->name, "hdmi") || strstr(outputDevInfo->name, "isplay") ||
+                 ((outputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(outputDevInfo->name, "default") || strstr(outputDevInfo->name, "pulse"))))) {
                 // Selected output default device seems to be a HDMI or DisplayPort output
                 // of a graphics card. Try to find a better default choice.
                 paHostAPI = outputDevInfo->hostApi;
+                referenceDevInfo = NULL; // Make compiler happy.
                 for (deviceid = 0; deviceid < (int) Pa_GetDeviceCount(); deviceid++) {
                     referenceDevInfo = Pa_GetDeviceInfo(deviceid);
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
                         (referenceDevInfo->maxOutputChannels < 1) ||
-                        (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") ||
-                        strstr(referenceDevInfo->name, "isplay"))) {
+                        (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
+                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
                         // Unsuitable.
                         continue;
                     }
@@ -2145,17 +2312,66 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 // Found something better? Otherwise we stick to the original choice.
                 if (deviceid < Pa_GetDeviceCount()) {
                     // Yes.
-                    if (verbosity > 2) printf("PTB-INFO: Choosing deviceIndex %i [%s] as default audio device.\n", deviceid, referenceDevInfo->name);
+                    if (verbosity > 2) printf("PTB-INFO: Choosing deviceIndex %i [%s] as default output audio device.\n", deviceid, referenceDevInfo->name);
                     outputParameters.device = (PaDeviceIndex) deviceid;
                 }
                 else {
                     // No, warn user about possible silence:
                     if (verbosity > 2) {
                         printf("PTB-INFO: Chosen default audio device with deviceIndex %i seems to be a HDMI or DisplayPort\n", (int) outputParameters.device);
-                        printf("PTB-INFO: video output of your graphics card [Name = %s].\n", outputDevInfo->name);
+                        printf("PTB-INFO: video output of your graphics card [Name = %s], or not a true hardware device.\n", outputDevInfo->name);
                         printf("PTB-INFO: Tried to find an alternative default output device but couldn't find a suitable one.\n");
-                        printf("PTB-INFO: If you don't hear any sound, then that is likely the reason - sound playing out to a\n");
-                        printf("PTB-INFO: connected display device without any speakers. See 'PsychPortAudio GetDevices?' for available devices.\n");
+                        printf("PTB-INFO: If you don't hear any sound, or the software appears to be hanging, then that is likely\n");
+                        printf("PTB-INFO: the reason - sound playing out to a connected display device without any speakers.\n");
+                        printf("PTB-INFO: See 'PsychPortAudio GetDevices?' for available devices.\n");
+                    }
+                }
+
+                // Reset our temporaries:
+                referenceDevInfo = NULL;
+                deviceid = -1;
+            }
+        }
+
+        // Same filterig applies to capture devices...
+        if (mode & kPortAudioCapture) {
+            inputDevInfo = Pa_GetDeviceInfo(inputParameters.device);
+            if (inputDevInfo && (Pa_GetDeviceCount() > 1) &&
+                (strstr(inputDevInfo->name, "HDMI") || strstr(inputDevInfo->name, "hdmi") || strstr(inputDevInfo->name, "isplay") ||
+                 ((inputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(inputDevInfo->name, "default") || strstr(inputDevInfo->name, "pulse"))))) {
+                // Selected input default device seems to be a HDMI or DisplayPort output
+                // of a graphics card. Try to find a better default choice.
+                paHostAPI = inputDevInfo->hostApi;
+                referenceDevInfo = NULL; // Make compiler happy.
+                for (deviceid = 0; deviceid < (int) Pa_GetDeviceCount(); deviceid++) {
+                    referenceDevInfo = Pa_GetDeviceInfo(deviceid);
+                    if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
+                        (referenceDevInfo->maxOutputChannels < 1) ||
+                        (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
+                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
+                        // Unsuitable.
+                        continue;
+                    }
+
+                    // Found it:
+                    break;
+                }
+
+                // Found something better? Otherwise we stick to the original choice.
+                if (deviceid < Pa_GetDeviceCount()) {
+                    // Yes.
+                    if (verbosity > 2) printf("PTB-INFO: Choosing deviceIndex %i [%s] as default input audio device.\n", deviceid, referenceDevInfo->name);
+                    inputParameters.device = (PaDeviceIndex) deviceid;
+                }
+                else {
+                    // No, warn user about possible silence:
+                    if (verbosity > 2) {
+                        printf("PTB-INFO: Chosen default audio device with deviceIndex %i seems to be a HDMI or DisplayPort\n", (int) inputParameters.device);
+                        printf("PTB-INFO: video output of your graphics card [Name = %s], or not a true hardware device.\n", inputDevInfo->name);
+                        printf("PTB-INFO: Tried to find an alternative default input device but couldn't find a suitable one.\n");
+                        printf("PTB-INFO: If you record any sound, or the software appears to be hanging, then that is likely\n");
+                        printf("PTB-INFO: the reason - capturing from a connected display device without any microphone.\n");
+                        printf("PTB-INFO: See 'PsychPortAudio GetDevices?' for available devices.\n");
                     }
                 }
 
@@ -2197,8 +2413,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
     }
 
     // Request optional frequency:
-    PsychCopyInIntegerArg(4, kPsychArgOptional, &freq);
-    if (freq < 0 || freq > 200000) PsychErrorExitMsg(PsychError_user, "Invalid frequency provided. Valid values are 0 to 200000 Hz.");
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &freq);
+    if (freq < 0) PsychErrorExitMsg(PsychError_user, "Invalid frequency provided. Must be greater than 0 Hz, or 0 for auto-select.");
 
     // Request optional number of channels:
     numel = 0; nrchannels = NULL;
@@ -2226,6 +2442,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     }
     else {
         // More than 2 channel counts provided? Impossible.
+        mynrchannels[0] = mynrchannels[1] = 0; // Make compiler happy.
         PsychErrorExitMsg(PsychError_user, "You specified a list with more than two 'channels' entries? Can only be max 2 for playback- and capture.");
     }
 
@@ -2241,6 +2458,52 @@ PsychError PSYCHPORTAUDIOOpen(void)
     PsychCopyInDoubleArg(7, kPsychArgOptional, &suggestedLatency);
     if (suggestedLatency!=-1 && (suggestedLatency < 0.0 || suggestedLatency > 1.0)) PsychErrorExitMsg(PsychError_user, "Invalid suggestedLatency provided. Valid values are 0.0 to 1.0 seconds.");
 
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        // Apply OS/X CoreAudio specific optimizations:
+        #ifdef paMacCoreChangeDeviceParameters
+            // New style since at least 19.6.0:
+            unsigned long flags = (latencyclass > 1) ? paMacCoreChangeDeviceParameters : 0;
+            if (latencyclass > 3) flags|= paMacCoreFailIfConversionRequired;
+            PaMacCore_SetupStreamInfo( &outhostapisettings, flags);
+            PaMacCore_SetupStreamInfo( &inhostapisettings, flags);
+            outputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &outhostapisettings;
+            inputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &inhostapisettings;
+        #else
+            // Old style:
+            unsigned long flags = (latencyclass > 1) ? paMacCore_ChangeDeviceParameters : 0;
+            if (latencyclass > 3) flags|= paMacCore_FailIfConversionRequired;
+            paSetupMacCoreStreamInfo( &hostapisettings, flags);
+            outputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
+            inputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
+        #endif
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paWASAPI) {
+        inputParameters.hostApiSpecificStreamInfo = (PaWasapiStreamInfo*) &inwasapiapisettings;
+        outputParameters.hostApiSpecificStreamInfo = (PaWasapiStreamInfo*) &outwasapiapisettings;
+
+        // Init wasapi stream settings struct to vanilla defaults:
+        memset(&inwasapiapisettings, 0, sizeof(inwasapiapisettings));
+        memset(&outwasapiapisettings, 0, sizeof(outwasapiapisettings));
+        inwasapiapisettings.size = sizeof(PaWasapiStreamInfo);
+        outwasapiapisettings.size = sizeof(PaWasapiStreamInfo);
+        inwasapiapisettings.hostApiType = paWASAPI;
+        outwasapiapisettings.hostApiType = paWASAPI;
+        inwasapiapisettings.version = 1;
+        outwasapiapisettings.version = 1;
+
+        // Default, but set for clarity - We don't use a special category like voice chat, media, movies etc.:
+        inwasapiapisettings.streamCategory = eAudioCategoryOther;
+        outwasapiapisettings.streamCategory = eAudioCategoryOther;
+
+        // Disable digital signal processing (equalizers, bass boost, automatic gain control, 3d spatialisation and such)
+        // by default on Windows 8.1 and later - unsupported on Windows 8 and earlier:
+        inwasapiapisettings.streamOption = eStreamOptionRaw;
+        outwasapiapisettings.streamOption = eStreamOptionRaw;
+    }
+    #endif
+
     // Get optional channel map:
     mychannelmap = NULL;
     PsychAllocInDoubleMatArg(8, kPsychArgOptional, &m, &n, &p, &mychannelmap);
@@ -2250,19 +2513,17 @@ PsychError PSYCHPORTAUDIOOpen(void)
             PsychErrorExitMsg(PsychError_user, "Invalid size of 'selectchannels' matrix argument: Must be a one- or two row by max(channels) column matrix!");
         }
 
-        // Basic check ok. Build ASIO host specific mapping structure:
-        #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        // Check for ASIO: This only works for ASIO host API...
+        #ifdef PA_ASIO_H
         if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paASIO) {
-            // MS-Windows and connected to an ASIO device. Good. Try to assign channel mapping:
+            // MS-Windows and connected to an ASIO device. Try to assign channel mapping:
             if (mode & kPortAudioPlayBack) {
                 // Playback mappings:
-                outputParameters.hostApiSpecificStreamInfo = (PaAsioStreamInfo*) &outhostapisettings;
-                outhostapisettings.size = sizeof(PaAsioStreamInfo);
-                outhostapisettings.hostApiType = paASIO;
-                outhostapisettings.version = 1;
-                outhostapisettings.flags = paAsioUseChannelSelectors;
-                outhostapisettings.channelSelectors = (int*) &outputmappings[0];
+                outputParameters.hostApiSpecificStreamInfo = (PaAsioStreamInfo*) &outasioapisettings;
+                outasioapisettings.size = sizeof(PaAsioStreamInfo);
+                outasioapisettings.hostApiType = paASIO;
+                outasioapisettings.version = 1;
+                outasioapisettings.flags = paAsioUseChannelSelectors;
+                outasioapisettings.channelSelectors = (int*) &outputmappings[0];
                 for (i=0; i<mynrchannels[0]; i++) outputmappings[i] = (int) mychannelmap[i * m];
                 if (verbosity > 3) {
                     printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
@@ -2273,12 +2534,12 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
             if (mode & kPortAudioCapture) {
                 // Capture mappings:
-                inputParameters.hostApiSpecificStreamInfo = (PaAsioStreamInfo*) &inhostapisettings;
-                inhostapisettings.size = sizeof(PaAsioStreamInfo);
-                inhostapisettings.hostApiType = paASIO;
-                inhostapisettings.version = 1;
-                inhostapisettings.flags = paAsioUseChannelSelectors;
-                inhostapisettings.channelSelectors = (int*) &inputmappings[0];
+                inputParameters.hostApiSpecificStreamInfo = (PaAsioStreamInfo*) &inasioapisettings;
+                inasioapisettings.size = sizeof(PaAsioStreamInfo);
+                inasioapisettings.hostApiType = paASIO;
+                inasioapisettings.version = 1;
+                inasioapisettings.flags = paAsioUseChannelSelectors;
+                inasioapisettings.channelSelectors = (int*) &inputmappings[0];
                 // Index into first row of one-row matrix or 2nd row of two-row matrix:
                 for (i=0; i<mynrchannels[1]; i++) inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)];
                 if (verbosity > 3) {
@@ -2289,15 +2550,127 @@ PsychError PSYCHPORTAUDIOOpen(void)
             }
             // Mappings setup up. The PortAudio library will sanity check this further against device constraints...
         }
-        else {
-            // Non ASIO device: No ASIO support --> No channel mapping support.
-            if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this is not an ASIO enabled sound device.\n");
-        }
-
-        #else
-        // Non MS-Windows system: No ASIO support --> No channel mapping support.
-        if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this is not MS-Windows running on an ASIO enabled sound device.\n");
+        else
         #endif
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type != paASIO) {
+            // Compute and apply channelmap:
+            if (mode & kPortAudioPlayBack) {
+                PaWinWaveFormatChannelMask channelMask = (PaWinWaveFormatChannelMask) 0;
+                for (i = 0; i < mynrchannels[0]; i++)
+                    channelMask |= (PaWinWaveFormatChannelMask) (1 << ((int) mychannelmap[i * m]));
+
+                if (verbosity > 3) {
+                    printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
+                    for (i = 0; i < mynrchannels[0]; i++)
+                        printf("%i --> %i : ", i + 1, (int) mychannelmap[i * m]);
+
+                    printf("\n\n");
+                }
+
+                switch (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type) {
+                    case paWASAPI:
+                        outwasapiapisettings.flags |= paWinWasapiUseChannelMask;
+                        outwasapiapisettings.channelMask = channelMask;
+                        break;
+
+                    /* TODO:
+                    case paWDMKS:
+                        outwasapiapisettings.flags |= ;
+                        outwasapiapisettings.channelMask = channelMask;
+                        break;
+
+                    case paDirectSound:
+                        outwasapiapisettings.flags |= ;
+                        outwasapiapisettings.channelMask = channelMask;
+                        break;
+
+                    case paMME:
+                        outwasapiapisettings.flags |= ;
+                        outwasapiapisettings.channelMask = channelMask;
+                        break;
+                    */
+                }
+            }
+
+            // Windows api's can't do channel mapping on the capture side, i think?
+            if ((mode & kPortAudioCapture) && (verbosity > 3)) {
+                printf("PTB-INFO: Audio capture enabled, but 'selectchannels' mapping for audio capture is ignored on this hardware + driver combo.\n");
+            }
+        }
+        else
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX && defined(paMacCoreChangeDeviceParameters)
+            if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paCoreAudio) {
+                // macOS CoreAudio. Try to assign channel mapping:
+                if (mode & kPortAudioPlayBack) {
+                    // Playback mappings:
+                    for (i = 0; i < outputDevInfo->maxOutputChannels && i < MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE; i++)
+                        CoreAudioOutChannelMap[i] = -1;
+
+                    for (i = 0; i < mynrchannels[0]; i++) {
+                        if (((int) mychannelmap[i * m] >= outputDevInfo->maxOutputChannels) || ((int) mychannelmap[i * m] < 0) ||
+                            ((int) mychannelmap[i * m] >= MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE)) {
+                            if (verbosity > 0)
+                                printf("PTB-ERROR: Invalid output channel mapping %i -> %i. Output device only has %i channels.\n",
+                                       i+1, (int) mychannelmap[i * m], outputDevInfo->maxOutputChannels);
+                            PsychErrorExitMsg(PsychError_user, "Invalid 'selectchannels' matrix argument for output mapping.");
+                        }
+
+                        CoreAudioOutChannelMap[(int) mychannelmap[i * m]] = i;
+                    }
+
+                    if (verbosity > 3) {
+                        printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
+                        for (i = 0; i < mynrchannels[0]; i++)
+                            printf("%i --> %i : ", i+1, (int) mychannelmap[i * m]);
+                        printf("\n\n");
+                    }
+
+                    PaMacCore_SetupChannelMap(&outhostapisettings,
+                                              (const SInt32 * const) CoreAudioOutChannelMap,
+                                              (unsigned long) outputDevInfo->maxOutputChannels);
+                }
+
+                if (mode & kPortAudioCapture) {
+                    // Capture mappings:
+                    for (i = 0; i < mynrchannels[1]; i++)
+                        CoreAudioInChannelMap[i] = -1;
+
+                    // Index into first row of one-row matrix or 2nd row of two-row matrix:
+                    for (i = 0; i < mynrchannels[1]; i++) {
+                        // Input channels are mapped differently in CoreAudio from output channels. Target channel on our
+                        // side is array slot, source device channel is assigned value:
+                        if (((int) mychannelmap[(i * m) + (m - 1)] < 0) ||
+                            ((int) mychannelmap[(i * m) + (m - 1)] >= inputDevInfo->maxInputChannels )) {
+                            if (verbosity > 0)
+                                printf("PTB-ERROR: Invalid input channel mapping %i <- %i. Input device only has %i channels.\n",
+                                       i+1, (int) mychannelmap[(i * m) + (m - 1)], inputDevInfo->maxInputChannels);
+                            PsychErrorExitMsg(PsychError_user, "Invalid 'selectchannels' matrix argument for input mapping.");
+                        }
+
+                        CoreAudioInChannelMap[i] = (int) mychannelmap[(i * m) + (m - 1)];
+                    }
+
+                    if (verbosity > 3) {
+                        printf("PTB-INFO: Will try to use the following logical channel <- device channel mappings for sound capture from audio stream %i :\n", id);
+                        for (i = 0; i < mynrchannels[1]; i++)
+                            printf("%i <-- %i : ", i+1, (int) mychannelmap[(i * m) + (m - 1)]);
+                        printf("\n\n");
+                    }
+
+                    PaMacCore_SetupChannelMap(&inhostapisettings,
+                                              (const SInt32 * const) CoreAudioInChannelMap,
+                                              (unsigned long) mynrchannels[1]);
+                }
+                // Mappings setup up. The PortAudio library will sanity check this further against device constraints...
+            }
+            else
+        #endif
+
+            // Backend without channel mapping support.
+            if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this audio backend does not support it.\n");
     }
 
     // Copy in optional specialFlags:
@@ -2305,7 +2678,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     // Set channel count:
     outputParameters.channelCount = mynrchannels[0];    // Number of output channels.
-    inputParameters.channelCount = mynrchannels[1];        // Number of input channels.
+    inputParameters.channelCount = mynrchannels[1];     // Number of input channels.
 
     // Fix sample format to float for now...
     outputParameters.sampleFormat = paFloat32;
@@ -2313,26 +2686,37 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     // Setup buffersize:
     if (buffersize == 0) {
-        // No specific buffersize requested:
-        if (latencyclass < 3) {
-            // At levels < 3, the frames per buffer is derived from
-            // the requested latency in seconds. Portaudio will never
-            // choose a value smaller than 64 frames per buffer or smaller
-            // than what the device suggests as minimum safe value.
-            buffersize = paFramesPerBufferUnspecified;
-        }
-        else {
-            if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paCoreAudio) {
-                buffersize = 64; // Lowest setting that is safe on a fast MacBook-Pro.
+        // No specific buffersize requested: Leave it unspecified to get optimal selection by lower level driver.
+        // Especially on Windows and Linux, basically any choice other than paFramesPerBufferUnspecified
+        // will just lead to trouble and less optimal results, as the sound subsystems are very good at
+        // choosing this parameter optimally if allowed, but have a hard job to cope with any user-enforced choices.
+        buffersize = paFramesPerBufferUnspecified;
+    }
+    else {
+        // Extra buffersize validation possible on OSX with upstream portaudio:
+        #if (PSYCH_SYSTEM == PSYCH_OSX) && defined(paMacCoreChangeDeviceParameters)
+        long minBufferSizeFrames, maxBufferSizeFrames;
+        if (paNoError == PaMacCore_GetBufferSizeRange(outputDevInfo ? outputParameters.device : inputParameters.device,
+                                                      &minBufferSizeFrames, &maxBufferSizeFrames)) {
+            if (verbosity > 3)
+                printf("PTB-INFO: Allowable host audiobuffersize range is %i to %i sample frames.\n",
+                       (int) minBufferSizeFrames, (int) maxBufferSizeFrames);
+
+            if ((long) buffersize < minBufferSizeFrames) {
+                if (verbosity > 2)
+                    printf("PTB-WARNING: Requested buffersize %i samples is lower than allowed minimum %i. Clamping to minimum.\n",
+                           buffersize, (int) minBufferSizeFrames);
+                buffersize = (int) minBufferSizeFrames;
             }
-            else {
-                // ASIO/ALSA/others: Leave it unspecified to get optimal selection by lower level driver:
-                // Esp. on Windows/ASIO and with Linux/ALSA, basically any choice other than paFramesPerBufferUnspecified
-                // will just lead to trouble and less optimal results, as the sound subsystems are very good at
-                // choosing this parameter optimally if allowed, but have a hard job to cope with any user-enforced choices.
-                buffersize = paFramesPerBufferUnspecified;
+
+            if ((long) buffersize > maxBufferSizeFrames) {
+                if (verbosity > 2)
+                    printf("PTB-WARNING: Requested buffersize %i samples is higher than allowed maximum %i. Clamping to maximum.\n",
+                           buffersize, (int) maxBufferSizeFrames);
+                buffersize = (int) maxBufferSizeFrames;
             }
         }
+        #endif
     }
 
     // Now we have auto-selected buffersize or user provided override...
@@ -2342,7 +2726,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // No specific frequency requested:
         if (latencyclass < 3) {
             // At levels < 3, we select the device specific default.
-            freq = (int) referenceDevInfo->defaultSampleRate;
+            freq = referenceDevInfo->defaultSampleRate;
         }
         else {
             freq = 96000; // Go really high...
@@ -2352,22 +2736,26 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // Now we have auto-selected frequency or user provided override...
 
     // Set requested latency: In class 0 we choose device recommendation for dropout-free operation, in
-    // all higher (lowlat) classes we request zero latency. PortAudio will
+    // all higher (lowlat) classes we request zero or low latency. PortAudio will
     // clamp this request to something safe internally.
     switch (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type) {
-        case paCoreAudio:    // CoreAudio driver will automatically clamp to safe minimum. Around 0.7 msecs.
-        case paWDMKS:        // dto. for Windows kernel streaming.
+        case paCoreAudio:    // CoreAudio is sometimes broken and causes sound dropouts at low latencies on 10.14 Mojave.
+            lowlatency = (latencyclass > 1) ? 0.0 : 0.010;    // Go easy on it and only ask for 10 msecs latency at default
+            break;                                            // latency class, otherwise for minimum, as in the past.
+        case paWASAPI:       // WASAPI will automatically clamp to safe minimum.
+        case paWDMKS:        // dto. for WDMKS Windows kernel streaming.
             lowlatency = 0.0;
             break;
 
-        case paMME:        // No such a thing as low latency, but easy to kill the machine with too low settings!
-            lowlatency = 0.1; // Play safe, request 100 msecs. Otherwise terrible things may happen!
+        case paMME:             // No such a thing as low latency, but easy to kill the machine with too low settings!
+            lowlatency = 0.1;   // Play safe, request 100 msecs. Otherwise terrible things may happen!
             break;
 
-        case paDirectSound:    // DirectSound defaults to 120 msecs, which is way too much! It doesn't accept 0.0 msecs.
-            lowlatency = 0.04;    // Choose some half-way safe tradeoff: 40 msecs.
+        case paDirectSound:     // DirectSound defaults to 120 msecs, which is way too much! It doesn't accept 0.0 msecs.
+            lowlatency = 0.05;  // Choose some half-way safe tradeoff: 50 msecs.
             break;
 
+        #ifdef PTB_USE_ASIO
         case paASIO:
             // ASIO: A value of zero would set safe (and high latency!) defaults. Too small values get
             // clamped to a safe minimum by the driver, so we select a very small positive value, say
@@ -2375,11 +2763,12 @@ PsychError PSYCHPORTAUDIOOpen(void)
             // we play a bit safer and go for 5 msecs:
             lowlatency = (latencyclass >= 2) ? 0.001 : 0.005;
             break;
+        #endif
 
         case paALSA:
             // For ALSA we choose 10 msecs by default, lowering to 5 msecs if exp. requested. Experience
             // shows that the effective latency will be only a fraction of this, so we are good.
-            // Otoh going too low could cause dropouts on the tested MacbookPro 2nd generation...
+            // Otoh going too low could cause dropouts on the tested 2006 MacbookPro 2nd generation...
             // This will need more lab testing and tweaking - and the user can override anyway...
             lowlatency = (latencyclass > 2) ? 0.005 : 0.010;
             break;
@@ -2392,6 +2781,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // None provided: Choose default based on latency mode:
         outputParameters.suggestedLatency = (latencyclass == 0 && outputDevInfo) ? outputDevInfo->defaultHighOutputLatency : lowlatency;
         inputParameters.suggestedLatency  = (latencyclass == 0 && inputDevInfo) ? inputDevInfo->defaultHighInputLatency : lowlatency;
+
+        // Make sure that requested high or default output latency on Apples trainwreck is never lower than 10 msecs.
+        // Especially on macOS 10.14 this seems to be neccessary for crackle-free playback: (Forum message #23422)
+        if ((latencyclass <= 1) && (PSYCH_SYSTEM == PSYCH_OSX) && (outputParameters.suggestedLatency < 0.010))
+            outputParameters.suggestedLatency = 0.010;
     }
     else {
         // Override provided: Use it.
@@ -2399,14 +2793,29 @@ PsychError PSYCHPORTAUDIOOpen(void)
         inputParameters.suggestedLatency  = suggestedLatency;
     }
 
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    // Apply OS/X CoreAudio specific optimizations:
-    if (latencyclass > 1) {
-        unsigned long flags = paMacCore_ChangeDeviceParameters;
-        if (latencyclass > 3) flags|= paMacCore_FailIfConversionRequired;
-        paSetupMacCoreStreamInfo( &hostapisettings, flags);
-        outputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
-        inputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paWASAPI) {
+        if (latencyclass > 1) {
+            inwasapiapisettings.flags |= paWinWasapiExclusive;
+            outwasapiapisettings.flags |= paWinWasapiExclusive;
+        }
+
+        if (latencyclass > 2) {
+            // Windows 10 or later?
+            if (PsychOSIsMSWin10()) {
+                // Force audio engine into using the optimal sample format for us:
+                // This is only supported on Windows-10 and later.
+                inwasapiapisettings.streamOption = eStreamOptionMatchFormat;
+                outwasapiapisettings.streamOption = eStreamOptionMatchFormat;
+            }
+            else if (latencyclass > 3) {
+                // At least class 4, which means to fail if settings can't be applied,
+                // and this is a pre-Windows 10 system, where the settings are unsupported,
+                // so fail loudly:
+                printf("PTB-ERROR: Desired ultralow-latency audio parameters for device %i unsupported by operating system, as this would require Windows-10 or later.\n", deviceid);
+                PsychErrorExitMsg(PsychError_system, "Failed to open PortAudio audio device due to unsupported reqlatencyclass 4 on operating system older than Windows 10.");
+            }
+        }
     }
     #endif
 
@@ -2431,14 +2840,27 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // specialFlags 16: Never dither audio data:
     if (specialFlags & 16) sflags |= paDitherOff;
 
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+        // On ALSA in aggressive low-latency mode, reduce number of periods (aka device buffers) to 2 for double-buffering.
+        // The default in Portaudio is 4 periods, so that's what we use in non-aggressive mode
+        if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paALSA)
+            PaAlsa_SetNumPeriods((latencyclass > 2) ? 2 : 4);
+    #endif
+
     // Check if the requested sample format and settings are likely supported by Audio API:
     err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
     if (err != paNoError && err != paDeviceUnavailable) {
-        printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device. PortAudio reports this error: %s \n", deviceid, Pa_GetErrorText(err));
-        printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel allocation, or audio sample format.\n");
+        printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
+        if (err == paInvalidSampleRate)
+            printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
+        else if (err == paInvalidChannelCount)
+            printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
+        else
+            printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel count/allocation, or audio sample format.\n");
+
         if (PSYCH_SYSTEM == PSYCH_LINUX)
             printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
-        PsychErrorExitMsg(PsychError_system, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
+        PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
     }
 
     // Try to create & open stream:
@@ -2540,16 +2962,72 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // Register the stream finished callback:
     Pa_SetStreamFinishedCallback(audiodevices[id].stream, PAStreamFinishedCallback);
 
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    // Query low-level audio driver of the CoreAudio HAL for hardware latency:
-    // Hmm, maybe not. Don't know if it is worth the hazzle... This is a constant that
-    // doesn't change throughout the lifetime of a machine, and it only makes up for about
-    // 0.3 msecs on a typical setup. Maybe if a user really needs that 0.3 msecs extra
-    // precision, he should simply download the free HALLab from Apple's Website or Developer
-    // tools, run it once, read the displayed constant and set it manually at PortAudio startup.
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+        // Enable realtime scheduling for the portaudio audio processing thread on ALSA:
+        if (audiodevices[id].hostAPI == paALSA) {
+            PaAlsa_EnableRealtimeScheduling(audiodevices[id].stream, 1);
 
-    // PaMacCoreStream* corestream = (PaMacCoreStream*) audiodevices[id].stream;
-    // audiodevices[id].latencyBias =
+            // Is a hack-fix needed for a bug present in all versions of libportaudio
+            // earlier than 19.7? The bug triggers in pure half-duplex audio capture
+            // mode (== no playback requested) and consists of erroneously switching
+            // the hostBufferSizeMode of the PaBufferProcessor for capture streams from
+            // paUtilFixedHostBufferSize to paUtilBoundedHostBufferSize, causing
+            // misconversion of captured audio somewhere in the bufferProcessor.
+            //
+            // The offending (buggy) if () conditional is at the end of the function
+            // PaAlsaStream_DetermineFramesPerBuffer() inside pa_linux_alsa.c. It looks
+            // like this: if( !self->playback.canMmap || !accurate ) ..., when it should look
+            // like this: if((!self->playback.canMmap && self->playback.pcm) || !accurate ) ...
+            // in order to prevent the invalid !self->playback.canMmap check, which always
+            // evaluates to "true" if playback is not actually used in pure capture mode.
+            //
+            // We can't prevent the mis-setting of hostBufferSizeMode to paUtilBoundedHostBufferSize,
+            // but we can reset it to the correct paUtilFixedHostBufferSize after Pa_OpenStream()
+            // and before actual start of capture operations, by hacking ourselves into the internal
+            // data structure of the PaBufferProcessor associated with the audio stream.
+            //
+            // We don't apply the fix if usercode specified a buffersize other than
+            // the default paFramesPerBufferUnspecified -- in such a case, switching
+            // to a different hostBufferSizeMode may be required...
+            if (((mode & kPortAudioFullDuplex) == kPortAudioCapture) &&
+                (buffersize == paFramesPerBufferUnspecified) &&
+                (Pa_GetVersion() < paMakeVersionNumber(19,6,1))) {
+                PseudoBufferProcessor* bp;
+
+                // Cast PaStream* into ALSA backend specific AlsaStream*, using the pseudo-
+                // datastructures defined to mimick PortAudio 19.6.0 an earliers true internal
+                // structures:
+                PseudoAlsaStreamExt* myalsaext = (PseudoAlsaStreamExt*) audiodevices[id].stream;
+                if ((myalsaext->streamRepresentation.magic == PA_STREAM_MAGIC) &&
+                    (myalsaext->streamRepresentation.hostApiType == paALSA)) {
+                    bp = &myalsaext->bufferProcessor;
+                    if (verbosity > 5)
+                        printf("PTB-DEBUG: Probed PaAlsaStream struct is from patched portaudio with portmixer.patch (Ubuntu style).\n");
+                }
+                else {
+                    PseudoAlsaStream* myalsa = (PseudoAlsaStream*) audiodevices[id].stream;
+                    if (myalsa->streamRepresentation.magic == PA_STREAM_MAGIC) {
+                        bp = &myalsa->bufferProcessor;
+                        if (verbosity > 5)
+                            printf("PTB-DEBUG: Probed PaAlsaStream struct is from vanilla upstream portaudio.\n");
+                    }
+                    else {
+                        bp = NULL;
+                        if (verbosity > 1)
+                            printf("PTB-WARNING: Probing PaAlsaStream struct failed! Can't apply half-duplex capture bug workaround for Portaudio v19.6.0!\n");
+                    }
+                }
+
+                // Additional sanity check if we got the casting right, and if our fix-hack is applicable:
+                if (bp && (bp->hostBufferSizeMode == paUtilBoundedHostBufferSize)) {
+                    // Reset to sane mode:
+                    bp->hostBufferSizeMode = paUtilFixedHostBufferSize;
+
+                    if (verbosity > 4)
+                        printf("PTB-INFO: Applying paUtilFixedHostBufferSize workaround for pure half-duplex capture mode.\n");
+                }
+            }
+        }
     #endif
 
     if (verbosity > 3) {
@@ -2748,6 +3226,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
     }
     else {
         // More than 2 channel counts provided? Impossible.
+        mynrchannels[0] = mynrchannels[1] = 0; // Make compiler happy.
         PsychErrorExitMsg(PsychError_user, "You specified a list with more than two 'channels' entries? Can only be max 2 for playback- and capture.");
     }
 
@@ -2779,12 +3258,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[0]; i++) if (audiodevices[id].outputmappings[i] < 0 || audiodevices[id].outputmappings[i] >= audiodevices[pamaster].outchannels) {
-                printf("PTB-ERROR: Slot %i of output channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].outputmappings[i] + 1, audiodevices[pamaster].outchannels);
-                free(audiodevices[id].outputmappings);
-                audiodevices[id].outputmappings = NULL;
-                PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
-            }
+            for (i = 0; i < mynrchannels[0]; i++)
+                if (audiodevices[id].outputmappings[i] < 0 || audiodevices[id].outputmappings[i] >= audiodevices[pamaster].outchannels) {
+                    printf("PTB-ERROR: Slot %i of output channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].outputmappings[i] + 1, (int)  audiodevices[pamaster].outchannels);
+                    free(audiodevices[id].outputmappings);
+                    audiodevices[id].outputmappings = NULL;
+                    PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
+                }
         }
 
         if ((mode & kPortAudioCapture) && !(mode & kPortAudioIsOutputCapture)) {
@@ -2800,12 +3280,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].inchannels) {
-                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, audiodevices[pamaster].inchannels);
-                free(audiodevices[id].inputmappings);
-                audiodevices[id].inputmappings = NULL;
-                PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
-            }
+            for (i = 0; i < mynrchannels[1]; i++)
+                if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].inchannels) {
+                    printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, (int) audiodevices[pamaster].inchannels);
+                    free(audiodevices[id].inputmappings);
+                    audiodevices[id].inputmappings = NULL;
+                    PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
+                }
         }
 
         if (mode & kPortAudioIsOutputCapture) {
@@ -2821,12 +3302,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].outchannels) {
-                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, audiodevices[pamaster].outchannels);
-                free(audiodevices[id].inputmappings);
-                audiodevices[id].inputmappings = NULL;
-                PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
-            }
+            for (i = 0; i < mynrchannels[1]; i++)
+                if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].outchannels) {
+                    printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, (int)  audiodevices[pamaster].outchannels);
+                    free(audiodevices[id].inputmappings);
+                    audiodevices[id].inputmappings = NULL;
+                    PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
+                }
         }
 
     }
@@ -2953,16 +3435,16 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
         printf("PTB-INFO: New virtual audio slave device with handle %i opened and attached to parent device handle %i [master %i].\n", id, paparent, pamaster);
 
         if (audiodevices[id].opmode & kPortAudioIsAMModulator) {
-            printf("PTB-INFO: For %i channels amplitude modulation.\n", audiodevices[id].outchannels);
+            printf("PTB-INFO: For %i channels amplitude modulation.\n", (int) audiodevices[id].outchannels);
         }
         else if (audiodevices[id].opmode & kPortAudioPlayBack) {
-            printf("PTB-INFO: For %i channels playback.\n", audiodevices[id].outchannels);
+            printf("PTB-INFO: For %i channels playback.\n", (int) audiodevices[id].outchannels);
         }
 
         if (audiodevices[id].opmode & kPortAudioIsOutputCapture) {
-            printf("PTB-INFO: For %i channels capture of master output mix.\n", audiodevices[id].inchannels);
+            printf("PTB-INFO: For %i channels capture of master output mix.\n", (int) audiodevices[id].inchannels);
         } else if (audiodevices[id].opmode & kPortAudioCapture) {
-            printf("PTB-INFO: For %i channels capture.\n", audiodevices[id].inchannels);
+            printf("PTB-INFO: For %i channels capture.\n", (int) audiodevices[id].inchannels);
         }
 
         printf("PTB-INFO: Real samplerate %f Hz. Input latency %f msecs, Output latency %f msecs.\n",
@@ -3024,18 +3506,24 @@ PsychError PSYCHPORTAUDIOClose(void)
 PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 {
     static char useString[] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0][, startIndex=Append]);";
-    //                            1           2                     3                                                   1         2               3                    4
+    //                          1          2                     3                                                 1         2             3                    4
     static char synopsisString[] =
     "Fill audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
-    "whose buffer is to be filled. 'bufferdata' is usually a matrix with audio data in double() or single() format. Each "
-    "row of the matrix specifies one sound channel, each column one sample for each channel. Only floating point "
-    "values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
+    "whose buffer is to be filled.\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    "'bufferdata' is usually a matrix with audio data in double() or single() format. "
+    "Each row of the matrix specifies one sound channel, each column one sample for each channel. "
+    #else
+    "'bufferdata' is usually a NumPy 2D matrix with audio data in (ideally) float32 format, or also float64 format. "
+    "Each column of the matrix specifies one sound channel, each row one sample for each channel. "
+    #endif
+    "Only floating point values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
     "intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
-    "data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+    "data exactly at the optimal format and sample rate, so the driver can save computation time and latency for "
     "expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n"
     "Instead of a matrix, you can also pass in the bufferhandle of an audio buffer as 'bufferdata'. This buffer "
     "must have been created beforehand via PsychPortAudio('CreateBuffer', ...). Its content must satisfy the "
-    "same constraints as in case of passing a Matlab matrix. The content will be copied from the given buffer "
+    "same constraints as in case of passing a matrix. The content will be copied from the given buffer "
     "to the standard audio buffer, so it is safe to delete that source buffer if you want.\n"
     "'streamingrefill' optional: If set to 1, ask the driver to refill the buffer immediately while playback "
     "is active. You can think of this as appending the audio data to the audio data already present in the buffer. "
@@ -3080,6 +3568,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
     double currentTime, etaSecs;
     psych_int64 startIndex = 0;
     double tBehind = 0.0;
+    psych_bool c_layout = PsychUseCMemoryLayoutIfOptimal(TRUE);
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3087,7 +3576,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 
     PsychErrorExit(PsychCapNumInputArgs(4));     // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(3));     // The maximum number of outputs
+    PsychErrorExit(PsychCapNumOutputArgs(3));    // The maximum number of outputs
 
     // Make sure PortAudio is online:
     PsychPortAudioInitialize();
@@ -3104,25 +3593,37 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
         // Assign properties:
         inchannels = inbuffer->outchannels;
         insamples  = inbuffer->outputbuffersize / sizeof(float) / inchannels;
-        p = 1;
         indatafloat = inbuffer->outputbuffer;
     }
     else {
-        // Regular double matrix with sound data from runtime:
+        // Regular double matrix with sound data from runtime?
         if (!PsychAllocInDoubleMatArg64(2, kPsychArgAnything, &inchannels, &insamples, &p, &indata)) {
-            // Or regular float matrix instead:
+            // Or regular float matrix instead?
             PsychAllocInFloatMatArg64(2, kPsychArgRequired, &inchannels, &insamples, &p, &indatafloat);
             userfloat = TRUE;
+        }
+
+        if (p != 1)
+            PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
+
+        // Swap inchannels <-> insamples to take transposed 2D matrix of C vs. Fortran layout into account:
+        if (c_layout) {
+            p = inchannels;
+            inchannels = insamples;
+            insamples = p;
         }
     }
 
     if (inchannels != audiodevices[pahandle].outchannels) {
-        printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i rows.\n", pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels);
-        PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
+        printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i %s.\n",
+               pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels, (c_layout) ? "columns" : "rows");
+        if (c_layout)
+            PsychErrorExitMsg(PsychError_user, "Number of columns of audio data matrix doesn't match number of output channels of selected audio device.\n");
+        else
+            PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
     }
 
     if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample in your audio buffer!");
-    if (p!=1) PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
 
     // Get optional streaming refill flag:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &streamingrefill);
@@ -3338,16 +3839,23 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
     static char useString[] = "PsychPortAudio('RefillBuffer', pahandle [, bufferhandle=0], bufferdata [, startIndex=0]);";
     static char synopsisString[] =
     "Refill part of an audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
-    "whose buffer is to be filled. 'bufferhandle' is the handle of the buffer: Use a handle of zero for the standard "
-    "buffer created and accessed via 'FillBuffer'. 'bufferdata' is a matrix with audio data in double() or single() "
-    "format. Each row of the matrix specifies one sound channel, each column one sample for each channel. Only floating point "
-    "values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
+    "whose buffer is to be filled.\n"
+    "'bufferhandle' is the handle of the buffer: Use a handle of zero for the standard "
+    "buffer created and accessed via 'FillBuffer'.\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    "'bufferdata' is a matrix with audio data in double() or single() format. "
+    "Each row of the matrix specifies one sound channel, each column one sample for each channel. "
+    #else
+    "'bufferdata' is usually a NumPy 2D matrix with audio data in (ideally) float32 format, or also float64 format. "
+    "Each column of the matrix specifies one sound channel, each row one sample for each channel. "
+    #endif
+    "Only floating point values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
     "intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
-    "data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+    "data exactly at the optimal format and sample rate, so the driver can save computation time and latency for "
     "expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n"
     "Instead of a matrix, you can also pass in the bufferhandle of an audio buffer as 'bufferdata'. This buffer "
     "must have been created beforehand via PsychPortAudio('CreateBuffer', ...). Its content must satisfy the "
-    "same constraints as in case of passing a Matlab matrix. The content will be copied from the given buffer "
+    "same constraints as in case of passing a matrix. The content will be copied from the given buffer "
     "to the standard audio buffer, so it is safe to delete that source buffer if you want.\n"
     "'startIndex' optional: Defines the first sample frame within the buffer where refill should start. "
     "By default, refilling starts at the beginning of the buffer - at sample frame 0. 'startIndex' allows to "
@@ -3362,8 +3870,8 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 
     static char seeAlsoString[] = "Open FillBuffer GetStatus ";
 
-    PsychPABuffer* buffer;
-    PsychPABuffer* inbuffer;
+    PsychPABuffer* buffer = NULL;
+    PsychPABuffer* inbuffer = NULL;
 
     psych_int64 inchannels, insamples, p;
     size_t buffersize, outbuffersize;
@@ -3375,6 +3883,7 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
     int pahandle   = -1;
     int bufferhandle = 0;
     psych_int64 startIndex = 0;
+    psych_bool c_layout = PsychUseCMemoryLayoutIfOptimal(TRUE);
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3402,7 +3911,8 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 
         // Validate matching output channel count:
         if (buffer->outchannels != audiodevices[pahandle].outchannels) {
-            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", buffer->outchannels, bufferhandle, audiodevices[pahandle].outchannels);
+            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n",
+                   (int) buffer->outchannels, bufferhandle, (int) audiodevices[pahandle].outchannels);
             PsychErrorExitMsg(PsychError_user, "Target audio buffer 'bufferHandle' has an audio channel count that doesn't match channels of audio device!");
         }
     }
@@ -3415,7 +3925,6 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
         // Assign properties:
         inchannels = inbuffer->outchannels;
         insamples = inbuffer->outputbuffersize / sizeof(float) / inchannels;
-        p = 1;
         indatafloat = inbuffer->outputbuffer;
     }
     else {
@@ -3425,15 +3934,28 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
             PsychAllocInFloatMatArg64(3, kPsychArgRequired, &inchannels, &insamples, &p, &indatafloat);
             userfloat = TRUE;
         }
+
+        if (p != 1)
+            PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
+
+        // Swap inchannels <-> insamples to take transposed 2D matrix of C vs. Fortran layout into account:
+        if (c_layout) {
+            p = inchannels;
+            inchannels = insamples;
+            insamples = p;
+        }
     }
 
     if (inchannels != audiodevices[pahandle].outchannels) {
-        printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i rows.\n", pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels);
-        PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
+        printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i %s.\n",
+               pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels, (c_layout) ? "columns" : "rows");
+        if (c_layout)
+            PsychErrorExitMsg(PsychError_user, "Number of columns of audio data matrix doesn't match number of output channels of selected audio device.\n");
+        else
+            PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
     }
 
     if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample for refill of your audio buffer!");
-    if (p!=1) PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
 
     // Get optional startIndex:
     PsychCopyInIntegerArg64(4, kPsychArgOptional, &startIndex);
@@ -3579,11 +4101,17 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
     static char synopsisString[] =
     "Create a new dynamic audio data playback buffer for a PortAudio audio device and fill it with initial data.\n"
     "Return a 'bufferhandle' to the new buffer. 'pahandle' is the optional handle of the device "
-    "whose buffer is to be filled. 'bufferdata' is a matrix with audio data in double() or single() "
-    "format. Each row of the matrix specifies one sound channel, each column one sample for each channel. Only floating point "
-    "values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
+    "whose buffer is to be filled.\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    "'bufferdata' is a matrix with audio data in double() or single() format. "
+    "Each row of the matrix specifies one sound channel, each column one sample for each channel. "
+    #else
+    "'bufferdata' is usually a NumPy 2D matrix with audio data in (ideally) float32 format, or also float64 format. "
+    "Each column of the matrix specifies one sound channel, each row one sample for each channel. "
+    #endif
+    "Only floating point values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
     "intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
-    "data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+    "data exactly at the optimal format and sample rate, so the driver can save computation time and latency for "
     "expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n\n"
     "You can refill the buffer anytime via the PsychPortAudio('RefillBuffer') call.\n"
     "You can delete the buffer via the PsychPortAudio('DeleteBuffer') call, once it is not used anymore. \n"
@@ -3596,12 +4124,13 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
 
     PsychPABuffer* buffer;
     psych_int64 inchannels, insamples, p;
-    size_t buffersize, outbuffersize;
+    size_t buffersize;
     double*    indata = NULL;
     float* indatafloat = NULL;
     float*  outdata = NULL;
     int pahandle   = -1;
     int bufferhandle = 0;
+    psych_bool c_layout = PsychUseCMemoryLayoutIfOptimal(TRUE);
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3620,6 +4149,16 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
         PsychAllocInFloatMatArg64(2, kPsychArgRequired, &inchannels, &insamples, &p, &indatafloat);
     }
 
+    if (p != 1)
+        PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
+
+    // Swap inchannels <-> insamples to take transposed 2D matrix of C vs. Fortran layout into account:
+    if (c_layout) {
+        p = inchannels;
+        inchannels = insamples;
+        insamples = p;
+    }
+
     // If the optional pahandle is provided...
     if (PsychCopyInIntegerArg(1, kPsychArgOptional, &pahandle)) {
         // ...then we use it to validate the configuration of the datamatrix for the new
@@ -3628,14 +4167,17 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
         if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
 
         if (inchannels != audiodevices[pahandle].outchannels) {
-            printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i rows.\n", pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels);
-            PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
+            printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i %s.\n",
+                pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels, (c_layout) ? "columns" : "rows");
+            if (c_layout)
+                PsychErrorExitMsg(PsychError_user, "Number of columns of audio data matrix doesn't match number of output channels of selected audio device.\n");
+            else
+                PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
         }
     }
 
-    if (inchannels < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 row for creation of at least one audio channel in your audio buffer!");
+    if (inchannels < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least a vector for creation of at least one audio channel in your audio buffer!");
     if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample for creation of your audio buffer!");
-    if (p!=1) PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
 
     // Create buffer and assign bufferhandle:
     bufferhandle = PsychPACreateAudioBuffer(inchannels, insamples);
@@ -3643,7 +4185,6 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
     // Deref bufferHandle:
     buffer = PsychPAGetAudioBuffer(bufferhandle);
     outdata = buffer->outputbuffer;
-    outbuffersize = (size_t) buffer->outputbuffersize;
     buffersize = sizeof(float) * (size_t) inchannels * (size_t) insamples;
 
     if (indata) {
@@ -3671,19 +4212,29 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
  */
 PsychError PSYCHPORTAUDIOGetAudioData(void)
 {
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
     static char useString[] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs][, singleType=0]);";
+    #else
+    static char useString[] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs][, singleType=1]);";
+    #endif
     static char synopsisString[] =
     "Retrieve captured audio data from a audio device. 'pahandle' is the handle of the device "
-    "whose data is to be retrieved. 'audiodata' is a matrix with audio data in floating point format. Each "
-    "row of the matrix returns one sound channel, each column one sample for each channel. "
+    "whose data is to be retrieved.\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    "'audiodata' is a matrix with audio data in floating point format. "
+    "Each row of the matrix returns one sound channel, each column one sample for each channel. "
+    #else
+    "'audiodata' is a NumPy 2D matrix with audio data in float32 floating point format by default. "
+    "Each column of the matrix returns one sound channel, each row one sample for each channel. "
+    #endif
     "Returned samples are in range -1.0 to +1.0, with 0.0 for silence. This is "
     "intentionally a very restricted interface. For lowest latency and best timing we want you to accept audio "
-    "data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+    "data exactly at the optimal format and sample rate, so the driver can save computation time and latency for "
     "expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n"
     "You must call this function once before start of capture operations to allocate an internal buffer "
     "that stores captured audio data inbetween your periodic calls. Provide 'amountToAllocateSecs' as "
     "requested buffersize in seconds. After start of capture you must call this function periodically "
-    "at least every 'amountToAllocateSecs' seconds to drain the internal buffer into your Matlab/Octave "
+    "at least every 'amountToAllocateSecs' seconds to drain the internal buffer into your "
     "matrix 'audiodata'. If you fail to call the function frequently enough, sound data will get lost!\n"
     "'minimumAmountToReturnSecs' optional minimum amount of recorded data to return at each call. The "
     "driver will only return control to your script when it was able to collect at least that amount "
@@ -3695,10 +4246,16 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
     "If you provide both, 'minimumAmountToReturnSecs' and 'maximumAmountToReturnSecs' and set them to equal "
     "values (but significantly lower than the 'amountToAllocateSecs' buffersize!!) then you'll always "
     "get an 'audiodata' matrix back that is of a fixed size. This may be convenient for postprocessing "
-    "in Matlab. It may also reduce or avoid Matlab memory fragmentation...\n"
+    "in the scripting language. It may also reduce or avoid memory fragmentation...\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
     "'singleType' if set to 1 will return a sound data matrix of single() type instead of double() type. "
     "By default, double() type is returned. single() type matrices only consume half as much memory as "
-    "double() type matrices, without any loss of audio precision.\n"
+    "double() type matrices, without loss of audio precision for up to 24-Bit ADC hardware.\n"
+    #else
+    "'singleType' if set to 1 will return a sound data matrix of float32 type instead of float64 type. "
+    "By default, float32 type is returned, as float32 matrices only consume half as much memory as "
+    "float64 matrices, usually without loss of audio precision for up to 24-Bit ADC hardware.\n"
+    #endif
     "\n"
     "\nOptional return arguments other than 'audiodata':\n\n"
     "'absrecposition' is the absolute position (in samples) of the first column in the returned data matrix, "
@@ -3726,10 +4283,11 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
     double*    indata = NULL;
     float*  indatafloat = NULL;
     int pahandle   = -1;
-    int singleType = 0;
     double allocsize;
     double minSecs, maxSecs, minSamples;
     int overrun = 0;
+    int singleType = (PSYCH_LANGUAGE == PSYCH_MATLAB) ? 0 : 1;
+    psych_bool c_layout = PsychUseCMemoryLayoutIfOptimal(TRUE);
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3894,11 +4452,17 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 
     if (singleType & 1) {
         // Allocate output float matrix with matching number of channels and samples:
-        PsychAllocOutFloatMatArg(1, FALSE, audiodevices[pahandle].inchannels, insamples / audiodevices[pahandle].inchannels, 1, &indatafloat);
+        if (c_layout)
+            PsychAllocOutFloatMatArg(1, FALSE, insamples / audiodevices[pahandle].inchannels, audiodevices[pahandle].inchannels, 1, &indatafloat);
+        else
+            PsychAllocOutFloatMatArg(1, FALSE, audiodevices[pahandle].inchannels, insamples / audiodevices[pahandle].inchannels, 1, &indatafloat);
     }
     else {
         // Allocate output double matrix with matching number of channels and samples:
-        PsychAllocOutDoubleMatArg(1, FALSE, audiodevices[pahandle].inchannels, insamples / audiodevices[pahandle].inchannels, 1, &indata);
+        if (c_layout)
+            PsychAllocOutDoubleMatArg(1, FALSE, insamples / audiodevices[pahandle].inchannels, audiodevices[pahandle].inchannels, 1, &indata);
+        else
+            PsychAllocOutDoubleMatArg(1, FALSE, audiodevices[pahandle].inchannels, insamples / audiodevices[pahandle].inchannels, 1, &indata);
     }
 
     // Copy out absolute sample read position of first sample in buffer:
@@ -4663,7 +5227,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
     if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, 23, FieldNames, &status);
+    PsychAllocOutStructArray(1, kPsychArgOptional, -1, 23, FieldNames, &status);
 
     // Ok, in a perfect world we should hold the device mutex while querying all the device state.
     // However, we don't: This reduces lock contention at the price of a small chance that the
@@ -4734,7 +5298,20 @@ PsychError PSYCHPORTAUDIOVerbosity(void)
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) verbosity);
 
     // Set new level, if one was provided:
-    if (level > -1) verbosity = level;
+    if (level > -1) {
+        verbosity = level;
+
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+            // Set an error handler for ALSA debug output/errors to stop the spewage of utterly
+            // pointless ALSA warning messages to stderr. At verbosity <= 5 we sent ALSA chatter
+            // to a dummy error handler. At levels > 5 we disable our error handler, so ALSA
+            // chatter goes to stderr...
+            if (verbosity <= 5)
+                snd_lib_error_set_handler(ALSAErrorHandler);
+            else
+                snd_lib_error_set_handler(NULL);
+        #endif
+    }
 
     return(PsychError_none);
 }
@@ -4934,17 +5511,26 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
     "'deviceIndex'.\n\n"
     "Each struct contains information about its associated PortAudio device. The optional "
     "parameter 'devicetype' can be used to enumerate only devices of a specific class: \n"
+    #ifdef PTB_USE_ASIO
     "1=Windows/DirectSound, 2=Windows/MME, 3=Windows/ASIO, 11=Windows/WDMKS, 13=Windows/WASAPI, "
+    #else
+    "1=Windows/DirectSound, 2=Windows/MME, 11=Windows/WDMKS, 13=Windows/WASAPI, "
+    #endif
     "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, 5=MacOSX/CoreAudio.\n\n"
     "On OS/X you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
     "On Linux you may have the choice between ALSA, JACK and OSS. ALSA or JACK provide very low "
     "latencies and very good timing, OSS is an older system which is less capable but not very "
-    "widespread in use anymore. On MS-Windows you'll have the ''choice'' between up to 5 different "
-    "audio subsystems: If you buy an expensive sound card with ASIO drivers, pick that API for low "
-    "latency, it should give you comparable performance to OS/X or Linux. 2nd best choice "
-    "would be WASAPI (on Windows-Vista) or WDMKS (on Windows-2000/XP) for ok latency on good days. DirectSound is the next "
-    "worst choice if you have hardware with DirectSound support. If everything else fails, you'll be left "
-    "with MME, a premium example of system misdesign successfully sold to paying customers.";
+    "widespread in use anymore. On MS-Windows you'll have the choice between up to 5 different "
+    "audio subsystems:\n"
+    #ifdef PTB_USE_ASIO
+    "- If you buy a sound card with ASIO drivers, then you can pick that API for low latency. It "
+    "should give you comparable performance to OS/X or Linux.\n"
+    #endif
+    "WASAPI (on Windows-Vista and later), or WDMKS (on Windows-2000/XP) should provide ok latency.\n"
+    "DirectSound is the next worst choice if you have hardware with DirectSound support.\n"
+    "If everything else fails, you'll be left with MME, a completely unusable API for precise or "
+    "low latency timing.\n"
+    "\n";
 
     static char seeAlsoString[] = "Open GetDeviceSettings ";
     PsychGenericScriptType     *devices;
@@ -5513,7 +6099,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 
         // Validate matching output channel count:
         if (buffer->outchannels != audiodevices[pahandle].outchannels) {
-            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", buffer->outchannels, bufferHandle, audiodevices[pahandle].outchannels);
+            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", (int) buffer->outchannels, bufferHandle, (int) audiodevices[pahandle].outchannels);
             PsychErrorExitMsg(PsychError_user, "Referenced audio buffer 'bufferHandle' has an audio channel count that doesn't match channels of audio device!");
         }
     }
@@ -5690,9 +6276,15 @@ PsychError PSYCHPORTAUDIOSetOpMode(void)
 PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 {
     static char useString[] = "result = PsychPortAudio('DirectInputMonitoring', pahandle, enable [, inputChannel = -1][, outputChannel = 0][, gainLevel = 0.0][, stereoPan = 0.5]);";
-    //                                                                            1          2            3                     4                      5                     6
+    //                                                                          1         2         3                    4                    5                  6
     static char synopsisString[] =
-    "Change the current settings for the \"direct input monitoring\" feature on device 'pahandle'.\n"
+    "Change the current settings for the \"direct input monitoring\" feature on device 'pahandle'.\n\n"
+    #if (PSYCH_SYSTEM == PSYCH_OSX) && !defined(paMacCoreChangeDeviceParameters)
+    "NOTE: The current PsychPortAudio driver supports direct input monitoring only on MacOSX with some pro-sound hardware, "
+    "but not with the builtin sound chip. Also this feature is completely untested by the developer so far.\n\n"
+    #else
+    "NOTE: This function is not actually functional in this PsychPortAudio driver build. It is only here for backwards compatibility.\n\n"
+    #endif
     "The device must be open for this setting to take effect. Changed settings may or may not "
     "persist across closing and opening the device, this is hardware dependent and not to be relied on.\n"
     "So-called \"Zero latency direct input monitoring\" is a hardware feature of some modern "
@@ -5711,33 +6303,25 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
     "If omitted or set to -1, all input channels settings will be modified, or at least tried to be modified.\n"
     "The optional 'outputChannel' specifies the index of the base-channel of a channel stereo-pair to which the 'inputChannel' "
     "should be routed. It must be an even number like 0, 2, 4, .... If omitted, channel 0, i.e., the first output channel "
-    "stereo pair will be used. This at least on ASIO soundcards under MS-Windows.\n"
+    "stereo pair will be used.\n"
     "The optional 'gainLevel' defines the desired amplifier gain for the routed signal. The value should be negative for "
     "signal attenuation (i.e., negative gain) and positive for amplification (i.e., positive gain). "
     "As specification of gains is not standardized across operating systems, the numbers you'll have to pass in for a desired "
     "effect will vary across operating systems and audio hardware. However, the default setting of zero tries to set a neutral "
-    "gain of zero decibel - the signal is passed through without change in intensity. On MS-Windows with ASIO soundcards, values "
-    "between 0.0 and 1.0 will select gains between 0 and 12 dB. Values between 0.0 and -1.0 will select negative gains between "
-    "0 and -infinity dB, ie., full attenuation. The setting may get completely ignored or only approximately implemented by given "
-    "hardware. Double-check your results!\n"
+    "gain of zero decibel - the signal is passed through without change in intensity. The setting may get completely ignored or "
+    "only approximately implemented by given hardware. Double-check your results!\n"
     "The optional 'stereoPan' parameter allows to select panning between the two output channels of a selected stereo output "
     "channel pair if the hardware allows that. Range 0.0 - 1.0 selects between left-channel and right channel, with the default "
     "of 0.5 selecting a centered output with equal distribution to both channels.\n\n"
     "In the optional return argument 'result' the function returns a status code to report if the requested change could be carried "
     "out successfully. A value of zero means success. A value of 1 means some error, e.g., invalid parameters specified. A value of "
-    "2 means that your combinatin of operating system, sound system, soundcard device driver and soundcard hardware does not support "
+    "2 means that your combination of operating system, sound system, soundcard device driver and soundcard hardware does not support "
     "direct input monitoring, at least not for the given configuration. A setting of 3 means that your PortAudio driver plugin does "
-    "not support the feature - You may need to update your plugin from the Psychtoolbox Wiki.\n\n"
-    "The current PsychPortAudio driver supports direct input monitoring on MacOS/X with certain sound hardware (but not the builtin sound) "
-    "and on Microsoft Windows systems with ASIO-2.0 capable sound "
-    "hardware, and only if the latest portaudio_x86.dll ASIO plugin is installed from our Wiki. Even then, only a subset of ASIO-2 "
-    "hardware may support this feature and only a subset of these may support all parameters. According to vendor documentation, some "
-    "soundcards from Creative Labs and many of RME's cards do support this feature.\n"
+    "not support the feature."
     "\n";
 
     static char seeAlsoString[] = "Open GetDeviceSettings ";
 
-    PaError rcp;
     int pahandle = -1;
     int enable, inputChannel, outputChannel, rc;
     double gain, stereoPan;
@@ -5749,7 +6333,7 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 
     PsychErrorExit(PsychCapNumInputArgs(6));     // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(1));     // The maximum number of outputs
+    PsychErrorExit(PsychCapNumOutputArgs(1));    // The maximum number of outputs
 
     // Make sure PortAudio is online:
     PsychPortAudioInitialize();
@@ -5794,18 +6378,17 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
     // Default result code is "totally unsupported by our driver":
     rc = 3;
 
-    // Feature currently only supported on MS-Windows and OS/X ...
-    #if PSYCH_SYSTEM != PSYCH_LINUX
-    // MS-Windows: Is the device in question opened as an ASIO device? If not, then game over. Otherwise we know
-    // we're using the ASIO enabled portaudio_x86.dll which may support this feature on this hardware.
-    // OS/X CoreAudio: Same logic applies...
-    if ((audiodevices[pahandle].hostAPI == paASIO) || (audiodevices[pahandle].hostAPI == paCoreAudio)) {
-        // ASIO / CoreAudio device opened as such via ASIO capable Portaudio plugin. Is the plugin recent enough
-        // to support the directmonitoring interface?
+    // Feature currently only supported on OS/X with our custom build / extended Portaudio variant, not with Portaudio upstream:
+    #if (PSYCH_SYSTEM == PSYCH_OSX) && !defined(paMacCoreChangeDeviceParameters)
+    if (audiodevices[pahandle].hostAPI == paCoreAudio) {
+        // CoreAudio device: Is the Portaudio plugin recent enough to support our custom directmonitoring interface?
         if (strstr(Pa_GetVersionText(), "WITH-DIM")) {
+            PaError rcp;
             // Plugin supports the API, so at least we can safely call it without crashing.
             // Lower the fail level to rc = 2, can't fail because of our deficiencies anymore:
-            if (verbosity > 4) printf("PsychPortAudio('DirectInputMonitoring'): Calling with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+            if (verbosity > 4)
+                printf("PsychPortAudio('DirectInputMonitoring'): Calling with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+
             rcp = Pa_DirectInputMonitoring(audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
             switch (rcp) {
                 case paNoError:
@@ -5846,16 +6429,16 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
             }
         }
         else {
-            if (verbosity > 1 && (audiodevices[pahandle].hostAPI == paASIO)) printf("PsychPortAudio('DirectInputMonitoring'): Your portaudio_x86.dll plugin is too old to support this feature! Download a more recent one from the Psychtoolbox Wiki!\n");
-            if (verbosity > 1 && (audiodevices[pahandle].hostAPI == paCoreAudio)) printf("PsychPortAudio('DirectInputMonitoring'): Your installed portaudio.0.0.19.dylib plugin is too old to support this feature! Reinstall the latest one from the Psychtoolbox/PsychSound/ subfolder!\n");
+            if (verbosity > 1 && (audiodevices[pahandle].hostAPI == paCoreAudio))
+                printf("PsychPortAudio('DirectInputMonitoring'): Your Portaudio plugin is too old to support this feature!\n");
         }
     }
     else {
-        if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on this non ASIO sound hardware.\n");
+        if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on this system.\n");
     }
     #else
-    // Linux:
-    if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not yet supported on your operating system.\n");
+    // Standard upstream Portaudio:
+    if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on your operating system.\n");
     #endif
 
     // Return success status:

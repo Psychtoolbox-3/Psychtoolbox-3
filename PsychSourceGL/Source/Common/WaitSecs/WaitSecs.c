@@ -38,32 +38,52 @@
 
 #include "WaitSecs.h"
 
-void WAITSECSSynopsis(void)
+#define MAX_SYNOPSIS_STRINGS 500
+static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
+
+const char** InitializeSynopsis(void)
 {
-	printf("WaitSecs - Timed waits:\n");
-	printf("-----------------------\n");
-	printf("\n");
-	printf("[realWakeupTimeSecs] = WaitSecs(waitPeriodSecs);              -- Wait for at least 'waitPeriodSecs' seconds. Try to be precise.\n");
-	printf("[realWakeupTimeSecs] = WaitSecs('UntilTime', whenSecs);       -- Wait until at least time 'whenSecs'.\n");
-	printf("[realWakeupTimeSecs] = WaitSecs('YieldSecs', waitPeriodSecs); -- Wait for at least 'waitPeriodSecs' seconds. Be more sloppy.\n");
-	printf("\nThe optional 'realWakeupTimeSecs' is the real system time when WaitSecs finished waiting,\n");
-	printf("just as if you'd call realWakeupTimeSecs = GetSecs; after calling WaitSecs. This for your\n");
-	printf("convenience and to reduce call overhead and drift a bit for this common combo of commands.\n\n");
+    int i = 0;
+    const char **synopsis = synopsisSYNOPSIS;  // abbreviate the long name
+
+    synopsis[i++] = "";
+    synopsis[i++] = "WaitSecs - Timed waits:";
+    synopsis[i++] = "-----------------------";
+    synopsis[i++] = "";
+    synopsis[i++] = "[realWakeupTimeSecs] = WaitSecs(waitPeriodSecs);              -- Wait for at least 'waitPeriodSecs' seconds. Try to be precise.";
+    synopsis[i++] = "[realWakeupTimeSecs] = WaitSecs('UntilTime', whenSecs);       -- Wait until at least time 'whenSecs'.";
+    synopsis[i++] = "[realWakeupTimeSecs] = WaitSecs('YieldSecs', waitPeriodSecs); -- Wait for at least 'waitPeriodSecs' seconds. Be more sloppy.";
+    synopsis[i++] = "\nThe optional 'realWakeupTimeSecs' is the real system time when WaitSecs finished waiting,";
+    synopsis[i++] = "just as if you'd call realWakeupTimeSecs = GetSecs; after calling WaitSecs. This for your";
+    synopsis[i++] = "convenience and to reduce call overhead and drift a bit for this common combo of commands.";
+    synopsis[i++] = NULL;
+
+    return(synopsisSYNOPSIS);
 }
 
-PsychError WAITSECSWaitSecs(void) 
+PsychError WAITSECSSynopsis(void)
+{
+    int i;
+
+    for (i = 0; synopsisSYNOPSIS[i] != NULL; i++)
+        printf("%s\n",synopsisSYNOPSIS[i]);
+
+    return(PsychError_none);
+}
+
+PsychError WAITSECSWaitSecs(void)
 {
     double	waitPeriodSecs;
     double	now;
 
-    //check to see if the user supplied superfluous arguments
+    // Check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(1));
-    
+
     if (!PsychCopyInDoubleArg(1, FALSE, &waitPeriodSecs)) {
-	// Called without arguments. Output synopsis:
-	WAITSECSSynopsis();
-	return(PsychError_none);
+        // Called without arguments. Output synopsis:
+        WAITSECSSynopsis();
+        return(PsychError_none);
     }
 
     // Wait for requested interval:
@@ -73,7 +93,7 @@ PsychError WAITSECSWaitSecs(void)
     PsychGetAdjustedPrecisionTimerSeconds(&now);
     PsychCopyOutDoubleArg(1, FALSE, now);
 
-    return(PsychError_none);	
+    return(PsychError_none);
 }
 
 PsychError WAITSECSWaitUntilSecs(void)

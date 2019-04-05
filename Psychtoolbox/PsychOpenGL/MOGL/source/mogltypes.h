@@ -39,6 +39,11 @@
 #define false 0
 #endif
 
+#ifdef MACOSX
+/* Shut up the OpenGL related deprecation warnings on Apples trainwreck: */
+#define GL_SILENCE_DEPRECATION
+#endif
+
 /* glew.h is part of GLEW library for automatic detection and binding of
    OpenGL core functionality and extensions.
  */

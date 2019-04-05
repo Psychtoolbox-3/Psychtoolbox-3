@@ -46,10 +46,6 @@ nTrials = 10;
 % Initialize driver, request low-latency preinit:
 InitializePsychSound(1);
 
-if ~IsLinux
-    PsychPortAudio('Verbosity', 10);
-end
-
 % Force GetSecs and WaitSecs into memory to avoid latency later on:
 GetSecs; WaitSecs(0.1);
 
@@ -117,13 +113,11 @@ else
     disp(devs(idx));
 end
 
-% Request latency mode 2, which used to be the best one in our measurement:
-% classes 3 and 4 didn't yield any improvements, sometimes they even caused
-% problems.
-reqlatencyclass = 2; % class 2 empirically the best, 3 & 4 == 2
+% Request latency mode 2:
+reqlatencyclass = 2;
 
 % Requested output frequency, may need adaptation on some audio-hw:
-freq = 44100;       % Must set this. 96khz, 48khz, 44.1khz.
+freq = 48000;       % Must set this. 96khz, 48khz, 44.1khz.
 buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 suggestedLatencySecs = [];
 
@@ -136,15 +130,6 @@ if IsARM
         fprintf('Choosing a latbias setting of 0.000593 secs or 0.593 msecs, assuming this is a RaspberryPi ARM SoC.\n');
     end
     fprintf('Choosing a high suggestedLatencySecs setting of 25 msecs to account for lower performing ARM SoC.\n');
-end
-
-if IsWin
-    % Hack to accomodate bad Windows systems or sound cards. By default,
-    % the more aggressive default setting of something like 5 msecs can
-    % cause sound artifacts on cheaper / less pro sound cards:
-    suggestedLatencySecs = 0.015 %#ok<NOPRT>
-    fprintf('Choosing a high suggestedLatencySecs setting of 15 msecs to account for shoddy Windows operating system.\n');
-    fprintf('For low-latency applications, you may want to tweak this to lower values if your system works better than average timing-wise.\n');
 end
 
 if isempty(latbias)
@@ -208,7 +193,7 @@ else
         % Default to 1%:
         triggerLevel = 0.01;
     end
-    
+
     fprintf('Using a trigger level for DataPixx of %f. This may need tweaking by you...\n', triggerLevel);
     DatapixxAudioKey('TriggerLevel', triggerLevel);
 end
@@ -218,18 +203,20 @@ fprintf('\n\nPress any key to start measurement.\n\n');
 KbStrokeWait;
 
 % nTrials measurement trials:
-for i=1:nTrials    
+for i=1:nTrials
     % Start audio capture on DataPixx now. Return true 'tStartBox'
     % timestamp of start in box clock time:
     tStartBox = DatapixxAudioKey('CaptureNow');
-    
+
     if exactstart
         % Schedule start of audio at exactly 'waitTime' seconds ahead:
         PsychPortAudio('Start', pahandle, 1, GetSecs + waitTime, 0);
+        desired = waitTime;
     else
         % No test of scheduling, but of absolute latency: Start audio
         % playback immediately:
         PsychPortAudio('Start', pahandle, 1, 0, 0);
+        desired = 0;
     end
 
     if 0
@@ -246,7 +233,7 @@ for i=1:nTrials
             WaitSecs('YieldSecs', 0.001);
         end
     end
-    
+
     % Retrieve true delay from DataPixx measurement and stop recording on the device:
     [audiodata, measuredAudioDelta] = DatapixxAudioKey('GetResponse', waitTime + 1, [], 1); %#ok<*ASGLU>
 
@@ -255,8 +242,8 @@ for i=1:nTrials
     status = PsychPortAudio('GetStatus', pahandle);
     tPortAudio(i) = status.StartTime; %#ok<AGROW>
     tDataPixx(i)  = tStartBox + measuredAudioDelta; %#ok<AGROW>
-    
-    fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs.\n', status.BufferSize, status.XRuns, status.PositionSecs);
+
+    fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs, measured audio onset delay = %6.1f msecs vs. desired %6.1f\n', status.BufferSize, status.XRuns, status.PositionSecs, 1000 * measuredAudioDelta, 1000 * desired);
 
     if 0
         figure;
@@ -282,13 +269,11 @@ PsychPortAudio('Close');
 fprintf('\n\n');
 for i =1:nTrials
     audioDelta(i) = 1000 * (tDataPixx(i) - tPortAudio(i)); %#ok<AGROW>
-    fprintf('%i. PsychPortAudio measured onset error is %6.6f msecs.\n', i, audioDelta(i));
+    fprintf('%i. PsychPortAudio measured onset timestamp error is %6.6f msecs.\n', i, audioDelta(i));
 end
 
 % Discard 1st trial:
 audioDelta = audioDelta(2:end);
+fprintf('\nAvg timestamp error %6.6f msecs, Stddev %6.6f msecs, Range %6.6f msecs.\n\n', mean(audioDelta), std(audioDelta), range(audioDelta));
 
-fprintf('\nAvg error %6.6f msecs, Stddev %6.6f msecs, Range %6.6f msecs.\n\n', mean(audioDelta), std(audioDelta), range(audioDelta));
-
-% Done. Bye.
 return;

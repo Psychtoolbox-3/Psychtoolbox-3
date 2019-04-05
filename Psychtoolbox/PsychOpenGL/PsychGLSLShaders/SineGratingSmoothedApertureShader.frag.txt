@@ -23,6 +23,7 @@ float Mod = 1.0;
 varying vec4  baseColor;
 varying float Phase;
 varying float FreqTwoPi;
+varying float rawAlpha;
 
 void main()
 {
@@ -55,7 +56,7 @@ void main()
         gl_FragColor = (baseColor * (sv * Mod)) + Offset;
     }
     else {
-        gl_FragColor = (baseColor * sv) + Offset;
-        gl_FragColor.a = Mod;
+        gl_FragColor.rgb = (baseColor.rgb * sv) + Offset.rgb;
+        gl_FragColor.a = (rawAlpha * Mod) + Offset.a;
     }
 }

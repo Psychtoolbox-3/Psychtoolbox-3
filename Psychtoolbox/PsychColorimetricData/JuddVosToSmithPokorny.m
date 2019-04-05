@@ -38,11 +38,11 @@ M_juddVosToConesSp = [...
     0        0       0.00801];
 
 %% Transform
-T_cones_sp_unormalized = M_juddVosToConesSp*T_xyzJuddVos;
+T_cones_sp_unnormalized = M_juddVosToConesSp*T_xyzJuddVos;
 S_cones_sp = S_xyzJuddVos;
 
 %% Normalize
 for ii = 1:3
-    T_cones_sp(ii,:) = T_cones_sp_unormalized(ii,:)/max(T_cones_sp_unormalized(ii,:));
+    T_cones_sp(ii,:) = T_cones_sp_unnormalized(ii,:)/max(T_cones_sp_unnormalized(ii,:));
 end
 

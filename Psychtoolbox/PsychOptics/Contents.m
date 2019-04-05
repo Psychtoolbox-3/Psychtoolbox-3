@@ -11,6 +11,7 @@
 %   GoodmanDiffrac      - Diffraction limited MTF, based on cutoff freq, Goodman's formula.
 %   LsfToPsf            - Convert line spread function to point spread function.
 %   MakeRadiusMat       - Create a matrix whose entries are equal to their radius.
+%   NavarroMTF          - MTF from Navarro et al. 1993.
 %   OtfToPsf            - Convert optical transfer function to point spread function.
 %   PositionGridMinutesToSfGridCyclesDeg - Convert mess from position to sf.
 %   PsfToLsf            - Convert point spread function to line spread function.

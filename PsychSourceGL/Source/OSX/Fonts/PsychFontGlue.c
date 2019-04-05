@@ -532,9 +532,9 @@ void PsychCopyFontRecordsToNativeStructArray(int numFonts, PsychFontStructType *
         PsychSetStructArrayNativeElement("styleNames", arrayIndex, styleNameList, *fontStructArray);
         PsychSetStructArrayStringElement("file", arrayIndex, fontElement->fontFile, *fontStructArray);
         //metrics
-        PsychAllocOutStructArray(kPsychNoArgReturn, FALSE, 1, numMetaMetricsFieldNames, metaMetricsFieldNames,  &metaMetrics);
-        PsychAllocOutStructArray(kPsychNoArgReturn, FALSE, 1, numMetricsFieldNames, metricsFieldNames, &horizontalMetrics);
-        PsychAllocOutStructArray(kPsychNoArgReturn, FALSE, 1, numMetricsFieldNames, metricsFieldNames,  &verticalMetrics);
+        PsychAllocOutStructArray(kPsychNoArgReturn, FALSE, -1, numMetaMetricsFieldNames, metaMetricsFieldNames,  &metaMetrics);
+        PsychAllocOutStructArray(kPsychNoArgReturn, FALSE, -1, numMetricsFieldNames, metricsFieldNames, &horizontalMetrics);
+        PsychAllocOutStructArray(kPsychNoArgReturn, FALSE, -1, numMetricsFieldNames, metricsFieldNames,  &verticalMetrics);
             //horizontal
             PsychSetStructArrayDoubleElement("ascent", 0, fontElement->horizontalMetrics.ascent, horizontalMetrics);
             PsychSetStructArrayDoubleElement("descent", 0, fontElement->horizontalMetrics.descent, horizontalMetrics);
@@ -567,7 +567,7 @@ void PsychCopyFontRecordsToNativeStructArray(int numFonts, PsychFontStructType *
         PsychSetStructArrayNativeElement("verticalMetrics", 0, verticalMetrics, metaMetrics);
         PsychSetStructArrayNativeElement("metrics", arrayIndex, metaMetrics, *fontStructArray);
         //locale
-        PsychAllocOutStructArray(kPsychNoArgReturn, FALSE, 1, numLocaleFieldNames, localeFieldNames,  &locale);
+        PsychAllocOutStructArray(kPsychNoArgReturn, FALSE, -1, numLocaleFieldNames, localeFieldNames,  &locale);
             PsychSetStructArrayStringElement("language", 0, (char*) fontElement->locale.language, locale);
             PsychSetStructArrayStringElement("languageVariant", 0, (char*) fontElement->locale.languageVariant, locale);
             PsychSetStructArrayStringElement("region", 0, (char*) fontElement->locale.region, locale);

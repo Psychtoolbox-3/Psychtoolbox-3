@@ -17,7 +17,7 @@ managementtools/ - Contains scripts for management of the project.
 
 PsychSourceGL/   - Contains the C/C++ source code of almost all
                    compiled binary mex files for GNU/Octave and
-                   Matlab.
+                   Matlab and Python.
 
 PsychSourceGL/Cohorts/ - Source code of 3rd party (F)OSS libraries
                          that we use, if required by their licenses,
@@ -30,3 +30,6 @@ Psychtoolbox/     - The end-user distribution with all compiled
                     etc. This is what gets downloaded by end-users by
                     default.
 
+PsychPython/      - Code only used by Psychtoolbox Python support, e.g.,
+                    test and demo .py scripts, helper libraries etc. from
+                    which a Python package is built.

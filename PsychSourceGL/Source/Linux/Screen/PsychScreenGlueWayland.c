@@ -106,8 +106,7 @@
 
 #include "Screen.h"
 
-#include <waffle.h>
-#include <waffle_wayland.h>
+#include <waffle-1/waffle_wayland.h>
 
 #include <wayland-client.h>
 #include <wayland-cursor.h>

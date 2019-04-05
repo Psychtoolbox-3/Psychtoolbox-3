@@ -1,8 +1,10 @@
-function BasicAMAndMixScheduleDemo
+function BasicAMAndMixScheduleDemo(device)
+% BasicAMAndMixScheduleDemo([device])
+%
 % Demonstrates basic use of sound schedules, volume controls, amplitude
 % modulation and audio mixing of multiple voices.
 %
-% Usage: BasicAMAndMixScheduleDemo;
+% Usage: BasicAMAndMixScheduleDemo([device]);
 %
 % For more advanced or different use of sound schedules see
 % BasicSoundScheduleDemo. For more advanced use of mixing, modulators and
@@ -19,7 +21,11 @@ function BasicAMAndMixScheduleDemo
 
 % History:
 % 25.04.2010   mk  Written.
+% 07.11.2018   mk  Auto-Select samplerate, allow device specification, cleanup.
 
+if nargin < 1
+    device = [];
+end
 
 KbName('UnifyKeyNames');
 leftArrow = KbName('LeftArrow');
@@ -31,25 +37,23 @@ escape = KbName('ESCAPE');
 % Initialize Sounddriver:
 InitializePsychSound(1);
 
-% Open real default [] soundcard as master device (+8) for playback only (+1), with
-% standard low-latency, high timing precision mode, 2 channels, 48kHz:
+% Open real soundcard 'device' as master device (+8) for playback only (+1), with
+% standard low-latency, high timing precision mode, 2 channels, default frequency:
 nrchannels = 2;
-freq = 48000;
-
-% Add 15 msecs latency on Windows, to protect against shoddy drivers:
 sugLat = [];
-if IsWin
-    sugLat = 0.015;
-end
 
 if IsARM
-    % ARM processor, probably the RaspberryPi SoC. This can not quite handle the
-    % low latency settings of a Intel PC, so be more lenient:
+    % ARM processor, probably the RaspberryPi SoC. The Pi can not quite handle the
+    % low latency settings of a desktop PC, so be more lenient:
     sugLat = 0.025;
     fprintf('Choosing a high suggestedLatencySecs setting of 25 msecs to account for lower performing ARM SoC.\n');
 end
 
-pamaster = PsychPortAudio('Open', [], 1+8, 1, freq, nrchannels, [], sugLat);
+pamaster = PsychPortAudio('Open', device, 1+8, 1, [], nrchannels, [], sugLat);
+
+% Get what freq'uency we are actually using:
+s = PsychPortAudio('GetStatus', pamaster);
+freq = s.SampleRate;
 
 % Start master immediately, wait for it to be started. We won't stop the
 % master until the end of the session.
@@ -221,9 +225,9 @@ while 1
         % current 3-tone-sequence:
         break;
     end
-    
+
     % Nope. Wait a bit, then retry:
-    WaitSecs('YieldSecs', 0.1);    
+    WaitSecs('YieldSecs', 0.1);
 end
 
 % Let's start our modulator offset by 2 repetitions, that is finish the
@@ -281,9 +285,9 @@ while 1
         % current 3-tone-sequence:
         break;
     end
-    
+
     % Nope. Wait a bit, then retry:
-    WaitSecs('YieldSecs', 0.1);    
+    WaitSecs('YieldSecs', 0.1);
 end
 tModStart = status.StartTime + 2 * 6;
 
@@ -310,7 +314,7 @@ while 1
         vs = max(PsychPortAudio('Volume', pasound1) - 0.1, 0);
         PsychPortAudio('Volume', pasound1, vs);
     end
-    
+
     if keyCode(rightArrow)
         vs = min(PsychPortAudio('Volume', pasound1) + 0.1, 10);
         PsychPortAudio('Volume', pasound1, vs);
@@ -320,12 +324,11 @@ while 1
         vs = max(PsychPortAudio('Volume', pasound2) - 0.1, 0);
         PsychPortAudio('Volume', pasound2, vs);
     end
-    
+
     if keyCode(upArrow)
         vs = min(PsychPortAudio('Volume', pasound2) + 0.1, 10);
         PsychPortAudio('Volume', pasound2, vs);
     end
-
 end
 
 % Let's stop pasound1 exactly at the end of one of its sound cycles. Find
@@ -339,9 +342,9 @@ while 1
         % current 3-tone-sequence:
         break;
     end
-    
+
     % Nope. Wait a bit, then retry:
-    WaitSecs('YieldSecs', 0.1);    
+    WaitSecs('YieldSecs', 0.1);
 end
 
 % Compute stop time exactly 6 seconds after start:
@@ -378,8 +381,6 @@ PsychPortAudio('Stop', pamodulator2);
 % That's it. Everything stopped and silent. Close all devices, release all
 % ressources, shutdown the driver:
 PsychPortAudio('Close');
-
 fprintf('Finished. Bye!\n');
 
 return;
-

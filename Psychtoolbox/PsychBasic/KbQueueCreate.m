@@ -1,5 +1,5 @@
-function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags)
-% KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000][, flags=0])
+function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags, win)
+% KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000][, flags=0][, windowHandle=0])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacements for
@@ -35,7 +35,7 @@ function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags)
 % It is acceptable to call KbQueueCreate at any time (e.g., to switch to a new
 %  device or to change the list of queued keys) without calling KbQueueRelease.
 %
-%  KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000][, flags=0])
+%  KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000][, flags=0][, windowHandle=0])
 %      Creates the queue for the specified (or default) device number
 %      If the device number is less than zero, the default device is used.
 %
@@ -68,6 +68,10 @@ function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags)
 %      'flags' defines special modes of operation for the queue. These are OS
 %      specific, see "PsychHID KbQueueCreate?" for an up to date list of supported
 %      flags. In general, you don't need these.
+%
+%      'windowHandle' defines the optional onscreen window handle of an associated
+%      onscreen window. By default, input is taken for all windows and screens.
+%      This argument is silently ignored on systems other than Linux/X11 at the moment.
 %
 %      No events are delivered to the queue until KbQueueStart or 
 %      KbQueueWait is called.
@@ -179,7 +183,23 @@ if isempty(macosxrecent)
   LoadPsychHID;
 end
 
-if nargin == 5
+if nargin >= 6
+  if ~isempty(win)
+    % Onscreen window handle given. Validate and map to windowing system handle:
+    if Screen('WindowKind', win) == 1 
+      % Onscreen window handle of open onscreen window: Map to X-Window:
+      winfo = Screen('GetWindowInfo', win);
+      win = winfo.SysWindowHandle;
+    elseif ismember(win, Screen('Screens'))
+      % screenid given: Pass in as X-Screen id + 1:
+      win = win + 1;
+    end
+  end
+end
+
+if nargin == 6
+  PsychHID('KbQueueCreate', deviceNumber, keyList, numValuators, numSlots, flags, win);
+elseif nargin == 5
   PsychHID('KbQueueCreate', deviceNumber, keyList, numValuators, numSlots, flags);
 elseif nargin == 4
   PsychHID('KbQueueCreate', deviceNumber, keyList, numValuators, numSlots);

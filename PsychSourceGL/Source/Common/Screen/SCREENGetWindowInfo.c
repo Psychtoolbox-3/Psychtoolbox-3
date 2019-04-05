@@ -203,6 +203,7 @@ static char synopsisString[] =
     "VBLStartLine, VBLEndline: Start/Endline of vertical blanking interval. The VBLEndline value is not available/valid on all GPU's.\n"
     "SwapGroup: Swap group id of the swap group to which this window is assigned. Zero for none.\n"
     "SwapBarrier: Swap barrier id of the swap barrier to which this windows swap group is assigned. Zero for none.\n"
+    "SysWindowHandle: Low-level windowing system specific window handle of the onscreen window. Currently Linux/X11 only: The X-Window handle.\n"
     "\n"
     "The following settings are derived from a builtin detection heuristic, which works on most common GPU's:\n\n"
     "GPUCoreId: Symbolic name string that roughly describes the name of the GPU core of the graphics card. This string is arbitrarily\n"
@@ -230,8 +231,8 @@ PsychError SCREENGetWindowInfo(void)
                                 "VBLTimePostFlip", "OSSwapTimestamp", "GPULastFrameRenderTime", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "FlipCount", "StereoDrawBuffer",
                                 "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", "GPUMinorType",
                                 "DisplayCoreId", "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
-                                "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags", "SwapGroup", "SwapBarrier" };
-    const int fieldCount = 37;
+                                "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags", "SwapGroup", "SwapBarrier", "SysWindowHandle" };
+    const int fieldCount = 38;
     PsychGenericScriptType *s;
 
     PsychWindowRecordType *windowRecord;
@@ -274,7 +275,7 @@ PsychError SCREENGetWindowInfo(void)
             if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: GetWindowInfo: Call to CGSGetDebugOptions() failed!\n");
         }
 
-        PsychAllocOutStructArray(1, FALSE, 1, CoreGraphicsFieldCount, CoreGraphicsFieldNames, &s);
+        PsychAllocOutStructArray(1, FALSE, -1, CoreGraphicsFieldCount, CoreGraphicsFieldNames, &s);
         PsychSetStructArrayDoubleElement("CGSFps", 0   , cgsFPS, s);
         PsychSetStructArrayDoubleElement("CGSValue1", 0, val1, s);
         PsychSetStructArrayDoubleElement("CGSValue2", 0, val2, s);
@@ -430,10 +431,18 @@ PsychError SCREENGetWindowInfo(void)
         // our windowRecord as a drawingtarget is an expected side-effect of
         // this function. Quite a bit of PTB M-Functions and usercode rely on
         // this. Exception is infoType 7 which asks to omit this call:
-        if (infoType != 7) PsychSetDrawingTarget(windowRecord);
+        if (infoType != 7) {
+            // Only set as drawing target if it can act as a drawing target ie. onscreen/offscreen/texture.
+            // Proxywindows like GLOperators() are derived from windows but can't be used as drawing target,
+            // so only set their OpenGL context:
+            if (PsychIsOnscreenWindow(windowRecord) || PsychIsOffscreenWindow(windowRecord))
+                PsychSetDrawingTarget(windowRecord);
+            else
+                PsychSetGLContext(windowRecord);
+        }
 
         // Return all information:
-        PsychAllocOutStructArray(1, FALSE, 1, fieldCount, FieldNames, &s);
+        PsychAllocOutStructArray(1, FALSE, -1, fieldCount, FieldNames, &s);
 
         // Rasterbeam position:
         PsychSetStructArrayDoubleElement("Beamposition", 0, beamposition, s);
@@ -526,6 +535,15 @@ PsychError SCREENGetWindowInfo(void)
         // Swap group assignment and swap barrier assignment, if any:
         PsychSetStructArrayDoubleElement("SwapGroup", 0, windowRecord->swapGroup, s);
         PsychSetStructArrayDoubleElement("SwapBarrier", 0, windowRecord->swapBarrier, s);
+
+        // Windowing system low-level onscreen window handle or equivalent info:
+        #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAYLAND)
+            // Linux/X11: The X-Window handle 'Window':
+            PsychSetStructArrayDoubleElement("SysWindowHandle", 0, windowRecord->targetSpecific.xwindowHandle, s);
+        #else
+            // Other: Not implemented yet.
+            PsychSetStructArrayDoubleElement("SysWindowHandle", 0, 0, s);
+        #endif
 
         // Which basic GPU architecture is this?
         PsychSetStructArrayStringElement("GPUCoreId", 0, windowRecord->gpuCoreId, s);

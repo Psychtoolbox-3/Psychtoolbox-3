@@ -4,7 +4,7 @@ function [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(varargin)
 % [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(cache, key-value pairs)
 % 
 % When called with a string, the following key-value pairs are understood:
-% win [, sx][, sy][, xalign][, yalign][, xlayout][, color][, wrapat][, transform][, vSpacing][, righttoleft][, winRect][, resetStyle][, cacheOnly]
+% win [, sx][, sy][, xalign][, yalign][, xlayout][, baseColor][, wrapat][, transform][, vSpacing][, righttoleft][, winRect][, resetStyle][, cacheOnly]
 % Those enclosed in square braces are optional.
 % 
 % When called with a cache struct, the following optional key-value pair
@@ -162,7 +162,8 @@ function [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(varargin)
 % repositioned according to these for inputs. The winRect argument is only
 % used in this case. It is optional (defaulting to the whole windows), and
 % works as described above, specifying the rect to which 'xalign' and
-% 'yalign' apply.
+% 'yalign' apply. The input option 'transform' can furthermore be set,
+% which appends additional transformations to what is already in the cache.
 %
 %
 % Return variables:
@@ -270,11 +271,25 @@ padthresh = ptb_drawformattedtext2_padthresh;
 
 assert(Screen('Preference','TextRenderer') == 1, 'DrawFormattedText2 only works with the FTGL based text drawing plugin, but this plugin is not selected activated with Screen(''Preference'',''TextRenderer'',1), or did not load correctly. See help DrawTextPlugin for more information.');
 
-% Optional per-word bounding boxes requested?
-if (nargout >= 5) && (~IsOctave || isargout(5))
+% Optional per-word bounding boxes requested or should generate them
+% because cache requested?
+if (nargout >= 4) && (~IsOctave || isargout(4) || isargout(5))
     dowordbounds = 1;
 else
     dowordbounds = 0;
+end
+
+if IsOctave
+    % char() casts of unicode values > 255 map to zero, because Octave
+    % uses UTF-8 encoding for unicode, instead of UTF-32 as Matlab. We
+    % take care of this in the code, but necessary casts() also trigger
+    % an out-of-range warning in Octave, which we can't selectively disable,
+    % as it lacks a unique warning id (duh!). Therefore disable all warnings
+    % on Octave and reenable to previous setting whenever the we exit, and
+    % therefore the canary variable reenablewarn goes out of scope:
+    warningstate = warning('query');
+    warning('off');
+    reenablewarn = onCleanup(@() restorewarningstate(warningstate));
 end
 
 %% process key-value input
@@ -285,36 +300,48 @@ if isempty(opt)
     return;
 elseif qCalledWithCache
     cache = opt.cache;
-    [nx, ny, textbounds, wordbounds] = DoDraw(opt.win,...
-        disableClip,...
-        cache.px,...
-        cache.py,...
-        cache.bbox,...
-        cache.subStrings,...
-        cache.switches,...
-        cache.fmts,...
-        cache.fmtCombs,...
-        cache.ssBaseLineOff,...
-        cache.winRect,...
-        cache.previous,...
-        cache.righttoleft,...
-        cache.transform,...
-        dowordbounds);
+    if isfield(cache,'tex')
+        [nx, ny, wordbounds] = deal(cache.nx,cache.ny,cache.wordbounds);
+        DoDrawTexture(opt.win,cache.tex.number,cache.bbox,cache.transform);
+        if isempty(cache.transform)
+            textbounds = cache.bbox;
+        else
+            % transform BBox and wordbounds to reflect transforms applied by
+            % DoDrawSetup
+            textbounds = transformBBox(cache.bbox,cache.transform);
+            for b=1:size(wordbounds,1)
+                wordbounds(b,:)  = transformBBox2(wordbounds(b,:), cache.transform, cache.bbox);
+            end
+        end
+    else
+        [nx, ny, textbounds, wordbounds] = DoDraw(opt.win,...
+            disableClip,...
+            cache.px,...
+            cache.py,...
+            cache.bbox,...
+            cache.subStrings,...
+            cache.switches,...
+            cache.fmts,...
+            cache.fmtCombs,...
+            cache.ssBaseLineOff,...
+            cache.winRect,...
+            cache.previous,...
+            cache.righttoleft,...
+            cache.transform,...
+            cache.wordbounds);
+    end
     % done
     return;
 end
 
 % normal draw, unpack input arguments
-[tstring,win,sx,sy,xalign,yalign,xlayout,baseColor,wrapat,transform,vSpacing,righttoleft,winRect,resetStyle,cacheOnly] = ...
-    deal(opt.tstring,opt.win,opt.sx,opt.sy,opt.xalign,opt.yalign,opt.xlayout,opt.baseColor,opt.wrapat,opt.transform,opt.vSpacing,opt.righttoleft,opt.winRect,opt.resetStyle,opt.cacheOnly);
+[tstring,win,sx,sy,xalign,yalign,xlayout,baseColor,wrapat,transform,vSpacing,righttoleft,winRect,resetStyle,cacheOnly,cacheMode] = ...
+    deal(opt.tstring,opt.win,opt.sx,opt.sy,opt.xalign,opt.yalign,opt.xlayout,opt.baseColor,opt.wrapat,opt.transform,opt.vSpacing,opt.righttoleft,opt.winRect,opt.resetStyle,opt.cacheOnly,opt.cacheMode);
 
-
-% Store data class of input string for later use in re-cast ops:
-stringclass = class(tstring);
 
 % Need different encoding for returnChar that matches class of input
 % tstring:
-returnChar = cast(10,stringclass);
+returnChar = cast(10,class(tstring));
 
 % Convert all conventional linefeeds into C-style newlines.
 % But if '\n' is already encoded as a char(10) as in Octave, then
@@ -336,7 +363,11 @@ end
 [tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,tstring,baseColor,resetStyle);
 % check we still have anything to render after formatting tags removed
 if isempty(tstring)
-    % Empty text string -> Nothing to do.
+    % Empty text string -> Nothing to do, but assign dummy values:
+    [nx, ny]    = Screen('DrawText', win, '');
+    textbounds  = [nx, ny, nx, ny];
+    wordbounds  = textbounds;
+    cache       = [];
     return;
 end
 
@@ -350,11 +381,6 @@ if wrapat > 0
     % that is wrapped around column 'wrapat'
     tstring = WrapString(tstring, wrapat);
 end
-
-% Cast curstring back to the class of the original input string, to
-% make sure special unicode encoding (e.g., double()'s) does not
-% get lost for actual drawing:
-tstring = cast(tstring, stringclass);
 
 % now, split text into segments, either when there is a carriage return or
 % when the format changes
@@ -424,6 +450,7 @@ lWidth          = zeros(1,numlines);
 lWidthOff       = zeros(2,numlines);
 lBaseLineSkip   = zeros(1,numlines);
 lBaseLineOff    = zeros(2,numlines);
+lWidthOffLine   = zeros(3,length(subStrings));
 sWidth          = zeros(1,length(subStrings));
 px              = zeros(1,length(subStrings));
 py              = zeros(1,length(subStrings));
@@ -441,10 +468,6 @@ for p=1:numlines
     
     % to get line width and height, get textbounds of each string and add
     % them together
-    lWidthOffLine = zeros(3,length(qSubStr));
-    if p==97
-        3;
-    end
     for q=find(qSubStr)
         % do format change if needed
         if any(switches(:,q))
@@ -452,7 +475,7 @@ for p=1:numlines
             DoFormatChange(win,switches(:,q),fmt);
         end
         if isempty(subStrings{q})
-            [~,bbox]        = Screen('TextBounds', win,           'x',0,0,1,righttoleft);
+            [~,bbox,h]      = Screen('TextBounds', win,           'x',0,0,1,righttoleft);
             xAdv = 0;
         else
             [~,bbox,h,xAdv] = Screen('TextBounds', win, subStrings{q},0,0,1,righttoleft);
@@ -591,48 +614,101 @@ for p=1:numlines
         py(:) = -min(ssBaseLineOff(1,qSubStr));
     end
 end
-% now we have positions in the bbox, add bbox position to place them in the
-% right place on the screen
-px = px+bbox(1);
-py = py+bbox(2);
+% determine word (actually segment) bounds
+qNotEmpty   = sWidth>0 & sum(abs(ssBaseLineOff),1);
+wordboundsbase  = zeros(sum(qNotEmpty),4);
+wordboundsbase(:,1) = floor(px(qNotEmpty)+lWidthOffLine(2,qNotEmpty));
+wordboundsbase(:,2) = floor(py(qNotEmpty)+ssBaseLineOff(1,qNotEmpty));
+wordboundsbase(:,3) = ceil( px(qNotEmpty)+lWidthOffLine(2,qNotEmpty)+lWidthOffLine(1,qNotEmpty));
+wordboundsbase(:,4) = ceil( py(qNotEmpty)+ssBaseLineOff(2,qNotEmpty));
+
+% check if we're doing drawing via a texture. If so, we need a texture the
+% size of the bounding box, and we need to keep (px,py) w.r.t the bounding
+% box, not w.r.t. the screen
+qDrawToTexture  = nargout >= 3 && cacheMode==1;
+
+% now we have positions and wordbounds w.r.t. the bbox, add bbox position
+% to place them in the right place on the screen
+if ~qDrawToTexture
+    px = px+bbox(1);
+    py = py+bbox(2);
+    wordboundsbase(:,1) = wordboundsbase(:,1)+bbox(1);
+    wordboundsbase(:,2) = wordboundsbase(:,2)+bbox(2);
+    wordboundsbase(:,3) = wordboundsbase(:,3)+bbox(1);
+    wordboundsbase(:,4) = wordboundsbase(:,4)+bbox(2);
+end
 
 
 %% done processing inputs, do text drawing
+% do draw to texture if wanted
+if qDrawToTexture
+    drawRect = transformBBox(bbox,transform);
+    [tex.number,tex.rect] = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 RectWidth(drawRect) RectHeight(drawRect)]);
+    ResetTextSetup(tex.number,previous,true);
+    [nx, ny, ~, wordbounds] = DoDraw(tex.number,disableClip,px,py,tex.rect,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase);
+    nx = nx+bbox(1);
+    ny = ny+bbox(2);
+    wordbounds(:,1) = wordbounds(:,1)+bbox(1);
+    wordbounds(:,2) = wordbounds(:,2)+bbox(2);
+    wordbounds(:,3) = wordbounds(:,3)+bbox(1);
+    wordbounds(:,4) = wordbounds(:,4)+bbox(2);
+    textbounds = drawRect;
+end
 if ~cacheOnly
-    [nx, ny, textbounds, wordbounds] = DoDraw(win,disableClip,px,py,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,dowordbounds);
-else
-    [nx,ny,wordbounds]     = deal([]);
+    % draw to screen
+    if qDrawToTexture
+        DoDrawTexture(win,tex.number,drawRect,[]);
+    else
+        [nx, ny, textbounds, wordbounds] = DoDraw(win,disableClip,px,py,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase);
+    end
+elseif cacheMode~=1
+    % don't do any drawing to screen, nor to texture
+    [nx,ny] = deal([]);
     % the bbox in the cache is untranslated (we need to know the original
     % after all when drawing). Output transformed one here for user's info,
     % so they know what'll appear on screen eventually.
-    textbounds  = transformBBox(bbox,transform);
+    textbounds = transformBBox(bbox,transform);
+    wordbounds = wordboundsbase;
+    for b=1:size(wordbounds,1)
+        wordbounds(b,:)  = transformBBox2(wordbounds(b,:), transform, bbox);
+    end
 end
 if nargout>3
     % make cache
     cache.opt = opt;
     cache.win = win;
-    cache.px = px;
-    cache.py = py;
-    cache.bbox = bbox;
-    cache.subStrings = subStrings;
-    cache.substrIdxs = substrIdxs;
-    cache.switches = switches;
-    cache.fmts = fmts;
-    cache.fmtCombs = fmtCombs;
-    cache.ssBaseLineOff = ssBaseLineOff;
-    cache.winRect = winRect;
-    cache.previous = previous;
-    cache.righttoleft = righttoleft;
-    cache.transform = transform;
+    if cacheMode==1
+        cache.tex       = tex;
+        cache.bbox      = drawRect;
+        cache.transform = [];           % no need to reapply transforms as they are already "hardcoded" into the texture. But user can add new ones
+        cache.nx        = nx;
+        cache.ny        = ny;
+        cache.wordbounds = wordbounds;  % store transformed wordbounds as they're "hardcoded" into the texture
+    else
+        cache.px = px;
+        cache.py = py;
+        cache.bbox = bbox;
+        cache.subStrings = subStrings;
+        cache.substrIdxs = substrIdxs;
+        cache.switches = switches;
+        cache.fmts = fmts;
+        cache.fmtCombs = fmtCombs;
+        cache.ssBaseLineOff = ssBaseLineOff;
+        cache.winRect = winRect;
+        cache.previous = previous;
+        cache.righttoleft = righttoleft;
+        cache.transform = transform;
+        cache.wordbounds = wordboundsbase;
+    end
+end
 end
 
+% Restore warning() settings to initial at onCleanup():
+function restorewarningstate(warningstate)
+    warning(warningstate);
+end
 
-function [nx, ny, bbox, wordbounds] = DoDraw(win,disableClip,sx,sy,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,dowordbounds)
-
-wordbounds = [];
-
-[nx,ny] = deal(nan);
-
+function [previouswin, IsOpenGLRendering] = DoDrawSetup(win,transform,bbox)
 % Is the OpenGL userspace context for this 'windowPtr' active, as required?
 [previouswin, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');
 
@@ -642,8 +718,6 @@ if IsOpenGLRendering
     % switch to our window:
     Screen('EndOpenGL', win);
 end
-
-refbox = bbox;
 
 if ~isempty(transform)
     [xc, yc] = RectCenterd(bbox);
@@ -685,7 +759,58 @@ if ~isempty(transform)
     
     % We need to undo the translation
     Screen('glTranslate', win, -xc, -yc);
-    % also transform BBox to reflect these transforms
+end
+end
+
+function DoDrawCleanup(win, previouswin, IsOpenGLRendering, transform)
+% undo transform if any
+if ~isempty(transform)
+    Screen('glPopMatrix', win);
+end
+
+% If a different window than our target window was active, we'll switch
+% back to that window and its state:
+if previouswin > 0
+    if previouswin ~= win
+        % Different window was active before our invocation:
+        
+        % Was that window in 3D mode, i.e., OpenGL rendering for that window was active?
+        if IsOpenGLRendering
+            % Yes. We need to switch that window back into 3D OpenGL mode:
+            Screen('BeginOpenGL', previouswin);
+        else
+            % No. We just perform a dummy call that will switch back to that
+            % window:
+            Screen('GetWindowInfo', previouswin);
+        end
+    else
+        % Our window was active beforehand.
+        if IsOpenGLRendering
+            % Was in 3D mode. We need to switch back to 3D:
+            Screen('BeginOpenGL', previouswin);
+        end
+    end
+end
+end
+
+function DoDrawTexture(win,texNum,texDrawRect,transform)
+[previouswin, IsOpenGLRendering] = DoDrawSetup(win,transform,texDrawRect);
+Screen('DrawTexture',win,texNum,[],texDrawRect);
+DoDrawCleanup(win, previouswin, IsOpenGLRendering, transform);
+end
+
+function [nx, ny, bbox, wordbounds] = DoDraw(win,disableClip,sx,sy,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase)
+
+[nx,ny]     = deal(nan);
+wordbounds  = wordboundsbase;
+
+[previouswin, IsOpenGLRendering] = DoDrawSetup(win, transform, bbox);
+if ~isempty(transform)
+    % transform BBox and wordbounds to reflect transforms applied by
+    % DoDrawSetup
+    for b=1:size(wordbounds,1)
+        wordbounds(b,:)  = transformBBox2(wordbounds(b,:), transform, bbox);
+    end
     bbox = transformBBox(bbox,transform);
 end
 
@@ -720,11 +845,6 @@ for p=1:length(subStrings)
         % yPositionIsBaseline==true at least). Basically behaves like
         % printf or fprintf formatting.
         [nx,ny] = Screen('DrawText', win, curstring, xp, yp,[],[],1, righttoleft);
-        if dowordbounds && ~all(isspace(curstring))
-            % Need to return per-word bounding boxes:
-            [~, wordbound] = Screen('TextBounds', win, curstring, xp, yp, 1, righttoleft);
-            wordbounds(end+1, :) = transformBBox2(wordbound, transform, refbox);
-        end
 
         % for debug, draw bounding box and baseline
         % [~,sbbox,~,xAdv] = Screen('TextBounds', win, curstring, xp, yp, 1, righttoleft);
@@ -737,40 +857,10 @@ end
 % Our work is done. clean up
 % reset text style etc
 ResetTextSetup(win,previous,false);
-% undo transform if any
-if ~isempty(transform)
-    Screen('glPopMatrix', win);
-end
 
-% If a different window than our target window was active, we'll switch
-% back to that window and its state:
-if previouswin > 0
-    if previouswin ~= win
-        % Different window was active before our invocation:
-        
-        % Was that window in 3D mode, i.e., OpenGL rendering for that window was active?
-        if IsOpenGLRendering
-            % Yes. We need to switch that window back into 3D OpenGL mode:
-            Screen('BeginOpenGL', previouswin);
-        else
-            % No. We just perform a dummy call that will switch back to that
-            % window:
-            Screen('GetWindowInfo', previouswin);
-        end
-    else
-        % Our window was active beforehand.
-        if IsOpenGLRendering
-            % Was in 3D mode. We need to switch back to 3D:
-            Screen('BeginOpenGL', previouswin);
-        end
-    end
-end
+DoDrawCleanup(win, previouswin, IsOpenGLRendering, transform);
 
-if dowordbounds && isempty(wordbounds)
-    wordbounds = bbox;
 end
-
-return;
 
 %% helpers
 function [tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,tstring,startColor,resetStyle)
@@ -783,6 +873,10 @@ function [tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,tstring,s
 % - <color=HEX or FPN>  To switch to a new color
 % - <font=name>         To switch to a new font
 % - <size=number>       To switch to a new font size
+
+% get string type, store original as octave can't deal with string values outside uint8 range
+tstringOri  = tstring;
+tstring     = char(tstring);
 
 % get colorrange of window, to interpret colors
 cr = Screen('ColorRange',win);
@@ -978,11 +1072,20 @@ end
 % add escape slashes from any escaped tags. also when double slashed,
 % we should remove one
 toStrip = [toStrip regexp(tstring,'(?i)/<(i|b|u|color|font|size)','start')];
-tstring    (toStrip) = [];
+tstringOri (toStrip) = [];
 codes.style(toStrip) = [];
 codes.color(toStrip) = [];
 codes.font (toStrip) = [];
 codes.size (toStrip) = [];
+
+% replace tstring with tstringOri again in case input was outside char range, so Octave can handle this all just fine..
+tstring = tstringOri;
+
+if isempty(tstring)
+    % strong was only formatting commands, nothing to draw, ignore
+    [fmtCombs,fmts,switches,previous] = deal([]);
+    return;
+end
 
 % process colors, hex->dec
 for p=1:length(tables.color)
@@ -1044,6 +1147,7 @@ fmts(2,:) = tables.color(format(2,:));
 fmts(3,:) = tables.font (format(3,:));
 % last, store which need to be changed back when drawing finished
 previous.changed = logical(diff([[previous.style; 1; 1; previous.size] c(:,end)],[],2));
+end
 
 
 function DoFormatChange(win,switches,fmt)
@@ -1067,6 +1171,7 @@ end
 if switches(4)
     Screen('TextSize',win,fmt{4});
 end
+end
 
 function ResetTextSetup(win,previous,qDoAll)
 if qDoAll || previous.changed(3)
@@ -1079,6 +1184,7 @@ if qDoAll || previous.changed(2)
 end
 if qDoAll || previous.changed(4)
     Screen('TextSize',win,previous.size);
+end
 end
 
 function bbox = positionBbox(bbox,sx,sy,xalign,yalign)
@@ -1103,7 +1209,8 @@ switch yalign
         yoff = -bHeight;
 end
 
-bbox = OffsetRect(bbox,sx+xoff,sy+yoff);
+bbox = OffsetRect(bbox,round(sx+xoff),round(sy+yoff));
+end
 
 function bbox = transformBBox(bbox,transform)
 if ~isempty(transform)
@@ -1132,6 +1239,7 @@ if ~isempty(transform)
     
     % We need to undo the translations...
     bbox = OffsetRect(bbox,xc,yc);
+end
 end
 
 function bbox = transformBBox2(bbox,transform,refbox)
@@ -1187,16 +1295,19 @@ if ~isempty(transform)
     % Make axis-aligned:
     bbox = [min([v1(1),v2(1),v3(1),v4(1)]), min([v1(2),v2(2),v3(2),v4(2)]), max([v1(1),v2(1),v3(1),v4(1)]), max([v1(2),v2(2),v3(2),v4(2)])];
 end
+end
 
 function [opt,qCalledWithCache] = parseInputs(varargs,nOutArg)
 
 if isempty(varargs) || isempty(varargs{1})
     % Empty text string -> Nothing to do.
-    opt                 = struct();
+    opt                 = [];
     qCalledWithCache    = false;
     return;
 elseif isstruct(varargs{1})
     % called with cache
+    qCalledWithCache = true;
+    qTextureCache    = isfield(varargs{1},'tex');
     opt = struct(...
         'cache',varargs{1},...
         'win',[],...
@@ -1207,7 +1318,6 @@ elseif isstruct(varargs{1})
         'transform',[],...
         'winRect',[]...
         );
-    qCalledWithCache = true;
 else
     opt = struct(...
         'tstring',varargs{1},...
@@ -1224,7 +1334,8 @@ else
         'righttoleft',0,...
         'winRect',[],...
         'resetStyle',1,...
-        'cacheOnly',false...
+        'cacheOnly',false,...
+        'cacheMode',1 ...
         );
     qCalledWithCache = false;
 end
@@ -1243,11 +1354,13 @@ if qCalledWithCache
     if isempty(opt.win)
         opt.win = opt.cache.win;
     end
-    ResetTextSetup(opt.win,opt.cache.previous,true);
+    if ~qTextureCache
+        ResetTextSetup(opt.win,opt.cache.previous,true);
+    end
     % check which if any of the below are set
     ignorep = [isempty(opt.sx) isempty(opt.sy) isempty(opt.xalign) isempty(opt.yalign)];
 else
-    if ~qCalledWithCache && isempty(opt.win)
+    if isempty(opt.win)
         error('DrawFormattedText2: Windowhandle missing!');
     end
     
@@ -1286,6 +1399,8 @@ else
     % Keep current text color if none provided:
     if isempty(opt.baseColor)
         opt.baseColor = Screen('TextColor', opt.win);
+    else
+        opt.baseColor = opt.baseColor(:).'; % ensure row vector
     end
     
     % No text wrapping by default:
@@ -1296,6 +1411,20 @@ else
     % option to only generate cache but not draw
     if ~isempty(opt.cacheOnly)
         opt.cacheOnly = logical(opt.cacheOnly);
+    end
+    
+    % check cache mode
+    if ischar(opt.cacheMode)
+        switch opt.cacheMode
+            case 'texture'
+                opt.cacheMode = 1;
+            case 'fullCache'
+                opt.cacheMode = 2;
+            otherwise
+                error('cache mode "%s" not understood, possible values: "texture" and "fullCache"',opt.cacheMode);
+        end
+    else
+        assert(ismember(opt.cacheMode,[1 2]),'cacheMode must be 1 or 2')
     end
     
     if opt.cacheOnly && nOutArg < 4
@@ -1326,6 +1455,7 @@ end
 if qCalledWithCache
     if ~all(ignorep) % all true: no repositioning or offsetting
         % move bbox as requested
+        bbox = opt.cache.bbox;
         if any(~ignorep(3:4))
             % first, fill out missing arguments.
             for f={'sx','sy','xalign','yalign'}
@@ -1334,10 +1464,9 @@ if qCalledWithCache
                 end
             end
             % reposition bbox:
-            bbox = opt.cache.bbox;
             bbox = positionBbox([0 0 bbox(3)-bbox(1) bbox(4)-bbox(2)],opt.sx,opt.sy,opt.xalign,opt.yalign);
             % bbox(1:2) now contain new top-left for text. Make that into
-            % offsets, and reposition text
+            % offsets to reposition text
             off = bbox(1:2)-opt.cache.bbox(1:2);
         else
             % first, fill out missing arguments.
@@ -1349,23 +1478,30 @@ if qCalledWithCache
             % only sx and sy provided, do offsetting
             assert(isnumeric(opt.sx)&&isnumeric(opt.sy),'When drawing from cache and providing horizontal and vertical offsets with the ''sx'' and ''sy'' inputs, these offsets must be numeric')
             off = [opt.sx opt.sy];
+            bbox = OffsetRect(opt.cache.bbox,off(1),off(2));
         end
         % common logic: put bounding box and text in new place
-        opt.cache.px = opt.cache.px + off(1);
-        opt.cache.py = opt.cache.py + off(2);
-        if ~any(ignorep(3:4))
-            opt.cache.bbox = bbox;
-        else
-            opt.cache.bbox = OffsetRect(opt.cache.bbox,off(1),off(2));
+        if ~qTextureCache
+            opt.cache.px = opt.cache.px + off(1);
+            opt.cache.py = opt.cache.py + off(2);
         end
+        % apply offsets to word bounding boxes too
+        off = bbox-opt.cache.bbox;
+        opt.cache.wordbounds(:,1) = opt.cache.wordbounds(:,1)+off(1);
+        opt.cache.wordbounds(:,2) = opt.cache.wordbounds(:,2)+off(2);
+        opt.cache.wordbounds(:,3) = opt.cache.wordbounds(:,3)+off(1);
+        opt.cache.wordbounds(:,4) = opt.cache.wordbounds(:,4)+off(2);
+        opt.cache.bbox = bbox;
     end
-    % overwrite fields in cache that were set by user
+    % overwrite winRect in cache if set by user
     if qWinRectSpecified
         opt.cache.winRect = opt.winRect;
     end
+    % append to transforms, if any provided by user
     if ~isempty(opt.transform)
-        opt.cache.transform = opt.transform;
+        opt.cache.transform = [opt.cache.transform opt.transform];
     end
+end
 end
 
 function [sx,sy,xalign,yalign] = parseTextBoxPositioning(sx,sy,xalign,yalign,winRect)
@@ -1473,6 +1609,7 @@ else
         yalign = 1;
     end
 end
+end
 
 function checktransform(transform)
 if isempty(transform)
@@ -1482,3 +1619,4 @@ end
 assert(mod(numel(transform),2)==0,'transform input must be key-value')
 assert(iscellstr(transform(1:2:end)),'transform: all keys should be a character array')
 assert(all(cellfun(@isnumeric,transform(2:2:end))),'transform: all values should be a numeric')
+end

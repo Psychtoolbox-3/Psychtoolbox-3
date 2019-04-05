@@ -59,11 +59,9 @@
 #include "Screen.h"
 
 #define MAX_SYNOPSIS_STRINGS 500
-
-//declare variables local to this file.
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
-void InitializeSynopsis()
+const char** InitializeSynopsis(void)
 {
     int i=0;
     const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
@@ -203,7 +201,7 @@ void InitializeSynopsis()
     // Movie and multimedia handling functions:
     synopsis[i++] = "\n% Movie and multimedia playback functions:";
     synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1][, movieOptions]);";
-    synopsis[i++] =  "Screen('CloseMovie', moviePtr);";
+    synopsis[i++] =  "Screen('CloseMovie' [, moviePtr=all]);";
     synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex], [specialFlags = 0] [, specialFlags2 = 0]);";
     synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
     synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
@@ -254,6 +252,8 @@ void InitializeSynopsis()
     if (i > MAX_SYNOPSIS_STRINGS) {
         PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
     }
+
+    return(synopsisSYNOPSIS);
 }
 
 PsychError PsychDisplayScreenSynopsis(void)

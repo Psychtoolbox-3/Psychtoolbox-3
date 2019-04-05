@@ -91,6 +91,9 @@ PsychError SCREENOpenProxy(void)
 
     proxyRecord->imagingMode = imagingmode;
 
+    // If this will ever get a backing texture, it will be upright/normalized:
+    proxyRecord->textureOrientation = 2;
+
     // Window ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(proxyRecord);
 

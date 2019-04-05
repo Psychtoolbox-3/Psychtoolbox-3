@@ -1,29 +1,27 @@
-/* 
-  MiniBox.h
-  
-  AUTHORS:
-  Allen Ingling		awi		Allen.W.Ingling@nyu.edu  
+/*
+ * MiniBox.h
+ *
+ * AUTHORS:
+ *
+ * Allen Ingling        awi     Allen.W.Ingling@nyu.edu
+ * Mario Kleiner        mk      mario.kleiner.de@gmail.com
+ *
+ * PLATFORMS: All
+ *
+ * HISTORY:
+ *  11/25/01        awi     Created file.
+ *  07/16/02        awi     Included PsychConstants.h and added include once.
+ *   3/19/10        mk      Cosmetic and make 64-bit clean.
+ *
+ */
 
-  
-  PLATFORMS: 
-  11/25/01	awi		MacOS 9
-  11/25/01	awi		Windows
-
-  HISTORY:
-  11/25/01	awi		Created file.
-  07/16/02  awi     Included PsychConstants.h and added include once.  
-  3/19/10		mk		Cosmetic and make 64-bit clean.
-
-*/
-
-//begin include once 
+// begin include once
 #ifndef PSYCH_IS_INCLUDED_MiniBox
 #define PSYCH_IS_INCLUDED_MiniBox
 
 #include "Psych.h"
 
-//define mex-derived data types.
-//typedef	const mxArray	CONSTmxArray;
+// define mex-derived data types.
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 typedef void (*MexFunctionPtr)(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[]);
 #endif
@@ -42,5 +40,9 @@ psych_bool PsychIsInteger64InDouble(double *value);
 psych_bool PsychIsPsychMatchCaseSensitive(void);
 void PsychSetPsychMatchCaseSenstive(psych_bool arg);
 
-//end include once
+void PsychInitMasterThreadId(void);
+psych_threadid PsychGetMasterThreadId(void);
+psych_bool PsychIsMasterThread(void);
+
+// end include once
 #endif

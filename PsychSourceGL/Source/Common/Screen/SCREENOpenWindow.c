@@ -75,7 +75,14 @@ static char synopsisString[] =
     "flags is passed. A currently supported flag is the symbolic constant kPsychGUIWindow. It enables windows "
     "to behave more like regular GUI windows on your system. See 'help kPsychGUIWindow' for more info. The "
     "flag kPsychGUIWindowWMPositioned additionally leaves initial positioning of the GUI window to the window "
-    "manager.\n\n"
+    "manager. The flag kPsychUseFineGrainedOnset asks to use a more fine-grained technique to schedule "
+    "stimulus onset than the classic fixed refresh interval scheduling. This may allow to more often achieve "
+    "a visual stimulus onset exactly at the 'tWhen' onset time asked for in Screen('Flip'), instead of only at "
+    "the closest frame boundary of a fixed duration frame. This needs a suitable operating-system, graphics "
+    "driver and graphics hardware, as well as a special suitable display device that can run at a non-fixed "
+    "refresh rate. On unsuitable system hardware+software configurations the flag may do nothing. This feature "
+    "is currently considered *highly experimental* and may not work reliably or *at all*! It is currently only "
+    "implemented on Linux.\n\n"
     "\"clientRect\" This optional parameter allows to define a size of the onscreen windows drawing area "
     "that is different from the actual size of the windows framebuffer. If set, then the imaging pipeline "
     "is started and a virtual framebuffer of the size of \"clientRect\" is created. Your code will draw "
@@ -103,7 +110,8 @@ static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer, Pane
 
 PsychError SCREENOpenWindow(void)
 {
-    int                     screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode, specialflags;
+    int                     screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode;
+    psych_int64             specialflags;
     PsychRectType           rect, screenrect, clientRect, fbOverrideRect;
     PsychColorType          color;
     psych_bool              isArgThere, didWindowOpen, dontCaptureScreen, clientRect_given;
@@ -261,9 +269,10 @@ PsychError SCREENOpenWindow(void)
     if(imagingmode < 0) PsychErrorExitMsg(PsychError_user, "Invalid imaging mode provided (See 'help PsychImagingMode' for usage info).");
     if (imagingmode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, imaging pipeline functions are not supported in OS-9 PTB emulation mode.");
 
-    specialflags=0;
-    PsychCopyInIntegerArg(9,FALSE,&specialflags);
-    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned)))) PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
+    specialflags = 0;
+    PsychCopyInIntegerArg64(9,FALSE, &specialflags);
+    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychUseFineGrainedOnset))))
+        PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
 
     // Optional clientRect defined? If so, we need to enable our internal panel scaler and
     // the imaging pipeline to actually use the scaler:
@@ -416,7 +425,8 @@ PsychError SCREENOpenWindow(void)
     // active, we force multiSample to zero: This way the system backbuffer / pixelformat
     // is enabled without multisampling support, as we do all the multisampling stuff ourselves
     // within the imaging pipeline with multisampled drawbuffer FBO's...
-    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0), sharedContextWindow, specialflags);
+    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0),
+                                          sharedContextWindow, specialflags);
     if (!didWindowOpen) {
         if (!dontCaptureScreen) {
             PsychRestoreScreenSettings(screenNumber);
@@ -761,11 +771,10 @@ PsychError SCREENOpenWindow(void)
     // Make sure no OpenGL errors happened up to this point:
     PsychTestForGLErrors();
 
-    // If we are in logo-startup mode (former blue-screen mode) and double-buffering
-    // is enabled, then do an initial bufferswap & clear, so the display starts in
+    // If double-buffered, do an initial bufferswap & clear, so the display starts in
     // the user selected background color instead of staying at the blue screen or
     // logo display until the Matlab script first calls 'Flip'.
-    if (((PsychPrefStateGet_VisualDebugLevel()>=4) || (windowRecord->stereomode > 0)) && numWindowBuffers>=2) {
+    if (numWindowBuffers >= 2) {
         // Do three immediate bufferswaps by an internal call to Screen('Flip'). This will also
         // take care of clearing the backbuffer in preparation of first userspace drawing
         // commands and such. We need up-to 3 calls to clear triple-buffered setups from framebuffer junk.

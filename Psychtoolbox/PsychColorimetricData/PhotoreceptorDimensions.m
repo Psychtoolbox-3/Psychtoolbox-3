@@ -29,11 +29,11 @@ function dimensions = PhotoreceptorDimensions(receptorTypes,whichDimension,speci
 %		Human (Default), GuineaPig, Dog
 %
 % Supported sources:
-%   Rodeick (Default).
-%  	CVRL (Human Cone OS length)
+%   Rodieck (Default).
+%   CVRL (Human Cone OS length)
 %   Webvision (Human Cone IS diameter)
 %   Hendrickson (Human Rod OS length)
-% 	SterlingLab (GuineaPig dimensions).
+%   SterlingLab (GuineaPig dimensions).
 %   Generic
 %   PennDog (Dog dimensions).
 %   None (returns empty for the corresponding value)

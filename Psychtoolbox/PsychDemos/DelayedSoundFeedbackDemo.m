@@ -1,5 +1,5 @@
-function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
-% DelayedSoundFeedbackDemo([reqlatency=150 ms][, duplex=0][, freq = 48000][, minLatency= 10 ms])
+function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency, device)
+% DelayedSoundFeedbackDemo([reqlatency=150 ms][, duplex=0][, freq]=48000[, minLatency=10 ms][, device])
 %
 % CAUTION: TEST TIMING OF THIS SCRIPT WITH MEASUREMENT EQUIPMENT IF YOU
 % DEPEND ON ACCURATE FEEDBACK TIMING!!!
@@ -30,53 +30,46 @@ function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
 % Depending on your sound hardware you'll have to either leave 'duplex' at
 % its default of zero (2 times half-duplex mode, aka simplex mode) or set
 % it to 1 (full-duplex mode). On a given system, only one of these will work
-% reliably (or at all): ASIO audio hardware -- typically on MS-Windows --
-% will usually need full-duplex mode and won't work at all in simplex mode.
-% On Macintosh OS/X it depends on the sound hardware. IntelMacs are happy
-% with half-duplex mode, some PowerMacs may need full-duplex mode. However,
-% except for 'reqlatency' == 0 minimal latency mode, simplex mode provides
-% much higher accuracy and reliability on OS/X at least with the built-in
-% soundchips on Intel based Macintosh computers. On Linux, performance
-% varies depending on the card at use.
+% reliably (or at all):
+% On OSX it depends on the sound hardware. IntelMacs are happy with half-
+% duplex mode, some PowerMacs may need full-duplex mode. However, except for
+% 'reqlatency' == 0 minimal latency mode, simplex mode provides much higher
+% accuracy and reliability on OSX at least with the built-in soundchips on
+% Intel based Macintosh computers. On Linux, performance varies depending on
+% the card at use.
 %
-% 'freq' = Sampling frequency (Hz). Defaults to 48000 Hz as this rate is
-% most commonly supported on most sound hardware. The maximum achievable
-% value depends on your specific soundcard. IntelMac's built in soundchips
+% 'freq' = Sampling frequency (Hz). Defaults to auto-detect. The maximum achievable
+% value depends on your specific soundcard. Intel Mac's built in soundchips
 % allow for a maximum of 96000 Hz, high-end soundcards may allow for 192000
 % Hz under some circumstances. Increasing the frequency reduces minimum
 % latency but increases system load and the probability of glitches.
 %
 % 'minLatency' is a tuning parameter for the driver and a hard-constraint
-% on the mininum achievable latency for feedback. It is ignored on OS/X,
+% on the mininum achievable latency for feedback. It is ignored on OSX,
 % but can be tused for tuning latency vs. reliability on Linux and on
 % MS-Windows. High-end cards may allow for much lower than the default 10
-% msecs, low-end cards may malfunction at lower settings. Non-ASIO
-% soundcards on MS-Windows will likely fail already at much higher settings
-% and be therefore completely unsuitabe for low latency feedback.
+% msecs, low-end cards may malfunction at lower settings.
+%
+% 'device' Optional device index of soundcard to use.
 %
 % Specific tips for different setups:
 %
-% On OS/X with builtin soundchip on IntelMacs, choose duplex = 0 for
+% On OSX with builtin sound chip on Intel Macs, choose duplex = 0 for
 % feedback with controlled low-latency, and a freq'ency of 96000 Hz. For
 % lowest latency mode, you may try reqlatency = 0 and duplex = 1.
 %
-% On MS-Windows you *must* use a soundcard with ASIO support for any
-% reasonable results! Here you should always set duplex = 1 for full-duplex
-% operation, anything else will fail. Use reqlatency = 0 for feedback with
-% minimal latency, positive values for feedback with controlled latency.
-% Play around with the 'minLatency' parameter, set it as low as possible -
-% to the lowest value that doesn't cause any error messages by our driver
-% or audible artifacts like crackling noises or static. Try to set
-% 'freq'uency as high as possible. Check the manual of your soundcard for
-% the highest value that can be used for capture + playback. E.g., the
-% Soundblaster Audigy ZS 2 seems to be limited to max. 48000 Hz in this
+% On MS-Windows use reqlatency = 0 for feedback with minimal latency, positive
+% values for feedback with controlled latency. Play around with the 'minLatency'
+% parameter, set it as low as possible - to the lowest value that doesn't cause
+% any error messages by our driver or audible artifacts like crackling noises or
+% static. Try to set 'freq'uency as high as possible. Check the manual of your
+% soundcard for the highest value that can be used for capture + playback. E.g.,
+% the Soundblaster Audigy ZS 2 seems to be limited to max. 48000 Hz in this
 % mode.
 %
 % On Linux, no general statements can be made, only that some soundcards
 % allow for extremely low latencies of < 2 msecs if properly tuned. Search
 % the Internet for tips.
-%
-
 %
 % If you need low-latency, make sure to read "help InitializePsychSound"
 % carefully or contact the forum.
@@ -88,6 +81,7 @@ function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
 % 08/02/2009 Add support for 'DirectInputMonitoring' for reqLatency=0 (MK)
 % 04/03/2011 Disable dynamic adaptation of captureQuantum. It causes
 %            artifacts at some feedback delay settings. (MK)
+% 11/07/2018 Cosmetic, allow 'device' selection, help text updates.
 
 % Level of debug output:
 verbose = 1;
@@ -100,41 +94,27 @@ tc = 0;
 tstats = zeros(4, 1000000);
 
 % Running on PTB-3? Abort otherwise.
-AssertOpenGL;
+PsychDefaultSetup(1);
 
 % Preload GetSecs, need it later in time-critical part:
 GetSecs;
 
-fprintf('\n\nTHIS IS EARLY ALPHA CODE! IT MAY OR MAY NOT WORK RELIABLY ON YOUR SETUP!\nTEST IT WITH MEASUREMENT EQUIPMENT IF YOU DEPEND ON ACCURATE FEEDBACK\nTIMING!!!\n\n');
+fprintf('\n\nTHIS MAY OR MAY NOT WORK RELIABLY ON YOUR SETUP!\nTEST IT WITH MEASUREMENT EQUIPMENT IF YOU DEPEND ON ACCURATE FEEDBACK\nTIMING!!!\n\n');
 
 % Only check ESCape key in KbCheck to save some hazzle and computation time:
-KbName('UnifyKeyNames');
 RestrictKeysForKbCheck(KbName('ESCAPE'));
 
-% Latency provided?
-if nargin < 1
-    reqlatency = [];
-end
-
-if isempty(reqlatency)
+% Latency provided? Otherwise default to 150 msecs.
+if nargin < 1 || isempty(reqlatency)
     reqlatency = 150;
 end
 
-if nargin < 2
-    duplex = [];
+if nargin < 2 || isempty(duplex)
+    duplex = 0;
 end
 
-if isempty(duplex)
-    duplex =0;
-end
-
-if nargin < 3
-    freq = [];
-end
-
-if isempty(freq)
-    % Default to a sample rate of 48kHz. Should be supported by most hardware:
-    freq = 48000;
+if nargin < 3 || isempty(freq)
+    freq = 48000; % This seems to be the highest safe value for duplex operation on many onboard sound chips.
 end
 
 if nargin < 4
@@ -154,14 +134,18 @@ minLatency = minLatency / 1000;
 if ~IsWin
     % Set minLatency to [] aka auto-select on any system but Windows:
     % The PsychPortAudio driver knows best what to select on the other OS,
-    % whereas there's no good rule for Windows + ASIO, so user must do
-    % trial and error until she finds a value that is low enough for low
-    % latency, but high enough for stability and glitch-free audio:
+    % whereas there's no good rule for Windows, so user must do trial and
+    % error until she finds a value that is low enough for low latency,
+    % but high enough for stability and glitch-free audio:
     minLatency = [];
 end
 
+if nargin < 5
+    device = [];
+end
+
 % Map requested latency from msecs to seconds:
-lat =  reqlatency / 1000;
+lat = reqlatency / 1000;
 
 % Wait for release of all keys on keyboard:
 KbReleaseWait;
@@ -175,23 +159,21 @@ InitializePsychSound(1);
 % fail with an error if it can't achieve the most high-perf settings:
 latmode = 4;
 
-% Provide some debug output:
-PsychPortAudio('Verbosity', 10);
-
 if (reqlatency == 0) && duplex
     % Special case: Full-duplex mode with minimum latency. We bypass Matlab
     % by activating PsychPortAudios full-duplex monitoring mode. The driver
     % itself will feed back all captured sound to the outputs with lowest
     % possible latency. However we don't have any control over latency or
     % sound and this only works on full-duplex hardware...
-    %
-    % More specifically: It should work well on Windows + ASIO hardware,
-    % but not very well on at least OS/X:
-    pa = PsychPortAudio('Open', [], 4+2+1, latmode, freq, 2, [], minLatency);
+    pa = PsychPortAudio('Open', device, 4+2+1, latmode, freq, 2, [], minLatency);
 
     % Now that the device is open, try to enable the "Zero latency direct input
-    % monitoring" feature of some subset of ASIO V2.0 compliant cards. If
-    % supported, this feature will cause the card to route sound directly
+    % monitoring" feature of some subset of some sound cards.
+    %
+    % NOTE: As of Psychtoolbox 3.0.15, direct input monitoring is currently not
+    % supported on *any* operating system!
+    %
+    % If supported, this feature will cause the card to route sound directly
     % from its input connectors to its output connectors without any
     % extended processing on the card itself, and without any processing by
     % the host computer or our driver. A typical implementation on a
@@ -233,8 +215,6 @@ if (reqlatency == 0) && duplex
             s=PsychPortAudio('GetStatus', pa);
             disp(s);
             if s.CaptureStartTime > 0
-                % This Info should be available on ASIO hardware, and probably
-                % Linux, but isn't available on OS/X yet:
                 fprintf('Estimated minimal roundtrip latency is %f msecs.\n', 1000 * (s.StartTime - s.CaptureStartTime));
             end
         end
@@ -245,14 +225,14 @@ if (reqlatency == 0) && duplex
         % demo:
         fprintf('Zero latency direct input monitoring mode active.\n');
         KbPressWait;
-        
+
         % User wants us to finish. Disable input monitoring:
         PsychPortAudio('DirectInputMonitoring', pa, 0);
     end
-    
+
     % Done - Close device and driver:
     PsychPortAudio('Close');
-    
+
     return;
 end
 
@@ -261,10 +241,10 @@ if ~duplex
     % and a required latencyclass of latmode == low-latency mode, as well as
     % a frequency of freq Hz and 2 sound channels for stereo capture.
     % This returns a handle to the audio device:
-    painput = PsychPortAudio('Open', [], 2, latmode, freq, 2, [], minLatency);
+    painput = PsychPortAudio('Open', device, 2, latmode, freq, 2, [], minLatency);
 else
     % Same procedure, but open for full-duplex operation:
-    painput = PsychPortAudio('Open', [], 2+1, latmode, freq, 2, [], minLatency);
+    painput = PsychPortAudio('Open', device, 2+1, latmode, freq, 2, [], minLatency);
     % Output- and input device are the same...
     paoutput = painput;
 end
@@ -276,8 +256,12 @@ PsychPortAudio('GetAudioData', painput, max(2 * lat, 10));
 if ~duplex
     % Open default audio device [] for playback (mode 1), low latency (2), freq Hz,
     % stereo output:
-    paoutput = PsychPortAudio('Open', [], 1, latmode, freq, 2, [], minLatency);
+    paoutput = PsychPortAudio('Open', device, 1, latmode, freq, 2, [], minLatency);
 end
+
+% Get actually chosen sampling frequency:
+s = PsychPortAudio('GetStatus', painput);
+freq = s.SampleRate;
 
 % Allocate a zero-filled (ie. silence) output audio buffer of more than
 % sufficient size: Three times the requested latency, but at least 30 seconds.
@@ -418,7 +402,6 @@ cumunderflow = 0;
 
 % Feedback loop: Runs until ESCape keypress ...
 while ~KbCheck
-
     % Try to dynamically adapt the amount of sound data that needs to be
     % fetched in each loop iteration. We fetch and process in larger chunks
     % if we have enough headroom. Fetching in larger 'captureQuantum'
@@ -426,35 +409,21 @@ while ~KbCheck
     % iterations within 'GetAudioData', thereby reducing the load on the
     % operating system and cpu. This is mostly needed on MS-Windows with
     % its highly deficient scheduling and timing systems:
-
-    % OK, this doesn't work glitch free for some reason. Leave it disabled.
-    % Produces higher load, but at least works without artifacts.
-    %
-    % TODO: FIXME properly!
-    %
-    %    maxtimeUntilRefill = (nextSampleETASecs - s1.CurrentStreamTime) / 10;
-    %     if maxtimeUntilRefill > (3 * updateQuantum)
-    %         captureQuantum = (floor(maxtimeUntilRefill / updateQuantum) - 1) * updateQuantum;
-    %     else
-    %        captureQuantum = updateQuantum;
-    %     end
-
     captureQuantum = updateQuantum;
-    
+
     if captureQuantum ~= oldcaptureQuantum
         oldcaptureQuantum = captureQuantum;
         if verbose > 1
             fprintf('Duty cycle adapted to %f msecs...\n', 1000 * captureQuantum);
         end
     end
-    
+
     % Get new captured sound data ...
     fetchDelay = GetSecs;
     [audiodata, offset, overrun] = PsychPortAudio('GetAudioData', painput, [], captureQuantum);
     fetchDelay = GetSecs - fetchDelay;
-    
     underflow = 0;
-    
+
     % ... and stream it into our output buffer:
     while size(audiodata, 2) > 0
         % Make sure to never push more data in the buffer than it can
@@ -465,18 +434,18 @@ while ~KbCheck
         % audiodata is the remainder which will be pushed in the next loop
         % iteration:
         audiodata = audiodata(:, fetch+1:end);
-        
+
         % Perform streaming buffer refill. As long as we don't push more
         % than a buffer size, the driver will take care of the rest...
         [curunderflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', paoutput, pushdata, 1);
         underflow = underflow + curunderflow;
     end
-    
+
     % Check for xrun conditions from low-level sound hardware:
     s1 = PsychPortAudio('GetStatus', paoutput);
     s2 = PsychPortAudio('GetStatus', painput);
     xruns = s1.XRuns + s2.XRuns;
-    
+
     % Any dropouts or other audible artifacts?
     if ((overrun + underflow + xruns) > 0) && (timingfailed == 0)
         if verbose > 0
@@ -487,16 +456,16 @@ while ~KbCheck
     else
         % fprintf('nextSampleETA - currentStreamtime: %f msecs.\n', 1000 * (nextSampleETASecs - s1.CurrentStreamTime));
     end
-    
+
     cumoverrun = cumoverrun + overrun;
     cumunderflow = cumunderflow + underflow;
-    
+
     % Log some timing samples:
     tc = tc + 1;
     if tc <= size(tc, 2)
         tstats(:, tc) = [ s1.ElapsedOutSamples ; s1.CurrentStreamTime ; fetchDelay; nextSampleETASecs - s1.CurrentStreamTime];
     end
-    
+
     % Done. Next iteration...
 end
 
@@ -520,7 +489,7 @@ PsychPortAudio('Close');
 
 if timingfailed > 0
     % There was trouble during execution:
-    fprintf('There were timingproblems or audio dropouts during the demo [Condition %i]! Your system is not capable of reliable operation at a\n', timingfailed);
+    fprintf('There were timingproblems or audio dropouts during the demo [Condition %i]!\nYour system is not capable of reliable operation at a\n', timingfailed);
     fprintf('requested roundtrip feedback latency of %f msecs.\n\n', 1000 * lat);
     fprintf('\nOverruns of capture buffer: %i. Underruns of audio output buffer: %i. Hardware xruns = %i\n', cumoverrun, cumunderflow, xruns);
 else
@@ -535,6 +504,14 @@ tstats(1,:) = tstats(1,:) - tstats(1,1);
 [tout(1,:), idx] = unique(tstats(1,:));
 tout(2:4,:) = tstats(2:4,idx);
 tstats = tout;
+
+% Workaround broken qt plotting on some Octave setups:
+if IsOctave && exist('graphics_toolkit')
+    try
+        graphics_toolkit ('fltk');
+    catch
+    end
+end
 
 % Plot it:
 plot(tstats(1,:), tstats(2,:) * 1000, '.', tstats(1,:), tstats(3,:) * 1000, '-', tstats(1,:), tstats(4,:) * 1000, '-');

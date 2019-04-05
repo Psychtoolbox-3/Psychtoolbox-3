@@ -326,7 +326,7 @@ else
                         fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Using type-0 LUT.\n');
                         gfxhwtype = 0;
                     end
-                elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD')))
+                elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'AMD')))
                     if ~isempty(strfind(winfo.GPUCoreId, 'R600'))
                         % At least the Radeon R9 380 Tonga Pro with DCE10 display engine under Linux with DRI2 Mesa needs type 3
                         % LUT's. Let's assume for the moment this is true for all such R600+ cores, ie., all Radeon HD series cards.

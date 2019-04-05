@@ -41,7 +41,6 @@ static long double  kernelTimebaseFrequencyHz;
 
 void PsychWaitUntilSeconds(double whenSecs)
 {
-    kern_return_t   waitResult;
     uint64_t        deadlineAbsTics;
 
     // Compute deadline for wakeup in mach absolute time units:
@@ -57,7 +56,6 @@ void PsychWaitUntilSeconds(double whenSecs)
 void PsychWaitIntervalSeconds(double delaySecs)
 {
     long double     waitPeriodTicks;
-    kern_return_t   waitResult;
     uint64_t        startTimeAbsTics, deadlineAbsTics;
 
     if (delaySecs <= 0) return;
@@ -472,7 +470,6 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 {
     struct timespec abstime;
     struct timeval gtod_time;
-    double tnow;
 
     // Convert relative wait time to absolute system time. As pthread_cond_timedwait()
     // uses gettimeofday() time as reference, we can't query or regular GetSecs clock,
@@ -570,8 +567,8 @@ const char* PsychSupportStatus(void)
         // Query OS/X version:
         osMinor = PsychGetOSXMinorVersion();
 
-        // Only OSX 10.12 is officially supported:
-        isSupported = (osMinor == 12) ? 1 : 0;
+        // Only OSX 10.13 is officially supported:
+        isSupported = (osMinor == 13) ? 1 : 0;
 
         if (isSupported) {
             sprintf(statusString, "OSX 10.%i minimally supported and tested.", osMinor);

@@ -2109,7 +2109,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
             PsychGenericScriptType    *s;
 
             // Alloc struct and return it as return argument at position 'fullStateStructReturnArgPos':
-            PsychAllocOutStructArray(fullStateStructReturnArgPos, FALSE, 1, DWMGraphicsFieldCount, DWMGraphicsFieldNames, &s);
+            PsychAllocOutStructArray(fullStateStructReturnArgPos, FALSE, -1, DWMGraphicsFieldCount, DWMGraphicsFieldNames, &s);
             PsychSetStructArrayDoubleElement("rateRefresh", 0, (double) dwmtiming.rateRefresh.uiNumerator / (double) dwmtiming.rateRefresh.uiDenominator, s);
             PsychSetStructArrayDoubleElement("qpcRefreshPeriod", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcRefreshPeriod), s);
             PsychSetStructArrayDoubleElement("rateCompose", 0, (double) dwmtiming.rateCompose.uiNumerator / (double) dwmtiming.rateCompose.uiDenominator, s);

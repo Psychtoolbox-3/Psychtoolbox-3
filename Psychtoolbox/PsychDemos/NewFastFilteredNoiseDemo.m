@@ -210,7 +210,7 @@ try
                 glFinish;
                 tic
                 % Transform texture into a new filtered texture:
-                ftex = Screen('TransformTexture', tex, filter, ftex);
+                ftex = Screen('TransformTexture', tex, filter, [], ftex);
                 
                 % Draw it:
                 Screen('DrawTexture', win, ftex, [], dstRect(i,:), [], 0);
@@ -218,7 +218,7 @@ try
                 gput = toc;
             else                
                 % Transform texture into a new filtered texture:
-                ftex = Screen('TransformTexture', tex, filter, ftex);
+                ftex = Screen('TransformTexture', tex, filter, [], ftex);
                 
                 % Draw it:
                 Screen('DrawTexture', win, ftex, [], dstRect(i,:), [], 0);

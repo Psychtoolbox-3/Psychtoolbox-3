@@ -356,7 +356,7 @@ PsychError SCREENConfigureDisplay(void)
     if(outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid display output index provided.");
 
     // Create a structure and populate it.
-    PsychAllocOutStructArray(1, FALSE, 1, 9, OutputFieldNames, &oldResStructArray);
+    PsychAllocOutStructArray(1, FALSE, -1, 9, OutputFieldNames, &oldResStructArray);
 
     // Query current video mode of this output:
     XRRCrtcInfo *crtc_info = NULL;
@@ -497,7 +497,7 @@ PsychError SCREENResolution(void)
     if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
 
     // Create a structure and populate it.
-    PsychAllocOutStructArray(1, FALSE, 1, 4, FieldNames, &oldResStructArray);
+    PsychAllocOutStructArray(1, FALSE, -1, 4, FieldNames, &oldResStructArray);
 
     // Query and return resolution:
     PsychGetScreenPixelSize(screenNumber, &pnewWidth, &pnewHeight);

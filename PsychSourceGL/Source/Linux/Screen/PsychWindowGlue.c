@@ -29,6 +29,10 @@
 
 #include "Screen.h"
 
+// Array with register offsets of the CRTCs used by AMD/ATI gpus.
+// Defined in PsychGraphicsHardwareHALSupport.c, but accessed here:
+extern unsigned int crtcoff[kPsychMaxPossibleCrtcs];
+
 // If non-zero entries, then we are or have been running on Mesa
 // and mesaversion encodes major.minor.patchlevel. Gets zero-initialized
 // in X11 screen glue at Screen() load time, then assigned proper values
@@ -65,6 +69,9 @@ static PointerBarrier barriers[PSYCH_MAX_POINTER_BARRIERS] = { 0 };
 static PsychRectType barrierRects[PSYCH_MAX_POINTER_BARRIERS] = { 0 };
 static PsychWindowRecordType* barrierParentWindows[PSYCH_MAX_POINTER_BARRIERS] = { 0 };
 static int pointerBarrierCount = 0;
+
+// Backup for old screen saver settings before disable:
+static int oldscreensaver[4];
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
  *    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
@@ -750,12 +757,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             if ((Success == glXGetFBConfigAttrib(dpy, fbconfig[i], GLX_BUFFER_SIZE, &buffdepth)) && (buffdepth >= 32) &&
                 (visinfo = glXGetVisualFromFBConfig(dpy, fbconfig[i])) && (visinfo->depth >= 30)) {
                 fbconfig[0] = fbconfig[i];
-		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Choosing GLX framebuffer config %i for transparent window.\n", i);
-		break;
-	    }
-	    else if (PsychPrefStateGet_Verbosity() > 4) {
-		printf("PTB-INFO: Trying GLX framebuffer config %i for transparent window: Depths %i bpp.\n", i, buffdepth);
-	    }
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Choosing GLX framebuffer config %i for transparent window.\n", i);
+                break;
+            }
+            else if (PsychPrefStateGet_Verbosity() > 4) {
+                printf("PTB-INFO: Trying GLX framebuffer config %i for transparent window: Depths %i bpp.\n", i, buffdepth);
+            }
         }
     }
 
@@ -1265,6 +1272,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         int dummy;
 
         // First window. Disable future use of screensaver:
+        XGetScreenSaver(dpy, &oldscreensaver[0], &oldscreensaver[1], &oldscreensaver[2], &oldscreensaver[3]);
         XSetScreenSaver(dpy, 0, 0, DefaultBlanking, DefaultExposures);
         // If the screensaver is currently running, forcefully shut it down:
         XForceScreenSaver(dpy, ScreenSaverReset);
@@ -1500,10 +1508,12 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
-        XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
+        XSetScreenSaver(dpy, oldscreensaver[0], oldscreensaver[1], oldscreensaver[2], oldscreensaver[3]);
 
         // And just for safety, do it via DPMS enable as well:
         if (DPMSQueryExtension(dpy, &dummy, &dummy)) DPMSEnable(dpy);
+
+        XSync(dpy, 0);
 
         // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
         PsychScreenUnmapDeviceMemory();
@@ -1613,6 +1623,14 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     msc = -1;
 
     #ifdef GLX_OML_sync_control
+
+    // Swap already completed via our SoftSync implementation?
+    if (windowRecord->target_sbc == -1) {
+        // Yes. Return unsupported, so our own beamposition timestamping is used
+        // to calculate actual onset time and such:
+        windowRecord->specialflags |= kPsychBufferAgeWarningDone;
+        return(-1);
+    }
 
     // DRI Prime hybridGraphics setup in outputSource -> outputSink mode? Typically a NVidia Optimus
     // Laptop under the proprietary NVidia driver, which can't do the much better Prime DRI3/Present gpu renderoffload.
@@ -2288,6 +2306,221 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     return;
 }
 
+// Internal helper: Measure and compute VBLANK start and end timestamp for current refresh cycle:
+static double GetVblankTimestamps(PsychWindowRecordType *windowRecord, double *activeStart)
+{
+    double vbl_lines_elapsed, onset_lines_togo;
+    double time_at_vbl, vbl_time_elapsed, onset_time_togo;
+    double currentrefreshestimate = windowRecord->VideoRefreshInterval;
+    double vbl_startline = windowRecord->VBL_Startline;
+    double vbl_endline = windowRecord->VBL_Endline;
+    int beamPosAtFlip = PsychGetDisplayBeamPosition(NULL, windowRecord->screenNumber);
+    PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
+
+    if (beamPosAtFlip >= vbl_startline) {
+        vbl_lines_elapsed = beamPosAtFlip - vbl_startline;
+        onset_lines_togo = vbl_endline - beamPosAtFlip + 1;
+    }
+    else {
+        vbl_lines_elapsed = vbl_endline - vbl_startline + 1 + beamPosAtFlip;
+        onset_lines_togo = -1.0 * beamPosAtFlip;
+    }
+
+    // From the elapsed number we calculate the elapsed time since VBL start:
+    vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate;
+    onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
+
+    // Compute of stimulus-onset, aka time when retrace is finished:
+    *activeStart = time_at_vbl + onset_time_togo;
+
+    // Now we correct our time_at_vbl by this correction value:
+    time_at_vbl = time_at_vbl - vbl_time_elapsed;
+
+    return(time_at_vbl);
+}
+
+static psych_int64 PsychOSScheduleSoftSyncFlip(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC)
+{
+#ifdef GLX_OML_sync_control
+    psych_int64 msc, ust, sbc, rc = -1;
+    double tNow, tVblankStart, tActiveStart, tOff, tOn, tSwapped;
+    int headid, screenId;
+    unsigned int ctlreg, value, status;
+    int gpuMaintype, gpuMinortype, fNumDisplayHeads;
+
+    screenId = windowRecord->screenNumber;
+
+    // Check if the window is a fullscreen onscreen window, and no special transparency or
+    // similar is enabled for the window, iow. if it is almost certainly a unredirected
+    // fullscreen window. Also if this is a vsync'ed flip. We need this, because we need
+    // kms-pageflipping for this to work. Also check if the low-level access support is
+    // available, which will be needed:
+    if (!((windowRecord->specialflags & kPsychIsFullscreenWindow) &&
+        (windowRecord->specialflags & kPsychUseFineGrainedOnset) && windowRecord->vSynced &&
+        (PsychPrefStateGet_WindowShieldingLevel() == 2000) &&
+        PsychOSIsKernelDriverAvailable(screenId)))
+        return(-1);
+
+    // We only support AMD GPUs at the moment, nothing else, also only DCE-4.0 and later:
+    if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads) ||
+        (gpuMaintype != kPsychRadeon) || (gpuMinortype < 40) || (gpuMinortype >= 0xffff)) {
+        return(-1);
+    }
+
+    // At the moment we only support one active output - single display stimulation, ie.
+    // one display engine associated with this window. Otherwise it might get too complicated:
+    if (PsychScreenToCrtcId(screenId, 1) >= 0)
+        return(-1);
+
+    // Get display headid for the single display engine associated with the onscreen windows monitor:
+    headid = PsychScreenToCrtcId(screenId, 0);
+
+    // Valid display engine id? Otherwise abort:
+    if (headid < 0 || headid > fNumDisplayHeads - 1)
+        return(-1);
+
+    // We need a valid stimulus onset time, aka start time of scanout of a
+    // previously flipped stimulus. If we don't have this, e.g., because user
+    // requested a non-vsync'ed flip or forced high-precision timestamping off,
+    // we don't have a reliable baseline for start of this video refresh cycle:
+    tVblankStart = GetVblankTimestamps(windowRecord, &tActiveStart);
+    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+    if (PsychPrefStateGet_Verbosity() > 10)
+        printf("PTB-DEBUG: Offset %lf msecs.\n", 1000 * (tNow - tVblankStart));
+
+    // Ok, minimum requirements at the hardware and configuration side fulfilled. Check if the
+    // tWhen target onset time is not inside this video frame. It must be at least after the
+    // start of active scanout for the next refresh cycle. For earlier tWhen we are too close, so
+    // have to fall back to conventional flips, with stimulus onset at earliest - and locked to -
+    // the start of the next frame:
+    if (tWhen < tActiveStart + windowRecord->VideoRefreshInterval)
+        return(-1);
+
+    // Is tWhen inside the next video refresh cycle after this one?
+    // If not, then we need to do a blocking wait until we are 1 refresh cycle
+    // before the refresh cycle that contains tWhen:
+    while (tWhen >= tVblankStart + 2 * windowRecord->VideoRefreshInterval) {
+        // Yes. Sleep a refresh cycle, then recheck:
+        //printf("TF %f ", (tWhen - tVblankStart) / windowRecord->VideoRefreshInterval);
+        PsychWaitUntilSeconds(tVblankStart + windowRecord->VideoRefreshInterval);
+        tVblankStart = GetVblankTimestamps(windowRecord, &tActiveStart);
+        //printf("Now %f\n", (tWhen - tVblankStart) / windowRecord->VideoRefreshInterval);
+    }
+
+    // Past safety deadline for safe soft-sync procedure?
+    // The deadline is 2 msecs before start of vblank for the target frame, leaving
+    // enough time to schedule the bufferswap and the display engine stop:
+    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+    if (tNow > tVblankStart + windowRecord->VideoRefreshInterval - 0.002) {
+        // Too late! The best we can do is wait until start of the next scanout
+        // cycle has happened, then go to the standard swap scheduling to trigger
+        // an immediate bufferswap for the following cycle, so we swap too late
+        // instead of too early wrt. tWhen -- minimum surprise:
+        if (PsychPrefStateGet_Verbosity() > 10)
+            printf("PTB-DEBUG: No headroom - %f msecs late. Fallback.\n",
+                   tNow - (tVblankStart + windowRecord->VideoRefreshInterval - 0.002));
+        PsychWaitUntilSeconds(tVblankStart + windowRecord->VideoRefreshInterval + 0.002);
+        return(-1);
+    }
+
+    // The flip is supposed to happen at start of next vblank, so the next active scanout cycle would
+    // show the new post-Flip stimulus. We do not want the next active scanout to start at its regular
+    // time though, so program the display hw to stop the display engine / scanout at the end of this
+    // refresh cycle:
+    while (PsychGetDisplayBeamPosition(NULL, screenId) >= windowRecord->VBL_Startline);
+
+    // Ok, all criteria are satisfied, the game is on!
+    // We are safely inside the refresh cycle before the cycle which contains tWhen.
+    // Issue an immediate bufferswap request to trigger pageflip programming for a pageflip
+    // that should execute and complete at the start of the upcoming vblank:
+    rc = glXSwapBuffersMscOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, 0, 0, 0);
+
+    if (rc < 0)
+        return(-4);
+
+    // Invalidate target_sbc and lastSwaptarget_msc. target_sbc == -1 signals use of this
+    // adaptive flip method, so PsychOSGetSwapCompletionTimestamp() can act accordingly:
+    windowRecord->target_sbc = -1;
+    windowRecord->lastSwaptarget_msc = 0;
+
+    // Shut down this CRTC by clearing its master enable bit (bit 0):
+    value = PsychOSKDReadRegister(screenId, EVERGREEN_CRTC_CONTROL + crtcoff[headid], &status);
+    PsychOSKDWriteRegister(screenId, EVERGREEN_CRTC_CONTROL + crtcoff[headid], value & ~(0x1 << 0), &status);
+
+    // Do a polling wait for confirmation of bufferswap completion:
+    sbc = 0;
+    tOff = 0;
+    while (sbc < rc) {
+        // Wait timed out? Abort, if so:
+        PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+        if ((tOff == 0) &&
+            !(PsychOSKDReadRegister(screenId, EVERGREEN_CRTC_CONTROL + crtcoff[headid], &status) & (0x1 << 16)))
+            tOff = tNow;
+
+        if (tNow > tActiveStart + windowRecord->VideoRefreshInterval) {
+            rc = -4;
+            if (PsychPrefStateGet_Verbosity() > 10)
+                printf("PTB-DEBUG: Swap not completed before timeout! Display engine status: %i\n",
+                       PsychOSKDReadRegister(screenId, EVERGREEN_CRTC_CONTROL + crtcoff[headid], &status) & (0x1 << 16) > 0);
+            goto softflip_out;
+        }
+        glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc);
+    }
+
+    PsychGetAdjustedPrecisionTimerSeconds(&tSwapped);
+
+    // Double check - Poll until crtc is offline:
+    while (PsychOSKDReadRegister(screenId, EVERGREEN_CRTC_CONTROL + crtcoff[headid], &status) & (0x1 << 16)) {
+        PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+
+        // Wait timed out? Abort, if so:
+        if (tNow > tActiveStart + windowRecord->VideoRefreshInterval) {
+            rc = -4;
+            if (PsychPrefStateGet_Verbosity() > 10)
+                printf("PTB-DEBUG: Display engine stop not completed before timeout!\n");
+            goto softflip_out;
+        }
+    }
+
+    // Get tOff if it hasn't been computed already in wait for swap completion:
+    if (tOff == 0)
+        PsychGetAdjustedPrecisionTimerSeconds(&tOff);
+
+    // Pageflip completed, display engine stopped and at resting position at 1st line of vblank.
+    // Ready for engine restart to get active scanout going close to the requested tWhen time.
+    if (tWhen - (tActiveStart - tVblankStart) <= tOff + windowRecord->VideoRefreshInterval) {
+        PsychWaitUntilSeconds(tWhen - (tActiveStart - tVblankStart));
+    }
+    else {
+        if (PsychPrefStateGet_Verbosity() > 10)
+            printf("PTB-DEBUG: Engine off clamped to safe max. 1 video refresh! Overshoot: %f msecs. Delta %f msecs.\n",
+                   1000 * (tWhen - (tActiveStart - tVblankStart) - (tOff + windowRecord->VideoRefreshInterval)),
+                   1000 * (tWhen - windowRecord->time_at_last_vbl));
+        PsychWaitUntilSeconds(tOff + windowRecord->VideoRefreshInterval - (tActiveStart - tVblankStart));
+    }
+
+    // Record targetMSC as return code:
+    rc = targetMSC;
+
+softflip_out:
+    // Start the display engine:
+    value = PsychOSKDReadRegister(screenId, EVERGREEN_CRTC_CONTROL + crtcoff[headid], &status);
+    PsychOSKDWriteRegister(screenId, EVERGREEN_CRTC_CONTROL + crtcoff[headid], value | (0x1 << 0), &status);
+
+    while (!(PsychOSKDReadRegister(screenId, EVERGREEN_CRTC_CONTROL + crtcoff[headid], &status) & (0x1 << 16))) {
+        PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+    }
+
+    PsychGetAdjustedPrecisionTimerSeconds(&tOn);
+    if (PsychPrefStateGet_Verbosity() > 10)
+        printf("PTB-DEBUG: Scanout restarted at %f secs [Off %f msecs], tSwap %f msecs wrt. off. Req onset: %f secs\n",
+            tOn, 1000 * (tOn - tOff), 1000 * (tSwapped - tOff), tWhen);
+
+    // Done, one way or the other:
+    return(rc);
+#endif
+}
+
 /*
  *    PsychOSScheduleFlipWindowBuffers()
  *
@@ -2300,13 +2533,14 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
  *
  *    Arguments:
  *
- *    windowRecord - The window to be swapped.
- *    tWhen        - Requested target system time for swap. Swap shall happen at first
- *                VSync >= tWhen.
- *    targetMSC	 - If non-zero, specifies target msc count for swap. Overrides tWhen, unless tWhen == DBL_MAX.
- *    divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
- *    specialFlags - Additional options, a bit field consisting of single bits that can be or'ed together:
- *                1 = Constrain swaps to even msc values, 2 = Constrain swaps to odd msc values. (Used for frame-seq. stereo field selection)
+ *    windowRecord          - The window to be swapped.
+ *    tWhen                 - Requested target system time for swap. Swap shall happen at first VSync >= tWhen.
+ *    targetMSC             - If non-zero, specifies target msc count for swap. Overrides tWhen, unless tWhen == DBL_MAX.
+ *    divisor, remainder    - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
+ *    specialFlags          - Additional options, a bit field consisting of single bits that can be or'ed together:
+ *                              1 = Constrain swaps to even msc values (Used for frame-seq. stereo field selection)
+ *                              2 = Constrain swaps to odd msc values  (Used for frame-seq. stereo field selection)
+ *                              4 = Use our homegrown implementation/approximation of Adaptive Sync style flipping.
  *
  *    Return value:
  *
@@ -2334,7 +2568,17 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
     // According to OpenML spec, a glFlush() isn't implicitely performed by
     // glXSwapBuffersMscOML(). Therefore need to do it ourselves, although
     // some implementations may do it anyway:
-    if (!windowRecord->PipelineFlushDone) glFlush();
+    if (!windowRecord->PipelineFlushDone) {
+        // For our own "FreeSync" style flip implementation, we need to make sure
+        // that the backbuffer is fully finished rendering and swap ready before
+        // we go through the whole procedure:
+        if ((specialFlags & 0x4) && (windowRecord->specialflags & kPsychUseFineGrainedOnset))
+            // "FreeSync" style: Wait for render-completion aka swap ready:
+            glFinish();
+        else
+            // Standard style: Flushing is enough, the OS does the rest:
+            glFlush();
+    }
     windowRecord->PipelineFlushDone = TRUE;
 
     // Non-Zero targetMSC provided to directy specify the msc on which swap should happen?
@@ -2406,6 +2650,21 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
         tMsc = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
         targetMSC = msc + ((psych_int64)(floor((tWhen - tMsc) / windowRecord->VideoRefreshInterval) + 1));
         if (windowRecord->vSynced && (targetMSC <= msc)) targetMSC = msc + 1;
+
+        // Our homegrown "FreeSync" style emulation wanted?
+        if ((specialFlags & 0x4) && (windowRecord->specialflags & kPsychUseFineGrainedOnset) && windowRecord->vSynced) {
+            // Yes. Check if emulation is possible and do it, if possible:
+            rc = PsychOSScheduleSoftSyncFlip(windowRecord, tWhen, targetMSC);
+            PsychUnlockDisplay();
+
+            // Successfully executed? Or catastrophic failure? Then we are done.
+            if (rc >= 0 || rc == -4)
+                return(rc);
+
+            // Unsupported or impossible. Fall back to standard swap:
+            if (PsychPrefStateGet_Verbosity() > 10)
+                printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: SoftSync swap unsupported or impossible atm. Fallback to standard swap.\n");
+        }
     }
 
     // Clamp targetMSC to a positive non-zero value, unless special case
@@ -2826,7 +3085,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                                    sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : (sce->event_type == GLX_COPY_COMPLETE_INTEL) ? "BLIT" : "EXCHANGE");
                         }
 
-                        PsychAllocOutStructArray(aux1, FALSE, 1, fieldCount, FieldNames, &s);
+                        PsychAllocOutStructArray(aux1, FALSE, -1, fieldCount, FieldNames, &s);
                         PsychSetStructArrayDoubleElement("OnsetTime", 0, PsychOSMonotonicToRefTime(((double) sce->ust) / PsychGetKernelTimebaseFrequencyHz()), s);
                         PsychSetStructArrayDoubleElement("OnsetVBLCount", 0, (double) sce->msc, s);
                         PsychSetStructArrayDoubleElement("SwapbuffersCount", 0, (double) sce->sbc, s);

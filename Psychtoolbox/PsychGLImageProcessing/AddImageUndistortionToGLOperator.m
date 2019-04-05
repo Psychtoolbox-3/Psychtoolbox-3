@@ -73,7 +73,6 @@ end
 
 % Switch to gloperators OpenGL context:
 Screen('GetWindowInfo', gloperator);
-while glGetError(); end;
 
 % Make sure gloperator is enabled for imaging operations:
 Screen('HookFunction', gloperator, 'ImagingMode', mor(kPsychNeedFastBackingStore, Screen('HookFunction', gloperator, 'ImagingMode')));

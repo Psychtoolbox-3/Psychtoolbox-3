@@ -17,16 +17,16 @@ function Rush(rushedCode, priorityLevel)
 % coding any particular priorityLevel, so that your program will gracefully
 % adapt to run optimally on any computer. Here's a typical use:
 % 
-% 	Screen('Screens');	% Make sure all functions (SCREEN.mex) are in memory.
-% 	i=0;				% Allocate all variables.
-% 	loop={
-% 		'for i=1:100;'
-% 			'Screen(window,''WaitBlanking'');'
-% 			'Screen(''CopyWindow'',w(i),window);'
-% 		'end;'
-% 	};
-% 	priorityLevel=MaxPriority(window,'WaitBlanking');
-% 	Rush(loop,priorityLevel);
+%  Screen('Screens'); % Make sure all functions (SCREEN.mex) are in memory.
+%  i=0; % Allocate all variables.
+%  loop={
+%    'for i=1:100;'
+%      'Screen(window,''WaitBlanking'');'
+%      'Screen(''CopyWindow'',w(i),window);'
+%    'end;'
+%  };
+%  priorityLevel=MaxPriority(window,'WaitBlanking');
+%  Rush(loop,priorityLevel);
 % 
 % Allowable 'priorityLevel' settings are described in "help Priority".
 %
@@ -60,11 +60,13 @@ if nargin < 2
     error('You must specify both, the string with code to rush as well as the rush priority level!');
 end
 
+oldPrio = Priority;
+
 try
     Priority(priorityLevel);
     evalin('caller', rushedCode);
-    Priority(0);
+    Priority(oldPrio);
 catch %#ok<CTCH>
-    Priority(0);
+    Priority(oldPrio);
     psychrethrow(psychlasterror);
 end

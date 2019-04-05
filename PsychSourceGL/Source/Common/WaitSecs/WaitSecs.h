@@ -1,35 +1,30 @@
 /*
-	PsychToolbox3/Source/Common/WaitSecs/WaitSecs.h
-	
-	PLATFORMS:	All
-			
-	
-	AUTHORS:
-	Allen Ingling		awi		Allen.Ingling@nyu.edu
+    PsychToolbox3/Source/Common/WaitSecs/WaitSecs.h
 
-	HISTORY:
-	1/20/02			awi		wrote it.  
-	
+    PLATFORMS:  All
 
+    AUTHORS:
+
+    Allen Ingling   awi     Allen.Ingling@nyu.edu
+
+    HISTORY:
+    1/20/02         awi     wrote it.
 */
 
-//begin include once 
+//begin include once
 #ifndef PSYCH_IS_INCLUDED_WaitSecs
 #define PSYCH_IS_INCLUDED_WaitSecs
 
 //project includes
-#include "Psych.h" 
+#include "Psych.h"
 #include "PsychTimeGlue.h"
 
-
-
 //function prototypes
-PsychError MODULEVersion(void);			//MODULEVersion.c
+const char** InitializeSynopsis(void);
+PsychError MODULEVersion(void);         //MODULEVersion.c
 PsychError WAITSECSWaitSecs(void);
 PsychError WAITSECSWaitUntilSecs(void);
 PsychError WAITSECSYieldSecs(void);
 
 //end include once
 #endif
-
-	

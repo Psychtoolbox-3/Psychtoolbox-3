@@ -1,6 +1,8 @@
 PsychSourceGL/Projects/MacOSX/build/*
 PsychSourceGL/Projects/Linux/build/*
 PsychSourceGL/Projects/Windows/build/*
+PsychSourceGL/Source/build/
+build/
 *.o
 *~
 .DS_Store
@@ -19,6 +21,8 @@ Psychtoolbox/ptbflavorinfo.txt
 .fuse_*
 liboctave.*
 liboctinterp.*
+PsychPython/__pycache__/
+PsychPython/*.pyc
 Psychtoolbox/PsychTests/TimingtestResults/*
 managementtools/ptbregistration*
 *.ipch

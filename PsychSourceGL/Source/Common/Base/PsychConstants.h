@@ -30,7 +30,7 @@
 
 // For pthread_setname_np() definition and various other needs:
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE
+#define _GNU_SOURCE 1
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -54,7 +54,22 @@
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
     #undef printf
+    #ifdef PTBOCTAVE3MEX
+    // Octave can mexPrintf from secondary threads:
     #define printf mexPrintf
+    #else
+    // Recent R2018'ish Matlab can't mexPrintf from secondary threads, so
+    // only mexPrintf when called from master thread, otherwise no-op:
+    // TODO: Implement proper async logging so this stuff doesn't go to nirvana.
+    #define printf(...) if (PsychIsMasterThread()) mexPrintf(__VA_ARGS__)
+    #endif
+#endif
+
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    #undef printf
+    #define printf PySys_WriteStdout
+    #undef fprintf
+    #define fprintf(fdignore, ...) PySys_WriteStderr(__VA_ARGS__)
 #endif
 
 //platform dependent macro defines
@@ -177,6 +192,13 @@ typedef unsigned char        psych_bool;
     typedef const mxArray CONSTmxArray;
     #define PsychGenericScriptType mxArray
     typedef mxLogical PsychNativeBooleanType;
+#endif
+
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    #define PsychGenericScriptType PyObject
+    typedef unsigned char PsychNativeBooleanType;
+    typedef size_t ptbSize;
+    typedef size_t ptbIndex;
 #endif
 
 #define EXP

@@ -48,6 +48,15 @@ function datapixxmakemex()
         S = [S ' -I' PTBDIR 'PsychSourceGL/Source/Linux/Base'];
         S = [S ' -I' PTBDIR 'PsychSourceGL/Source/Linux/Screen'];
     elseif (IsWin)
+        if ~IsOctave
+            % Include this folder only on Matlab (or other MSVC builds). It contains a stdint.h file
+            % previously located in the src/ folder directly. This stdint.h file lacks definitions of
+            % int32_t, int64_t et al., but overrides Octave's / MinGW's stdint.h files which do define
+            % those needed data types! Strangely this override was never a problem on Octave 4.2.x and
+            % earlier. Apparently the type defines came from an alternate source, but i could not track
+            % it down in multiple hours, so screw this - a hack it is :(
+            S = [S ' -I' VPIXXDIR 'VPixx_Software_Tools/libusb_win32/libusb-win32-src-0.1.12.2/src/include'];
+        end
         S = [S ' -I' VPIXXDIR 'VPixx_Software_Tools/libusb_win32/libusb-win32-src-0.1.12.2/src'];
         S = [S ' -I' PTBDIR 'PsychSourceGL/Source/Windows/Base'];
         S = [S ' -I' PTBDIR 'PsychSourceGL/Source/Windows/Screen'];
@@ -70,6 +79,7 @@ function datapixxmakemex()
     S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/PsychStructGlue.c'];
     S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/PsychVersioning.c'];
     S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/PsychScriptingGlue.c'];
+    S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/PsychScriptingGlueMatlab.c'];
     S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/MODULEVersion.c'];
 
     if (IsOSX)
@@ -81,7 +91,7 @@ function datapixxmakemex()
         if IsOctave
             S = [S ' ''-mmacosx-version-min=10.11'' '];
         end
-        S = [S ' ''-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk -mmacosx-version-min=10.11'' '];
+        S = [S ' ''-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk -mmacosx-version-min=10.11'' '];
         if (IsOctave)
             S = [S ' --output ' VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex'];
         else

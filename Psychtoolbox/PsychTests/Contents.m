@@ -4,8 +4,8 @@
 % help PsychDemos % For demos, triple-click me & hit enter.
 %
 %   AlphaAdditionTest               - Combine planes by OpenGL alpha addition and verify the result.
-%   AlphaBlendingTest               - Multiple tests of OpenGL alpha blending. 
-%   AlphaBlendSettingTest           - Set and readback alpha blending settings by screen; verify match. 
+%   AlphaBlendingTest               - Multiple tests of OpenGL alpha blending.
+%   AlphaBlendSettingTest           - Set and readback alpha blending settings by screen; verify match.
 %   AlphaMultiplicationTest         - Test alpha multiplication by 0 and 1 for perfect precision.
 %   AlphaMultiplicationAccuracyTest - Test precision of alpha multiplication for values between 0 and 1.
 %   AnalyzeTiming                   - Analyze timing logs from FlipTimingWithRTBoxPhotoDiodeTest.
@@ -24,13 +24,13 @@
 %   DrawTextFontSwitchSpeedTest - Test speed of text drawing when switching between different font type/style/size settings.
 %   DriftTexturePrecisionTest       - Test subpixel accuracy of texture interpolators: What is the smallest
 %                                     fraction of a pixel that one can scroll, using built-in bilinear interpolation?
+%   eGalaxTrace-*.evemu             - Linux evdev traces with recorded single/multi-touch input from an eGalax touchscreen.
 %   FitCumNormYNTest                - Fit a cumulative normal to yes-no data.
 %   FlipTestConfigurations.zip      - Input configuration files for FlipTimingWithRTBoxPhotoDiodeTest.m
 %   FlipTimingWithRTBoxPhotoDiodeTest - Benchmark of visual stimulus onset timing and timestamping. See ECVP 2010 poster in PsychDocumentation/
 %   CopyWindowTest                  - Test CopyWindow functionality.
 %   DaqTest                         - Test PsychHID and routines to control the  USB-1208FS digital acquistion device.
 %   DrawingStuffTest                - FrameRect, DrawLine, FillPoly, FramePoly.
-%   EventAvailTest                  - Test EventAvail
 %   FillPolyTest                    - Test drawing concave polygons.
 %   FitConeFundamentalsTest         - Test/explore fitting CIE cone fundamentals with absorbance obtained from nomograms.
 %   FitWeibullTAFCTest              - Fit a Weibull to 2AFC data.

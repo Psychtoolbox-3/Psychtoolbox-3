@@ -72,9 +72,11 @@ static char PointSmoothFragmentShaderSrc[] =
 "    /* This for point smoothing on GPU's that don't support this themselves.          */\n"
 "    /* Points on the border of the dot, at [radius - 0.5 ; radius + 0.5] pixels, will */\n"
 "    /* get their alpha value reduced from 1.0 * alpha to 0.0, so they completely      */\n"
-"    /* disappear over a distance of 1 pixel distance unit.                            */\n"
+"    /* disappear over a distance of 1 pixel distance unit. The - 1.0 subtraction      */\n"
+"    /* in clamp() accounts for the fact that pointSize is 2.0 pixels larger than user */\n"
+"    /* code requested. This 1 pixel padding around true size avoids cutoff artifacts. */\n"
 "    float r = length(gl_TexCoord[1].st - vec2(0.5, 0.5)) * pointSize;\n"
-"    r = 1.0 - clamp(r - (0.5 * pointSize - 0.5), 0.0, 1.0);\n"
+"    r = 1.0 - clamp(r - (0.5 * pointSize - 1.0 - 0.5), 0.0, 1.0);\n"
 "    gl_FragColor.a = unclampedFragColor.a * r;\n"
 "    if (r <= 0.0)\n"
 "        discard;\n"
@@ -106,8 +108,10 @@ char PointSmoothVertexShaderSrc[] =
 "    /* Output position is the same as fixed function pipeline: */\n"
 "    gl_Position = ftransform();\n"
 "\n"
-"    /* Point size comes via texture coordinate set 2: */\n"
-"    pointSize = gl_MultiTexCoord2[0];\n"
+"    /* Point size comes via texture coordinate set 2: Make diameter 2 pixels bigger    */\n"
+"    /* than requested, to have some 1 pixel security margin around the dot, to avoid   */\n"
+"    /* cutoff artifacts for the rendered point-sprite quad. Compensate in frag-shader. */\n"
+"    pointSize = gl_MultiTexCoord2[0] + 2.0;\n"
 "    gl_PointSize = pointSize;\n"
 "}\n\0";
 
@@ -370,6 +374,16 @@ PsychError SCREENDrawDots(void)
                 }
             }
 
+            // Do we need the GL_FLOAT data glTexCoordPointer(1, ...) workaround?
+            // See explanation in PsychWindowSupport.c: PsychDetectAndAssignGfxCapabilities():
+            if (windowRecord->specialflags & kPsychNeedVBODouble12Workaround) {
+                // Yes: Convert double size buffer to a float sizef buffer and then
+                // submit that as GL_FLOAT:
+                sizef = (float*) PsychMallocTemp(nrpoints * sizeof(float));
+                for (i = 0; i < nrpoints; i++)
+                    sizef[i] = (float) size[i];
+            }
+
             // Sizes are fine, setup texunit 2:
             glClientActiveTexture(GL_TEXTURE2);
             glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -391,7 +405,7 @@ PsychError SCREENDrawDots(void)
     else {
         // Different size for each dot provided and we can't use our shader based implementation:
         // We have to do One GL - call per dot:
-        for (i=0; i<nrpoints; i++) {
+        for (i = 0; i < nrpoints; i++) {
             if (!lenient && ((sizef && (sizef[i] > pointsizerange[1] || sizef[i] < pointsizerange[0])) ||
                 (!sizef && (size[i] > pointsizerange[1] || size[i] < pointsizerange[0])))) {
                 printf("PTB-ERROR: You requested a point size of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
@@ -400,7 +414,7 @@ PsychError SCREENDrawDots(void)
             }
 
             // Setup point size for this point:
-            if (!usePointSizeArray) glPointSize((sizef) ? sizef[i] : (float) size[i]);
+            glPointSize((sizef) ? sizef[i] : (float) size[i]);
 
             // Render point:
             glDrawArrays(GL_POINTS, i, 1);

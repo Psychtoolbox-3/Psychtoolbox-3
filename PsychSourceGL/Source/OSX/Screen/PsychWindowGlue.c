@@ -767,6 +767,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     if (windowRecord->targetSpecific.windowHandle) PsychCocoaDisposeWindow(windowRecord);
     windowRecord->targetSpecific.windowHandle = NULL;
 
+    if (PsychIsLastOnscreenWindow(windowRecord))
+        PsychShowCursor(windowRecord->screenNumber, 0);
+
     return;
 }
 

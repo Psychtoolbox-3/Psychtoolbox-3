@@ -1,5 +1,5 @@
-function TouchQueueCreate(win, deviceNumber, numSlots, numValuators, keyList)
-% TouchQueueCreate(windowHandle, deviceNumber [, numSlots=100000][, numValuators=auto][, keyList=all])
+function TouchQueueCreate(win, deviceNumber, numSlots, numValuators, keyList, flags)
+% TouchQueueCreate(windowHandle, deviceNumber [, numSlots=100000][, numValuators=auto][, keyList=all][, flags=0])
 %
 % Create a touch queue for receiving touch input from touch input devices
 % like touchscreens, tablets, touch surfaces, or touchpads.
@@ -22,6 +22,8 @@ function TouchQueueCreate(win, deviceNumber, numSlots, numValuators, keyList)
 % the list of buttons to accept. See KbQeueCreate for explanation. By default
 % all buttons are accepted.
 %
+% 'flags' Optional flags. This defaults to 0 and is so far unused for touch input.
+%
 % Once a queue is created its touch data collection can be started via
 % TouchQueueStart(), stopped via TouchQueueStop(), cleared via TouchQueueFlush(),
 % asked for current number of pending events via TouchEventAvail() and events
@@ -35,7 +37,7 @@ if ~IsLinux
   error('This function is currently only supported on Linux/X11');
 end
 
-if nargin < 1 || isempty(win)
+if nargin < 1 || isempty(win) || Screen('WindowKind', win) ~= 1
   error('Required windowHandle missing.');
 end
 
@@ -67,6 +69,10 @@ else
   end
 end
 
+if nargin < 6
+  flags = [];
+end
+
 [touchIndices, productNames, allInfo] = GetTouchDeviceIndices;
 if ~ismember(deviceNumber, touchIndices)
   error('deviceNumber does not refer to a touch input device.');
@@ -78,8 +84,9 @@ dev = allInfo{idx};
 
 if isempty(numValuators)
   if IsLinux
-    % On Linux/X11 this is stored in axes:
-    numValuators = dev.axes;
+    % On Linux/X11 this is stored in axes, but we need at least numValuators of
+    % 4, as otherwise touch input support won't get enabled by PsychHID():
+    numValuators = max(dev.axes, 4);
   else
     % On MS-Windows, 5 would be a good guess:
     numValuators = 5;
@@ -87,6 +94,6 @@ if isempty(numValuators)
 end
 
 % Ok, and now we just call KbQeueCreate, which we wrap here atm.:
-KbQueueCreate(deviceNumber, keyList, numValuators, numSlots);
+KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags, win);
 
 return;

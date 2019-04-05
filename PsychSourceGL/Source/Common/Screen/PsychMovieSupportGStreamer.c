@@ -238,10 +238,10 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 
     switch (GST_MESSAGE_TYPE (msg)) {
         case GST_MESSAGE_SEGMENT_DONE:
-        // We usually receive segment done message instead of eos if looped playback is active and
-        // the end of the stream is approaching, so we fallthrough to message eos for rewinding...
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychMovieBusCallback: Message SEGMENT_DONE received.\n");
-
+            // We usually receive segment done message instead of eos if looped playback is active and
+            // the end of the stream is approaching, so we fallthrough to message eos for rewinding...
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychMovieBusCallback: Message SEGMENT_DONE received.\n");
+            // Fall through.
         case GST_MESSAGE_EOS: {
             // Rewind at end of movie if looped playback enabled:
             if ((GST_MESSAGE_TYPE (msg) == GST_MESSAGE_EOS) && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-DEBUG: PsychMovieBusCallback: Message EOS received.\n");

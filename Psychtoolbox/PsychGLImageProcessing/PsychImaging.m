@@ -1110,13 +1110,17 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %
 % * 'AddOffsetToImage' Add a constant color- or intensity offset to the
-%   drawn image, prior to all following image processing and post
-%   processing operations:
-%   Outimage(x,y) = Inimage(x,y) + Offset. If the framebuffer is in a color
-%   display mode, the same offset will be added to all three color
-%   channels.
+%   drawn image, possibly also multiply with a gain, prior to all following
+%   image processing and post-processing operations:
 %
-%   Usage: PsychImaging('AddTask', whichView, 'AddOffsetToImage', Offset);
+%   Outimage(x,y) = (Inimage(x,y) + preOffset) * gain + Offset.
+%
+%   If the framebuffer is in a color display mode, the same offset will be added
+%   to all three color channels.
+%
+%   Usage: PsychImaging('AddTask', whichView, 'AddOffsetToImage', Offset [, gain=1][, preOffset=0]);
+%   'gain' and 'preOffset' are optional, 'Offset' is required.
+%
 %   Example: PsychImaging('AddTask', 'AllViews', 'AddOffsetToImage', 0.5);
 %
 %
@@ -2493,8 +2497,8 @@ end
 % Is a Bits+ / Bits# specific video display mode requested? Or
 % explicit use of a Bits# device?
 floc = [ find(mystrcmp(reqs, 'EnableBits++Bits++Output')) ];
-floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Mono++Output')) ; find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')) ];
-floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Color++Output')) ; find(mystrcmp(reqs, 'UseBits#')) ];
+floc = [floc(:) ; find(mystrcmp(reqs, 'EnableBits++Mono++Output')) ; find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')) ];
+floc = [floc(:) ; find(mystrcmp(reqs, 'EnableBits++Color++Output')) ; find(mystrcmp(reqs, 'UseBits#')) ];
 if ~isempty(floc)
     % Explicit use of Bits# requested? Or only implicit by video mode?
     floc = find(mystrcmp(reqs, 'UseBits#'));
@@ -4941,6 +4945,10 @@ end
 % framebuffer, but keeps it clamped to 0 - 1 range, unless a previous
 % 'ColorRange' call changed this. Why? To accomodate OpenGL hw without
 % clamp extension:
+if ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
+    applyAlsoToMakeTexture = 1;
+end
+
 if ~needsUnitUnclampedColorRange && ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
     Screen('ColorRange', win, 1, [], 1);
     applyAlsoToMakeTexture = 1;

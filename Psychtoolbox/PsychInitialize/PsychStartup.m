@@ -109,8 +109,14 @@ try
             % Get current path:
             path = getenv('PATH');
 
-            % Prepend sdkroot to path:
-            newpath = [sdkroot ';' path];
+            if ~IsOctave || IsGUI
+                % Matlab, or Octave in GUI mode: Prepend sdkroot to path:
+                newpath = [sdkroot ';' path];
+            else
+                % Octave CLI: Do not add GStreamer runtime, so we can build
+                % our mex files without interference of GStreamer's libstdc++.6.dll:
+                newpath = path;
+            end
 
             % For Octave-4.2 on Windows, also need to prepend path to portaudio dll
             % to library path, otherwise PsychPortAudio won't load:

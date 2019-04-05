@@ -53,7 +53,7 @@
 #endif
 
 #ifdef PTB_USE_WAFFLE
-#include <waffle.h>
+#include <waffle-1/waffle.h>
 #endif
 
 // Include specifications of the GPU registers:
@@ -90,7 +90,7 @@ PsychError ScreenExitFunction(void);            // ScreenExit.c
 PsychError PsychDisplayScreenSynopsis(void);    // ScreenSynopsis.c
 
 //internal screen functions
-void InitializeSynopsis();                      //ScreenExit.c
+const char** InitializeSynopsis(void);
 void ScreenCloseAllWindows();                   //SCREENCloseAll.c
 
 //PsychGLGlue.c

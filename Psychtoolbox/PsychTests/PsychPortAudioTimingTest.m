@@ -55,17 +55,13 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 % Initialize driver, request low-latency preinit:
 InitializePsychSound(1);
 
-if ~IsLinux
-    PsychPortAudio('Verbosity', 10);
-end
-
 % Force GetSecs and WaitSecs into memory to avoid latency later on:
 GetSecs;
 WaitSecs(0.1);
 
 % If 'exactstart' wasn't provided, assume user wants to test exact sync of
 % audio and video onset, instead of testing total onset latency:
-if nargin < 1 
+if nargin < 1
     exactstart = [];
 end
 
@@ -87,7 +83,7 @@ else
 end
 
 % Default to auto-selected default output device if none specified:
-if nargin < 2 
+if nargin < 2
     deviceid = [];
 end
 
@@ -119,13 +115,11 @@ else
     disp(devs(idx));
 end
 
-% Request latency mode 2, which used to be the best one in our measurement:
-% classes 3 and 4 didn't yield any improvements, sometimes they even caused
-% problems.
+% Request latency mode 2, a tad more aggressive than the default:
 reqlatencyclass = 2;
 
 % Requested output frequency, may need adaptation on some audio-hw:
-freq = 44100;       % Must set this. 96khz, 48khz, 44.1khz.
+freq = 48000;       % Must set this. 48 khz most likely to work, as mandated by HDA spec. Common rates: 96khz, 48khz, 44.1khz.
 buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 suggestedLatencySecs = [];
 
@@ -140,18 +134,8 @@ if IsARM
     fprintf('Choosing a high suggestedLatencySecs setting of 25 msecs to account for lower performing ARM SoC.\n');
 end
 
-if IsWin
-    % Hack to accomodate bad Windows systems or sound cards. By default,
-    % the more aggressive default setting of something like 5 msecs can
-    % cause sound artifacts on cheaper / less pro sound cards:
-    suggestedLatencySecs = 0.015 %#ok<NOPRT>
-    fprintf('Choosing a high suggestedLatencySecs setting of 15 msecs to account for shoddy Windows operating system.\n');
-    fprintf('For low-latency applications, you may want to tweak this to lower values if your system works better than average timing-wise.\n');
-end
-
 if isempty(latbias)
-    % Unknown system: Assume zero bias. User can override with measured
-    % values:
+    % Unknown system: Assume zero bias. User can override with measured values:
     fprintf('No "latbias" provided. Assuming zero bias. You''ll need to determine this via measurement for best results...\n');
     latbias = 0;
 end
@@ -176,8 +160,7 @@ end
 % Open audio device for low-latency output:
 pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize, suggestedLatencySecs);
 
-% Tell driver about hardwares inherent latency, determined via calibration
-% once:
+% Tell driver about hardwares inherent latency, determined via calibration once:
 prelat = PsychPortAudio('LatencyBias', pahandle, latbias) %#ok<NOPRT,NASGU>
 postlat = PsychPortAudio('LatencyBias', pahandle) %#ok<NOPRT,NASGU>
 
@@ -230,7 +213,7 @@ if isempty(waitframes)
     % few video refresh cycles hardly matter for this test, but increase
     % our chance of success without need for manual tuning by user:
     if isempty(suggestedLatencySecs)
-        % Let's assume 12 msecs on Linux and OSX as a achievable latency by
+        % Let's assume 12 msecs as a achievable latency by
         % default, then double it:
         waitframes = ceil((2 * 0.012) / ifi) + 1;
     else
@@ -266,6 +249,8 @@ KbStrokeWait;
 
 % Realtime scheduling: Can be used if otherwise timing is not good enough.
 % Priority(MaxPriority(win));
+avdelay = [];
+tserror = [];
 
 % Ten measurement trials:
 for i=1:10
@@ -312,7 +297,7 @@ for i=1:10
         t3=GetSecs;
         plat = status.PredictedLatency;
         fprintf('Predicted Latency: %6.6f msecs.\n', plat*1000);
-        if offset>0
+        if offset > 0
             break;
         end
         WaitSecs('YieldSecs', 0.001);
@@ -329,7 +314,8 @@ for i=1:10
     fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs.\n', status.BufferSize, status.XRuns, status.PositionSecs);
     fprintf('Screen    expects visual onset at %6.6f secs.\n', visual_onset);
     fprintf('PortAudio expects audio onset  at %6.6f secs.\n', audio_onset);
-    fprintf('Expected audio-visual delay    is %6.6f msecs.\n', (audio_onset - visual_onset)*1000.0);
+    fprintf('Expected audio-visual delay is therefore %6.6f msecs.\n', (audio_onset - visual_onset)*1000.0);
+    avdelay(end+1) = (audio_onset - visual_onset)*1000.0;
 
     if useDPixx
         % 'visonset1' is the GetSecs() time of start of capture on
@@ -346,6 +332,10 @@ for i=1:10
         fprintf('DPixx: Expected audio onset delta is %6.6f secs.\n', expectedAudioDelta);
         fprintf('DPixx: Measured audio onset delta is %6.6f secs.\n', measuredAudioDelta);
         fprintf('DPixx: PsychPortAudio measured onset error is therefore %6.6f msecs.\n', 1000 * (measuredAudioDelta - expectedAudioDelta));
+        if ~isempty(measuredAudioDelta)
+            tserror(end+1) = 1000 * (measuredAudioDelta - expectedAudioDelta);
+        end
+
         if useDPixx > 1
             figure;
             plot(audiodata);
@@ -373,6 +363,11 @@ end
 
 PsychPortAudio('Close');
 Screen('CloseAll');
+
+fprintf('\n\nSummary:\n');
+fprintf('AV Error: %f msecs.\n', avdelay);
+fprintf('TS Error: %f msecs.\n', tserror);
+fprintf('\n\n');
 
 % Done. Bye.
 return;

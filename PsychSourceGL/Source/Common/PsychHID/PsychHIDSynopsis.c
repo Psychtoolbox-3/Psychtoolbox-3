@@ -18,14 +18,10 @@
 
 #include "PsychHID.h"
 
-void InitializeSynopsis(void); // I added this prototype to make the compiler happy. dgp.
-
 #define MAX_SYNOPSIS_STRINGS 500
-
-// declare variables local to this file.
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
-void InitializeSynopsis(void)
+const char** InitializeSynopsis(void)
 {
     int i=0;
     const char **synopsis = synopsisSYNOPSIS;  // abbreviate the long name
@@ -37,13 +33,15 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "\n\nSupport for generic USB-HID devices:\n\n";
     synopsis[i++] = "numberOfDevices=PsychHID('NumDevices')";
-    synopsis[i++] = "numberOfElements=PsychHID('NumElements',deviceNumber)";
-    synopsis[i++] = "numberOfCollections=PsychHID('NumCollections',deviceNumber)";
     synopsis[i++] = "devices=PsychHID('Devices' [, deviceClass])";
+    #if PSYCH_SYSTEM == PSYCH_OSX
+    synopsis[i++] = "numberOfElements=PsychHID('NumElements',deviceNumber)";
     synopsis[i++] = "elements=PsychHID('Elements',deviceNumber)";
+    synopsis[i++] = "numberOfCollections=PsychHID('NumCollections',deviceNumber)";
     synopsis[i++] = "collections=PsychHID('Collections',deviceNumber)";
-    synopsis[i++] = "elementState=PsychHID('RawState',deviceNumber,elementNumber)";
     synopsis[i++] = "elementState=PsychHID('CalibratedState',deviceNumber,elementNumber)";
+    #endif
+    synopsis[i++] = "elementState=PsychHID('RawState',deviceNumber,elementNumber)";
     synopsis[i++] = "[keyIsDown,secs,keyCode]=PsychHID('KbCheck' [, deviceNumber][, scanList])";
     synopsis[i++] = "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
     synopsis[i++] = "err=PsychHID('SetReport',deviceNumber,reportType,reportID,report)";
@@ -52,7 +50,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "err=PsychHID('ReceiveReportsStop',deviceNumber)";
 
     synopsis[i++] = "\n\nQueue based keyboard queries: See 'help KbQueueCreate' for explanations:\n\n";
-    synopsis[i++] = "PsychHID('KbQueueCreate', [deviceNumber][, keyFlags=all][, numValuators=0][, numSlots=10000][, flags=0])";
+    synopsis[i++] = "PsychHID('KbQueueCreate', [deviceNumber][, keyFlags=all][, numValuators=0][, numSlots=10000][, flags=0][, windowHandle=0])";
     synopsis[i++] = "PsychHID('KbQueueRelease' [, deviceIndex])";
     synopsis[i++] = "[navail] = PsychHID('KbQueueFlush' [, deviceIndex][, flushType=1])";
     synopsis[i++] = "PsychHID('KbQueueStart' [, deviceIndex])";
@@ -70,6 +68,8 @@ void InitializeSynopsis(void)
     if (i > MAX_SYNOPSIS_STRINGS) {
         PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
     }
+
+    return(synopsisSYNOPSIS);
 }
 
 PsychError PsychDisplayPsychHIDSynopsis(void)

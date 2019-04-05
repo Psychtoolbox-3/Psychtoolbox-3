@@ -1,5 +1,5 @@
-function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs)
-% BasicSoundInputDemo([wavfilename] [, voicetrigger=0] [, maxsecs=inf])
+function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs, device)
+% BasicSoundInputDemo([wavfilename][, voicetrigger=0][, maxsecs=inf] [, device])
 %
 % Demonstrates very basic usage of the new Psychtoolbox sound driver
 % PsychPortAudio() for audio capture / recording.
@@ -26,10 +26,14 @@ function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs)
 %
 % maxsecs      = Maximum number of seconds of sound to capture. Defaults to
 %                infinite - sound is recorded until a key is pressed.
+%
+% device       = Deviceindex of audio card to use. Auto-Selected if omitted.
 
 % History:
 % 06/30/2007 Written (MK)
 % 08/10/2008 Add some sound onset time calculation for the fun of it. (MK)
+% 11/07/2018 Auto select samplerate, use low-latency, workaround Octave plotting,
+%            allow 'device' selection. Cosmetic. (MK)
 
 % Running on PTB-3? Abort otherwise.
 AssertOpenGL;
@@ -55,19 +59,33 @@ if isempty(maxsecs)
     maxsecs = inf;
 end
 
+if nargin < 4
+    device = [];
+end
+
+% Workaround broken qt plotting on some Octave setups:
+if IsOctave && exist('graphics_toolkit')
+    try
+        graphics_toolkit ('fltk');
+    catch
+    end
+end
 
 % Wait for release of all keys on keyboard:
-while KbCheck; end;
+KbReleaseWait;
 
 % Perform basic initialization of the sound driver:
 InitializePsychSound;
 
-% Open the default audio device [], with mode 2 (== Only audio capture),
-% and a required latencyclass of zero 0 == no low-latency mode, as well as
-% a frequency of 44100 Hz and 2 sound channels for stereo capture.
-% This returns a handle to the audio device:
-freq = 44100;
-pahandle = PsychPortAudio('Open', [], 2, 0, freq, 2);
+% Open audio device 'device', with mode 2 (== Only audio capture),
+% and a required latencyclass of 1 == low-latency mode, with the preferred
+% default sampling frequency of the audio device, and 2 sound channels
+% for stereo capture. This returns a handle to the audio device:
+pahandle = PsychPortAudio('Open', device, 2, 1, [], 2);
+
+% Get what freq'uency we are actually using:
+s = PsychPortAudio('GetStatus', pahandle);
+freq = s.SampleRate;
 
 % Preallocate an internal audio recording  buffer with a capacity of 10 seconds:
 PsychPortAudio('GetAudioData', pahandle, 10);
@@ -83,7 +101,7 @@ fprintf('Audio capture started, press any key for about 1 second to quit.\n');
 if voicetrigger > 0
     % Yes. Fetch audio data and check against threshold:
     level = 0;
-    
+
     % Repeat as long as below trigger-threshold:
     while level < voicetrigger
         % Fetch current audiodata:
@@ -95,10 +113,10 @@ if voicetrigger > 0
         else
             level = 0;
         end
-        
+
         % Below trigger-threshold?
         if level < voicetrigger
-            % Wait for a millisecond before next scan:
+            % Wait before next scan:
             WaitSecs(0.0001);
         end
     end
@@ -106,19 +124,12 @@ if voicetrigger > 0
     % Ok, last fetched chunk was above threshold!
     % Find exact location of first above threshold sample.
     idx = min(find(abs(audiodata(1,:)) >= voicetrigger)); %#ok<MXFND>
-        
+
     % Initialize our recordedaudio vector with captured data starting from
     % triggersample:
     recordedaudio = audiodata(:, idx:end);
-    
+
     % For the fun of it, calculate signal onset time in the GetSecs time:
-    % Caution: For accurate and reliable results, you should
-    % PsychPortAudio('Open',...); the device in low-latency mode, as
-    % opposed to the "normal" mode used in this demo! If you fail to do so,
-    % the tCaptureStart timestamp may be inaccurate on some systems, and
-    % therefore this tOnset timestamp may be off! See for example
-    % PsychPortAudioTimingTest and AudioFeedbackLatencyTest for how to
-    % setup low-latency high precision mode.
     tOnset = tCaptureStart + ((offset + idx - 1) / freq);
 
     fprintf('Estimated signal onset time is %f secs, this is %f msecs after start of capture.\n', tOnset, (tOnset - tCaptureStart)*1000);
@@ -134,23 +145,23 @@ s = PsychPortAudio('GetStatus', pahandle);
 while ~KbCheck && ((length(recordedaudio) / s.SampleRate) < maxsecs)
     % Wait a second...
     WaitSecs(1);
-    
+
     % Query current capture status and print it to the Matlab window:
     s = PsychPortAudio('GetStatus', pahandle);
-    
+
     % Print it:
     fprintf('\n\nAudio capture started, press any key for about 1 second to quit.\n');
     fprintf('This is some status output of PsychPortAudio:\n');
     disp(s);
-    
+
     % Retrieve pending audio data from the drivers internal ringbuffer:
     audiodata = PsychPortAudio('GetAudioData', pahandle);
     nrsamples = size(audiodata, 2);
-    
+
     % Plot it, just for the fun of it:
     plot(1:nrsamples, audiodata(1,:), 'r', 1:nrsamples, audiodata(2,:), 'b');
     drawnow;
-    
+
     % And attach it to our full sound vector:
     recordedaudio = [recordedaudio audiodata]; %#ok<AGROW>
 end
@@ -167,9 +178,9 @@ recordedaudio = [recordedaudio audiodata];
 % Close the audio device:
 PsychPortAudio('Close', pahandle);
 
-% Replay recorded data: Open default device for output, push recorded sound
+% Replay recorded data: Open 'device' for output, push recorded sound
 % data into its output buffer:
-pahandle = PsychPortAudio('Open', [], 1, 0, 44100, 2);
+pahandle = PsychPortAudio('Open', device, 1, 0, freq, 2);
 PsychPortAudio('FillBuffer', pahandle, recordedaudio);
 
 % Start playback immediately, wait for start, play once:
@@ -183,7 +194,7 @@ PsychPortAudio('Close', pahandle);
 
 % Shall we store recorded sound to wavfile?
 if ~isempty(wavfilename)
-    psychwavwrite(transpose(recordedaudio), 44100, 16, wavfilename)
+    psychwavwrite(transpose(recordedaudio), freq, 16, wavfilename)
 end
 
 % Done.

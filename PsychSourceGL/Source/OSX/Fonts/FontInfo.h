@@ -79,7 +79,7 @@
 //prototypes for functions defined in this moduel
 
 //Psych typical module support stuff
-void InitializeSynopsis();
+const char** InitializeSynopsis(void);
 PsychError FontsExitFunction(void);
 PsychError PsychDisplayATSSynopsis(void);
 PsychError MODULEVersion(void); 

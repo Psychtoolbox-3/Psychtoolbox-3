@@ -699,7 +699,7 @@ PsychError PSYCHOCULUSVRGetTrackingState(void)
         printf("PsychOculusVRCore-INFO: HeadPose: Orientation [x,y,z,w] = [%f, %f, %f, %f]\n", state.HeadPose.ThePose.Orientation.x, state.HeadPose.ThePose.Orientation.y, state.HeadPose.ThePose.Orientation.z, state.HeadPose.ThePose.Orientation.w);
     }
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
+    PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount, FieldNames, &status);
 
     PsychSetStructArrayDoubleElement("Time", 0, state.HeadPose.TimeInSeconds, status);
     PsychSetStructArrayDoubleElement("Status", 0, state.StatusFlags, status);

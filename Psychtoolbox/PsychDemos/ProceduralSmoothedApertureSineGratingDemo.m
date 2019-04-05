@@ -6,7 +6,10 @@ function ProceduralSmoothedApertureSineGratingDemo(benchmark)
 % shading language, vertex- and fragment-shaders.
 
 % History:
-% 12/12/2017 modified from ProceduralGaborDemo.m (Ian Andolina).
+% 12-Dec-2017 modified from ProceduralGaborDemo.m (Ian Andolina).
+% 08-Nov-2018 Clarify interaction of alpha-blending with useAlpha and radius=inf,
+%             and the sine modulation that is conditionally also applied to the
+%             alpha-channel for radius=inf or useAlpha=false. (MK)
 
 
 % Default to mode 0 - Just a nice demo.
@@ -27,9 +30,6 @@ screenid = max(Screen('Screens'));
 PsychImaging('PrepareConfiguration');
 win = PsychImaging('OpenWindow', screenid, 0.5);
 
-% Enable alpha-blending
-Screen('BlendFunction', win, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
-
 % Initial stimulus params for the grating:
 virtualSize = 600;
 phase = 0;
@@ -45,6 +45,28 @@ useAlpha = true;
 % smoothing method: cosine (0) or smoothstep (1)
 smoothMethod = 1;
 
+% Two ways to achieve the same visual appearance for edge smoothing/fadeout,
+% once via premultiplication of the hull function, once via alpha blending.
+% Note: If we want consistent visual appearance for radius == inf vs. non-inf,
+% then we must not enable alpha blending for the radius == inf case, as the
+% 'useAlpha' flag only applies for finite radius! For infinite radius, 'useAlpha'
+% would get ignored, which would mean to apply the sine wave signal to the alpha
+% channel as well as the color channel, so with alpha blending enabled, the sine
+% wave signal would get applied twice while forming the final stimulus!
+if useAlpha && ~isinf(radius)
+    % Enable alpha-blending, store the sine wave signal in color, use alpha
+    % channel to store the hull function for fadeout and apply it via blending.
+    Screen('BlendFunction', win, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
+else
+    % No alpha-blending: Hull function for fadeout is directly applied via
+    % multiplication to the sine wave signal, directly attenuating it.
+    % As the sine signal * hull function also applies to the alpha channel,
+    % you will find a edge attenuated sine wave in the alpha channel as well,
+    % which could be used for complex alpha blending applications iff you use
+    % blending and masking creatively, ie. typically with blend functions other
+    % than the ones used in this demo.
+    Screen('BlendFunction', win, 'GL_ONE', 'GL_ZERO');
+end
 
 % Build a procedural gabor texture for a grating with a RGB color offset of 0.5 -- a 50% gray.
 sinetex = CreateProceduralSmoothedApertureSineGrating(win, virtualSize, virtualSize,...
@@ -61,7 +83,7 @@ tstart = vbl;
 count = 0;
 
 % Animation loop
-while GetSecs < tstart + 5
+while GetSecs < tstart + 10
     count = count + 1;
     % update values:
     phase = phase + 5;

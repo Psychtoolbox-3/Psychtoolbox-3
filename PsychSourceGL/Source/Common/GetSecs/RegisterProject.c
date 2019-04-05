@@ -40,10 +40,11 @@ PsychError PsychModuleInit(void)
     //register the module name
     PsychErrorExit(PsychRegister("GetSecs", NULL));
 
-    //register synopsis and named subfunctions.
-    //InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
     PsychSetModuleAuthorByInitials("awi");
     PsychSetModuleAuthorByInitials("mk");
+
+    // Register synopsis and named subfunctions.
+    InitializeSynopsis();
 
     return(PsychError_none);
 }

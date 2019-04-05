@@ -1007,7 +1007,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     // Retrieve baudrate and check for equal rate on input- and output queue:
     if (verbosity > 1) {
         inint = cfgetispeed(&options);
-        if (inint != cfgetospeed(&options)) printf("IOPort: Warning: Hmm, new input- and output baudrates %i vs. %i don't match!? May or may not be a problem...\n", ConstantToBaud((int) inint), ConstantToBaud((int) cfgetospeed(&options)));
+        if (inint != (int) cfgetospeed(&options)) printf("IOPort: Warning: Hmm, new input- and output baudrates %i vs. %i don't match!? May or may not be a problem...\n", ConstantToBaud((int) inint), ConstantToBaud((int) cfgetospeed(&options)));
     }
 
     // Output new baud rate:
@@ -1125,7 +1125,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
             // received anyway. The most common applications which are sensitive to read latency are MIDI and IrDA
             // applications.
             if (ioctl(device->fileDescriptor, IOSSDATALAT, &mics) == -1) {
-                if (verbosity > 0) printf("Error setting receive latency for device %s to %d microseconds - %s(%d).\n", device->portSpec, mics, strerror(errno), errno);
+                if (verbosity > 0) printf("Error setting receive latency for device %s to %lu microseconds - %s(%d).\n", device->portSpec, mics, strerror(errno), errno);
                 if (strstr(configString, "Lenient") == NULL) return(PsychError_system);
             }
         }
@@ -1295,7 +1295,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
                 return(PsychError_invalidIntegerArg);
             }
 
-            if (device->readBufferSize < inint) {
+            if (device->readBufferSize < (unsigned int) inint) {
                 if (verbosity > 0) printf("Invalid StartBackgroundRead fetch granularity of %i bytes provided. Bigger than current Inputbuffer size of %i bytes!\n", inint, device->readBufferSize);
                 return(PsychError_invalidIntegerArg);
             }
@@ -1466,6 +1466,8 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
                     // Poll:
                     ioctl(device->fileDescriptor, TIOCSERGETLSR, &lsr);
                 }
+            #else
+                (void) lsr;
             #endif
         }
         else {
@@ -1489,7 +1491,6 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 
 int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int blocking, char* errmsg, double* timestamp)
 {
-    struct termios options;
     double timeout;
     int raPos, i;
     int nread = 0;
@@ -1555,7 +1556,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
             *timestamp = timeout;
             timeout+=device->readTimeout;
 
-            while((*timestamp < timeout) && (PsychSerialUnixGlueAsyncReadbufferBytesAvailable(device) < amount)) {
+            while((*timestamp < timeout) && (PsychSerialUnixGlueAsyncReadbufferBytesAvailable(device) < (int) amount)) {
                 PsychGetAdjustedPrecisionTimerSeconds(timestamp);
                 PsychWaitIntervalSeconds(device->pollLatency);
             }
@@ -1586,7 +1587,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 
                 // Setup minimum byte counter for 'naccumread' Bytes blocking reads:
                 gotamount = PsychSerialUnixGlueSetBlockingMinBytes(device, amount);
-                if (amount != gotamount) {
+                if ((int) amount != gotamount) {
                     // Didn't get what we wanted: Error!
                     // Unless this is just the case where we clamp to the 255 bytes max on Unix:
                     if (!(gotamount == 255 && amount > 255)) {
@@ -1658,7 +1659,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
         // Yes.
 
         // Check for buffer overflow:
-        if (nread > device->readBufferSize) {
+        if (nread > (int) device->readBufferSize) {
             sprintf(errmsg, "Error: Readbuffer overflow for background read operation on device %s. Flushing buffer to recover. At least %i bytes of input data have been lost, expect data corruption!\n", device->portSpec, nread);
 
             // Flush readBuffer - Try to get a fresh start...
@@ -1675,7 +1676,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
         }
 
         // Clamp available amount to requested (or maximum allowable) amount:
-        nread = (nread > amount) ? amount : nread;
+        nread = (nread > (int) amount) ? amount : nread;
 
         // Compute startindex in buffer for readout operation:
         raPos = (device->clientThreadReadPos) % (device->readBufferSize);

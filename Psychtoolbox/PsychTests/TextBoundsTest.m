@@ -42,6 +42,7 @@ function TextBoundsTest(string, font, textSize, rotAngle)
 % 2/3/05    dgp Wrote it.
 % 10/26/05  awi Cosmetic
 % 12/22/07  mk  Mostly rewrote it, trying to keep the original intentions.
+% 11/11/18  mk  Cleanup a bit. Switch to colorrange 0-1.
 
 if nargin < 1
     string = [];
@@ -49,7 +50,7 @@ end
 
 if isempty(string)
     string='Wordy';
-end    
+end
 
 if nargin < 2
     font = [];
@@ -76,27 +77,24 @@ if isempty(rotAngle)
 end
 
 try
-    red=[255 0 0];
-    green=[0 255 0];
-    black=0;
-    if IsOS9
-		%         w=Screen(-1,'OpenOffscreenWindow',[],[0 0 3*textSize*length(string) 2*textSize],1);
-        w=Screen(0,'OpenWindow');
-    else
-        % PTB-3 OS/X, Windows, Linux:
-        
-        % Open a onscreen window for display:
-        w=Screen('OpenWindow',0,0);
-        
-        % Open a offscreen window for use as scratchpad of TextBounds. We
-        % make it big enough to certainly contain the text, ie., twice the
-        % expected height and 3x the expected width. However make sure its
-        % not bigger than the whole screen by clipping it against the
-        % screens size:
-        maxrect = ClipRect([0 0 3*textSize*length(string) 2*textSize], Screen('Rect', w));
-        woff = Screen('OpenOffscreenWindow', w, [], maxrect);
-    end
-    
+    red = [1 0 0];
+    green = [0 1 0];
+    black = 0;
+
+    % Want normalized 0-1 colorrange:
+    PsychDefaultSetup(2);
+
+    % Open a onscreen window for display:
+    w=PsychImaging('OpenWindow', 0, 0);
+
+    % Open a offscreen window for use as scratchpad of TextBounds. We
+    % make it big enough to certainly contain the text, ie., twice the
+    % expected height and 3x the expected width. However make sure its
+    % not bigger than the whole screen by clipping it against the
+    % screens size:
+    maxrect = ClipRect([0 0 3*textSize*length(string) 2*textSize], Screen('Rect', w));
+    woff = Screen('OpenOffscreenWindow', w, [], maxrect);
+
     % Set text font and size for onscreen window:
     Screen(w,'TextFont',font);
     Screen(w,'TextSize',textSize);
@@ -111,40 +109,32 @@ try
     x=100;
     y=200;
     dstbounds=OffsetRect(bounds,x,y);
-    if IsOS9
-		Screen(w,'FillRect');
-		Screen(w,'FillRect',red,dstbounds);
-        Screen(w,'DrawText',string,x,y);
-    else
-        % Fill target area with a red rectangle -- red background:
-        Screen('FillRect',w,red,dstbounds);
-        % Draw text directly over the red rectangle:
-        Screen('DrawText',w,string,x,y,black);
-        
-        % Draw the same text by blitting the relevant area of the 'woff'
-        % offscreen window to the screen. As 'TextBounds' used white text
-        % on black background internally, we'll see that onscreen:
-        dstbounds = OffsetRect(bounds, x, y+200);
-        Screen('DrawTexture', w, woff, bounds, dstbounds, rotAngle);
-        
-        % Draw help text:
-		Screen(w,'DrawText','Hit any key to continue',x,y+400,red);
-        Screen('Flip', w);
-        
-        while KbCheck; end;
-        KbWait;
-        
-        y=y+200;
-        bounds=Screen('TextBounds',w,string);
-        fprintf('Screen ''TextBounds'' says the bounds of ''%s'' are [%d %d %d %d].\n',string,bounds);
-        bounds=OffsetRect(bounds,x,y);
-        Screen('FillRect',w,red,bounds);
-        Screen('DrawText',w,string,x,y,black);
-        Screen('DrawText',w,'Hit any key to continue',x,y+200,red);
-        Screen('Flip',w);
-	end
-    while KbCheck; end;
-    KbWait;
+
+    % Fill target area with a red rectangle -- red background:
+    Screen('FillRect',w,red,dstbounds);
+    % Draw text directly over the red rectangle:
+    Screen('DrawText',w,string,x,y,black);
+
+    % Draw the same text by blitting the relevant area of the 'woff'
+    % offscreen window to the screen. As 'TextBounds' used white text
+    % on black background internally, we'll see that onscreen:
+    dstbounds = OffsetRect(bounds, x, y+200);
+    Screen('DrawTexture', w, woff, bounds, dstbounds, rotAngle);
+
+    % Draw help text:
+    Screen(w,'DrawText','Hit any key to continue',x,y+400,red);
+    Screen('Flip', w);
+    KbStrokeWait;
+
+    y=y+200;
+    bounds=Screen('TextBounds',w,string);
+    fprintf('Screen ''TextBounds'' says the bounds of ''%s'' are [%d %d %d %d].\n',string,bounds);
+    bounds=OffsetRect(bounds,x,y);
+    Screen('FillRect',w,red,bounds);
+    Screen('DrawText',w,string,x,y,black);
+    Screen('DrawText',w,'Hit any key to continue',x,y+200,red);
+    Screen('Flip',w);
+    KbStrokeWait;
 
     Screen('CloseAll');
 catch

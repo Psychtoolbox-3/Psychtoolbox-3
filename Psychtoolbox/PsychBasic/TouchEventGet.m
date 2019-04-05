@@ -87,7 +87,8 @@ function [event, nremaining] = TouchEventGet(deviceIndex, windowHandle, maxWaitT
 % window relative pixels with ease.
 %
 % Linux/Wayland only provides surface local coordinates, iow. the absolute pixels
-% location on the is unknown, unless a fullsreen window is used where window == screen.
+% location on the screen is unknown, unless a fullsreen window is used where
+% window == screen.
 %
 % Windows uses absolute screen coordinates in 1/100th pixels, so can be remapped
 % with ease.
@@ -99,6 +100,9 @@ function [event, nremaining] = TouchEventGet(deviceIndex, windowHandle, maxWaitT
 %
 
 % 1-Oct-2017  mk  Written.
+% 7-Aug-2018  mk  Change .MappedX/Y to derive from normalized touch surface
+%                 coordinates and screen geometry, as that does cause less
+%                 hassle on multi-x-screen setups.
 
 if nargin < 1 || isempty(deviceIndex)
   error('Required deviceIndex missing.');
@@ -121,9 +125,10 @@ if ~isempty(event)
     fprintf('TouchEventGet: WARNING! Data loss in touch sequence detected!\n');
   else
     % Normal event, map also to window relative coordinates:
+    [w, h] = Screen('Windowsize', Screen('WindowScreenNumber', windowHandle));
     winRect = Screen('GlobalRect', windowHandle);
-    event.MappedX = event.X - winRect(1);
-    event.MappedY = event.Y - winRect(2);
+    event.MappedX = (event.NormX * w) - winRect(1);
+    event.MappedY = (event.NormY * h) - winRect(2);
   end
 end
 

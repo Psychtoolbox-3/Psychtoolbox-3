@@ -43,7 +43,7 @@ static double		precisionTimerAdjustmentFactor=1;
 static double		estimatedGetSecsValueAtTickCountZero;
 static psych_bool		isKernelTimebaseFrequencyHzInitialized=FALSE;
 static double	        kernelTimebaseFrequencyHz;
-static double           sleepwait_threshold = 0.01;
+static double           sleepwait_threshold = 0.001;
 static double		clockinc = 0;
 
 void PsychWaitUntilSeconds(double whenSecs)

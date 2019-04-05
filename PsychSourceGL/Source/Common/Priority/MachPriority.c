@@ -66,7 +66,7 @@ PsychError MACHPRIORITYMachPriority(void)
     //int			newPriority;
     const char 			*outerStructFieldNames[]={"thread", "flavor", "policy"};
     const char 			*policyStructFieldNames[]={"period", "computation", "constraint", "preemptible"};
-    int 			numOuterStructDimensions=1, numOuterStructFieldNames=3, numPolicyStructDimensions=1, numPolicyStructFieldNames=4;
+    int 			numOuterStructDimensions=-1, numOuterStructFieldNames=3, numPolicyStructDimensions=-1, numPolicyStructFieldNames=4;
     PsychGenericScriptType	*outerStructArray, *policyStructArray;
     int 			kernError, numInputArgs;
     thread_act_t 		threadID;

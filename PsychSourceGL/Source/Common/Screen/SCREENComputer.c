@@ -94,7 +94,7 @@ PsychError SCREENComputer(void)
                                          "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system", "gstreamer", "supported" };
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
-    int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
+    int numMajorStructDimensions=-1, numKernStructDimensions=-1, numHwStructDimensions=-1;
     int numMajorStructFieldNames=16, numKernStructFieldNames=5, numHwStructFieldNames=7;
     PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
     //char tempStr[CTL_MAXNAME];   //this seems like a bug in Darwin, CTL_MAXNAME is shorter than the longest name.  
@@ -340,7 +340,7 @@ PsychError SCREENComputer(void)
 
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
-    int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
+    int numMajorStructDimensions=-1, numKernStructDimensions=-1, numHwStructDimensions=-1;
     int numMajorStructFieldNames=8, numKernStructFieldNames=5, numHwStructFieldNames=7;
 
     PsychGenericScriptType *majorStruct;
@@ -420,7 +420,7 @@ PsychError SCREENComputer(void)
 
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
-    int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
+    int numMajorStructDimensions=-1, numKernStructDimensions=-1, numHwStructDimensions=-1;
     int numMajorStructFieldNames=12, numKernStructFieldNames=5, numHwStructFieldNames=7;
     char ethernetMACStr[20];
     struct ifreq devea;

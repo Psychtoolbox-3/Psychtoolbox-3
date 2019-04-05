@@ -28,13 +28,26 @@
 
 #include "GetSecs.h"
 
+#define MAX_SYNOPSIS_STRINGS 500
+static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
+
+const char** InitializeSynopsis(void)
+{
+    int i = 0;
+    const char **synopsis = synopsisSYNOPSIS;
+    synopsis[i++] = "[GetSecsTime, WallTime, syncErrorSecs] = GetSecs('AllClocks' [, maxError=0.000020]);";
+    synopsis[i++] = NULL;
+
+    return(synopsisSYNOPSIS);
+}
+
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include <sys/time.h>
 #endif
 
 PsychError GETSECSGetSecs(void)
 {
-    double *returnValue;
+    double returnValue;
     double referenceValue, realValue;
     int healthy, opmode;
 
@@ -42,8 +55,8 @@ PsychError GETSECSGetSecs(void)
     PsychErrorExit(PsychCapNumOutputArgs(5));
     PsychErrorExit(PsychCapNumInputArgs(1));
 
-    PsychAllocOutDoubleArg(1, FALSE, &returnValue);
-    PsychGetAdjustedPrecisionTimerSeconds(returnValue);
+    PsychGetAdjustedPrecisionTimerSeconds(&returnValue);
+    PsychCopyOutDoubleArg(1, FALSE, returnValue);
 
     // Special code for diagnosing problems with TimeGlue on systems that
     // are broken by design(TM) aka MS-Windows:
@@ -80,7 +93,7 @@ PsychError GETSECSGetSecs(void)
             gettimeofday(&tv, NULL);
             referenceValue = ((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0);
             healthy = 0;
-            realValue = *returnValue;
+            realValue = returnValue;
             PsychCopyOutDoubleArg(2, FALSE, referenceValue);
             PsychCopyOutDoubleArg(3, FALSE, realValue);
             PsychCopyOutDoubleArg(4, FALSE, (double) healthy);
@@ -120,7 +133,7 @@ PsychError GETSECSAllClocks(void)
 
     static psych_bool firstTimeWarning = TRUE;
     int maxRetries = 10;
-    double *getSecsClock, getSecsClock2;
+    double getSecsClock, getSecsClock2;
     double maxError = 20 * 1e-6;                // Default to 20 usecs max clock mapping error.
     double wallClock;
 
@@ -136,25 +149,25 @@ PsychError GETSECSAllClocks(void)
     if (maxError < 0.000001)
         PsychErrorExitMsg(PsychError_user, "Invalid 'maxError' argument supplied. Lower than minimum allowed value of 1 microsecond.\n");
 
-    // Return arg 1 is as usual GetSecs time:
-    PsychAllocOutDoubleArg(1, FALSE, &getSecsClock);
-
     // Repeat clock queries up to maxRetries times if they can't be completed within
     // maxError seconds and thereby "clock sync" between returned values is not good
     // enough:
     do {
-        PsychGetAdjustedPrecisionTimerSeconds(getSecsClock);
+        PsychGetAdjustedPrecisionTimerSeconds(&getSecsClock);
         wallClock = PsychGetWallClockSeconds();
         PsychGetAdjustedPrecisionTimerSeconds(&getSecsClock2);
-    } while ((maxRetries-- > 0) && (getSecsClock2 - *getSecsClock > maxError));
+    } while ((maxRetries-- > 0) && (getSecsClock2 - getSecsClock > maxError));
 
     // Warn on excessive error, at least once:
-    if (firstTimeWarning && (getSecsClock2 - *getSecsClock > 2 * maxError)) {
+    if (firstTimeWarning && (getSecsClock2 - getSecsClock > 2 * maxError)) {
         firstTimeWarning = FALSE;
         printf("PTB-WARNING: GetSecs('AllClocks') sync margin %f secs > 2 times maxError %f even after multiple retries! System timing problems?1?\n",
-               getSecsClock2 - *getSecsClock, 2 * maxError);
+               getSecsClock2 - getSecsClock, 2 * maxError);
         printf("PTB-WARNING: This one-time warning will not repeat, even on successive failure to reach good precision. Check your system.\n");
     }
+
+    // Return arg 1 is as usual GetSecs time:
+    PsychCopyOutDoubleArg(1, FALSE, getSecsClock);
 
     // Return arg 2 is Wall clock, system specific but usually related to real-world
     // time, e.g., UTC, NTP time, or Unix time, something that translates in normal
@@ -166,7 +179,7 @@ PsychError GETSECSAllClocks(void)
     PsychCopyOutDoubleArg(2, FALSE, wallClock);
 
     // Return arg3 = Confidence interval for sync between clock queries:
-    PsychCopyOutDoubleArg(3, FALSE, getSecsClock2 - *getSecsClock);
+    PsychCopyOutDoubleArg(3, FALSE, getSecsClock2 - getSecsClock);
 
     return(PsychError_none);
 }

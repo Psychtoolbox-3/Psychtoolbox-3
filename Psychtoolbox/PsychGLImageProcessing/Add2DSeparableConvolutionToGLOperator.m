@@ -105,7 +105,6 @@ end
 
 % Switch to gloperators OpenGL context:
 Screen('GetWindowInfo', gloperator);
-while glGetError(); end;
 
 % Input parsing done. Call helper routine for creation of shaders and
 % optional lookup textures:

@@ -1,5 +1,5 @@
-function BasicSoundScheduleDemo(wavfilenames)
-% BasicSoundScheduleDemo([wavfilenames])
+function BasicSoundScheduleDemo(wavfilenames, device)
+% BasicSoundScheduleDemo([wavfilenames][, device])
 %
 % This demo shows two things:
 %
@@ -20,19 +20,23 @@ function BasicSoundScheduleDemo(wavfilenames)
 % array with multiple filenames to load. Otherwise the default sound files
 % provided with Psychtoolbox will be loaded.
 %
+% device = Device index of the sound card to use.
+%
+%
 % The demo first loads all soundfiles, and resamples them to identical
 % samplingrate if possible. Then it plays the first second of each of them.
 % Then it goes into an interactive mode: By pressing any of the F1 - F10
 % keys or any letter key, you can select a specific file for playback. By
 % pressing any other key you exit the interactive loop. After the
 % interactive loop has finished, a subset of the soundfiles is played again
-% with a different method, for about 3 repetitions. Then the demo exits.
+% with a different method, for about 2 repetitions. Then the demo exits.
 %
 
 % History:
 % 04/09/2009  mk Written.
 % 18-Jul-2015 mk Remove switch of 'RunMode' to 1, as 1 is the default since
 %                quite a while.
+% 07-Nov-2018 mk Auto-Select playback frequency, allow device selection, cosmetic.
 
 % Running on PTB-3? Abort otherwise.
 AssertOpenGL;
@@ -56,7 +60,7 @@ end
 if isempty(wavfilenames)
     % No sound file provided. Load our standard sounds:
     sounddir = [ PsychtoolboxRoot 'PsychDemos' filesep 'SoundFiles' filesep ];
-    
+
     % Ok, on MK's machine we have a special treat ;-)
     if exist([PsychHomeDir 'Music/StarTrekSounds/'], 'dir')
         sounddir = [ PsychHomeDir 'Music/StarTrekSounds/' ];
@@ -69,29 +73,53 @@ if isempty(wavfilenames)
         wavfilenames{i} = [ sounddir infilenames(i).name ];
     end
 end
-
 nfiles = length(wavfilenames);
+
+if nargin < 2
+    device = [];
+end
 
 % Always init to 2 channels, for the sake of simplicity:
 nrchannels = 2;
 
-% Does a function for resampling exist?
-if exist('resample') %#ok<EXIST>
-    % Yes: Select a target sampling rate of 44100 Hz, resample if
-    % neccessary:
-    freq = 44100;
-    doresample = 1;
-else
-    % No. We will choose the frequency of the wav file with the highest
-    % frequency for actual playback. Wav files with deviating frequencies
-    % will play too fast or too slow, b'cause we can't resample:
-    % Init freq:
-    freq = 0;
-    doresample = 0;
-end
-
 % Perform basic initialization of the sound driver:
 InitializePsychSound(1);
+
+suggestedLatencySecs = [];
+if IsARM
+    % ARM processor, probably the RaspberryPi SoC. This can not quite handle the
+    % low latency settings of a Intel PC, so be more lenient:
+    suggestedLatencySecs = 0.025;
+    fprintf('Choosing a high suggestedLatencySecs setting of 25 msecs to account for lower performing ARM SoC.\n');
+end
+
+% Open the audio 'device' with default mode [] (== Only playback),
+% and a required latencyclass of 1 == standard low-latency mode, as well as
+% default playback frequency and 'nrchannels' sound output channels.
+% This returns a handle 'pahandle' to the audio device:
+pahandle = PsychPortAudio('Open', device, [], 1, [], nrchannels, [], suggestedLatencySecs);
+
+% Get what freq'uency we are actually using for playback:
+s = PsychPortAudio('GetStatus', pahandle);
+freq = s.SampleRate;
+
+% Does a function for resampling exist? Need to load 'signal' toolbox
+% on Octave for that:
+if IsOctave
+    try
+        pkg load signal;
+    catch
+    end
+end
+
+if exist('resample')
+    % Yes: Resample to playback sampling rate 'freq' if neccessary:
+    doresample = 1
+else
+    % Wav files with deviating frequencies from 'freq' will play too fast or too
+    % slow, because we can't resample:
+    doresample = 0
+end
 
 % Read all sound files and create & fill one dynamic audiobuffer for
 % each read soundfile:
@@ -121,11 +149,6 @@ for i=1:nfiles
                 fprintf('Resampling from %i Hz to %i Hz... ', infreq, freq);
                 audiodata = resample(audiodata, freq, infreq);
             end
-        else
-            % Resampling not supported by Matlab/Octave version:
-            % Adapt final playout frequency to maximum frequency found, and
-            % hope that all files match...
-            freq = max(infreq, freq);
         end
 
         [samplecount, ninchannels] = size(audiodata);
@@ -139,21 +162,6 @@ end
 
 % Recompute number of available sounds:
 nfiles = length(buffer);
-
-suggestedLatencySecs = [];
-
-if IsARM
-    % ARM processor, probably the RaspberryPi SoC. This can not quite handle the
-    % low latency settings of a Intel PC, so be more lenient:
-    suggestedLatencySecs = 0.025;
-    fprintf('Choosing a high suggestedLatencySecs setting of 25 msecs to account for lower performing ARM SoC.\n');
-end
-
-% Open the default audio device [], with default mode [] (==Only playback),
-% and a required latencyclass of 1 == standard low-latency mode, as well as
-% a playback frequency of 'freq' and 'nrchannels' sound output channels.
-% This returns a handle 'pahandle' to the audio device:
-pahandle = PsychPortAudio('Open', [], [], 1, freq, nrchannels, [], suggestedLatencySecs);
 
 % Enable use of sound schedules: We create a schedule of default size,
 % currently 128 slots by default. From now on, the driver will not play
@@ -171,6 +179,9 @@ for i=1:nfiles
     % seconds. Play one repetition of each soundbuffer...
     PsychPortAudio('AddToSchedule', pahandle, buffer(i), 1, 0.0, 1.0, 1);
 end
+
+% Suppress character spilling into command window:
+ListenChar(-1);
 
 fprintf('\nReady. Press any key to start...\n\n\n');
 
@@ -250,7 +261,7 @@ while 1
             notprinted = 0;
         end
     end
-    
+
     % Wait a bit before next status and key query. The 'YieldSecs' option
     % tells WaitSecs that this wait doesn't need to be accurate down to the
     % millisecond, but allows for some lenience in timing. This slack
@@ -259,6 +270,7 @@ while 1
 end
 
 % End of interactive loop.
+ListenChar(0);
 
 % Stop playback: Stop immediately, but wait for stop to happen:
 PsychPortAudio('Stop', pahandle, 0, 1);
@@ -274,8 +286,8 @@ PsychPortAudio('UseSchedule', pahandle, 0);
 % Fill playbuffer with content of buffer(1):
 PsychPortAudio('FillBuffer', pahandle, buffer(1));
 
-% Start playback in 2 seconds from now, 4 repetitions, wait for start:
-PsychPortAudio('Start', pahandle, 4, GetSecs + 2, 1);
+% Start playback in 2 seconds from now, 2 repetitions, wait for start:
+PsychPortAudio('Start', pahandle, 2, GetSecs + 2, 1);
 
 % Streaming refill with content of buffer(2). Append the content to the
 % currently playing sound stream:
@@ -292,7 +304,6 @@ PsychPortAudio('DeleteBuffer');
 
 % Close audio device, shutdown driver:
 PsychPortAudio('Close');
-
 fprintf('\n\nDone. Bye!\n\n');
 
 return;

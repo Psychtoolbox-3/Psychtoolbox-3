@@ -31,6 +31,7 @@ attribute vec4 auxParameters0;
 varying vec4  baseColor;
 varying float Phase;
 varying float FreqTwoPi;
+varying float rawAlpha;
 
 void main()
 {
@@ -48,6 +49,9 @@ void main()
 
     /* Precalc a couple of per-patch constant parameters: */
     FreqTwoPi = auxParameters0[1] * twopi;
+
+    /* Passthrough of raw alpha value (modulateColor.a aka globalAlpha): */
+    rawAlpha = modulateColor.a;
 
     /* Premultiply the wanted Contrast to the color: */
     baseColor = modulateColor * Contrast * contrastPreMultiplicator;

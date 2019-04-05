@@ -164,7 +164,6 @@ void PsychHIDCloseAllUSBDevices(void)
 */
 PsychError PsychHIDCleanup(void)
 {
-    long error;
     pRecDevice curdev = NULL;
 
     // Disable online help system:
@@ -175,7 +174,7 @@ PsychError PsychHIDCleanup(void)
     ConsoleInputHelper(-10);
 
     // Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
-    error = PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
+    PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
 
     // Shutdown os specific interfaces and routines:
     PsychHIDShutdownHIDStandardInterfaces();
@@ -407,7 +406,7 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
         switch (evt.type) {
             case 0: // Press/Release
             case 1: // Motion/Valuator change
-                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 12, FieldNames, &retevent);
+                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, -1, 12, FieldNames, &retevent);
                 break;
 
             case 2: // Touch begin
@@ -416,7 +415,7 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
             case 5: // Touch sequence compromised marker. If this one shows up - with magic touch point
                     // id 0xffffffff btw., then the user script knows the sequence was cut short / aborted
                     // by some higher priority consumer, e.g., some global gesture recognizer.
-                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 12, FieldNames, &retevent);
+                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, -1, 12, FieldNames, &retevent);
                 break;
 
             default:
@@ -436,6 +435,7 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
         PsychSetStructArrayDoubleElement("NormY",        0, (double) evt.normY,                       retevent);
 
         // Copy out all valuators (including redundant (X,Y) again:
+        v = NULL;
         PsychAllocateNativeDoubleMat(1, evt.numValuators, 1, &v, &outMat);
         for (j = 0; j < evt.numValuators; j++)
             *(v++) = (double) evt.valuators[j];

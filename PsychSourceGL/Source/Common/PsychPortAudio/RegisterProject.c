@@ -1,16 +1,17 @@
 /*
-        PsychToolbox3/Source/Common/PsychPortAudio/RegisterProject.c
+    PsychToolbox3/Source/Common/PsychPortAudio/RegisterProject.c
 
-        PROJECTS: PsychPortAudio only.
+    PROJECTS: PsychPortAudio only.
 
-        AUTHORS:
-        Mario Kleiner   mk      mario.kleiner.de@gmail.com
+    AUTHORS:
 
-        PLATFORMS:      All.
+    Mario Kleiner   mk      mario.kleiner.de@gmail.com
 
-        HISTORY:
+    PLATFORMS:      All.
 
-        21.3.2007       mk      Created.
+    HISTORY:
+
+    21.3.2007       mk      Created.
 
 */
 

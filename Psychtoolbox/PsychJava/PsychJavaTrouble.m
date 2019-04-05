@@ -64,6 +64,9 @@ function PsychJavaTrouble(installStatic)
 % 13.05.2013 Add Matlab static classpath setup code as helper for routines
 %            like PsychtoolboxPostInstallRoutine.m (MK)
 % 07.07.2014 Help text cosmetic. (MK)
+% 02.01.2019 Fix wrong argument order of strfind(), which caused redundant
+%            classpath updates all these years! Thanks to user tibaurauer for
+%            pointing this out. (MK)
 
 % Only fix class path dynamically by default:
 if nargin < 1 || isempty(installStatic)
@@ -156,10 +159,10 @@ if ~IsOctave
             % Look for the first instance of PsychJava in the classpath and
             % replace it with the new one.  All other instances will be
             % ignored.
-            if isempty(strfind('PsychJava', fileContents{i}))
+            if isempty(strfind(fileContents{i}, 'PsychJava'))
                 newFileContents{j, 1} = fileContents{i}; %#ok<AGROW>
                 j = j + 1;
-            elseif ~isempty(strfind('PsychJava', fileContents{i})) && ~pathInserted
+            elseif ~isempty(strfind(fileContents{i}, 'PsychJava')) && ~pathInserted
                 newFileContents{j, 1} = path_PsychJava; %#ok<AGROW>
                 pathInserted = 1;
                 j = j + 1;

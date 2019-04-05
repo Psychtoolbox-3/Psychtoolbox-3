@@ -24,6 +24,7 @@ function [beep,samplingRate] = MakeBeep(freq,duration,samplingRate)
 % 11/1/99   dgp       Cosmetic.
 % 4/13/02   dgp       Make the default samplingRate platform dependent, to match Snd.
 % 4/13/02   dgp       Get the default samplingRate from Snd.
+% 2/07/19   dcn       Off by one fixed.
 
 if nargin<2 || isempty(duration)
 	error('Usage: beep=MakeBeep(freq,duration,[samplingRate]);')
@@ -31,4 +32,4 @@ end
 if nargin<3 || isempty(samplingRate)
 	samplingRate = Snd('DefaultRate');
 end
-beep = sin(2*pi*freq*(0:duration*samplingRate)/samplingRate);
+beep = sin(2*pi*freq*(0:duration*samplingRate-1)/samplingRate);

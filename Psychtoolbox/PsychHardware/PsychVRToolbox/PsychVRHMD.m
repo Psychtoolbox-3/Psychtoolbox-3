@@ -10,14 +10,6 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % Usage:
 %
-% oldverbosity = PsychVRHMD('Verbosity' [, newverbosity]);
-% - Get/Set level of verbosity for driver status messages, warning messages,
-% error messages etc. 'newverbosity' is the optional new verbosity level,
-% 'oldverbosity' is the currently set verbosity level - ie. before changing
-% it.  Valid settings are: 0 = Silent, 1 = Errors only, 2 = Warnings, 3 = Info,
-% 4 = Debug.
-%
-%
 % hmd = PsychVRHMD('AutoSetupHMD' [, basicTask][, basicRequirements][, basicQuality][, vendor][, deviceIndex]);
 % - Automatically detect the first connected HMD, set it up with reasonable
 % default parameters, and return a device handle 'hmd' to it. If the system
@@ -217,8 +209,8 @@ function varargout = PsychVRHMD(cmd, varargin)
 % hmdinfo = PsychVRHMD('GetInfo') returns hmdinfo.VRControllersSupported == 0, then
 % only a minimally useful 'input' state is returned, which is based on emulating or
 % faking input from real controllers, so this function will be of limited use. Specifically,
-% on emulated controllers, only the input.Time and input.Buttons fields are returned, all
-% other fields are missing.
+% on emulated controllers, only the input.Valid, input.Time and input.Buttons
+% fields are returned, all other fields are missing.
 %
 % 'controllerType' can be one of OVR.ControllerType_LTouch, OVR.ControllerType_RTouch,
 % OVR.ControllerType_Touch, OVR.ControllerType_Remote, OVR.ControllerType_XBox, or
@@ -227,6 +219,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % Return argument 'input' is a struct with fields describing the state of buttons and
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
+% 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector

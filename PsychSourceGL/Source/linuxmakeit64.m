@@ -45,7 +45,7 @@ end
 
 if mode==3
     % Build PsychPortAudio.mexa64:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output PsychPortAudio -largeArrayDims -DPTBMODULE_PsychPortAudio -ICommon/Base -ILinux/Base -ICommon/PsychPortAudio -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" /usr/local/lib/libportaudio.a -lc -lrt -lasound
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output PsychPortAudio -largeArrayDims -DPTBMODULE_PsychPortAudio -ICommon/Base -ILinux/Base -ICommon/PsychPortAudio -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" -lportaudio -lasound -lc -lrt -ldl
     unix(['mv ../Projects/Linux/build/PsychPortAudio.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 

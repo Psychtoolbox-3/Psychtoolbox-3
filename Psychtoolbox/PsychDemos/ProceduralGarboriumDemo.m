@@ -96,7 +96,7 @@ PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
 ifi = Screen('GetFlipInterval', win);
 
 % Enable alpha-blending, set it to a blend equation useable for linear
-% superposition with alpha-weighted source. This allows to linearly
+% additive superposition. This allows to linearly
 % superimpose gabor patches in the mathematically correct manner, should
 % they overlap. Alpha-weighted source means: The 'globalAlpha' parameter in
 % the 'DrawTextures' can be used to modulate the intensity of each pixel of

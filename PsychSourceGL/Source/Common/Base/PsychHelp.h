@@ -1,24 +1,20 @@
 /*
-  PsychToolbox2/Source/Common/PsychHelp.h		
-  
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS: All
-  
-  PROJECTS:
-  08/19/02	awi		Screen on MacOS9
+  PsychToolbox3/Source/Common/PsychHelp.h
 
-  HISTORY:
-  08/19/02  awi		 
-  
-  DESCRIPTION:
-  
-  T0 DO: 
+  AUTHORS:
+
+    Allen.Ingling@nyu.edu           awi
+    mario.kleiner.de@gmail.com      mk
+
+  PLATFORMS: All
+
+  PROJECTS:
+
+    08/19/02    awi All
 
 */
 
-//begin include once 
+//begin include once
 #ifndef PSYCH_IS_INCLUDED_PsychHelp
 #define PSYCH_IS_INCLUDED_PsychHelp
 
@@ -33,6 +29,7 @@ void PsychGiveUsage(void);
 void PsychGiveUsageExit(void);
 char *PsychGetFunctionName(void);
 void PsychOneShotReturnHelp(void);
+const char* PsychBuildSynopsisString(const char* modulename);
 
 //end include once
 #endif

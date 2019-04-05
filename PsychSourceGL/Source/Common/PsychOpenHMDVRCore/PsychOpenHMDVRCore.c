@@ -666,7 +666,7 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
         printf("PsychOpenHMDVRCore-INFO: HeadPose: Orientation [x,y,z,w] = [%f, %f, %f, %f]\n", state[3], state[4], state[5], state[6]);
     }
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
+    PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount, FieldNames, &status);
 
     PsychSetStructArrayDoubleElement("Time", 0, tNow, status);
 

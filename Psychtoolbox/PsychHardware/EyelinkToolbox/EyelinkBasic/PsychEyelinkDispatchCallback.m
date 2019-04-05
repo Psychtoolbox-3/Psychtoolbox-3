@@ -16,29 +16,29 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 %
 % to actually receive and display the images, register this function as eyelink's callback:
 % if Eyelink('Initialize', 'myEyelinkDispatchCallback') ~=0
-% 	error('eyelink failed init')
+%   error('eyelink failed init')
 % end
 % result = Eyelink('StartSetup',1) %put the tracker into a mode capable of sending images
-% %then you must hit 'return' on the PTB computer, this key command will be sent to the tracker host to initiate sending of images.
+% then you must hit 'return' on the PTB computer, this key command will be sent to the tracker host to initiate sending of images.
 %
 % This function fetches the most recent live image from the Eylink eye
 % camera and displays it in the previously assigned onscreen window.
 %
-% History:ed
-% 15.3.2009 Derived from MemoryBuffer2TextureDemo.m (MK).
-%  4.4.2009 Updated to use EyelinkGetKey + fixed eyelinktex persistence crash (edf).
-% 11.4.2009 Cleaned up. Should be ready for 1st release, although still
-%           pretty alpha quality. (MK).
-% 15.6.2010 Added some drawing routines to get standard behaviour back. Enabled
-%           use of the callback by default. Clarified in helptext that user
-%           normally should not have to worry about calling this file. (fwc)
-% 20.7.2010 drawing of instructions, eye-image+title, playing sounds in seperate functions
+% History:
+% 15.3.2009   Derived from MemoryBuffer2TextureDemo.m (MK).
+%  4.4.2009   Updated to use EyelinkGetKey + fixed eyelinktex persistence crash (edf).
+% 11.4.2009   Cleaned up. Should be ready for 1st release, although still
+%             pretty alpha quality. (MK).
+% 15.6.2010   Added some drawing routines to get standard behaviour back. Enabled
+%             use of the callback by default. Clarified in helptext that user
+%             normally should not have to worry about calling this file. (fwc)
+% 20.7.2010   drawing of instructions, eye-image+title, playing sounds in seperate functions
 %
-% 1.2.2010 nj modified to allow for cross hair and fix bugs
+%  1.2.2010   modified to allow for cross hair and fix bugs. (nj)
+% 29.10.2018  Drop 'DrawDots' for calibration target. Some white-space fixes.
 
 % Cached texture handle for eyelink texture:
 persistent eyelinktex;
-% add by NJ
 global dw dh offscreen;
 
 % Cached window handle for target onscreen window:
@@ -107,10 +107,10 @@ if isstruct(callArgs) && isfield(callArgs,'window')
     if Screen('WindowKind', callArgs.window) ~= 1
         error('argument didn''t contain a valid handle of an open onscreen window!  pass in result of EyelinkInitDefaults(previouslyOpenedPTBWindowPtr).');
     end
-    
+
     % Ok, valid handle. Assign it and return:
     eyewin = callArgs.window;
-    
+
     % Assume rest of el structure is valid:
     el = callArgs;
     clearScreen=1;
@@ -135,54 +135,44 @@ if isempty(eyewin)
     return;
 end
 
-% Flag that tells if a new camera image was received and our camera image
-% texture needs update:
+% Flag that tells if a new camera image was received and our camera image texture needs update:
 newcamimage = 0;
 needsupdate = 0;
 
 switch eyecmd
-    
-    
     case 1,
         % New videoframe received. See code below for actual processing.
         newcamimage = 1;
         needsupdate = 1;
-        
     case 2,
         % Eyelink Keyboard query:
         [rc, el] = EyelinkGetKey(el);
-        
     case 3,
         % Alert message:
         fprintf('Eyelink Alert: %s.\n', msg);
         needsupdate = 1;
-        % TODO FIXME: Implement some reasonable behaviour...
     case 4,
         % Image title of camera image transmitted from Eyelink:
-        % 		fprintf('Eyelink image title is %s. [Threshold = %f]\n', msg, callArgs(2));
+        % fprintf('Eyelink image title is %s. [Threshold = %f]\n', msg, callArgs(2));
         if callArgs(2) ~= -1
             imgtitle = sprintf('Camera: %s [Threshold = %f]', msg, callArgs(2));
         else
             imgtitle = msg;
         end
         needsupdate = 1;
-        
     case 5,
         % Define calibration target and enable its drawing:
-        %                  		fprintf('draw_cal_target.\n');
+        % fprintf('draw_cal_target.\n');
         calxy = callArgs(2:3);
         clearScreen=1;
         needsupdate = 1;
-        
     case 6,
         % Clear calibration display:
-        %         fprintf('clear_cal_display.\n');
+        % fprintf('clear_cal_display.\n');
         clearScreen=1;
         drawInstructions=1;
         needsupdate = 1;
-        
     case 7,
-        
         % Setup calibration display:
         if inDrift
             drawInstructions = 0;
@@ -190,9 +180,9 @@ switch eyecmd
         else
             drawInstructions = 1;
         end
-        
+
         clearScreen=1;
-        %       // drawInstructions=1;
+        % drawInstructions=1;
         drawcount = 0;
         lastImageTime = GetSecs;
         needsupdate = 1;
@@ -201,14 +191,13 @@ switch eyecmd
         % Setup image display:
         eyewidth  = callArgs(2);
         eyeheight = callArgs(3);
-        %         fprintf('setup_image_display for %i x %i pixels.\n', eyewidth, eyeheight);
+        % fprintf('setup_image_display for %i x %i pixels.\n', eyewidth, eyeheight);
         drawcount = 0;
         lastImageTime = GetSecs;
         ineyeimagemodedisplay=1;
         drawInstructions=1;
         needsupdate = 1;
     case 9,
-        
         % Exit image display:
         %         fprintf('exit_image_display.\n');
         %         fprintf('AVG FPS = %f Hz\n', drawcount / (GetSecs - lastImageTime));
@@ -233,7 +222,6 @@ switch eyecmd
         %         fprintf('cal_target_beep_hook.\n');
         EyelinkMakeSound(el, 'cal_target_beep');
     case 13,
-        
         % New drift correction target sound:
         %         fprintf('dc_target_beep_hook.\n');
         EyelinkMakeSound(el, 'drift_correction_target_beep');
@@ -248,7 +236,6 @@ switch eyecmd
             % Calibration success:
             EyelinkMakeSound(el, 'calibration_success_beep');
         end
-        
     case 15,
         % Drift correction done sound:
         errc = callArgs(2);
@@ -265,7 +252,7 @@ switch eyecmd
         [width, height]=Screen('WindowSize', eyewin);
         % get mouse
         [x,y, buttons] = GetMouse(eyewin);
-        
+
         HideCursor
         if find(buttons)
             rc = [width , height, x , y,  dw , dh , 1];
@@ -275,7 +262,6 @@ switch eyecmd
          % add by NJ to prevent flashing of text in drift correct
     case 17,
         inDrift =1;
-    
     otherwise
         % Unknown command:
         fprintf('PsychEyelinkDispatchCallback: Unknown eyelink command (%i)\n', eyecmd);
@@ -314,8 +300,8 @@ if newcamimage
     eyelinktex = Screen('SetOpenGLTextureFromMemPointer', eyewin, eyelinktex, eyeimgptr, eyewidth, eyeheight, 4, 0, [], GL_RGBA8, GL_RGBA, hostDataFormat);
 end
 
-%   If we're in imagemodedisplay, draw eye camera image texture centered in
-%   window, if any such texture exists, also draw title if it exists.
+% If we're in imagemodedisplay, draw eye camera image texture centered in
+% window, if any such texture exists, also draw title if it exists.
 if ~isempty(eyelinktex) && ineyeimagemodedisplay==1
     imgtitle=EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle,newImage);
 end
@@ -327,11 +313,9 @@ if ~isempty(calxy)
 end
 
 % Need to draw instructions?
-if drawInstructions==1   
- 
+if drawInstructions==1
     EyelinkDrawInstructions(eyewin, el,msg);
-    drawInstructions=0;    
-    
+    drawInstructions=0;
 end
 
 % Show it: We disable synchronization of Matlab to the vertical retrace.
@@ -350,26 +334,20 @@ return;
 
 function EyelinkDrawInstructions(eyewin, el,msg)
 oldFont=Screen(eyewin,'TextFont',el.msgfont);
-oldFontSize=Screen(eyewin,'TextSize',el.msgfontsize); 
+oldFontSize=Screen(eyewin,'TextSize',el.msgfontsize);
 DrawFormattedText(eyewin, el.helptext, 20, 20, el.msgfontcolour, [], [], [], 1);
-
 
 if el.displayCalResults && ~isempty(msg)
     DrawFormattedText(eyewin, msg, 20, 150, el.msgfontcolour, [], [], [], 1);
 end
-%NJ
 
-% Screen('Flip', eyewin, [], [], 1);
 Screen(eyewin,'TextFont',oldFont);
 Screen(eyewin,'TextSize',oldFontSize);
-% fprintf('drawn-instructions\n');
 
 function  imgtitle=EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle,newImage)
-% fprintf('EyelinkDrawCameraImage\n');
 persistent lasttitle;
 global dh dw offscreen;
 try
-    
     if ~isempty(eyelinktex)
         eyerect=Screen('Rect', eyelinktex);
         % we could cash some of the below values....
@@ -377,52 +355,40 @@ try
         [width, heigth]=Screen('WindowSize', eyewin);
         dw=round(el.eyeimgsize/100*width);
         dh=round(dw * eyerect(4)/eyerect(3));
-        
+
         drect=[ 0 0 dw dh ];
         drect=CenterRect(drect, wrect);
         Screen('DrawTexture', eyewin, eyelinktex, [], drect);
         %     fprintf('EyelinkDrawCameraImage:DrawTexture \n');
-        
     end
     % imgtitle
     % if title is provided, we also draw title
     if ~isempty(eyelinktex) && exist( 'imgtitle', 'var') && ~isempty(imgtitle)
-        
         %oldFont=Screen(eyewin,'TextFont',el.imgtitlefont);
         %oldFontSize=Screen('TextSize',eyewin,el.imgtitlefontsize);
         rect=Screen('TextBounds', eyewin, imgtitle );
         [w2, h2]=RectSize(rect);
-        
+
         % added by NJ as a quick way to prevent over drawing and to clear text
         if newImage || isempty(lasttitle) || ~strcmp(imgtitle,lasttitle)
-            
-            
             if -1 == Screen('WindowKind', offscreen)
                 Screen('Close', offscreen);
             end
-            
-            sn = Screen('WindowScreenNumber', eyewin); 
+
+            sn = Screen('WindowScreenNumber', eyewin);
             offscreen = Screen('OpenOffscreenWindow', sn, el.backgroundcolour, [], [], 32);
-            
             Screen(offscreen,'TextFont',el.imgtitlefont);
             Screen(offscreen,'TextSize',el.imgtitlefontsize);
             Screen('DrawText', offscreen, imgtitle, width/2-dw/2, heigth/2+dh/2+h2, el.imgtitlecolour);
-                   
             Screen('DrawTexture',eyewin,offscreen,  [width/2-dw/2 heigth/2+dh/2+h2 width/2-dw/2+500 heigth/2+dh/2+h2+500], [width/2-dw/2 heigth/2+dh/2+h2 width/2-dw/2+500 heigth/2+dh/2+h2+500]);
-
-
             Screen('Close',offscreen);
-            
-            newImage = 0;    
+            newImage = 0;
         end
         %imgtitle=[]; % return empty title, so it doesn't get drawn over and over again.
         lasttitle = imgtitle;
-        
     end
 catch %myerr
     fprintf('EyelinkDrawCameraImage:error \n');
-    %myerr.message
-    %myerr.stack.line
     disp(psychlasterror);
 end
 
@@ -442,39 +408,33 @@ switch(s)
         v=el.drift_correction_target_beep(2);
         d=el.drift_correction_target_beep(3);
     case 'calibration_failed_beep'
-%         doBeep=1;
         doBeep=el.feedbackbeep;
         f=el.calibration_failed_beep(1);
         v=el.calibration_failed_beep(2);
         d=el.calibration_failed_beep(3);
     case 'calibration_success_beep'
-%         doBeep=1;
         doBeep=el.feedbackbeep;
         f=el.calibration_success_beep(1);
         v=el.calibration_success_beep(2);
         d=el.calibration_success_beep(3);
     case 'drift_correction_failed_beep'
-%         doBeep=1;
         doBeep=el.feedbackbeep;
         f=el.drift_correction_failed_beep(1);
         v=el.drift_correction_failed_beep(2);
         d=el.drift_correction_failed_beep(3);
     case 'drift_correction_success_beep'
-%         doBeep=1;
         doBeep=el.feedbackbeep;
         f=el.drift_correction_success_beep(1);
         v=el.drift_correction_success_beep(2);
         d=el.drift_correction_success_beep(3);
     otherwise
         % some defaults
-%         doBeep=1;
         doBeep=el.feedbackbeep;
         f=500;
         v=0.5;
         d=1.5;
 end
 
-% function Beeper(frequency, [fVolume], [durationSec]);
 if doBeep==1
     Beeper(f, v, d);
 end
@@ -489,14 +449,6 @@ if insetSize < 1
     insetSize = 1;
 end
 
-% Dotsize small enough to fit into size limit of GPU?
-maxdotsize = 10; % Could do better here, but 10 is conservative default.
-if (size <= maxdotsize) && (insetSize <= maxdotsize)
-    % DrawDots works for these small dots:
-    Screen('DrawDots', eyewin, calxy, size, el.calibrationtargetcolour, [], 1);
-    Screen('DrawDots', eyewin, calxy, insetSize, el.backgroundcolour, [], 1);
-else
-    % Use FillOval for larger dots:
-    Screen('FillOval', eyewin, el.calibrationtargetcolour, [calxy(1)-size/2 calxy(2)-size/2 calxy(1)+size/2 calxy(2)+size/2], size+2);
-    Screen('FillOval', eyewin, el.backgroundcolour, [calxy(1)-inset/2 calxy(2)-inset/2 calxy(1)+inset/2 calxy(2)+inset/2], inset+2);
-end
+% Use FillOval for larger dots:
+Screen('FillOval', eyewin, el.calibrationtargetcolour, [calxy(1)-size/2 calxy(2)-size/2 calxy(1)+size/2 calxy(2)+size/2], size+2);
+Screen('FillOval', eyewin, el.backgroundcolour, [calxy(1)-inset/2 calxy(2)-inset/2 calxy(1)+inset/2 calxy(2)+inset/2], inset+2);

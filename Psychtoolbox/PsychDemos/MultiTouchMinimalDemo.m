@@ -1,7 +1,7 @@
 function MultiTouchMinimalDemo(dev, verbose)
 % MultiTouchMinimalDemo([dev][, verbose=0]) - A basic demo for multi-touch touchscreens.
 %
-% Run it. Pressing any key will stop it.
+% Run it. Pressing the ESCape key will stop it.
 %
 % Touch the screen and watch the nice colorful happy blobs
 % sprinkle to life :)
@@ -25,6 +25,7 @@ function MultiTouchMinimalDemo(dev, verbose)
 
 % History:
 % 05-Oct-2017 mk  Written.
+% 03-Aug-2018 mk  Only exit demo on ESC key, not on all keys.
 
   % Setup useful PTB defaults:
   PsychDefaultSetup(2);
@@ -79,6 +80,9 @@ function MultiTouchMinimalDemo(dev, verbose)
     % blobcol tracks active touch points - and dying ones:
     blobcol = {};
     buttonstate = 0;
+
+    % Only ESCape allows to exit the demo:
+    RestrictKeysForKbCheck(KbName('ESCAPE'));
 
     % Main loop: Run until keypress:
     while ~KbCheck
@@ -178,10 +182,12 @@ function MultiTouchMinimalDemo(dev, verbose)
 
     TouchQueueStop(dev);
     TouchQueueRelease(dev);
+    RestrictKeysForKbCheck([]);
     ShowCursor(w);
     sca;
   catch
     TouchQueueRelease(dev);
+    RestrictKeysForKbCheck([]);
     sca;
     psychrethrow(psychlasterror);
   end

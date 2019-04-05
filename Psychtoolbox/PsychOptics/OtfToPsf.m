@@ -70,11 +70,12 @@ function [xGridMinutes,yGridMinutes,psf] = OtfToPsf(xSfGridCyclesDeg,ySfGridCycl
 %   03/31/18  dhb   Document key/value pair added by someone else.
 %             dhb   Add key/value pair for negative value tolerance.
 %                   This is now 1e-3 rather than 1e-10
+%   10/17/18  dhb   Now 10-2.
 
 %% Parse input
 p = inputParser;
 p.addParameter('warningInsteadOfErrorForNegativeValuedPSF', 0, @isnumeric);
-p.addParameter('negativeFractionalTolerance', 1e-3, @isnumeric);
+p.addParameter('negativeFractionalTolerance', 1e-2, @isnumeric);
 p.parse(varargin{:});
 
 %% Handle sf args and converstion

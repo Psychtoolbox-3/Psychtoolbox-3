@@ -276,7 +276,7 @@ PsychError SCREENOpenMovie(void)
                     return(PsychError_none);
                 }
                 // We fall through to case 2 - Wait for "Load operation successfully finished."
-
+                // Fall through.
             case 2: // Async open operation finished. Parse asyncinfo struct and return it to host environment:
                 // We need to join our terminated worker thread to release its ressources. If the worker-thread
                 // isn't done yet (fallthrough from case 1 for sync. wait), this join will block us until worker

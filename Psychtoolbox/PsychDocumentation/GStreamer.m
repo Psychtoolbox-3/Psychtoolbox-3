@@ -64,21 +64,21 @@
 %
 % You should check for and install the latest runtime packages available for your
 % system for best reliability and performance. However, as a convenience, at time
-% of this writing (January 2017) the required downloads would be:
+% of this writing (October 2018) the required downloads would be:
 %
-% For MS-Windows: 64-Bit Intel runtime v1.10.2 for use with 64-Bit Matlab/Octave.
+% For MS-Windows: 64-Bit Intel runtime v1.14.4 for use with 64-Bit Matlab/Octave.
 %
-% <http://gstreamer.freedesktop.org/data/pkg/windows/1.10.2/gstreamer-1.0-x86_64-1.10.2.msi>
+% <http://gstreamer.freedesktop.org/data/pkg/windows/1.14.4/gstreamer-1.0-x86_64-1.14.4.msi>
 %
-% For Apple OSX: Runtime v1.10.2
+% For Apple OSX: Runtime v1.14.4
 %
-% <http://gstreamer.freedesktop.org/data/pkg/osx/1.10.2/gstreamer-1.0-1.10.2-x86_64.pkg>
+% <http://gstreamer.freedesktop.org/data/pkg/osx/1.14.4/gstreamer-1.0-1.14.4-x86_64.pkg>
 %
 %
 % When the installer asks you to select the components it should install,
-% select a "Custom installation" (instead of "Full installation" or "Basic
-% installation" or such). Then, in the displayed check list of packages to
-% install, select *all* components manually, if you want support for all
+% select a "Custom installation" (instead of a "Basic installation" or such).
+% Then, if you chose a "Custom installation" in the displayed check list of packages
+% to install, select *all* components manually, if you want support for all
 % video formats and all functionality. Without this, many popular video
 % formats like H264 video will not play at all, or video recording / video
 % capture and similar functions may not work. In fact, even our own demos,

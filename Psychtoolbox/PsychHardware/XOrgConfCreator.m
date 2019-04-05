@@ -760,8 +760,8 @@ function xdriver = DetectDDX(winfo)
         fprintf('Recent AMD GPU with open-source driver detected. ');
         xdriver = 'amdgpu';
       else
-        % DCE-8 or earlier -> ati ddx:
-        fprintf('Classic AMD GPU with open-source driver detected. ');
+        % DCE-8 or earlier, or too new to be supported (DCN-x) -> ati ddx:
+        fprintf('Classic or unknown AMD GPU with open-source driver detected. ');
         xdriver = 'ati';
       end
     else

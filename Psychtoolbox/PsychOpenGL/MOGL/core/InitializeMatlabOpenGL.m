@@ -79,6 +79,7 @@ function varargout = InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitch
 % 02/16/06 mk Written - Based on glmGetconst from Richard F. Murray.
 % 03/27/11 mk Update info about license - New MIT license.
 % 02/15/18 mk Add specialFlags +4 for OpenGL 3.1+ core profile contexts.
+% 04/02/19 mk Fix for removal of glmXXX functions.
 
 global GL;
 
@@ -90,19 +91,19 @@ if isempty(GL)
     AssertOpenGL;
 
     % Is Mogl properly installed?
-    if ~exist('glmGetConst.m','file'),
-        error('Failed to initialize OpenGL for Matlab: Add the ''core'' and ''wrap'' directories of mogl to the MATLAB search path!');
-    end;
+    if ~exist('oglconst.mat','file')
+        error('Failed to initialize OpenGL for Matlab: Add the ''core'' and ''wrap'' directories of mogl to the search path!');
+    end
 end
 
 % We default to non-C-Style constants if not requested otherwise.
 if nargin < 1
    opengl_c_style = 0;
-end;
+end
 
 if isempty(opengl_c_style)
    opengl_c_style = 0;
-end;
+end
 
 % Special flag provided?
 if opengl_c_style == -1
@@ -113,11 +114,11 @@ end
 
 if nargin < 2
     debuglevel = 1;
-end;
+end
 
 if isempty(debuglevel)
     debuglevel = 1;
-end;
+end
 
 if nargin < 3
     noswitchto3D = [];
@@ -136,7 +137,7 @@ if isempty(specialFlags)
 end
 
 % Load all GL constants:
-evalin('caller','global AGL GL GLU');
+evalin('caller','global GL GLU');
 
 % Absolute path to oglconst.mat file: Needed for GNU/Octave:
 oglconstpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core/oglconst.mat'];
@@ -150,7 +151,7 @@ else
    % This is less convenient as one needs to replace GL_ by GL. in
    % all scripts, but it doesn't clutter the Matlab workspace...
    evalin('caller',['load (''' oglconstpath ''', ''AGL'', ''GL'', ''GLU'');']);
-end;
+end
 
 % Assign GL_3D manually - Little hack...
 GL.GL_3D = 1537;
@@ -160,10 +161,10 @@ GL.GL_2D = 1536;
 % directory is set to Psychtoolbox/PsychOpenGL/MOGL/core , so the Windows
 % dynamic linker can find our own local copy of glut32.dll and link moglcore
 % against it.
-if IsWin   
+if IsWin
    % Windows system: Change working dir to location of our glut32.dll
    olddir = pwd;
-   
+
    if IsWin(1)
        % Need 64-Bit freeglut.dll:
        cd([PsychtoolboxRoot 'PsychOpenGL/MOGL/core/x64']);
@@ -171,15 +172,15 @@ if IsWin
        % Need 32-Bit freeglut.dll:
        cd([PsychtoolboxRoot 'PsychOpenGL/MOGL/core']);
    end
-   
+
    % Preload (and thereby link against freeglut.dll) moglcore into Matlab. The
    % special command 'PREINIT' forces loading and performs a no-operation.
    moglcore('PREINIT');
-   
+
    % Now that moglcore is (hopefully) properly loaded, we can revert the working
    % directory to its previous setting:
    cd(olddir);
-end;
+end
 
 % Set moglcores debuglevel:
 moglcore('DEBUGLEVEL', debuglevel);

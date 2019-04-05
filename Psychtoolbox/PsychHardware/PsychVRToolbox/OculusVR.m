@@ -1,11 +1,37 @@
-% OculusVR - How to setup Oculus VR head mounted displays.
+% OculusVR - How to setup the drivers for Oculus VR products.
 %
 % Psychtoolbox supports Virtual Reality Head mounted displays,
-% (VR-HMDs) from Oculus VR LLC. Currently the Oculus Rift DK1
-% and Oculus Rift DK2 are supported on the 64-Bit editions of
-% GNU/Linux, Apple OSX and Microsoft Windows-7 and later, both
-% under 64-Bit GNU/Octave (Linux and OSX) and 64-Bit Matlab (all
-% systems).
+% (VR-HMDs) and some other hardware from Oculus VR LLC.
+%
+% Note: Oculus VR's trademarks, e.g., Oculus, Oculus Rift, etc.
+% are registered trademarks owned by Oculus VR, LLC.
+%
+% The more recent Oculus Rift CV1 and Oculus Touch controllers, or more
+% generally, Oculus VR hardware supported by the Oculus SDK and Oculus
+% runtime v1.16 and later can by utilized with the newer PsychOculusVR1()
+% driver. This requires use of an operating system and hardware platform
+% supported by the Oculus runtime v1.16 or later. Currently the
+% PsychOculusVR1() driver is known to work successfully on 64-Bit Microsoft
+% Windows 7 and later for 64-Bit Intel compatible processors, with suitable
+% graphics cards from AMD and NVidia. Use of the latest stable version of
+% Windows 10 is recommended, as the driver is best tested on that system and
+% Windows 10 is supposed to provide best VR performance and quality due to
+% operating system features not present in earlier Windows versions. You will
+% need to have the Oculus VR runtime version 1.16 or later installed and setup
+% correctly for the driver to work.
+%
+%
+% Limited experimental support for the Oculus Rift CV1 on Linux is available
+% by use of the PsychOpenHMDVR() driver, which utilizes OpenHMD to drive the
+% device. Functionality and display quality is substantially limited compared to
+% use of the PsychOculusVR1() driver though. See "help PsychOpenHMDVR".
+%
+%
+% Currently the older Oculus Rift DK1 and Oculus Rift DK2 are supported
+% by Psychtoolbox on the 64-Bit editions of GNU/Linux, Apple OSX and
+% Microsoft Windows-7 and later, both under 64-Bit GNU/Octave and
+% 64-Bit Matlab by use of the PsychOculusVR() driver. This by use of
+% the Oculus v0.5 SDK for these operating system platforms.
 %
 % In order to use such a HMD you need to install the Oculus VR
 % runtime version 0.5.0.1 (-beta) for your operating system.
@@ -15,7 +41,7 @@
 %
 % https://developer.oculus.com/downloads
 %
-% You must select "Platform: PC" and the version as "0.5.0.1-beta"
+% You must select "Legacy", and the version as "0.5.0.1-beta"
 % in the drop down menus. Then download the "Oculus Runtime for OSX",
 % "Oculus Runtime for Windows", or "Oculus SDK for Linux (experimental)"
 % and follow the installation and setup instructions contained in those

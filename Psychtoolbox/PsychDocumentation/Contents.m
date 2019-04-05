@@ -31,9 +31,6 @@
 %
 % ProgrammingTips.html   - A very incomplete programming manual.
 %
-% Psychtoolbox3-Slides.pdf - Slides of Psychtoolbox presentation from ECVP2007,
-%                            converted to PDF.
-%
 % SyncTrouble            - Problem with synchronization to the vertical
 %                          retrace or display timing, and how to resolve
 %                          them.

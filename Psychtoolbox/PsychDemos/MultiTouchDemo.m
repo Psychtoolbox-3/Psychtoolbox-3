@@ -1,7 +1,7 @@
 function MultiTouchDemo(dev, verbose)
-% MultiTouchDemo([dev]) - A advanced demo for multi-touch touchscreens.
+% MultiTouchDemo([dev][, verbose=0]) - A advanced demo for multi-touch touchscreens.
 %
-% Run it. Pressing any key will stop it.
+% Run it. Pressing the ESCape key will stop it.
 %
 % Touch the screen and watch the nice colorful happy blobs
 % sprinkle to life :)
@@ -34,6 +34,7 @@ function MultiTouchDemo(dev, verbose)
 
 % History:
 % 01-Oct-2017 mk  Written.
+% 03-Aug-2018 mk  Only exit demo on ESC key, not on all keys. Doc fixes.
 
   % Setup useful PTB defaults:
   PsychDefaultSetup(2);
@@ -89,6 +90,9 @@ function MultiTouchDemo(dev, verbose)
     blobcol = {};
     buttonstate = 0;
     colmap = [ 1, 0, 0; 0, 1, 0; 0, 0, 1; 1, 1, 0; 1, 0, 1; 0, 1, 1; 1, 1, 1];
+
+    % Only ESCape allows to exit the demo:
+    RestrictKeysForKbCheck(KbName('ESCAPE'));
 
     % Main loop: Run until keypress:
     while ~KbCheck
@@ -228,10 +232,12 @@ function MultiTouchDemo(dev, verbose)
 
     TouchQueueStop(dev);
     TouchQueueRelease(dev);
+    RestrictKeysForKbCheck([]);
     ShowCursor(w);
     sca;
   catch
     TouchQueueRelease(dev);
+    RestrictKeysForKbCheck([]);
     sca;
     psychrethrow(psychlasterror);
   end

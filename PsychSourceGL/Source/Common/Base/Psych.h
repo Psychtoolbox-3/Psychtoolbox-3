@@ -1,23 +1,16 @@
 /*
-  PsychToolbox2/Source/Common/Psych.h		
-  
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS: All OS
-  
-  PROJECTS:
-  07/17/02	awi		Screen on MacOS9
-   
+    PsychToolbox3/Source/Common/Psych.h
 
-  HISTORY:
-  07/17/02  awi		Wrote it.  
-  
-  DESCRIPTION:
-  
-  T0 DO: 
-	  
+    AUTHORS:
 
+    Allen.Ingling@nyu.edu         awi
+    mario.kleiner.de@gmail.com    mk
+
+    PLATFORMS: All OS
+
+    HISTORY:
+
+    07/17/02    awi     Wrote it.
 */
 
 //begin include once 
@@ -65,4 +58,3 @@ extern "C" {
 
 //end include once
 #endif
-

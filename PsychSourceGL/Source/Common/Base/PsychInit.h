@@ -33,7 +33,6 @@
 PsychError PsychInit(void);
 PsychError PsychExit(void);
 
-
 //end include once
 #endif
 

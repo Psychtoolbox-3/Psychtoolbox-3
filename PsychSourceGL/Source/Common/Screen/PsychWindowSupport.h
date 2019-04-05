@@ -26,7 +26,7 @@
 
 #include "Screen.h"
 
-psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, int specialFlags);
+psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, psych_int64 specialFlags);
 void    PsychCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
 void    PsychCloseWindow(PsychWindowRecordType *windowRecord);
 void    PsychFlushGL(PsychWindowRecordType *windowRecord);

@@ -71,6 +71,8 @@ function bounds=TextBounds(w,text,yPositionIsBaseline,centerTheText)
 % 01/6/17  dgp Added fourth argument to implement the tiny change needed for
 %              TextCenteredBounds. This makes TextCenteredBounds a trivial wrapper that
 %              automatically tracks improvements made to TextBounds.
+% 11/11/18 mk  Avoid cast to char(), so it works with unicode as well on Octave and Matlab.
+%              Problem with unicode reported by dgp.
 
 if nargin < 2 || isempty(text)
     error('Require at least 2 arguments. bounds=TextBounds(window, string [, yPositionIsBaseline][, centerTheText])');
@@ -114,14 +116,14 @@ dx=zeros(1,length(text));
 if centerTheText
     if iscell(text)
         for i=1:length(text)
-            string=char(text(i));
+            string=text(i);
             bounds=Screen('TextBounds',w,string);
             width=bounds(3);
             dx(i)=-width/2;
         end
     else
         for i=1:size(text,1)
-            string=char(text(i,:));
+            string=text(i,:);
             bounds=Screen('TextBounds',w,string);
             width=bounds(3);
             dx(i)=-width/2;
@@ -131,12 +133,12 @@ end
 
 if iscell(text)
     for i=1:length(text)
-        string=char(text(i));
+        string=text(i);
         Screen('DrawText',w,string,x0+dx(i),y0,white,[],yPositionIsBaseline);
     end
 else
     for i=1:size(text,1)
-        string=char(text(i,:));
+        string=text(i,:);
         Screen('DrawText',w,string,x0+dx(i),y0,white,[],yPositionIsBaseline);
     end
 end

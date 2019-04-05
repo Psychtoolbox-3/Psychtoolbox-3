@@ -4,7 +4,7 @@
     AUTHORS:
 
     Allen.Ingling@nyu.edu           awi
-    mario.kleiner.de@gmail.comp     mk
+    mario.kleiner.de@gmail.com      mk
 
     PLATFORMS: All
 

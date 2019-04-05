@@ -51,22 +51,38 @@ try
 
     Screen('Flip',w);
     KbStrokeWait;
+    
+    % unicode text, see DrawHighQualityUnicodeTextDemo for more info about
+    % how to draw unicode text
+    unicodetext = [26085, 26412, 35486, 60, 99, 111, 108, 111, 114, 62, ...
+        12391, 12354, 12426, 12364, 12392, 12358, 12372, 12374, 12356, ...
+        12414, 12375, 12383, 12290, 13, 10];
+    [~,~,~,~,wbounds] = DrawFormattedText2([double('<size=40><font=-:lang=ja><color=ff0000>') unicodetext],'win',w,'sx','center','sy','center','xalign','center','yalign','center');
+    % Screen('FrameRect', w, [255 255 0], wbounds.');
+    
+    Screen('Flip',w);
+    KbStrokeWait;
 
     % draw few lines of text, with varying formatting, and draw it again
     % from cache with some transformation
     [~,~,bbox,cache,wbounds]=DrawFormattedText2('<font=Courier New><size=27>test\n<font=Times New Roman>scr<font><font>een<font> is\n<b><size=50>UGLY\n<size=12><b><u><i>Isn''t it?','win',w,'sx','center','sy','center','xalign','center','yalign','center');
-    Screen('FrameRect', w, [255 0 0], bbox);
-    Screen('FrameRect', w, [255 255 0], GrowRect(wbounds, 2, 2)');
+    Screen('FrameRect', w, [255 0 0 100], bbox);
+    % captbbox = bbox;
+    Screen('FrameRect', w, [255 255 0], wbounds.');
     % calling with the cache and only sx and/or sy, translated the text by
     % (sx,sy)
-    [~,~,bbox]=DrawFormattedText2(cache,'sx', 300);
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sx', 300);
     Screen('FrameRect', w, [0 255 0], bbox);
-    [~,~,bbox]=DrawFormattedText2(cache,'sx',-300,'transform',{'flip',1});
+    Screen('FrameRect', w, [255 255 0], wbounds.');
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sx',-300,'transform',{'flip',1});
     Screen('FrameRect', w, [0 0 255], bbox);
-    [~,~,bbox]=DrawFormattedText2(cache,'sy', 300,'transform',{'rotate',90});
+    Screen('FrameRect', w, [255 255 0], wbounds.');
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sy', 300,'transform',{'rotate',90});
     Screen('FrameRect', w, [0 255 255], bbox);
-    [~,~,bbox]=DrawFormattedText2(cache,'sy',-300,'transform',{'scale',[2 1]});
+    Screen('FrameRect', w, [255 255 0], wbounds.');
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sy',-300,'transform',{'scale',[2 1]});
     Screen('FrameRect', w, [255 0 255], bbox);
+    Screen('FrameRect', w, [255 255 0], wbounds.');
     % when called with more alignment inputs, the bounding box of the text
     % is repositioned:
     rect = [100 100 350 250];
@@ -80,34 +96,15 @@ try
     DrawFormattedText2('simple\ntest\ntext','win',w,'sx','right','sy','bottom','xalign','left','yalign','bottom','winRect',rect,'vSpacing',1.5);
     
     Screen('Flip',w);
-    KbStrokeWait;
-
-    % Repeat, but visualize word-bounds:
-    % calling with the cache and only sx and/or sy, translated the text by
-    % (sx,sy)
-    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'transform',{'flip',3});
-    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
-    Screen('FrameRect', w, [0 255 0], bbox);
-    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sx', 300,'transform',{'flip',2});
-    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
-    Screen('FrameRect', w, [0 255 0], bbox);
-    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sx',-300,'transform',{'flip',1});
-    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
-    Screen('FrameRect', w, [0 0 255], bbox);
-    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sy', 300,'transform',{'rotate',90});
-    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
-    Screen('FrameRect', w, [0 255 255], bbox);
-    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sy',-300,'transform',{'scale',[2 1]});
-    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
-    Screen('FrameRect', w, [255 0 255], bbox);
-
-    Screen('Flip',w);
+    % capt = Screen('GetImage', w, GrowRect(captbbox,20,20));
     KbStrokeWait;
 
     % draw some text, then draw it again in exact same location but rotated
     % 180 degrees. should have exact same bounding box
-    [~,~,bbox1,c]=DrawFormattedText2('<size=40>t<i>e<size>x<i>t&\n<size=120>ajX\n<size=60>t<font=comic sans>estddd<color=ff0000>ddda<i>d','win',w,'sx','center','sy',200,'xalign','left','baseColor',0);
+    [~,~,bbox1,c]=DrawFormattedText2('<size=40>t<i>e<size>x<i>t&\n<size=120>ajX\n<size=60>t<font=comic sans>estddd<color=ff0000>ddda<i>d','win',w,'sx','center','sy',200,'xalign','left','baseColor',0,'cacheMode',2);  % just testing cachemode 2. not recommended to be used for performance reasons. Only use if you want to manually change content of the cache, though note the cache format may change without warning
     [~,~,bbox2]  =DrawFormattedText2(c,'transform',{'rotate',180});
+    % this is equivalent to:
+    % [~,~,bbox2]  =DrawFormattedText2(c,'transform',{'flip',3});
     Screen('FrameRect',w,[255 0 0 128],bbox1,3);
     Screen('FrameRect',w,[0 255 0 128],bbox2,3);
     fprintf('Both bounding boxes exactly the same? %d\n',isequal(bbox1,bbox2));
@@ -141,6 +138,12 @@ try
     [~,~,bbox,cache]=DrawFormattedText2(t,'win',w,'sx','center','xalign','center','sy','center','baseColor',0,'cacheOnly',true);
     % scroll over screen in 5 seconds
     frate = Screen('FrameRate',screenNumber);
+    if frate == 0
+        % Deal with Apples trainwreck not reporting framerate on Mac
+        % builtin displays, but zero:
+        frate = 60;
+    end
+
     textHeight = RectHeight(bbox);
     step = textHeight/frate/5;
     
@@ -167,3 +170,5 @@ catch me
     sca;
     rethrow(me)
 end
+
+% image(capt)

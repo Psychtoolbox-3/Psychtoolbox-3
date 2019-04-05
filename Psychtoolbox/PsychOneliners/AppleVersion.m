@@ -72,7 +72,7 @@ if isempty(firstTime)
 end
 
 b=eval('Gestalt(gestaltString)','[]');
-if isempty(b) || b==-5551
+if isempty(b) || (isscalar(b) && b==-5551)
 	versionString='';
 	return
 end

@@ -1,5 +1,5 @@
 % Psychtoolbox.
-% Version 3.0.14      30 December 2016
+% Version 3.0.15      8 November 2018
 %
 % The Psychophysics Toolbox is a collection of Octave and Matlab functions
 % that extend the language to give you exquisite control of your computer
@@ -17,21 +17,21 @@
 % brackets when you actually call the function. For example, "help Snd"
 % will tell you this:
 %
-%      err = Snd(command,[sig],[rate])
+% err = Snd(command,[sig],[rate])
 %
 % meaning that the "command" argument is required and the "sig" and "rate"
 % arguments are optional. A typical call to Snd looks like this:
 %
-%      Snd('Play', mysoundsignal)
+% Snd('Play', mysoundsignal)
 %
 % The most important and generally useful functions, especially Screen, are
 % in PsychBasic. The PsychDemos will show you how to do useful things in
 % Matlab with the Psychtoolbox. Try these:
 %
-%      help PsychDemos       % Triple-click me & hit enter.
-%      help PsychBasic
-%      help Screen
-%      Screen OpenWindow?
+% help PsychDemos
+% help PsychBasic
+% help Screen
+% Screen OpenWindow?
 %
 % The folder PsychDocumentation contains bits of documentation about
 % technical implementation details, how to solve specific tasks and how to
@@ -41,7 +41,7 @@
 % web site also has advice about getting help, the Psychtoolbox forum, and
 % the latest information about bugs and new releases:
 %
-% web http://psychtoolbox.org/; % triple-click me & hit enter
+% http://psychtoolbox.org/
 %
 % Peter Scarfe has written a large set of nice and beginner friendly
 % Psychtoolbox tutorial scripts.
@@ -55,10 +55,6 @@
 % Kleiner M, Brainard D, Pelli D, 2007, "What's new in Psychtoolbox-3?"
 % Perception 36 ECVP Abstract Supplement.
 %
-% If you find this software useful then please consider donating some money
-% to support its ongoing maintenance and development. See:
-%
-% http://psychtoolbox.org/donations
 %
 %
 % Folders and their contents:
@@ -90,6 +86,7 @@
 % PsychRadiometric       - Radiometric/photometric calculations and conversions.
 % PsychRects             - Manipulate rectangles for drawing.
 % PsychSignal            - Signal processing and math routines.
+% PsychSound             - Sound input and output routines.
 % PsychStairCase         - Adaptive staircase procedure.
 % PsychTests             - Evaluate performance of software and hardware.
 % PsychVideoCapture      - Functions for realtime video capture.

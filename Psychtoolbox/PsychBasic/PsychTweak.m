@@ -55,7 +55,7 @@ function varargout = PsychTweak(cmd, varargin)
 % PsychTweak('GStreamerDebug', debugconfig);
 %
 % -- Select level of verbosity for GStreamer low-level debug output.
-% See <http://docs.gstreamer.com/display/GstSDK/Basic+tutorial+11%3A+Debugging+tools>
+% See <https://gstreamer.freedesktop.org/documentation/tutorials/basic/debugging-tools.html>
 % for explanation of debug options.
 %
 %
@@ -171,7 +171,7 @@ function varargout = PsychTweak(cmd, varargin)
 % workaround is disabled or proven ineffective to solve the problem. The
 % lowres timer has only +/- 1 msec resolution and this workaround may only
 % allow you to continue with very simple experiment scripts. Experiment
-% scripts involving sound via PsychPortAudio + ASIO sound hardware,
+% scripts involving sound via PsychPortAudio,
 % Videocapture or Videorecording, and other types of hardware input/output
 % may fail in weird ways. Even for simple scripts, this may create new
 % weird timing related problems.

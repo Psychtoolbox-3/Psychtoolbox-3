@@ -250,7 +250,7 @@ int PsychOSIsMSWin8(void)
 /* Returns TRUE on Microsoft Windows 10 and later, FALSE otherwise: */
 int PsychOSIsMSWin10(void)
 {
-    #ifdef PTBMODULE_Screen
+    #if defined(PTBMODULE_Screen) || defined(PTBMODULE_PsychPortAudio)
     HKEY hkey;
     // Init flag to -1 aka unknown:
     static int isWin10 = -1;
@@ -271,9 +271,9 @@ int PsychOSIsMSWin10(void)
     // Return flag:
     return(isWin10);
     #else
-    // Only Screen() is currently allowed to call this function, because any mex file which needs this function must link against advapi32.lib, which Screen
-    // does, but most other mex files don't. Warn and return false -- non Windows-10 -- as safe result.
-    printf("PTB-WARNING: Called PsychOSIsMSWin10() from something else than PTBMODULE_Screen! This won't work. Modify source code to make it work if needed!\n");
+    // Only Screen() ans PsychPortAudio() is currently allowed to call this function, because any mex file which needs this function must link against advapi32.lib,
+    // those do, but most other mex files don't. Warn and return false -- non Windows-10 -- as safe result.
+    printf("PTB-WARNING: Called PsychOSIsMSWin10() from something else than PTBMODULE_Screen or PTBMODULE_PsychPortAudio! This won't work. Modify source code to make it work if needed!\n");
     return(0);
     #endif
 }
@@ -1659,6 +1659,7 @@ const char* PsychSupportStatus(void)
 
     if (isSupported == -1) {
         // First call: Do the query!
+        char codename[15];
 
         // Query info about Windows version:
         memset(&osvi, 0, sizeof(OSVERSIONINFO));
@@ -1674,6 +1675,28 @@ const char* PsychSupportStatus(void)
             osvi.dwMinorVersion = 0;
         }
 
+        // Map version code to marketing product name:
+        if (osvi.dwMajorVersion == 4)
+            sprintf(codename, "NT");
+        else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 0)
+            sprintf(codename, "2000");
+        else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 1)
+            sprintf(codename, "XP");
+        else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2)
+            sprintf(codename, "Server 2003");
+        else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 0)
+            sprintf(codename, "Vista");
+        else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1)
+            sprintf(codename, "7");
+        else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 2)
+            sprintf(codename, "8");
+        else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 3)
+            sprintf(codename, "8.1");
+        else if (osvi.dwMajorVersion == 10 && osvi.dwMinorVersion == 0)
+            sprintf(codename, "10");
+        else
+            sprintf(codename, "");
+
         // It is a Vista or later if major version is equal to 6 or higher:
         // 6.0  = Vista, 6.1 = Windows-7, 6.2 = Windows-8, 6.3 = Windows-8.1, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
         // 10.0 = Windows-10
@@ -1681,10 +1704,10 @@ const char* PsychSupportStatus(void)
 
         if (isSupported) {
             // Windows-10 is fully supported, earlier Windows only partially:
-            sprintf(statusString, "Windows version %i.%i %s.", osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMajorVersion == 10) ? "supported and tested to some limited degree" : "partially supported, but no longer tested at all");
+            sprintf(statusString, "Windows %s (Version %i.%i) %s.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMajorVersion == 10) ? "supported and tested to some limited degree" : "partially supported, but no longer tested at all");
         }
         else {
-            sprintf(statusString, "Windows version %i.%i is not supported.", osvi.dwMajorVersion, osvi.dwMinorVersion);
+            sprintf(statusString, "Windows %s (Version %i.%i) is not supported.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion);
         }
     }
 

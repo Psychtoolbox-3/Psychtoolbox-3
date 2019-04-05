@@ -68,6 +68,9 @@ static EGLDisplay egl_display = NULL;
 // Tracking of currently bound OpenGL rendering context for master-thread:
 static struct waffle_context *currentContext = NULL;
 
+// Backup for old screen saver settings before disable:
+static int oldscreensaver[4];
+
 // Forward define prototype for glewContextInit(), which is normally not a public function:
 GLenum glewContextInit(void);
 
@@ -1432,6 +1435,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         XSync(dpy, False);
 
         // First window. Disable future use of screensaver:
+        XGetScreenSaver(dpy, &oldscreensaver[0], &oldscreensaver[1], &oldscreensaver[2], &oldscreensaver[3]);
         XSetScreenSaver(dpy, 0, 0, DefaultBlanking, DefaultExposures);
 
         // If the screensaver is currently running, forcefully shut it down:
@@ -1746,7 +1750,10 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
 
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
-        if (useX11) XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
+        if (useX11) {
+            XSetScreenSaver(dpy, oldscreensaver[0], oldscreensaver[1], oldscreensaver[2], oldscreensaver[3]);
+            XSync(dpy, False);
+        }
 
         PsychUnlockDisplay();
 
@@ -2319,7 +2326,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                                 }
                             }
 
-                            PsychAllocOutStructArray(aux1, FALSE, 1, fieldCount, FieldNames, &s);
+                            PsychAllocOutStructArray(aux1, FALSE, -1, fieldCount, FieldNames, &s);
 
                             // Discarded / Skipped present?
                             if (sce->present_status == 2) {

@@ -92,7 +92,33 @@
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for January 2017 (last update e-mail patch / commit 2017-01-06). Would need updates for anything after mid January 2017 */
+/* Mappings up to date for January 2019 (last update e-mail patch / commit 2018-12-21). Would need updates for any commit after January 2019 */
+
+/* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE12(void)
+{
+    bool isDCE12 = false;
+
+    // VEGA is DCE12:
+
+    // VEGA10: 0x6860 - 0x687F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6860) isDCE12 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6870) isDCE12 = true;
+
+    // VEGA12: 0x69A0 - 0x69AF
+    if ((fPCIDeviceId & 0xFFF0) == 0x69A0) isDCE12 = true;
+
+    // VEGAM: 0x6940 - 0x694F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6940) isDCE12 = true;
+
+    // VEGA20: 0x66A0 - 0x66AF
+    if ((fPCIDeviceId & 0xFFF0) == 0x66A0) isDCE12 = true;
+
+    // RAVEN: 0x15DD so far: RAVEN is not DCE, but a new type DCN-1.0!
+    // if ((fPCIDeviceId & 0xFFFF) == 0x15DD) isDCE12 = true;
+
+    return(isDCE12);
+}
 
 /* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE112(void)
@@ -101,9 +127,10 @@ bool PsychtoolboxKernelDriver::isDCE112(void)
 
     // POLARIS10/11 are DCE11.2:
 
-    // POLARIS10: 0x67C0 - 0x67DF
+    // POLARIS10: 0x67C0 - 0x67DF and 0x6FDF
     if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE112 = true;
     if ((fPCIDeviceId & 0xFFF0) == 0x67D0) isDCE112 = true;
+    if ((fPCIDeviceId & 0xFFFF) == 0x6FDF) isDCE112 = true;
 
     // POLARIS11: 0x67E0 - 0x67FF
     if ((fPCIDeviceId & 0xFFF0) == 0x67E0) isDCE112 = true;
@@ -130,6 +157,11 @@ bool PsychtoolboxKernelDriver::isDCE11(void)
     if ((fPCIDeviceId & 0xFFFF) == 0x98E4) isDCE11 = true;
 
     if (isDCE112()) isDCE11 = true;
+
+    // That all DCE12 can be treated as DCE11 for our purpose is so far an
+    // unproven assumption, but let's see where it leads us - hopefully not to
+    // awful bug reports.
+    if (isDCE12()) isDCE11 = true;
 
     return(isDCE11);
 }
@@ -418,7 +450,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
         if (PCI_VENDOR_ID_ATI == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have ATI's vendor id.\n", getName());
         if (PCI_VENDOR_ID_AMD == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have AMD's vendor id.\n", getName());
 
-        IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE11() ? "DCE-11" : isDCE10() ? "DCE-10" : isDCE8() ? "DCE-8" : isDCE6() ? "DCE-6" : (isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : (isDCE3() ? "DCE-3" : "AVIVO"))));
+        IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE12() ? "DCE-12" : isDCE11() ? "DCE-11" : isDCE10() ? "DCE-10" : isDCE8() ? "DCE-8" : isDCE6() ? "DCE-6" : (isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : (isDCE3() ? "DCE-3" : "AVIVO"))));
 
         // Setup for DCE-4/5/6/8:
         if (isDCE4() || isDCE5() || isDCE6() || isDCE8()) {
@@ -440,8 +472,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
         }
 
         // Setup for DCE-10/11:
-        if (isDCE10() || isDCE11()) {
-            // DCE-10/11 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
+        if (isDCE10() || isDCE11() || isDCE12()) {
+            // DCE-10/11/12 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
             // but the offsets for the different CRTC blocks are different wrt. to pre DCE-10. Therefore
             // need to initialize the offsets differently. Also, some of these parts seem to support up
             // to 7 display engines instead of the old limit of 6 engines:
@@ -464,6 +496,9 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
             // DCE-11.2 has 6 display controllers:
             if (isDCE112()) fNumDisplayHeads = 6;
+
+            // DCE-12 has 6 display controllers:
+            if (isDCE12()) fNumDisplayHeads = 6;
         }
     }
 
@@ -1537,8 +1572,8 @@ void PsychtoolboxKernelDriver::GetGPUInfo(UInt32 *inOutArgs)
     // Default to "don't know".
     inOutArgs[2] = 0;
 
-    // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80), DCE-10 (100) or DCE-11 (110) for now.
-    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE11() ? 110 : isDCE10() ? 100 : isDCE8() ? 80 : (isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10))));
+    // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80), DCE-10 (100) or DCE-11 (110), DCE-12 (120) for now.
+    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE12() ? 120 : isDCE11() ? 110 : isDCE10() ? 100 : isDCE8() ? 80 : (isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10))));
 
     // On NVidia's we distinguish between chip family, e.g., 0x40 for the NV-40 family.
     if (fDeviceType == kPsychGeForce) inOutArgs[2] = fCardType;

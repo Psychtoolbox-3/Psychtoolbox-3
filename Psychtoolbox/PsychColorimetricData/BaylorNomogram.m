@@ -5,7 +5,7 @@ function T = BaylorNomogram(S,lambdaMax)
 % nomogram provided in Baylor, Nunn, and Schnapf, 1987.
 %
 % The result is in quantal units, in the sense that to compute
-% absorptions you want to incident spectra in quanta.
+% absorptions you want to input incident spectra in quanta.
 % To get sensitivity in energy units, apply EnergyToQuanta().
 %
 % Argument lambdaMax may be a column vector of wavelengths.

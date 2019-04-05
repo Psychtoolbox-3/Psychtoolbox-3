@@ -40,6 +40,7 @@ function callStack = AssertMex(varargin)
 %                   on Octave-3.2 et al. as well.
 % 5/28/12    mk     Update: 64-Bit OSX and Linux supported, but OSX PowerPC
 %                   and Matlab < V7.4 (aka R2007a) no longer supported.
+% 23-Feb-2019 mk    Make more robust in case of wrong path order.
 
 persistent okNames mexExtensions;
 
@@ -158,10 +159,20 @@ if isempty(inputNames) || ismember(computer, inputNames)
             fprintf('simply cd into your Psychtoolbox root folder\n%s and then run SetupPsychtoolbox again.\n', PsychtoolboxRoot);
             fprintf('That is the simplest way of fixing such path problems - Or to get more diagnostic output.\n\n');
         end
-        
-        fprintf('Another reason could be insufficient access permissions or \n');
-        fprintf('some missing 3rd party libraries on your system.\n\n');
-        
+
+        if ~isequal(which(mexFilename), which(callerName))
+            fprintf('Seems %s.m is in the Matlab path before/above %s instead of after/below it!\n', callerName, mexFilename);
+            fprintf('This will cause the mex file to be ignored, leading to this error.\n');
+            fprintf('Please run SetupPsychtoolbox again, to rectify this problem, or use Matlabs pathtool\n');
+            fprintf('to shuffle things into the right order. This folder:\n\n');
+            fprintf('%s\n', fileparts(which(mexFilename)));
+            fprintf('\nneeds to go above/before this folder:\n\n');
+            fprintf('%s\n\n\n', fileparts(which([callerName '.m'])));
+        else
+            fprintf('Another reason could be insufficient access permissions or \n');
+            fprintf('some missing 3rd party libraries on your system.\n\n');
+        end
+
         if IsWin
             fprintf('On Microsoft Windows with supported Matlab versions (>= V7.4) it could also be that\n');
             fprintf('the required Visual C++ 2010 runtime libraries are missing on your system.\n');
