@@ -2,7 +2,7 @@ function UserResponse = TwoStateQuery(TheQuestion,TheChoices)
 % Syntax: UserResponse = TwoStateQuery(TheQuestion,[TheChoices])
 % 
 % Purpose: Create simple dialog box asking user an either/or question.
-% On non-GUI setups or Matlab R2014b or later, it will ask a question
+% On non-GUI setups or Octave, it will ask a question
 % in the command window instead of showing a GUI dialog box.
 %
 % History:  5/5/04   mpr   decided whether or not to celebrate cinco de mayo
@@ -27,7 +27,8 @@ function UserResponse = TwoStateQuery(TheQuestion,TheChoices)
 %                          fixed
 %           5/20/13  mk    Add text only fallback for Octave and non-GUI.
 %          11/05/15  mk    Add GUI dialog for Octave in GUI mode. White-space cleanup.
-%          7/20/17   mk    Use text only fallback on Matlab R2014b and later.
+%           7/20/17  mk    Use text only fallback on Matlab R2014b and later.
+%           7/11/19  dn    GUI version now works on Matlab R2014b and later.
 
 if nargin < 2 || isempty(TheChoices)
   TheChoices{1} = 'Yes';
@@ -45,8 +46,8 @@ for k=length(UnderScoreSpots):-1:1
   TheQuestion = [TheQuestion(1:(UnderScoreSpots(k)-1)) '\' TheQuestion(UnderScoreSpots(k):end)];
 end
 
-% Provide text fallback for non-GUI mode or Matlab R2014b and later:
-if ~IsGUI || (~IsOctave && ~verLessThan('matlab','8.4'))
+% Provide text fallback for non-GUI mode or Octave:
+if ~IsGUI || IsOctave
   fprintf('%s\n', TheQuestion);
   fprintf('0 = %s\n', TheChoices{2});
   fprintf('1 = %s\n', TheChoices{1});
@@ -85,7 +86,11 @@ PrimeFontSize = 36;
 
 QueryFigh = figure('Position',[FigPos FigWidth FigHeight],'Resize','off','NumberTitle','off', ...
                   'Name','Cross the Rubicon','MenuBar','none','Color','k');
-set(QueryFigh,'Tag',['Questionable Figure ' int2str(QueryFigh)]);
+QueryFighNr = QueryFigh;
+if ~isnumeric(QueryFighNr)
+    QueryFighNr = QueryFigh.Number;
+end
+set(QueryFigh,'Tag',['Questionable Figure ' int2str(QueryFighNr)]);
 axes('Position',[0 0 1 1],'XLim',[0 FigWidth],'YLim',[0 FigHeight],'XColor','k','YColor','k');
 th=text(FigWidth/2,0.65*FigHeight,TheQuestion,'FontSize',36,'Color',get_color('hot pink'), ...
         'HorizontalAlignment','Center');
@@ -108,13 +113,13 @@ end
 YesBh = uicontrol('Style','PushButton','Position',[YesBPos YesBWidth YesBHeight],'String',TheChoices{1}, ...
                   'ForeGroundColor',get_color('midnight blue'),'BackgroundColor', ...
                   get_color('wheat'),'FontSize',36,'Tag','YesButton','UserData',-1);
-set(YesBh,'CallBack',['set(findobj(' int2str(QueryFigh) ',''Tag'',''YesButton''),''UserData'',1);']);
+set(YesBh,'CallBack',['set(findobj(' int2str(QueryFighNr) ',''Tag'',''YesButton''),''UserData'',1);']);
 NoBWidth = YesBWidth;
 NoBHeight = YesBHeight; 
 NoBh = uicontrol('Style','PushButton','Position',[NoBPos YesBWidth YesBHeight],'String',TheChoices{2}, ...
                 'ForeGroundColor',get_color('midnight blue'),'BackgroundColor', ...
                 get_color('wheat'),'FontSize',36,'CallBack', ...
-                ['set(findobj(' int2str(QueryFigh) ',''Tag'',''YesButton''),''UserData'',0);']);
+                ['set(findobj(' int2str(QueryFighNr) ',''Tag'',''YesButton''),''UserData'',0);']);
 YesBSSize = get(YesBh,'Extent');
 while YesBSSize(3) > YesBWidth
   if YesBPos(1)+YesBWidth > NoBPos(1) - YesBWidth/2
@@ -151,7 +156,7 @@ drawnow;
 waitfor(YesBh,'UserData');
 
 % just in case user deletes figure rather than clicking button
-if isempty(findobj('Tag',['Questionable Figure ' int2str(QueryFigh) ]))
+if isempty(findobj('Tag',['Questionable Figure ' int2str(QueryFighNr) ]))
   UserResponse = -1;
 else
   UserResponse = get(YesBh,'UserData');

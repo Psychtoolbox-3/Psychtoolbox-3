@@ -3,7 +3,7 @@ function ReturnFigh = ConfirmInfo(TheQuestion,ButtonString,HowLongToWait)
 % 
 % Purpose: Create simple dialog box asking user to verify receipt of information.
 %
-% On Octave, Matlab in non-GUI mode, or Matlab version R2014b (8.4) or later,
+% On Octave, or Matlab in non-GUI mode, 
 % this will just print 'TheQuestion' to the command window and wait for a key
 % press for confirmation. Older Matlab versions present a GUI dialog box.
 %
@@ -38,13 +38,14 @@ function ReturnFigh = ConfirmInfo(TheQuestion,ButtonString,HowLongToWait)
 %                           space does not overrun number of spaces
 %          5/20/13    mk    Add text only fallback for Octave and non-GUI.
 %          7/20/17    mk    Use text only fallback on Matlab R2014b and later.
+%          7/11/19    mk    GUI version now works on Matlab R2014b and later.
 DoModal = 1;
 if nargin < 3 || isempty(HowLongToWait)
   HowLongToWait = Inf;
 end
 
 % Provide text fallback for non-GUI mode or Octave:
-if ~IsGUI || IsOctave || ~verLessThan('matlab','8.4')
+if ~IsGUI || IsOctave
   fprintf('%s\nPress any key to continue.\n', TheQuestion);
   [secs, keyCode] = KbStrokeWait (-1, GetSecs + HowLongToWait);
   if any(keyCode)
@@ -82,8 +83,12 @@ OkayBHeight = 50;
 PrimeFontSize = 36;
 
 QueryFigh = figure('Position',[FigPos FigWidth FigHeight],'Resize','off','NumberTitle','off', ...
-									'Name','Acknowledge','Menubar','none','Color','k');
-set(QueryFigh,'Tag',['Confirmation Figure ' int2str(QueryFigh)]);
+    'Name','Acknowledge','Menubar','none','Color','k');
+QueryFighNr = QueryFigh;
+if ~isnumeric(QueryFighNr)
+    QueryFighNr = QueryFigh.Number;
+end
+set(QueryFigh,'Tag',['Confirmation Figure ' int2str(QueryFighNr)]);
 axes('Position',[0 0 1 1],'XLim',[0 FigWidth],'YLim',[0 FigHeight],'XColor','k','YColor','k');
 th=text(FigWidth/2,0.7*FigHeight,TheQuestion,'FontSize',PrimeFontSize,'Color',get_color('hot pink'), ...
 				'HorizontalAlignment','Center');
@@ -205,7 +210,7 @@ end
 OkayBh = uicontrol('Style','PushButton','Position',[OkayBPos OkayBWidth OkayBHeight],'String',ButtonString, ...
 									'ForeGroundColor',get_color('midnight blue'),'BackgroundColor', ...
 									get_color('wheat'),'FontSize',36,'Tag','OkayButton','UserData',-1);
-set(OkayBh,'CallBack',['set(findobj(' int2str(QueryFigh) ',''Tag'',''OkayButton''),''UserData'',1);']);
+set(OkayBh,'CallBack',['set(findobj(' int2str(QueryFighNr) ',''Tag'',''OkayButton''),''UserData'',1);']);
 OkayBSSize = get(OkayBh,'Extent');
 while OkayBSSize(3) > OkayBWidth
 	if OkayBPos(1)+OkayBWidth > FigWidth - OkayBWidth/2
@@ -247,10 +252,10 @@ if DoModal
 	
   UserHitOkay = ishandle(OkayBh);
   
-	delete(findobj('Tag',['Confirmation Figure ' int2str(QueryFigh)]));
+	delete(findobj('Tag',['Confirmation Figure ' int2str(QueryFighNr)]));
 else
   UserHitOkay = 1;
-	set(OkayBh,'CallBack',['delete(' int2str(QueryFigh) ');']);
+	set(OkayBh,'CallBack',['delete(' int2str(QueryFighNr) ');']);
 end
 
 if nargout
