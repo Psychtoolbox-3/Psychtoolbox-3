@@ -2,8 +2,8 @@ function UserResponse = TwoStateQuery(TheQuestion,TheChoices)
 % Syntax: UserResponse = TwoStateQuery(TheQuestion,[TheChoices])
 % 
 % Purpose: Create simple dialog box asking user an either/or question.
-% On non-GUI setups or Octave, it will ask a question
-% in the command window instead of showing a GUI dialog box.
+% On non-GUI setups it will ask a question in the command window instead
+% of showing a GUI dialog box.
 %
 % History:  5/5/04   mpr   decided whether or not to celebrate cinco de mayo
 %           10/13/04 mpr   set Yes Button automatically to be enlarged for large
@@ -46,8 +46,8 @@ for k=length(UnderScoreSpots):-1:1
   TheQuestion = [TheQuestion(1:(UnderScoreSpots(k)-1)) '\' TheQuestion(UnderScoreSpots(k):end)];
 end
 
-% Provide text fallback for non-GUI mode or Octave:
-if ~IsGUI || IsOctave
+% Provide text fallback for non-GUI mode:
+if ~IsGUI
   fprintf('%s\n', TheQuestion);
   fprintf('0 = %s\n', TheChoices{2});
   fprintf('1 = %s\n', TheChoices{1});
@@ -64,9 +64,9 @@ end
 % questdlg builtin dialog box for Octave with GUI:
 if IsOctave
   button = questdlg(TheQuestion, 'Question', TheChoices{1}, TheChoices{2}, 'Cancel', 'Cancel');
-  if strcmp(button, TheChoices{1})
+  if ~isempty(strfind(button, TheChoices{1}))
     UserResponse = 1;
-  elseif strcmp(button, TheChoices{2})
+  elseif ~isempty(strfind(button, TheChoices{2}))
     UserResponse = 0;
   else
     UserResponse = -1;
