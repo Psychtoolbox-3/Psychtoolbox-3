@@ -1,5 +1,4 @@
 include README
 include PsychSourceGL/License.txt
-include PsychPython/VERSION
 recursive-include PsychSourceGL *.c
 recursive-include PsychSourceGL *.h

@@ -21,10 +21,9 @@ Psychtoolbox/ptbflavorinfo.txt
 .fuse_*
 liboctave.*
 liboctinterp.*
-PsychPython/__pycache__/
-PsychPython/*.pyc
-PsychPython/demos/__pycache__/
-PsychPython/demos/*.pyc
+*.pyc
+__pycache__
+*.so
 dist/
 psychtoolbox.egg-info/
 Psychtoolbox/PsychTests/TimingtestResults/*

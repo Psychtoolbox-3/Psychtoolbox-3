@@ -15,8 +15,9 @@ is_64bits = sys.maxsize > 2**32
 # unified version number, read from simple text file
 def get_version():
     import re
-    VERSIONFILE="PsychPython/_version.py"
-    verstrline = open(VERSIONFILE, "rt").read()
+    VERSIONFILE = "PsychPython/psychtoolbox/_version.py"
+    with open(VERSIONFILE, "rt") as fid:
+        verstrline = fid.read()
     VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
     mo = re.search(VSRE, verstrline, re.M)
     if mo:
@@ -254,7 +255,8 @@ setup (name = 'psychtoolbox',
        author_email = 'mario.kleiner.de@gmail.com',
        url = 'http://psychtoolbox.org',
        packages = ['psychtoolbox', 'psychtoolbox.demos'],
-       package_dir = {'psychtoolbox' : 'PsychPython',
+       package_dir = {'' : 'PsychPython',
+                      'psychtoolbox' : 'PsychPython/psychtoolbox',
                       'psychtoolbox.demos' : 'PsychPython/demos'},
        package_data = extra_files,
        ext_package = 'psychtoolbox',

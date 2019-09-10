@@ -7,15 +7,15 @@ caution only for development purposes right now.
 
 e.g.::
 
-    from psychtooolbox import PsychPortAudio
+    from psychtoolbox import PsychPortAudio
     pahandle = PsychPortAudio('Open', [], [], [0], Fs, 2)
     PsychPortAudio('FillBuffer', pahandle, stereowav)
     PsychPortAudio('Start', pahandle)
 
 becomes::
 
-    from psychtooolbox import portaudio
-    stream = portaudio.Stream([], [], [0], Fs, 2)
+    from psychtoolbox import audio
+    stream = audio.Stream([], [], [0], Fs, 2)
     stream.fill_buffer(stereowav)
     stream.start()
 
@@ -27,7 +27,7 @@ Function summary from PsychPortAudio for not-yet-implemented functions:
 
 pahandle = PsychPortAudio('OpenSlave', pamaster [, mode][, channels]
     [, selectchannels]);
-    
+
 PsychPortAudio('DeleteBuffer'[, bufferhandle] [, waitmode]);
 PsychPortAudio('RefillBuffer', pahandle [, bufferhandle=0], bufferdata
     [, startIndex=0]);
@@ -115,7 +115,7 @@ class Stream():
         :return:
         """
         start_time = PsychPortAudio('Start', self.handle, repetitions, when,
-                                   wait_for_start, stop_time, resume)
+                                    wait_for_start, stop_time, resume)
         return start_time
 
     def stop(self, wait_for_end_playback=0, block_until_stopped=1,
@@ -133,7 +133,7 @@ class Stream():
 
     def close(self):
         """Close the current stream"""
-        if self._closed: # if we're already closed don't try again
+        if getattr(self, '_closed', False): # if we're already closed don't try again
             return
         try:
             PsychPortAudio('Close', self.handle)
@@ -215,11 +215,11 @@ class Stream():
     def get_audio_data(self, secs_allocate=None,
                        min_secs=None, max_secs=None, single_type=1):
         """Get audio data from the port audio stream (e.g. from the mic)
-        
-        :param secs_allocate: 
+
+        :param secs_allocate:
         :param min_secs: minimum seconds returned
         :param max_secs: maximum seconds returned
-        :param single_type: 
+        :param single_type:
         :return: (audiodata, absrecposition, overflow, cstarttime)
         """
         return PsychPortAudio('GetAudioData', self.handle,
@@ -287,4 +287,3 @@ class Slave(Stream):
             PsychPortAudio('Volume', self.handle, volume)
         if data is not None:
             self.fill_buffer(data)
-
