@@ -10,7 +10,7 @@
 # Copyright (c) 2018 Mario Kleiner. Licensed under MIT license.
 #
 
-from _version import __version__
+from ._version import __version__
 import sys
 is_64bits = sys.maxsize > 2**32
 
