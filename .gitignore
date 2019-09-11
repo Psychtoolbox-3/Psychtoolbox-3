@@ -23,7 +23,7 @@ liboctave.*
 liboctinterp.*
 *.pyc
 __pycache__
-*.so
+PsychPython/psychtoolbox/*.so
 dist/
 psychtoolbox.egg-info/
 Psychtoolbox/PsychTests/TimingtestResults/*
