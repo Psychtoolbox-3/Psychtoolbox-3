@@ -1,6 +1,16 @@
-function dpi=MeasureDpi(theScreen)
-% dpi=MeasureDpi([theScreen])
-% Helps the user to accurately measure the screen's dots per inch.
+function [dpi, SP]=MeasureDpi(theScreen, CC)
+% dpi=MeasureDpi([theScreen], [CC]);
+% Helps the user to accurately measure the screen's dots per inch. 
+% INPUT:
+% theScreen -> Screen parameter; 
+% CC-> Creditcard parameter, 1-> Yes. Other-> no
+% 
+% OUTPUT:
+% dpi-> Dots per inch.
+% SP -> Screen presets withdrawn from the Monitor drivers(EDID). It will provide
+% you with the physical size Width and Height, the screen resolution, the
+% DotPitch and dpi automatically. Note: This feature has not been tested in
+% Linux or MacOS, and it won't work with old monitors.
 %
 % Denis Pelli
 
@@ -16,31 +26,37 @@ function dpi=MeasureDpi(theScreen)
 %             both Mac and Windows
 % 11/6/06 dgp Updated from PTB-2 to PTB-3.
 % 01/31/16 mk Fix some wrong assumptions for PTB-3. Get rid of GetChar.
+% 8/13/19 mgg Mofify to use it with a credit card (common object of a
+%             known size).
+% 9/10/19 mgg Optional output: Withdraw the presets from the screen
+%             inc. the screen size, resolution, dot pitch and distance independent dpi.
 
-if nargin>1 || nargout>1
-    error('Usage: dpi=MeasureDpi(screen)');
+if nargin>2 || nargout>2
+    error([datestr(now),':>> Error wrong call to function, use it as: dpi=MeasureDpi(Screen)', newline, 'or [dpi, SP]=MeasureDpi(Screen, CC)']);
 end
-if nargin<1
-    theScreen=0;
+if ~exist(theScreen) || isempty(theScreen)
+    theScreen=max(Screen('Screens')); % Use the second screen, most of the cases.
+    disp([datestr(now),':>> No screen value has been provided so I assume ',...
+        'that either you would like to use the secondary screen, or the main one if you only have one...']);
 end
 AssertOpenGL;
+
 try
-    disp('Please find an object of known width to hold against the display.');
-    disp('E.g. a ruler or an 8.5-inch page.')
-    inches=input('Do you prefer inches (1) or cm (0)? ');
-    if inches
+    if nargin>1 && isequal(CC,1) % Using a credit card
         unitInches=1;
         units='inches'; % e.g. distance in inches
         unit='inch';    % e.g. 5 inch object
+        objectInches= 8.56*(1/2.54); % ID-1 format, ISO/IEC 7810 credit card (85.60 × 53.98 mm).
+        [unitInches, units, unit] = EnglishOrSI();
     else
-        unitInches=1/2.54;
-        units='cm';
-        unit='cm';
+        disp('Please find an object of known width to hold against the display.');
+        disp('E.g.  a ruler or an 8.5-inch page.');
+        [unitInches, units, unit] = EnglishOrSI();
+        objectInches=input(sprintf('How wide is your object, in %s? ',units))*unitInches;
+        disp('A small correction will be made for your viewing distance and the thickness of');
+        disp('the screen''s clear front plate, which separates your object from the screen''s');
+        disp('light emitting surface.');
     end
-    objectInches=input(sprintf('How wide is your object, in %s? ',units))*unitInches;
-    disp('A small correction will be made for your viewing distance and the thickness of');
-    disp('the screen''s clear front plate, which separates your object from the screen''s');
-    disp('light emitting surface.');
     isLCD = input('Is your display a flat panel, instead of a CRT? [y/n]: ', 's');
     if isLCD == 'y'
         thicknessInches=0.1;
@@ -55,9 +71,22 @@ try
     [window,screenRect]=Screen('OpenWindow',theScreen);
     white=WhiteIndex(window);
     black=BlackIndex(window);
-
+    
+    % This might work if you have a modern monitor with reasonable updated
+    % drivers.
+    [SP.ScreenWidthOS, SP.ScreenHeightOS] = Screen('DisplaySize', theScreen);
+    [SP.Xpixels, SP.Ypixels] = Screen('WindowSize', w);  
+    SP.DotPitchX= (SP.ScreenWidthOS/SP.Xpixels);
+    SP.DotPitchY=(SP.ScreenHeightOS/SP.Ypixels);
+    SP.DotPitchDiag= (SP.DotPitchX + SP.DotPitchY) /2;
+    SP.dpi=floor((sqrt((SP.Xpixels)^2+(SP.Ypixels)^2))/(sqrt((SP.ScreenWidthOS)^2+(SP.ScreenHeightOS)^2)/25.4));
+    
     % Instructions
-    s=sprintf('Hold your %.1f-%s-wide object against the display.',objectInches/unitInches,unit);
+    if nargin>1 && isequal(CC,1) % Using a credit card
+        s=sprintf('Hold your credit card against the display.');
+    else
+        s=sprintf('Hold your %.1f-%s-wide object against the display.',objectInches/unitInches,unit);
+    end
     theText={s,'Press, drag, and release the mouse to draw a bar'...
         ,'that matches the width of your object. Use one eye.'};
     Screen('TextFont',window,'Arial');
@@ -88,7 +117,7 @@ try
     Screen('Flip',window);
     oldButton=0;
     while 1
-        [x,y,button]=GetMouse;
+        [x,~,button]=GetMouse;
         if any(button)
             if ~oldButton
                 origin=x;
@@ -168,3 +197,17 @@ catch
     sca;
     psychrethrow(psychlasterror);
 end
+
+function [unitInches, units, unit] = EnglishOrSI()
+% Ask user whether to use the International System of Units or the English
+% / Ameerican System(inches).
+inches=input('Do you prefer inches (1) or cm (0)? ');
+        if inches
+            unitInches=1;
+            units='inches'; % e.g. distance in inches
+            unit='inch';    % e.g. 5 inch object
+        else
+            unitInches=1/2.54;
+            units='cm';
+            unit='cm';
+        end
