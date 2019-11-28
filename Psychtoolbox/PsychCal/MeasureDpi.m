@@ -200,7 +200,7 @@ end
 
 function [unitInches, units, unit] = EnglishOrSI()
 % Ask user whether to use the International System of Units or the English
-% / Ameerican System(inches).
+% / American System(inches).
 inches=input('Do you prefer inches (1) or cm (0)? ');
         if inches
             unitInches=1;
