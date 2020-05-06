@@ -97,7 +97,11 @@ end
 
 % If we get to this point, then user wants total control:
 if exist('rng')
-  rng(seed, whichGen);
+  if isstruct(seed) % later Matlab return struct by rng()
+    rng(seed);
+  else
+    rng(seed, whichGen);
+  end
 else
   rand(whichGen,seed);
   randn(whichGen,seed);
