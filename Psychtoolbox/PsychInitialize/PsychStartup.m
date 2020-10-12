@@ -48,7 +48,15 @@ try
             sdkroot = getenv('GSTREAMER_1_0_ROOT_X86');
             suffix = 'x86\';
         end
-
+        if isempty(sdkroot) %try alternative Windows enviroment variable name
+            if Is64Bit
+                % Use 64-Bit GStreamer runtime for 64-Bit Matlab/Octave on Windows:
+                sdkroot = getenv('GSTREAMER_1_0_ROOT_MSVC_X86_64');
+            else
+                % Use 32-Bit GStreamer runtime atm. for 32-Bit Octave-4.0 on Windows:
+                sdkroot = getenv('GSTREAMER_1_0_ROOT_MSVC_X86');
+            end
+        end
         if isempty(sdkroot)
             if Is64Bit
                 fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86_64 is undefined.\n');
