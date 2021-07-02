@@ -293,6 +293,7 @@ if exist('PsychEyelinkDispatchCallback') %#ok<EXIST>
 else
     el.callback = [];
 end
+el.calTargetDrawer = [];
 
 
 EyelinkUpdateDefaults(el);

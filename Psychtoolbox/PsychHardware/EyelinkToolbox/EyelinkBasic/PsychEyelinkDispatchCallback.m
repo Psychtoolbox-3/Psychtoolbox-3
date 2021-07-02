@@ -309,7 +309,11 @@ end
 % Draw calibration target, if any is specified:
 if ~isempty(calxy)
     drawInstructions=0;
-    EyelinkDrawCalibrationTarget(eyewin, el, calxy);
+    if isa(el.calTargetDrawer,'function_handle')
+        el.calTargetDrawer(eyewin, el, calxy);
+    else
+        EyelinkDrawCalibrationTarget(eyewin, el, calxy);
+    end
 end
 
 % Need to draw instructions?
