@@ -3,10 +3,14 @@
 
   On Octave, compile with:
 
-  mex -v -g RPiGPIO_pig.c -lpigpiod -O3
+  mex -v -g RPiGPIO_pigdif.c -lpigpiod_if2 -O3
 
   This program requires that the pigpio library is installed.
   See https://abyz.me.uk/rpi/pigpio for download and installation
+
+  Before using the program, one must run
+  sudo pigpiod
+  to ensure a pigpio daemon is running
 
   ------------------------------------------------------------------------------
 
@@ -30,14 +34,16 @@
 #include <sys/types.h>
 
 /* wiringPi library for RPi GPIO control includes */
-#include <pigpio.h>
+#include <pigpiod_if2.h>
 
 static bool firstTime = 1;
 static bool sysMode = 1;
+static int pigd_number = 0;
 
 void exitfunc(void)
 {
-    gpioTerminate();
+    pigpio_stop(pigd_number);
+    pigd_number = -1;
     firstTime = 1;
 }
 
@@ -55,14 +61,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     if (firstTime) {
         // Enable return of proper error codes if wiringPi setup fails.
         // We want to handle this gracefully instead of crashing:
-        if (gpioInitialise()<0)
-            mexErrMsgTxt("Failed to initialize GPIO system with pigpio");
+        pigd_number = pigpio_start(0,0);
 
         sysMode = 1;
 
         if (!geteuid()) {
             // Upgrade to root access mode:
             sysMode = 0;
+        }
+
+        if (pigd_number<0) {
+            mexPrintf("pigpio init failed: Error code %i [%s]\n", pigd_number, strerror(rc));
+            mexErrMsgTxt("Failed to initialize GPIO system.");
         }
 
         // Successfully connected. Register exit handler to close GPIO control
@@ -75,7 +85,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 
     // Special case: Called with one return argument and no input arguments. Return RPi board revision number:
     if (nrhs == 0 && nlhs == 1) {
-        version = gpioHardwareRevision();
+        version = get_hardware_revision(pigd_number);
         plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
         *(mxGetPr(plhs[0])) = (double) version;
         return;
@@ -130,7 +140,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 
     switch (cmd) {
         case 0: // Read input level from pin: 1 = High, 0 = Low
-            rc = gpioRead(pin);
+            rc = gpio_read(pigd_number, pin);
             plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
             *(mxGetPr(plhs[0])) = (double) rc;
             break;
@@ -139,7 +149,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             if (arg < 0)
                 mexErrMsgTxt("New logic level of output pin missing for output pin write.");
 
-            gpioWrite(pin, arg);
+            gpio_write(pigd_number, pin, arg);
             break;
 
         case 2: // NOT in sysmode: Write a new pwm level to output pin: 0 to 1024 on RPi
@@ -174,14 +184,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             if (sysMode)
                 mexErrMsgTxt("PWM control unsupported in sys mode! Must run as root via sudo to use this!");
 
-            gpioSetPullUpDown(pin, (arg==0) ? PI_PUD_OFF : ((arg>0) ? PI_PUD_UP : PI_PUD_DOWN));
+            set_pull_up_down(pigd_number, pin, (arg==0) ? PI_PUD_OFF : ((arg>0) ? PI_PUD_UP : PI_PUD_DOWN));
             break;
 
         case 5: // Wait for rising or falling edge on given input pin via interrupt.
             if (arg < -1)
                 mexErrMsgTxt("Timeout value in milliseconds missing.");
 
-            mexErrMsgTxt("Wait for edge not implemented.");
+            rc = wait_for_edge(pigd_number, pin, EITHER_EDGE, arg);
             plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
             *(mxGetPr(plhs[0])) = (double) rc;
             break;
