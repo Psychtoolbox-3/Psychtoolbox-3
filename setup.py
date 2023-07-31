@@ -176,7 +176,8 @@ if platform.system() == 'Windows':
     psychhid_extra_objects = []
 
 if platform.system() == 'Darwin':
-    print('Building for macOS...\n')
+    machine = platform.machine()
+    print(f'Building for macOS {machine}...\n')
     osname = 'OSX'
     # These should go to extra_link_args in Extension() below, but apparently distutils
     # always appends the extra_link_args at the end of the linker command line, which is
@@ -214,12 +215,15 @@ if platform.system() == 'Darwin':
     # files and only tests with 10.13. Also note that already 10.11 is unsupported by Apple and
     # therefore a security risk.
     base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.9']
+    # Assuming the compiler is clang, this is how to turn warnings into errors
+    base_link_args = ['-Wl,-fatal_warnings']
 
     # Extra OS specific libs for PsychPortAudio:
     audio_libdirs = []
-    audio_extralinkargs = []
+    audio_extralinkargs = base_link_args
     audio_libs = []
     # Include our statically linked on-steroids version of PortAudio:
+    # TODO: This needs to depend on intel vs arm64!
     audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio_osx_64.a']
 
     # Include Apples open-source HID Utilities for all things USB-HID device handling, also libusb-1.0:
@@ -229,9 +233,10 @@ if platform.system() == 'Darwin':
     psychhid_libs = []
     # Weak-link libusb-1.0.dylib, so user does not need it on their local system as long as they
     # don't use PsychHID functions like USBControlTransfer/USBInterruptTransfer/USBBulkTransfer:
-    psychhid_extralinkargs = ['-weak_library', 'PsychSourceGL/Cohorts/libusb1-win32/libusb-1.0.dylib']
+    psychhid_extralinkargs = ['-weak_library', 'PsychSourceGL/Cohorts/libusb1-win32/libusb-1.0.dylib'] + base_link_args
 
     # Extra objects for PsychHID - statically linked HID utilities:
+    # TODO: This needs to depend on Intel vs arm64!
     psychhid_extra_objects = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a']
 
     # Extra files needed, e.g., libraries:
@@ -242,6 +247,7 @@ ext_modules = []
 name = 'GetSecs'
 GetSecs = Extension(name,
                     extra_compile_args = base_compile_args,
+                    extra_link_args = base_link_args,
                     define_macros = get_basemacros(name, osname),
                     include_dirs = get_baseincludedirs(name, osname),
                     sources = get_basesources(name, osname),
@@ -258,6 +264,7 @@ WaitSecs = Extension(name,
                      include_dirs = get_baseincludedirs(name, osname),
                      sources = get_basesources(name, osname),
                      libraries = base_libs,
+                     extra_link_args = base_link_args,
                      py_limited_api = py_limited_api,
                      )
 ext_modules.append(WaitSecs)
@@ -302,6 +309,7 @@ IOPort = Extension(name,
                    include_dirs = get_baseincludedirs(name, osname),
                    sources = get_basesources(name, osname),
                    libraries = base_libs,
+                   extra_link_args = base_link_args,
                    py_limited_api = py_limited_api,
                   )
 ext_modules.append(IOPort)
