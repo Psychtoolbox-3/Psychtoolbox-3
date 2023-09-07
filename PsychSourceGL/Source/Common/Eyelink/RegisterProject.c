@@ -109,6 +109,12 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("CalMessage", &EyelinkCalMessage));
 	PsychErrorExit(PsychRegister("ReadFromTracker", &EyelinkReadFromTracker));
 
+	// BR: Added as of EyeLink Developers Kit 2.1 release
+	PsychErrorExit(PsychRegister("EDKVersion",				&EyelinkEDKVersion));
+
+	// BR: Added as of EyeLink Developers Kit 2.1 maintenance release
+	PsychErrorExit(PsychRegister("SendFile",				&EyelinkSendFile));
+
 	//register synopsis and named subfunctions.
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 	PsychSetModuleAuthorByInitials("emp");
@@ -117,6 +123,7 @@ PsychError PsychModuleInit(void)
 	PsychSetModuleAuthorByInitials("mk");
 	PsychSetModuleAuthorByInitials("edf");
 	PsychSetModuleAuthorByInitials("nj");
+	PsychSetModuleAuthorByInitials("br");
 
 	return(PsychError_none);
 }

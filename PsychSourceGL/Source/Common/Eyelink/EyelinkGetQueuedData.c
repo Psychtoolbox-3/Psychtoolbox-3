@@ -358,7 +358,7 @@ psych_bool TrackerOKForRawValues(void) {
 	static psych_bool OK=FALSE;
 	
 	int err,ver[4];
-	char errmsg[2 * ERR_BUFF_LEN]="",buf[ERR_BUFF_LEN]="";
+	char errmsg[ERR_BUFF_LEN]="",buf[ERR_BUFF_LEN]="";
 	psych_bool tryAgain=TRUE;
 	
 	if(OK){ //check static value so we don't do the expensive stuff below more than once

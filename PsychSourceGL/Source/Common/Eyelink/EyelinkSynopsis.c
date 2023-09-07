@@ -54,9 +54,10 @@ void InitializeSynopsis()
 	synopsis[i++] = "Eyelink('Shutdown')";
 	synopsis[i++] = "oldlevel = Eyelink('Verbosity' [,level]);";
 	synopsis[i++] = "Eyelink('TestSuite')";
-	synopsis[i++] = "[status =] Eyelink('OpenFile', filename [, dontOpenExisting=0])";
+	synopsis[i++] = "[status =] Eyelink('OpenFile','filename')";
 	synopsis[i++] = "[status =] Eyelink('CloseFile')";
 	synopsis[i++] = "[status =] Eyelink('ReceiveFile',['filename'], ['dest'], ['dest_is_path'])";
+	synopsis[i++] = "[status =] Eyelink('SendFile','filename', 'dest', dest_is_path])";
 	
 	// Calibration
 	synopsis[i++] = "\n% Calibration:";
@@ -103,14 +104,16 @@ void InitializeSynopsis()
 	synopsis[i++] = "[version, versionString]  = Eyelink('GetTrackerVersion')";
 	synopsis[i++] = "[time =] Eyelink('TrackerTime')";
 	synopsis[i++] = "[offset =] Eyelink('TimeOffset')";
-	synopsis[i++] = "[status] = Eyelink('ImageTransfer', imagePathOrImageMatrix [, xPosition=0][, yPosition=0][, width=0][, height=0][, trackerXPosition=0][, trackerYPosition=0][, xferoptions=0])";
+	synopsis[i++] = "[status] = Eyelink('ImageTransfer', imagePath [, xPosition=0][, yPosition=0][, width=0][, height=0][, trackerXPosition=0][, trackerYPosition=0][, xferoptions=0])";
+	synopsis[i++] = "[status] = Eyelink('ImageTransfer', imageArray [, xPosition=0][, yPosition=0][, width=0][, height=0][, trackerXPosition=0][, trackerYPosition=0][, xferoptions=0])";
+	synopsis[i++] = "[versionString] = Eyelink('EDKVersion')";
 	
 	synopsis[i++] = "\n% Eyelink Velocity related functions:";
 	synopsis[i++] = "[vel, acc, fsample]= Eyelink('CalculateOverallVelocityAndAcceleration' [, sample_model])";
 	synopsis[i++] = "[vel,fsample] = Eyelink('CalculateVelocity' [,sample_model] )";
 	synopsis[i++] = "[x_vel,y_vel,fsample] = Eyelink('CalculateVelocityXY' [,sample_model] )";
 	
-	// Place Holder
+	// EyelinkToolbox author list
 	synopsis[i++] = "\n\n\n\n% EyelinkToolbox version for the OpenGL PsychToolbox";
 	synopsis[i++] = "% The EyelinkToolbox was developed by:\n";
 	synopsis[i++] = "\tFrans Cornelissen";
@@ -120,6 +123,10 @@ void InitializeSynopsis()
 	synopsis[i++] = "\tMario Kleiner";
 	synopsis[i++] = "\tErik Flister";
 	synopsis[i++] = "\tNuha Jabakhanji";
+	synopsis[i++] = "\tBrian Richardson";
+	synopsis[i++] = "\tKurt Debono";
+	synopsis[i++] = "\tMarcus Johnson";
+
 	
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 
