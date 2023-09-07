@@ -1,6 +1,6 @@
 function varargout = Eyelink(varargin)
 %  The EyelinkToolbox can be used to ceate eye-movement experiments and
-%  control the SR-Research Eyelink gazetrackers (http://www.eyelinkinfo.com/)
+%  control the SR-Research Eyelink gazetrackers (https://www.sr-research.com/)
 %  from within Octave and Matlab.
 %
 %  It is incorporated into the PsychToolbox (http://www.psychtoolbox.org/)
@@ -27,6 +27,11 @@ function varargout = Eyelink(varargin)
 %
 %  More information on this toolbox can be found in the file:
 %  EyelinkToolbox/contents.m  (help EyelinkToolbox)
+%
+%  The EyeLink Toolbox requires the EyeLink Developers Kit installed to
+%  provide the dependency libraries. Please register a user account (free)
+%  at https://www.sr-support.com for access to all support related
+%  information and software downlaods from SR-Research
 %
 
 AssertMex('Eyelink.m');

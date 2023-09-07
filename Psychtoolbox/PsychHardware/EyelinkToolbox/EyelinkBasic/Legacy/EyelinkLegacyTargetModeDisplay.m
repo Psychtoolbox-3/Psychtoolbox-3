@@ -1,6 +1,6 @@
-function result=EyelinkTargetModeDisplay(el)
+function result=EyelinkLegacyTargetModeDisplay(el)
 
-% USAGE: result=EyelinkTargetModeDisplay(el)
+% USAGE: result=EyelinkLegacyTargetModeDisplay(el)
 %
 %		el: Eyelink default values
 % History
@@ -24,7 +24,7 @@ ty=el.MISSING;
 otx=el.MISSING;    % current target position
 oty=el.MISSING;
 
-EyelinkClearCalDisplay(el);	% setup_cal_display()
+EyelinkLegacyClearCalDisplay(el);	% setup_cal_display()
 
 key=1;
 while key~= 0
@@ -43,7 +43,7 @@ while stop==0 && bitand(Eyelink('CurrentMode'), el.IN_TARGET_MODE)
 
 	switch key 
 		case el.TERMINATE_KEY,       % breakout key code
-			EyelinkClearCalDisplay(el); % clear_cal_display();
+			EyelinkLegacyClearCalDisplay(el); % clear_cal_display();
 			result=el.TERMINATE_KEY;
 			return;
 		case el.SPACE_BAR,	         		% 32: accept fixation
@@ -72,19 +72,19 @@ while stop==0 && bitand(Eyelink('CurrentMode'), el.IN_TARGET_MODE)
 	
 	% erased or moved: erase target
 	if (targetvisible==1 && result==0) || tx~=otx || ty~=oty
-		EyelinkEraseCalTarget(el, targetrect);
+		EyelinkLegacyEraseCalTarget(el, targetrect);
 		targetvisible = 0;
 	end
 	% redraw if invisible
 	if targetvisible==0 && result==1
 % 		fprintf( 'Target drawn at: x=%d, y=%d\n', tx, ty );
 		
-		targetrect=EyelinkDrawCalTarget(el, tx, ty);
+		targetrect=EyelinkLegacyDrawCalTarget(el, tx, ty);
 		targetvisible = 1;
 		otx = tx;		% record position for future tests
 		oty = ty;
 		if el.targetbeep==1
-			EyelinkCalTargetBeep(el);	% optional beep to alert subject
+			EyelinkLegacyCalTargetBeep(el);	% optional beep to alert subject
 		end
 	end
 	
@@ -94,16 +94,16 @@ end % while IN_TARGET_MODE
 % exit:					% CLEAN UP ON EXIT
 if el.targetbeep==1
 	if Eyelink('CalResult')==1  % does 1 signal success?
-		EyelinkCalDoneBeep(el, 1);
+		EyelinkLegacyCalDoneBeep(el, 1);
 	else
-	  	EyelinkCalDoneBeep(el, -1);
+	  	EyelinkLegacyCalDoneBeep(el, -1);
 	end
 end
   
 if targetvisible==1
-	EyelinkEraseCalTarget(el, targetrect);   % erase target on exit, bit superfluous actually
+	EyelinkLegacyEraseCalTarget(el, targetrect);   % erase target on exit, bit superfluous actually
 end
-EyelinkClearCalDisplay(el); % clear_cal_display();
+EyelinkLegacyClearCalDisplay(el); % clear_cal_display();
 
 result=0;
 return;

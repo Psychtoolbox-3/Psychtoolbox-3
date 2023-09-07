@@ -31,7 +31,10 @@ function el=EyelinkInitDefaults(window)
 
 el=[];
 
-% eyelink computer check
+% EyeLink Toolbox debug messages (reserved for future use)
+el.debugPrint = false;
+
+% EyeLink Toolbox (Display PC) Computer Type
 el.computer = computer;
 
 % Enable unified keyname -> keycode mapping for all operating systems:
@@ -42,33 +45,32 @@ el.LEFT_EYE=0;
 el.RIGHT_EYE=1;
 el.BINOCULAR=2;
 
-% eyelink connection states
+% EyeLink connection states
 el.notconnected=0;
 el.connected=1;
 el.dummyconnected=-1;
 el.broadcastconnected=2;
 
-
+% Calibration Feedback
 el.displayCalResults = 0;
 
 if ~exist('window', 'var')
     window = [];
-end
-
-if ~isempty(window)
-	el.window=window;
-	el.backgroundcolour = WhiteIndex(el.window);
+    infoStruct = [];
+    el.window = window;
+    el.winInfo = infoStruct;
+else
+    el.window=window;
+    el.winInfo = Screen('GetWindowInfo', window, 0);
 	el.backgroundcolour = GrayIndex(el.window);
 	el.foregroundcolour = BlackIndex(el.window);
     el.msgfontcolour    = BlackIndex(el.window);
     el.imgtitlecolour   = BlackIndex(el.window);
-
+    
 	rect=Screen(el.window,'Rect');
     if Eyelink('IsConnected') ~= el.notconnected
         Eyelink('Command', 'screen_pixel_coords = %d %d %d %d',rect(1),rect(2),rect(3)-1,rect(4)-1);
     end
-else
-	el.window=[];
 end
 
 % set some more global info parameters
@@ -90,16 +92,37 @@ el.drift_correction_success_beep=[800 0.8 0.25];
 el.allowlocaltrigger=1; % allow user to trigger him or herself
 el.allowlocalcontrol=1; % allow control from subject-computer
 el.mousetriggersdriftcorr=0; % 1=allow mouse to trigger drift correction (fwc trick)
-el.quitkey=KbName('ESCAPE'); % when pressed in combination with modifier key
-                             % forces getkeyforeyelink to return 'TERMINATE_KEY' !
+% if IsOSX 
+%     el.quitkey=KbName('DELETE');
+% else
+    el.quitkey=KbName('ESCAPE');  
+% end
 
 % Modifier key is always LeftGUI due to unified keyname mapping:
 el.modifierkey=KbName('LeftGUI');
 
 el.waitformodereadytime=500;
+el.calTargetType = 'ellipse'; % available types: 'ellipse', 'image', 'video'
+
 el.calibrationtargetsize=2.5;  % size of calibration target as percentage of screen
 el.calibrationtargetwidth=1; % width of calibration target's border as percentage of screen
 el.calibrationtargetcolour=[0 0 0];
+
+el.calImageTargetFilename=[];
+el.calImageInfo=[];
+el.calImageData=[];
+el.calImageTexture=[];
+
+el.calAnimationTargetFilename=[];
+el.calAnimationResetOnTargetMove = false;
+el.calAnimationAudioVolume = 1.0;
+el.calAnimationLoopParam = 1; % For testing if default is problematic: 'loop' param passed to Screen('PlayMovie', ...); 1=PTBDefaultLooping, 2=GaplessReload, 5=SegmentSeeksRewing, 8=RewindFlushGPU
+el.calAnimationOpenSpecialFlags1 = 0; % For testing if default is problematic: 'specialFlags1' param passed to Screen('OpenMovie', ...); 0=PTBDefault, 1=YUVnotRGB-decoding, 2=NoSound, 4=DrawMotionVectors, 8=SkipBFrameDecode
+el.calAnimationSetIndexIsFrames = 0; % For testing if default is problematic (only used: following 'OpenMovie' and for rewind when el.calAnimationResetOnTargetMove = true): 'indexIsFrames' param passed to Screen('SetMovieTimeIndex', ...); 0=timeindexIsSeconds, 1=timeindexIsFrames
+el.calAnimationOpenAsync = 0;
+el.calAnimationOpenPreloadSecs = 1;
+el.calAnimationWaitTex = 0;
+el.calAnimationWaitTexClose = 0;
 
 el.devicenumber = []; %see KbCheck for details of this value
 el.getkeyrepeat=1/5; % "sample time" for eyelinkgetkey
@@ -110,10 +133,13 @@ el.msgfont='Helvetica';
 el.msgfontsize=20; % absolute, should perhaps be percentage of screen
 el.eyeimgsize=30; % percentage of screen
 el.helptext='Press RETURN (on either display computer or tracker host computer) to toggle camera image';
-el.helptext=[el.helptext '\n' 'Press ESC to Output/Record'];
+% if IsOSX
+    el.helptext=[el.helptext '\n' 'Press Esc/O for Output/Record'];
+% else
+%     el.helptext=[el.helptext '\n' 'Press O for Output/Record'];
+% end
 el.helptext=[el.helptext '\n' 'Press C to Calibrate'];
 el.helptext=[el.helptext '\n' 'Press V to Validate'];
-% el.helptext=[el.helptext '\n' 'Press D for Drift correction'];
 
 % font info for camera image title
 el.imgtitlefont='Helvetica';
@@ -133,7 +159,11 @@ el.pagedown=KbName('PageDown');
 el.return=KbName('Return');
 el.escape=KbName('ESCAPE');
 el.space=KbName('space');
-el.backspace=KbName('DELETE'); % is this delete backspace?
+if IsOSX 
+    el.backspace=KbName('DELETE');
+else
+    el.backspace=KbName('BackSpace');  
+end
 
 el.f1=KbName('F1');
 el.f2=KbName('F2');
@@ -152,11 +182,8 @@ el.left_control=KbName('LeftControl');
 el.right_control=KbName('RightControl');
 el.lalt=KbName('LeftAlt');
 el.ralt=KbName('RightAlt');
-%el.lmeta=KbName('');
-%el.rmeta=KbName('');
 el.num=KbName('NumLock');
 el.caps=KbName('CapsLock');
-%el.mode=KbName('');
 
 if IsOSX
 	% OS-X supports a separate keycode for the Enter key:
@@ -203,6 +230,7 @@ el.ENTER_KEY=hex2dec('000D');
 el.PAGE_UP=hex2dec('4900');
 el.PAGE_DOWN=hex2dec('5100');
 el.SPACE_BAR=32;
+el.BACKSPACE=hex2dec('0008'); % BRedit - added for supporting back-stepping through targets
 
 el.F1_KEY=hex2dec('3B00');
 el.F2_KEY=hex2dec('3C00');
@@ -231,7 +259,6 @@ el.ELKMOD_MODE=hex2dec('4000');
 
 % other Eyelink values
 
-
 el.ELKEY_DOWN=1;
 el.ELKEY_UP=0;
 
@@ -239,7 +266,7 @@ el.KB_PRESS=10; % Eyelink.h
 el.MISSING=-32768; % eyedata.h
 el.MISSING_DATA=-32768;
 
-el.KEYDOWN=1; %Eyelink manual and core_expt.h have these backwards
+el.KEYDOWN=1; % Eyelink manual and core_expt.h have these backwards
 el.KEYUP=0;
 
 % LINK RETURN CODES
@@ -282,12 +309,11 @@ el.INPUTEVENT=28;  % /* change of input port */
 el.LOSTDATAEVENT=hex2dec('3F'); %/*new addition v2.1, returned by eyelink_get_next_data() to flag a gap in the data stream due to queue filling up (need to get data more frequently)
                                 %/*described in 'EyeLink Programmers Guide.pdf' section 7.2.2, 13.3.2, 18.5.4
 
-% if exist('EyelinkDispatchCallback') %#ok<EXIST>
-%     el.callback = 'EyelinkDispatchCallback';
-% else
-%     el.callback = [];
-% end
-
+el.FIVE_SAMPLE_MODEL = 1;
+el.NINE_SAMPLE_MODEL = 2;
+el.SEVENTEEN_SAMPLE_MODEL = 3;
+el.EL1000_TRACKER_MODEL = 4;
+                                
 if exist('PsychEyelinkDispatchCallback') %#ok<EXIST>
     el.callback = 'PsychEyelinkDispatchCallback';
 else
@@ -296,13 +322,3 @@ end
 
 
 EyelinkUpdateDefaults(el);
-
-
-% % Window assigned?
-% if ~isempty(el.window) && ~isempty(el.callback)
-%     % Yes. Assign it to our dispatch callback:
-% %     EyelinkDispatchCallback(el);
-%     PsychEyelinkDispatchCallback(el);
-% end
-
-% el % uncomment to show contents of this default eyelink structure

@@ -1,12 +1,12 @@
-function rect=EyelinkDrawCalTarget(el, x, y)
+function rect=EyelinkLegacyDrawCalTarget(el, x, y)
 
 % draw simple calibration target
 %
-% USAGE: rect=EyelinkDrawCalTarget(el, x, y)
+% USAGE: rect=EyelinkLegacyDrawCalTarget(el, x, y)
 %
 %		el: eyelink default values
 %		x,y: position at which it should be drawn
-%		rect: 
+%		rect:
 
 % simple, standard eyelink version
 %   22-06-06    fwc OSX-ed

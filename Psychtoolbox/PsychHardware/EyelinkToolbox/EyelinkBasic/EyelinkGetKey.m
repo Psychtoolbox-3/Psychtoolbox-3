@@ -107,7 +107,7 @@ function [key, el]=EyelinkGetKey(el)
   elseif keyCodes(187)==1 % KeypadBackspace
     key=el.ENTER_KEY;
   elseif any(keyCodes(el.backspace))==1
-    key=el.ESC_KEY;
+    key=el.BACKSPACE;
   elseif any(keyCodes(el.escape))==1
     key=el.ESC_KEY;
   elseif any(keyCodes(el.pageup))==1

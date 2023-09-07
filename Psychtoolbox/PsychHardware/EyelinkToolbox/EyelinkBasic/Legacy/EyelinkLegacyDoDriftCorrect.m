@@ -1,13 +1,13 @@
-function result=EyelinkDoDriftCorrect(el, x, y, draw, allowsetup)
+function result=EyelinkLegacyDoDriftCorrect(el, x, y, draw, allowsetup)
 
-% USAGE: result=EyelinkDoDriftCorrect(el [, x, y, draw, allowsetup])
+% USAGE: result=EyelinkLegacyDoDriftCorrect(el [, x, y, draw, allowsetup])
 %
 % el: eyelink default values
 % x,y: position of driftcorrection target
 % draw: set to 1 to draw driftcorrection target
 % allowsetup: set to 1 to allow to go in to go to trackersetup
 %
-% Note that EyelinkDoDriftCorrect() internally uses Beeper() and Snd() to play
+% Note that EyelinkLegacyDoDriftCorrect() internally uses Beeper() and Snd() to play
 % auditory feedback tones if el.targetbeep=1 or el.feedbackbeep=1 and the
 % el.callback function is set to the default PsychEyelinkDispatchCallback().
 % If you want to use PsychPortAudio in a script that also calls EyelinkDoDriftCorrect,
@@ -44,7 +44,7 @@ function result=EyelinkDoDriftCorrect(el, x, y, draw, allowsetup)
 
 result=-1; % initialize
 if nargin < 1 || ~exist('el', 'var') || isempty(el)
-	error( 'USAGE: result=EyelinkDoDriftCorrect(el [, x, y, draw, allowsetup])' );
+	error( 'USAGE: result=EyelinkLegacyDoDriftCorrect(el [, x, y, draw, allowsetup])' );
 end
 
 % fill in missing variables
@@ -60,16 +60,6 @@ if ~exist('allowsetup', 'var') || isempty(allowsetup)
 	allowsetup=1;
 end
 
-% if we have the new callback code, we call it.
-if ~isempty(el.callback)
-    result = Eyelink('DriftCorrStart', x, y, 1, draw, allowsetup);
-    return;
-end
-
-% else we continue with the old version
-
-Eyelink('Command', 'heuristic_filter = ON');
-
 targetrect=[0 0 0 0];
 
 key=1;
@@ -78,12 +68,12 @@ while key~= 0
 end
 
 if draw==1
-	EyelinkClearCalDisplay(el);		% setup_cal_display()
-	targetrect=EyelinkDrawCalTarget(el, x, y);     % we are told where it should be.
+	EyelinkLegacyClearCalDisplay(el);		% setup_cal_display()
+	targetrect=EyelinkLegacyDrawCalTarget(el, x, y);     % we are told where it should be.
 end
 
 if el.targetbeep==1
-	EyelinkCalTargetBeep(el);
+	EyelinkLegacyCalTargetBeep(el);
 end
 
 status=Eyelink( 'DriftCorrStart', x, y);
@@ -132,24 +122,24 @@ while result==el.NO_REPLY
 end % while cal_result==NO_REPLY
 
 if draw==1
-	EyelinkEraseCalTarget(el, targetrect); % bit superfluous actually
-	EyelinkClearCalDisplay(el);	% exit_cal_display()
+	EyelinkLegacyEraseCalTarget(el, targetrect); % bit superfluous actually
+	EyelinkLegacyClearCalDisplay(el);	% exit_cal_display()
 end
 
 if result==el.ESC_KEY || result==-1	% Did we abort drift correction?
 	% yes: go to setup menu to fix any problems
 	if el.targetbeep==1
-		EyelinkCalDoneBeep(el, 0);
+		EyelinkLegacyCalDoneBeep(el, 0);
 	end
 	if allowsetup==1
-		EyelinkDoTrackerSetup(el);
+		EyelinkLegacyDoTrackerSetup(el);
 	else
 		Eyelink( 'SetOfflineMode');
 	end
 else
 	% Otherwise, we apply the drift correction
 	if el.targetbeep==1
-		EyelinkCalDoneBeep(el, 1);
+		EyelinkLegacyCalDoneBeep(el, 1);
 	end
 	Eyelink('ApplyDriftCorr' );
 	result=0;

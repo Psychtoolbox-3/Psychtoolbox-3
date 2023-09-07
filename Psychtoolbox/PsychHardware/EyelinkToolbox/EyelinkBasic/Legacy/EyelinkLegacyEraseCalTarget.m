@@ -1,4 +1,4 @@
-function erasecaltarget(el, rect)
+function EyelinkLegacyEraseCalTarget(el, rect)
 
 % erase calibration target
 %

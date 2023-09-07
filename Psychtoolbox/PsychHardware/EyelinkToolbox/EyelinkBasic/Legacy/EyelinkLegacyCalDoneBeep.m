@@ -1,4 +1,4 @@
-function err=caldonebeep(el, error)
+function err=EyelinkLegacyCalDoneBeep(el, error)
 
 if 0
 if error<=0

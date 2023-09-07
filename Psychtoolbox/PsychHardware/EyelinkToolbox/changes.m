@@ -1,6 +1,25 @@
 % 	EyelinkToolbox.
 % 	History and list of changes
 %
+%   May 2021
+%   Updates to EyelinkBasic
+%       Support for
+%           - Static clibration target images from file
+%           - Animated calibration targets from media file
+%           - Stereomodes supported by Screen()
+%   Updates to EyelinkDemos/SR-ResearchDemos/
+%       - Deprecated old examples
+%       - Added improved examples:
+%           - GazeContingent/FixWindowBufferedSamples
+%           - GazeContingent/FixWindowFastSamples
+%           - GazeContingent/GCBufferedEvents
+%           - GazeContingent/GCFastSamples
+%           - MRI_BlockRecord
+%           - PursuitTarget
+%           - SimplePicture
+%           - SimpleVideo
+%           - SimplePicture
+%
 %   July 2010
 %   Enabled use of callbacks by default
 %   Revampled demos, made to work with new callback version
