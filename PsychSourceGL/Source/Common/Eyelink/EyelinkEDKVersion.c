@@ -23,7 +23,7 @@
 static char useString[] = "[edkVersionString] = Eyelink('EDKVersion')";
 
 static char synopsisString[] =
-"Returns the eyelink_core library version number.\n";
+"Returns a string with the eyelink_core library version number.\n";
 
 static char seeAlsoString[] = "";
 
