@@ -1,6 +1,6 @@
 /*
  
-	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkEDKVersion.c
+	Psychtoolbox-3/PsychSourceGL/Source/Common/Eyelink/EyelinkEDKVersion.c
  
 	PROJECTS: Eyelink 
  
