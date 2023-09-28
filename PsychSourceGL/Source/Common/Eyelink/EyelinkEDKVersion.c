@@ -20,7 +20,7 @@
 
 #include "PsychEyelink.h"
 
-static char useString[] = "[edkVersionString]  = Eyelink('EDKVersion')";
+static char useString[] = "[edkVersionString] = Eyelink('EDKVersion')";
 
 static char synopsisString[] =
 "Returns the eyelink_core library version number.\n";
