@@ -204,28 +204,19 @@ ljustify = 0;
 rjustify = 0;
 bjustify = 0;
 if ischar(sx)
-    if strcmpi(sx, 'center')
-        xcenter = 1;
-    end
-
-    if strcmpi(sx, 'left')
-        ljustify = 1;
-    end
-
-    if strcmpi(sx, 'right')
-        rjustify = 1;
-    end
-
-    if strcmpi(sx, 'wrapat')
-        bjustify = 1;
-    end
-
-    if strcmpi(sx, 'justifytomax')
-        bjustify = 2;
-    end
-
-    if strcmpi(sx, 'centerblock')
-        bjustify = 3;
+    switch lower(sx)
+        case 'center'
+            xcenter = 1;
+        case 'left'
+            ljustify = 1;
+        case 'right'
+            rjustify = 1;
+        case 'wrapat'
+            bjustify = 1;
+        case 'justifytomax'
+            bjustify = 2;
+        case 'centerblock'
+            bjustify = 3;
     end
 
     % Set sx to neutral setting:
