@@ -57,7 +57,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "[status =] Eyelink('OpenFile','filename')";
 	synopsis[i++] = "[status =] Eyelink('CloseFile')";
 	synopsis[i++] = "[status =] Eyelink('ReceiveFile',['filename'], ['dest'], ['dest_is_path'])";
-	synopsis[i++] = "[status =] Eyelink('SendFile','filename', 'dest', dest_is_path])";
+	synopsis[i++] = "[status =] Eyelink('SendFile', src, dest, dest_is_path)";
 	
 	// Calibration
 	synopsis[i++] = "\n% Calibration:";
