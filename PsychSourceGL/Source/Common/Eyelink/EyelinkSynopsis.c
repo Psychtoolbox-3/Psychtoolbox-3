@@ -54,7 +54,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Eyelink('Shutdown')";
 	synopsis[i++] = "oldlevel = Eyelink('Verbosity' [,level]);";
 	synopsis[i++] = "Eyelink('TestSuite')";
-	synopsis[i++] = "[status =] Eyelink('OpenFile','filename')";
+	synopsis[i++] = "[status =] Eyelink('OpenFile', filename [, dontOpenExisting=0])";
 	synopsis[i++] = "[status =] Eyelink('CloseFile')";
 	synopsis[i++] = "[status =] Eyelink('ReceiveFile',['filename'], ['dest'], ['dest_is_path'])";
 	synopsis[i++] = "[status =] Eyelink('SendFile', src, dest, dest_is_path)";
