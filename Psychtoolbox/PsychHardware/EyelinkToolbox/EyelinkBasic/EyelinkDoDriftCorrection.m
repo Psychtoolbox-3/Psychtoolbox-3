@@ -57,7 +57,7 @@ while 1
 
     else
         % else we continue with the old version
-        result = EyelinkLegacyDoDriftCorrect(el, x, y, draw, allowsetup);
+        result = EyelinkDoDriftCorrect(el, x, y, draw, allowsetup);
     end
     
     if result==el.TERMINATE_KEY
