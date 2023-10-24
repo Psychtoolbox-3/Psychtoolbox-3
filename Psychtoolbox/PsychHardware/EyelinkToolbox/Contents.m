@@ -1,4 +1,4 @@
-%  EyelinkToolbox.
+%  EyelinkToolbox
 %
 %  The EyelinkToolbox can be used to ceate eye-movement experiments and
 %  control the SR-Research Eyelink(c) gazetrackers
@@ -115,3 +115,4 @@
 %  Enno Peters, Frans Cornelissen and John Palmer
 %  Groningen, 27-11-2002
 %
+% See also SR-RESEARCHDEMOS

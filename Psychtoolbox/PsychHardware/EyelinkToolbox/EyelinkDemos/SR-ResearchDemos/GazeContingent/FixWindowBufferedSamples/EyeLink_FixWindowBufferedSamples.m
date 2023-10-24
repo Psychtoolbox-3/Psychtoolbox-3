@@ -28,7 +28,7 @@ function EyeLink_FixWindowBufferedSamples(screenNumber)
 % Use buffered data if you need to:
 % a) grab every single consecutive sample online
 % b) grab event data (e.g. fixation/saccade/blink events) online
-
+%
 % Note that some buffered event data take some time to be available online due to the times involved
 % in calculating velocity/acceleration. If you need to retrieve online gaze
 % position as fast as possible and/or you don't need to get all subsequent samples or other

@@ -4,7 +4,7 @@ function EyeLink_BufferedFixUpdateEvents(screenNumber)
 % The dot's location is based on the average x y coordinates of fixations updated online every 50ms via a FIXUPDATE event.
 % See EyeLink Programmers Guide manual > Experiment Templates Overview > Control > Fixation Update Events
 % Each trial ends when the space bar is pressed.
-
+%
 % FIXUPDATE events send updates about a current fixation at regular intervals. By default an interval of 50ms is used. 
 % The first update is sent one update interval after the start of the fixation, and the last is sent at
 % the end of the fixation. This demo uses FIXUPDATE events to get the averaged gaze x y position across each fixation interval. 
