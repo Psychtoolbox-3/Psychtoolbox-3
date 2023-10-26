@@ -187,7 +187,6 @@ try
         imgName = char(imgList(i)); % Get image file name for current trial
         imgInfo = imfinfo(imgName); % Get image file info
         imgData = imread(imgName); % Get image file data
-        fprintf('width: %d, imgInfo.Width: %d, height: %d, imgInfo.Height: %d\n', width, imgInfo.Width, height, imgInfo.Height);
         transferStatus = Eyelink('ImageTransfer', imgData, 0, 0, 0, 0, round(width/2-imgInfo.Width/2), round(height/2-imgInfo.Height/2));
 
         if dummymode == 0 && transferStatus ~= 0 % If connected to EyeLink and image transfer fails
