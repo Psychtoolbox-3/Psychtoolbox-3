@@ -13,7 +13,7 @@ function EyeLink_MRI_BlockRecord(screenNumber)
 % Usage:
 % Eyelink_MRI_BlockRecord(screenNumber)
 %
-% screenNumber is an optional parameter which can be used to pass a specific value to Screen('OpenWindow', ...)
+% screenNumber is an optional parameter which can be used to pass a specific value to PsychImaging('OpenWindow', ...)
 % If screenNumber is not specified, or if isempty(screenNumber) then the default:
 % screenNumber = max(Screen('Screens'));
 % will be used.
@@ -113,9 +113,14 @@ try
     if isempty(screenNumber)
         screenNumber = max(Screen('Screens')); % Use default screen if none specified
     end
-    window = Screen('OpenWindow', screenNumber, [128 128 128]); % Open graphics window
+    PsychDefaultSetup(2);
+    window = PsychImaging('OpenWindow', screenNumber, GrayIndex(screenNumber)); % Open graphics window
     Screen('Flip', window);
+    
     ifi = Screen('GetFlipInterval', window); % Return an estimate of the monitor flip interval 
+
+    % Get max color value for rescaling  to RGB for Host PC & Data Viewer integration
+    colorMaxVal = Screen('ColorRange', window);
     % Return width and height of the graphics window/screen in pixels
     [width, height] = Screen('WindowSize', window);
     
@@ -129,10 +134,10 @@ try
     % pupil size changes (which can cause a drift in the eye movement data)
     el.calibrationtargetsize = 3;% Outer target size as percentage of the screen
     el.calibrationtargetwidth = 0.7;% Inner target size as percentage of the screen
-    el.backgroundcolour = [128 128 128];% RGB grey
-    el.calibrationtargetcolour = [0 0 0];% RGB black
+    el.backgroundcolour = repmat(GrayIndex(screenNumber),1,3);
+    el.calibrationtargetcolour = repmat(BlackIndex(screenNumber),1,3);
     % set "Camera Setup" instructions text colour so it is different from background colour
-    el.msgfontcolour = [0 0 0];% RGB black
+    el.msgfontcolour = repmat(BlackIndex(screenNumber),1,3);
     % You must call this function to apply the changes made to the el structure above
     EyelinkUpdateDefaults(el);
     
@@ -254,7 +259,7 @@ try
             
             % Write messages to EDF: prepare backdrop and draw central crosshairs for DataViewer
             % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Simple Drawing
-            Eyelink('Message', '!V CLEAR %d %d %d', el.backgroundcolour(1), el.backgroundcolour(2), el.backgroundcolour(3));
+            Eyelink('Message', '!V CLEAR %d %d %d', round(el.backgroundcolour(1)/colorMaxVal*255), round(el.backgroundcolour(2)/colorMaxVal*255), round(el.backgroundcolour(3)/colorMaxVal*255));
             Eyelink('Message', '!V DRAWLINE 0 0 0 %d %d %d %d', round(width/2-20), round(height/2), round(width/2+20), round(height/2));
             Eyelink('Message', '!V DRAWLINE 0 0 0 %d %d %d %d', round(width/2), round(height/2-20), round(width/2), round(height/2+20));
             
@@ -317,7 +322,7 @@ try
             if i == length(imgList{iBlock}) % If last trial in block
                 % Clear screen and draw crosshairs for DataViewer
                 % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Simple Drawing
-                Eyelink('Message', '!V CLEAR %d %d %d', el.backgroundcolour(1), el.backgroundcolour(2), el.backgroundcolour(3));
+                Eyelink('Message', '!V CLEAR %d %d %d', round(el.backgroundcolour(1)/colorMaxVal*255), round(el.backgroundcolour(2)/colorMaxVal*255), round(el.backgroundcolour(3)/colorMaxVal*255));
                 Eyelink('Message', '!V DRAWLINE 0 0 0 %d %d %d %d', round(width/2-20), round(height/2), round(width/2+20), round(height/2));
                 Eyelink('Message', '!V DRAWLINE 0 0 0 %d %d %d %d', round(width/2), round(height/2-20), round(width/2), round(height/2+20));
                 while 1

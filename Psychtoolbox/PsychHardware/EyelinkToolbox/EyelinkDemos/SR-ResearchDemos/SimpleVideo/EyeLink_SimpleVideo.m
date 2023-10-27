@@ -9,7 +9,7 @@ function EyeLink_SimpleVideo(screenNumber)
 % Usage:
 % Eyelink_SimpleVideo(screenNumber)
 % 
-% screenNumber is an optional parameter which can be used to pass a specific value to Screen('OpenWindow', ...)
+% screenNumber is an optional parameter which can be used to pass a specific value to PsychImaging('OpenWindow', ...)
 % If screenNumber is not specified, or if isempty(screenNumber) then the default:
 % screenNumber = max(Screen('Screens'));
 % will be used.
@@ -115,8 +115,12 @@ try
     if isempty(screenNumber)
         screenNumber = max(Screen('Screens')); % Use default screen if none specified
     end
-    window = Screen('OpenWindow', screenNumber, [128 128 128]); % Open graphics window
+    PsychDefaultSetup(2);
+    window = PsychImaging('OpenWindow', screenNumber, GrayIndex(screenNumber)); % Open graphics window
     Screen('Flip', window);
+    
+    % Get max color value for rescaling  to RGB for Host PC & Data Viewer integration
+    colorMaxVal = Screen('ColorRange', window);
     % Return width and height of the graphics window/screen in pixels
     [width, height] = Screen('WindowSize', window);
     
@@ -128,9 +132,9 @@ try
     % set calibration/validation/drift-check(or drift-correct) background color. 
     % It is important that this background colour is similar to that of the stimuli to prevent large luminance-based 
     % pupil size changes (which can cause a drift in the eye movement data)
-    el.backgroundcolour = [115 115 115];% RGB grey
+    el.backgroundcolour = repmat(0.45,1,3); % 0.45 == gray matching video stimuli background in normalized color space units
     % set "Camera Setup" instructions text colour so it is different from background colour
-    el.msgfontcolour = [0 0 0];% RGB black
+    el.msgfontcolour = repmat(BlackIndex(screenNumber),1,3);
     
     % Set calibration beeps (0 = sound off, 1 = sound on)
     % Setting beeps to off (0) for video targets
@@ -210,7 +214,7 @@ try
         Eyelink('Message', 'TRIALID %d', i);
         % Write !V CLEAR message to EDF file: creates blank backdrop for DataViewer
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Simple Drawing
-        Eyelink('Message', '!V CLEAR %d %d %d', el.backgroundcolour(1), el.backgroundcolour(2), el.backgroundcolour(3));
+        Eyelink('Message', '!V CLEAR %d %d %d', round(el.backgroundcolour(1)/colorMaxVal*255), round(el.backgroundcolour(2)/colorMaxVal*255), round(el.backgroundcolour(3)/colorMaxVal*255));
         % Supply the trial number as a line of text on Host PC screen
         Eyelink('Command', 'record_status_message "TRIAL %d %s"', i, movieName);        
         % Draw graphics on the EyeLink Host PC display. See COMMANDS.INI in the Host PC's exe folder for a list of commands
@@ -312,7 +316,7 @@ try
         
         % Write !V CLEAR message to EDF file: creates blank backdrop for DataViewer
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Simple Drawing
-        Eyelink('Message', '!V CLEAR %d %d %d', el.backgroundcolour(1), el.backgroundcolour(2), el.backgroundcolour(3));
+        Eyelink('Message', '!V CLEAR %d %d %d', round(el.backgroundcolour(1)/colorMaxVal*255), round(el.backgroundcolour(2)/colorMaxVal*255), round(el.backgroundcolour(3)/colorMaxVal*255));
         
         % Stop recording eye movements at the end of each trial
         WaitSecs(0.1); % Add 100 msec of data to catch final events before stopping
