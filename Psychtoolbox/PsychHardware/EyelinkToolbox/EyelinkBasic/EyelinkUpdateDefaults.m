@@ -11,7 +11,8 @@ function EyelinkUpdateDefaults(el)
 % 27-1-2011 NJ created 
 % 19-12-2012 IA Fix hardcoded callback 
 
-if ~isempty(el.callback) && exist(el.callback,'file')
+callStack = dbstack;
+if ~isempty(el.callback) && exist(el.callback,'file') && ~any(strcmpi({callStack.name}, 'EyelinkInitDefaults'))
     if ~isempty(el.calImageTargetFilename)
         if exist(el.calImageTargetFilename, 'file')
             el.calImageInfo = imfinfo(el.calImageTargetFilename); % Get image file info
@@ -55,6 +56,36 @@ if ~isempty(el.callback) && exist(el.callback,'file')
                 'EyelinkToolbox -- File Not Found:\n', ...
                 '\tel.calAnimationTargetFilename = %s\n\n'], ...
                 el.calAnimationTargetFilename));
+        end
+    end
+
+    if (el.feedbackbeep || el.targetbeep) 
+        if isempty(el.ppa_pahandle)
+            if PsychPortAudio('GetOpenDeviceCount') > 0 && strcmp('PsychEyelinkDispatchCallback', el.callback)
+                warning(sprintf(['EyelinkToolbox -- Either/both of el.feedbackbeep & el.targetbeep are set requiring audio playback.\n' ...
+                    'While a PsychPortAudio device has already been opened, no device handled was passed for EyeLink audio\n' ...
+                    'feedback to use.\n'...
+                    'See ''help SR-ResearchDemos'' projects for implementation examples.\n' ...
+                    '***Disabling EyeLink audio feedback to avoid conflicts with PsychPortAudio device previously opened***\n' ...
+                    '\tel.feedbackbeep = 0\n\tel.targetbeep = 0']));
+                el.feedbackbeep = 0;
+                el.targetbeep = 0;
+
+            elseif PsychPortAudio('GetOpenDeviceCount') == 0 && strcmp('PsychEyelinkDispatchCallback', el.callback)
+                warning(sprintf(['EyelinkToolbox -- Either/both of el.feedbackbeep & el.targetbeep are set requiring audio\n' ...
+                    'playback, but no PsychPortAudio devices are open to have otherwise passed using el.ppa_pahandle.\n' ...
+                    'See ''help SR-ResearchDemos'' projects for implementation examples.\n' ...
+                    '... Opening default audio device with PsychPortAudio automatically.\n' ...
+                    'To otherwise disable EyeLink audio feedback altogether, set el.feedbackbeep &\n' ...
+                    'el.targetbeep to 0.']));
+                InitializePsychSound();
+                el.ppa_sndhandle = PsychPortAudio('Open', [], 1);
+                Snd('Open', el.ppa_sndhandle, 1);
+            end
+        else
+
+
+
         end
     end
 

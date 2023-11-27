@@ -77,6 +77,9 @@ else
     end
 end
 
+% PsychPortAudio configuration
+el.ppa_pahandle = [];
+
 % set some more global info parameters
 % below are old sound definitions
 el.targetdisplaysound='EyelinkTargetBeep';

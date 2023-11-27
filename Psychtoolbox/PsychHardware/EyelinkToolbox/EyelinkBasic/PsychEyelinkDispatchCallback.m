@@ -65,11 +65,6 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 %                   feedback playback. Apologies to NJ for removing
 %                   previous comments where code was previously added, this
 %                   was done for easier reading of the code.
-% 15.3.2020     br added Snd('Close') after Beeper to free sound device
-%               and prevent problems downstream with PsychPortAudio; changed
-%               flip 'dontsync' to '0' to fix missing target flips on Linux;
-%               cleaned command 7 & 11 to fix issue drawing instructions
-%
 
 % Cached texture handle for eyelink texture:
 persistent eyelinktex;
@@ -98,11 +93,9 @@ persistent inDrift;
 offscreen = 0;
 newImage = 0;
 
-
 if 0 == Screen('WindowKind', eyelinktex)
     eyelinktex = []; % Previous PTB Screen() window has closed, needs to be recreated.
 end
-
 
 if isempty(eyelinktex)
     % Define the two OpenGL constants we actually need. No point in
@@ -153,6 +146,67 @@ if isstruct(callArgs) && isfield(callArgs,'window')
     return;
 end
 
+% target & feedback beep waveforms and PsychPortAudio buffers
+persistent audio_status;
+persistent audio_devinfo;
+persistent audio_n_chan;
+persistent audio_fs;
+%persistent audio_ppa_isSlave;
+if ~isempty(el.ppa_pahandle) && isempty(audio_status)
+    audio_status = PsychPortAudio('GetStatus', el.ppa_pahandle);
+    audio_devinfo = PsychPortAudio('GetDevices', [], audio_status.OutDeviceIndex);
+    audio_n_chan = min(2,audio_devinfo.NrOutputChannels);
+    audio_fs = audio_status.SampleRate;
+    %if PsychPortAudio('SetOpMode', pamaster) > 
+    %    audio_ppa_isSlave
+elseif isempty(el.ppa_pahandle) && isempty(audio_fs)
+    audio_status = NaN;
+    audio_devinfo = NaN;
+    audio_n_chan = 1;
+    audio_fs = Snd('DefaultRate');
+end
+persistent beep_waveforms;
+if isempty(beep_waveforms)
+    if el.targetbeep
+        beep_waveforms{1} = repmat(MakeBeep(el.cal_target_beep(1), el.cal_target_beep(3), audio_fs) .* el.cal_target_beep(2), audio_n_chan, 1);
+        beep_waveforms{2} = repmat(MakeBeep(el.drift_correction_target_beep(1), el.drift_correction_target_beep(3), audio_fs) .* el.drift_correction_target_beep(2), audio_n_chan, 1);
+    else
+        beep_waveforms{1} = NaN;
+        beep_waveforms{2} = NaN;
+    end
+    if el.feedbackbeep
+        beep_waveforms{3} = repmat(MakeBeep(el.calibration_failed_beep(1), el.calibration_failed_beep(3), audio_fs) .* el.calibration_failed_beep(2), audio_n_chan, 1);
+        beep_waveforms{4} = repmat(MakeBeep(el.calibration_success_beep(1), el.calibration_success_beep(3),audio_fs) .* el.calibration_success_beep(2), audio_n_chan, 1);
+        beep_waveforms{5} = repmat(MakeBeep(el.drift_correction_failed_beep(1), el.drift_correction_failed_beep(3), audio_fs) .* el.drift_correction_failed_beep(2), audio_n_chan, 1);
+        beep_waveforms{6} = repmat(MakeBeep(el.drift_correction_success_beep(1), el.drift_correction_success_beep(3), audio_fs) .* el.drift_correction_success_beep(2), audio_n_chan, 1);
+    else
+        beep_waveforms{3} = NaN;
+        beep_waveforms{4} = NaN;
+        beep_waveforms{5} = NaN;
+        beep_waveforms{6} = NaN;
+    end
+end
+persistent ppa_beep_buffers;
+if ~isempty(el.ppa_pahandle) && isempty(ppa_beep_buffers)
+    if el.targetbeep
+        ppa_beep_buffers(1) = PsychPortAudio('CreateBuffer', [], beep_waveforms{1});
+        ppa_beep_buffers(2) = PsychPortAudio('CreateBuffer', [], beep_waveforms{2});
+    else
+        ppa_beep_buffers(1) = NaN;
+        ppa_beep_buffers(2) = NaN;
+    end
+    if el.feedbackbeep
+        ppa_beep_buffers(3) = PsychPortAudio('CreateBuffer', [], beep_waveforms{3});
+        ppa_beep_buffers(4) = PsychPortAudio('CreateBuffer', [], beep_waveforms{4});
+        ppa_beep_buffers(5) = PsychPortAudio('CreateBuffer', [], beep_waveforms{5});
+        ppa_beep_buffers(6) = PsychPortAudio('CreateBuffer', [], beep_waveforms{6});
+    else
+        ppa_beep_buffers(3) = NaN;
+        ppa_beep_buffers(4) = NaN;
+        ppa_beep_buffers(5) = NaN;
+        ppa_beep_buffers(6) = NaN;
+    end
+end
 
 % Not an eyelink struct.  Either a 4 component vector from Eyelink(), or something wrong:
 if length(callArgs) ~= 4
@@ -161,7 +215,6 @@ end
 
 % Extract command code:
 eyecmd = callArgs(1);
-% fprintf('%.3f - eyecmd: %d\n', GetSecs, eyecmd); % for debug
 
 if isempty(eyewin) && eyecmd ~= 3
     warning('Got called as callback function from Eyelink() but usercode has not set a valid target onscreen window handle yet! Aborted.'); %#ok<WNTAG>
@@ -174,17 +227,29 @@ needsupdate = 0;
 
 switch eyecmd
     case 1  % New Camera Image Received
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 1; New Camera Image Received\n');
+        end
         newcamimage = 1;
         needsupdate = 1;
         
     case 2  % EyeLink Keyboard Query
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 2; Keyboard Query\n');
+        end
         [rc, el] = EyelinkGetKey(el);
         
     case 3  % Alert message
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 3; Alert Message\n');
+        end
         fprintf('Eyelink Alert: %s.\n', msg);
         needsupdate = 0;
         
     case 4  % Camera Image Caption Text
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 4; Camera Image Caption Text\n');
+        end
         if callArgs(2) ~= -1
             imgtitle = sprintf('Camera: %s [Threshold = %f]', msg, callArgs(2));
         else
@@ -193,6 +258,9 @@ switch eyecmd
         needsupdate = 1;
         
     case 5  % Draw Cal Target
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 5; Draw Cal Target\n');
+        end
         calxy = callArgs(2:3);
         clearScreen=1;
         needsupdate = 1;
@@ -204,11 +272,17 @@ switch eyecmd
         end
         
     case 6  % Clear Cal Display
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 6; Clear Cal Display\n');
+        end
         clearScreen=1;
         drawInstructions=1;
         needsupdate = 1;
         
     case 7  % Setup Cal Display
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 7; Setup Cal Display\n');
+        end
         if inDrift
             drawInstructions = 0;
         else
@@ -218,6 +292,9 @@ switch eyecmd
         needsupdate = 1;
         
     case 8  % Setup Image Display
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 8; Setup Image Display\n');
+        end
         newImage = 1;
         eyewidth  = callArgs(2);
         eyeheight = callArgs(3);
@@ -226,12 +303,18 @@ switch eyecmd
         needsupdate = 1;
         
     case 9  % Exit Image Display
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 9; Exit Image Display\n');
+        end
         clearScreen=1;
         ineyeimagemodedisplay=0;
         drawInstructions=1;
         needsupdate = 1;
         
     case 10 % Erase Cal Target
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 10; Erase Cal Target\n');
+        end
         calxy = [];
         if ~isempty(eyelinkanimationtarget)
             eyelinkanimationtarget.calxy=calxy;
@@ -248,6 +331,9 @@ switch eyecmd
         end
         
     case 11 % Exit Cal Display
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 11; Exit Cal Display\n');
+        end
         calxy = [];
         if(~isempty(eyelinkanimationtarget)	)
             eyelinkanimationtarget.calxy=calxy;
@@ -269,54 +355,82 @@ switch eyecmd
                 Screen('Close', texkill);
             end
         end
-        
+
     case 12 % New Cal Target Sound
-        if ~strcmpi(el.calTargetType, 'video')
-            EyelinkMakeSound(el, 'cal_target_beep');
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 12; New Cal Target Sound\n');
+        end
+        if el.targetbeep && ~strcmpi(el.calTargetType, 'video')
+            EyelinkMakeSound(el, 'cal_target_beep', 1);
         end
         
-    case 13 % New Drift Chk/Corr Sound
-        if ~strcmpi(el.calTargetType, 'video')
-            EyelinkMakeSound(el, 'drift_correction_target_beep');
+    case 13 % New Drift Chk/Corr Target Sound
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 13; New Drift Target Sound\n');
+        end
+        if el.targetbeep && ~strcmpi(el.calTargetType, 'video')
+            EyelinkMakeSound(el, 'drift_correction_target_beep', 2);
         end
         
     case 14 % Cal Done Sound
-        if ~strcmpi(el.calTargetType, 'video')
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 14; Cal Done Sound\n');
+        end
+        if el.feedbackbeep && ~strcmpi(el.calTargetType, 'video')
             errc = callArgs(2);
             if errc > 0
                 % Failed
-                EyelinkMakeSound(el, 'calibration_failed_beep');
+                EyelinkMakeSound(el, 'calibration_failed_beep', 3);
             else
                 % Success
-                EyelinkMakeSound(el, 'calibration_success_beep');
+                EyelinkMakeSound(el, 'calibration_success_beep', 4);
             end
         end
         
     case 15 % Drift Chk/Corr Done Sound
-        if ~strcmpi(el.calTargetType, 'video')
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 15; Drift Done Sound\n');
+        end
+        if el.feedbackbeep && ~strcmpi(el.calTargetType, 'video')
             errc = callArgs(2);
             if errc > 0
                 % Failed
-                EyelinkMakeSound(el, 'drift_correction_failed_beep');
+                EyelinkMakeSound(el, 'drift_correction_failed_beep', 5);
             else
                 % Success
-                EyelinkMakeSound(el, 'drift_correction_success_beep');
+                EyelinkMakeSound(el, 'drift_correction_success_beep', 6);
             end
         end
         
     case 16 % Get Mouse Position
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 16; Get Mouse Position\n');
+        end
         [width, height]=Screen('WindowSize', eyewin);
         [x,y, buttons] = GetMouse(eyewin);
-        HideCursor;
+        HideCursor(eyewin);
         if find(buttons)
             rc = [width , height, x , y,  dw , dh , 1];
         else
             rc = [width , height, x , y , dw , dh , 0];
         end
         
-    case 17 %
-        inDrift =1;
-        
+    case 17 % Non-native callback, from PsychEyelink_setup_cal_display()
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == 17; Flag in drift check/correction mode\n');
+        end
+        inDrift = 1;
+    
+    case -1 % Non-native callback, from Eyelink('Shutdown') for runtime cleanup
+        if Eyelink('Verbosity', -1) >= 5
+            fprintf('PsychEyelinkDispatchCallback: eyecmd == -1; Runtime cleanup\n');
+        end
+        if any(strcmp(fieldnames(el), 'ppa_sndhandle')) && ~isempty(el.ppa_sndhandle)
+            PsychPortAudio('Close', el.ppa_sndhandle);
+            el.ppa_sndhandle = [];
+        end
+        return;
+
     otherwise % Unknown Command
         fprintf('PsychEyelinkDispatchCallback: Unknown eyelink command (%i)\n', eyecmd);
         return;
@@ -367,7 +481,7 @@ if drawInstructions == 1  % Draw Instructions
 end
 
 dontsync = 1;
-dontclear = 0;
+dontclear = 1; % set to 0 to hide instructions during camera display
 Screen('Flip', eyewin, [], dontclear, dontsync);   % Show it
 
 return;
@@ -394,22 +508,18 @@ return;
         else
             drawScreens = 1; % non-stereoscopic drawing
         end
-        
+        oldFont=Screen(eyewin,'TextFont',el.msgfont);
+        oldFontSize=Screen(eyewin,'TextSize',el.msgfontsize);
         for it = 0:drawScreens-1 
             Screen('SelectStereoDrawBuffer', eyewin, it); % select left eye window
-            oldFont=Screen(eyewin,'TextFont',el.msgfont);
-            oldFontSize=Screen(eyewin,'TextSize',el.msgfontsize);
             DrawFormattedText(eyewin, el.helptext, 20, 20, el.msgfontcolour, [], [], [], 1);
             
             if el.displayCalResults && ~isempty(msg)
                 DrawFormattedText(eyewin, msg, 20, 150, el.msgfontcolour, [], [], [], 1);
             end
-            
-            Screen(eyewin,'TextFont',oldFont);
-            Screen(eyewin,'TextSize',oldFontSize);
         end
-        
-        
+        Screen(eyewin,'TextFont',oldFont);
+        Screen(eyewin,'TextSize',oldFontSize);
     end
 
 
@@ -519,57 +629,34 @@ return;
     end
 
 
-    function EyelinkMakeSound(el, s)
+    function EyelinkMakeSound(el, s, i)
         % set all sounds in one place, sound params defined in
         % eyelinkInitDefaults
-        switch(s)
-            case 'cal_target_beep'
-                doBeep=el.targetbeep;
-                f=el.cal_target_beep(1);
-                v=el.cal_target_beep(2);
-                d=el.cal_target_beep(3);
-            case 'drift_correction_target_beep'
-                doBeep=el.targetbeep;
-                f=el.drift_correction_target_beep(1);
-                v=el.drift_correction_target_beep(2);
-                d=el.drift_correction_target_beep(3);
-            case 'calibration_failed_beep'
-                doBeep=el.feedbackbeep;
-                f=el.calibration_failed_beep(1);
-                v=el.calibration_failed_beep(2);
-                d=el.calibration_failed_beep(3);
-            case 'calibration_success_beep'
-                doBeep=el.feedbackbeep;
-                f=el.calibration_success_beep(1);
-                v=el.calibration_success_beep(2);
-                d=el.calibration_success_beep(3);
-            case 'drift_correction_failed_beep'
-                doBeep=el.feedbackbeep;
-                f=el.drift_correction_failed_beep(1);
-                v=el.drift_correction_failed_beep(2);
-                d=el.drift_correction_failed_beep(3);
-            case 'drift_correction_success_beep'
-                doBeep=el.feedbackbeep;
-                f=el.drift_correction_success_beep(1);
-                v=el.drift_correction_success_beep(2);
-                d=el.drift_correction_success_beep(3);
-            otherwise
-                % some defaults
-                doBeep=el.feedbackbeep;
-                f=500;
-                v=0.5;
-                d=1.5;
-        end
-        
-        if doBeep==1
-            if PsychPortAudio('GetOpenDeviceCount') > 0
-                warning(sprintf([ 'EyelinkToolbox - ''el.feedbackbeep'' or ''el.targetbeep'' not 0, and a PsychPortAudio\n' ...
-                    'device is open. Disabling audio beeps from EyelinkToolbox to avoid conflict.\n' ...
-                       ...
-                       ]));
+        if any(strcmp( ...
+            {'cal_target_beep', ...
+            'drift_correction_target_beep', ...
+            'calibration_failed_beep', ...
+            'calibration_success_beep', ...
+            'drift_correction_failed_beep', ...
+            'drift_correction_success_beep'},s))
+            % beep waveform was prepared in advance
+            if isempty(el.ppa_pahandle)
+                Snd('Play', beep_waveforms{i}, audio_fs);
             else
-                Beeper(f, v, d);
-                Snd('Close');
+                PsychPortAudio('FillBuffer', el.ppa_pahandle, ppa_beep_buffers(i));
+                PsychPortAudio('Start', el.ppa_pahandle);
+                if strcmp('drift_correction_success_beep', s)
+                    PsychPortAudio('Stop', el.ppa_pahandle, 1);
+                end
+            end
+
+        else
+            % some defaults
+            if isempty(el.ppa_pahandle)
+                Snd('Play', MakeBeep(500, 1.5) .* 0.5, audio_fs);
+            else
+                PsychPortAudio('CreateBuffer', el.ppa_pahandle, repmat(MakeBeep(500, 1.5, audio_fs) .* 0.5, audio_n_chan, 1));
+                PsychPortAudio('Start', el.ppa_pahandle);
             end
         end
     end
