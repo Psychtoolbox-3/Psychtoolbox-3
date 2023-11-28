@@ -14,9 +14,6 @@ function EyeLink_SimplePicture(screenNumber)
 % Bring the Command Window to the front if it is already open
 if ~IsOctave; commandwindow; end
 
-% Initialize PsychSound for calibration/validation audio feedback
-InitializePsychSound();
-
 % Use default screenNumber if none specified
 if (nargin < 1)
     screenNumber = [];
@@ -136,6 +133,22 @@ try
     el.targetbeep = 1;  % sound a beep when a target is presented
     el.feedbackbeep = 1;  % sound a beep after calibration or drift check/correction
     
+    % Initialize PsychSound for calibration/validation audio feedback
+    % EyeLink Toolbox now supports PsychPortAudio integration and interop
+    % with legacy Snd() wrapping. Below we open the default audio device in
+    % output mode as master, create a slave device, and pass the device
+    % handle to el.ppa_pahandle.
+    % el.ppa_handle supports passing either standard mode handle, or as
+    % below one opened as a slave device. When el.ppa_handle is empty, for
+    % legacy support EyelinkUpdateDefaults() will open the default device
+    % and use that with Snd() interop, and close the device handle when
+    % calling Eyelink('Shutdown') at the end of the script.
+    InitializePsychSound();
+    pamaster = PsychPortAudio('Open', [], 8+1);
+    PsychPortAudio('Start', pamaster);
+    pahandle = PsychPortAudio('OpenSlave', pamaster, 1);
+    el.ppa_pahandle = pahandle;
+
     % You must call this function to apply the changes made to the el structure above
     EyelinkUpdateDefaults(el);
     
@@ -153,12 +166,11 @@ try
     % Start listening for keyboard input. Suppress keypresses to Matlab windows.
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
+
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);
-    
+    EyelinkDoTrackerSetup(el);    
     
     %% STEP 5: TRIAL LOOP.
-    
     spaceBar = KbName('space');% Identify keyboard key code for spacebar to end each trial later on
     imgList = {'img1.jpg' 'img2.jpg'};% Provide image list for 2 trials
     for i = 1:length(imgList)
@@ -200,11 +212,11 @@ try
         % Optional: draw feedback box and lines on Host PC interface instead of (or on top of) backdrop image.
         % See section 25.7 'Drawing Commands' in the EyeLink Programmers Guide manual
         Eyelink('Command', 'draw_box %d %d %d %d 15', round(width/2-imgInfo.Width/2), round(height/2-imgInfo.Height/2), round(width/2+imgInfo.Width/2), round(height/2+imgInfo.Height/2));
-        
+
         % Perform a drift check/correction.
         % Optionally provide x y target location, otherwise target is presented on screen centre
         EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
-        
+
         %STEP 5.2: START RECORDING
         
         % Put tracker in idle/offline mode before recording. Eyelink('SetOfflineMode') is recommended 
@@ -318,6 +330,8 @@ catch % If syntax error is detected
     % Print error message and line number in Matlab's Command Window
     psychrethrow(psychlasterror);
 end
+PsychPortAudio('Close', pahandle);
+PsychPortAudio('Close', pamaster);
 cleanup;
 
 % Cleanup function used throughout the script above
