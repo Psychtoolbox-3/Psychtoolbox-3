@@ -85,6 +85,7 @@ void PsychEyelink_init_core_graphics(const char* callback);
 void PsychEyelink_uninit_core_graphics(void);
 void PsychEyelink_TestEyeImage(void);
 void PsychEyelink_dumpHookfunctions(void);
+int PsychEyelinkCallRuntime(int cmd, int x, int y, char* msg);
 
 // Defined in EyelinkSynopsis.c
 void		InitializeSynopsis();

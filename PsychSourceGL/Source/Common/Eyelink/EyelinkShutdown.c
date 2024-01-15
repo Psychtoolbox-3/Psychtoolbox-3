@@ -22,6 +22,7 @@
 */
 
 #include "PsychEyelink.h"
+extern char eyelinkDisplayCallbackFunc[];
 
 PsychError PsychEyelinkShutdown(void)
 {
@@ -45,6 +46,14 @@ PsychError PsychEyelinkShutdown(void)
 		// Detach all callback hook functions:
 		PsychEyelink_uninit_core_graphics();
 		
+		// If using default callback handler PsychEyelinkDispatchCallback, clear function
+		// from persistence in memory
+		if (!strcmp(eyelinkDisplayCallbackFunc, "PsychEyelinkDispatchCallback")) {
+			PsychRuntimeEvaluateString("clear PsychEyelinkDispatchCallback");
+		} else {
+			mexPrintf("DEBUG: eyelinkDisplayCallbackFunc not match PsychEyelinkDispatchCallback\n");
+		}
+
 		// Close down eyelink and reset global flag
 		close_eyelink_system();
 		msec_delay(100);
