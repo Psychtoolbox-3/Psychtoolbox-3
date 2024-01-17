@@ -420,7 +420,7 @@ switch eyecmd
         else
             rc = [width , height, x , y , dw , dh , 0];
         end
-        
+        % add by NJ to prevent flashing of text in drift correct
     case 17 % Non-native callback, from PsychEyelink_setup_cal_display()
         if Eyelink('Verbosity', -1) >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 17; Flag in drift check/correction mode\n');
@@ -491,7 +491,7 @@ if drawInstructions == 1  % Draw Instructions
 end
 
 dontsync = 1;
-dontclear = 1; % set to 0 to hide instructions during camera display
+dontclear = 0; % set to 0 to hide instructions during camera display
 Screen('Flip', eyewin, [], dontclear, dontsync);   % Show it
 
 return;
@@ -501,26 +501,21 @@ return;
 % Start of nested EyelinkDraw* function declarations
 
     function EyelinkDrawClearScreen(eyewin, el)
-        if el.winInfo.StereoMode ~= 0 
-            drawScreens = 2; % stereoscopic drawing
-        else
-            drawScreens = 1; % non-stereoscopic drawing
-        end
-        for it = 0:drawScreens-1 
+        % Set drawScreens 0 for mono modes, 1 for stereo modes:
+        drawScreens = double(el.winInfo.StereoMode ~= 0);
+        for it = 0:drawScreens
             Screen('SelectStereoDrawBuffer', eyewin, it); % select left eye window
             Screen('FillRect', eyewin, el.backgroundcolour);
         end
     end
 
     function EyelinkDrawInstructions(eyewin, el,msg)
-        if el.winInfo.StereoMode ~= 0 
-            drawScreens = 2; % stereoscopic drawing
-        else
-            drawScreens = 1; % non-stereoscopic drawing
-        end
         oldFont=Screen(eyewin,'TextFont',el.msgfont);
         oldFontSize=Screen(eyewin,'TextSize',el.msgfontsize);
-        for it = 0:drawScreens-1 
+        
+        % Set drawScreens 0 for mono modes, 1 for stereo modes:
+        drawScreens = double(el.winInfo.StereoMode ~= 0);
+        for it = 0:drawScreens
             Screen('SelectStereoDrawBuffer', eyewin, it); % select left eye window
             DrawFormattedText(eyewin, el.helptext, 20, 20, el.msgfontcolour, [], [], [], 1);
             
@@ -536,46 +531,38 @@ return;
 
     function  imgtitle=EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, newImage)
         persistent lasttitle;
-        %         global dh dw offscreen;
-        if el.winInfo.StereoMode ~= 0 
-            drawScreens = 2; % stereoscopic drawing
-        else
-            drawScreens = 1; % non-stereoscopic drawing
-        end
-        
-        for it = 0:drawScreens-1 
+
+        eyerect=Screen('Rect', eyelinktex);
+        % we could cash some of the below values....
+        wrect=Screen('Rect', eyewin);
+        [width, height]=Screen('WindowSize', eyewin);
+        dw=round(el.eyeimgsize/100*width);
+        dh=round(dw * eyerect(4)/eyerect(3));
+        drect=[ 0 0 dw dh ];
+        drect=CenterRect(drect, wrect);
+
+        % Set drawScreens 0 for mono modes, 1 for stereo modes:
+        drawScreens = double(el.winInfo.StereoMode ~= 0);
+        for it = 0:drawScreens
             try
-                if ~isempty(eyelinktex)
-                    Screen('SelectStereoDrawBuffer', eyewin, it); % select left eye window
-                    eyerect=Screen('Rect', eyelinktex);
-                    % we could cash some of the below values....
-                    wrect=Screen('Rect', eyewin);
-                    [width, heigth]=Screen('WindowSize', eyewin);
-                    dw=round(el.eyeimgsize/100*width);
-                    dh=round(dw * eyerect(4)/eyerect(3));
-                    
-                    drect=[ 0 0 dw dh ];
-                    drect=CenterRect(drect, wrect);
-                    Screen('DrawTexture', eyewin, eyelinktex, [], drect);
-                end
+                Screen('SelectStereoDrawBuffer', eyewin, it); % select current-eye window
+                Screen('DrawTexture', eyewin, eyelinktex, [], drect);
+
                 % imgtitle
                 % if title is provided, we also draw title
-                if ~isempty(eyelinktex) && exist( 'imgtitle', 'var') && ~isempty(imgtitle)
-                    Screen('SelectStereoDrawBuffer', eyewin, it); % select left eye window
+                if ~isempty(imgtitle)
                     rect=Screen('TextBounds', eyewin, imgtitle );
                     [w2, h2]=RectSize(rect);
                     
                     if -1 == Screen('WindowKind', offscreen)
                         Screen('Close', offscreen);
                     end
-                    Screen('SelectStereoDrawBuffer', eyewin, it); % select left eye window
                     sn = Screen('WindowScreenNumber', eyewin);
                     offscreen = Screen('OpenOffscreenWindow', sn, el.backgroundcolour, [], [], 32);
                     Screen(offscreen,'TextFont',el.imgtitlefont);
                     Screen(offscreen,'TextSize',el.imgtitlefontsize);
-                    Screen('DrawText', offscreen, imgtitle, width/2-dw/2, heigth/2+dh/2+h2, el.imgtitlecolour);
-                    Screen('SelectStereoDrawBuffer', eyewin, it); % select left eye window
-                    Screen('DrawTexture',eyewin,offscreen,  [width/2-dw/2 heigth/2+dh/2+h2 width/2-dw/2+500 heigth/2+dh/2+h2+500], [width/2-dw/2 heigth/2+dh/2+h2 width/2-dw/2+500 heigth/2+dh/2+h2+500]);
+                    Screen('DrawText', offscreen, imgtitle, width/2-dw/2, height/2+dh/2+h2, el.imgtitlecolour);
+                    Screen('DrawTexture',eyewin,offscreen,  [width/2-dw/2 height/2+dh/2+h2 width/2-dw/2+500 height/2+dh/2+h2+500], [width/2-dw/2 height/2+dh/2+h2 width/2-dw/2+500 height/2+dh/2+h2+500]);
                     Screen('Close',offscreen);
                     
                     lasttitle = imgtitle;
@@ -592,14 +579,10 @@ return;
 
 
     function EyelinkDrawCalibrationTarget(eyewin, el, calxy)
-        if el.winInfo.StereoMode ~= 0
-            drawScreens = 2; % stereoscopic drawing
-        else
-            drawScreens = 1; % non-stereoscopic drawing
-        end
+        [width, height]=Screen('WindowSize', eyewin);
 
-        [width, heigth]=Screen('WindowSize', eyewin);
-
+        % Set drawScreens 0 for mono modes, 1 for stereo modes:
+        drawScreens = double(el.winInfo.StereoMode ~= 0);
         for it = 0:drawScreens-1
             Screen('SelectStereoDrawBuffer', eyewin, it); % select eye window
             switch el.calTargetType
@@ -611,19 +594,15 @@ return;
                         end
                         if(tex>0)
                             Screen('DrawTexture', eyewin , tex, [], rect, [], 0);
-                            if drawScreens == 1 || (drawScreens == 2 && it == 1)
+                            if it == drawScreens
                                 Screen('Flip', eyewin);
+                                Screen('Close', tex);
                             end
-                        end
-                        if it == drawScreens-1 && tex > 0
-                            Screen('Close', tex);
                         end
                     end
                     
                 case 'image'
-                    if ~isempty(el.calImageInfo) && ~isempty(el.calImageTexture)
-                        rect=CenterRectOnPoint([0 0 el.calImageInfo.Width el.calImageInfo.Height], calxy(1), calxy(2));
-                    end
+                    rect=CenterRectOnPoint([0 0 el.calImageInfo.Width el.calImageInfo.Height], calxy(1), calxy(2));
                     Screen('DrawTexture', eyewin , el.calImageTexture, [], rect, [], 0);
                     
                 otherwise
