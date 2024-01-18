@@ -189,29 +189,23 @@ end
 persistent ppa_beep_buffers;
 if ~isempty(el.ppa_pahandle) && isempty(ppa_beep_buffers)
     if el.targetbeep
-        fprintf('DEBUG: ppa_beep_buffers, targetbeep, create\n');
         ppa_beep_buffers(1) = PsychPortAudio('CreateBuffer', [], beep_waveforms{1});
         ppa_beep_buffers(2) = PsychPortAudio('CreateBuffer', [], beep_waveforms{2});
     else
-        fprintf('DEBUG: ppa_beep_buffers, targetbeep, set NaN\n');
         ppa_beep_buffers(1) = NaN;
         ppa_beep_buffers(2) = NaN;
     end
     if el.feedbackbeep
-        fprintf('DEBUG: ppa_beep_buffers, feedbackbeep, create\n');
         ppa_beep_buffers(3) = PsychPortAudio('CreateBuffer', [], beep_waveforms{3});
         ppa_beep_buffers(4) = PsychPortAudio('CreateBuffer', [], beep_waveforms{4});
         ppa_beep_buffers(5) = PsychPortAudio('CreateBuffer', [], beep_waveforms{5});
         ppa_beep_buffers(6) = PsychPortAudio('CreateBuffer', [], beep_waveforms{6});
     else
-        fprintf('DEBUG: ppa_beep_buffers, feedbackbeep, set NaN\n');
         ppa_beep_buffers(3) = NaN;
         ppa_beep_buffers(4) = NaN;
         ppa_beep_buffers(5) = NaN;
         ppa_beep_buffers(6) = NaN;
     end
-else
-    fprintf('DEBUG: ppa_beep_buffers, skip\n');
 end
 
 % Not an eyelink struct.  Either a 4 component vector from Eyelink(), or something wrong:
@@ -583,7 +577,7 @@ return;
 
         % Set drawScreens 0 for mono modes, 1 for stereo modes:
         drawScreens = double(el.winInfo.StereoMode ~= 0);
-        for it = 0:drawScreens-1
+        for it = 0:drawScreens
             Screen('SelectStereoDrawBuffer', eyewin, it); % select eye window
             switch el.calTargetType
                 case 'video'
