@@ -88,7 +88,6 @@ end
         eyelinkanimationtarget.fps = fps;
         eyelinkanimationtarget.imgw = imgw;
         eyelinkanimationtarget.imgh = imgh;
-        Screen('SetMovieTimeIndex', eyelinkanimationtarget.movie, 0, el.calAnimationSetIndexIsFrames);
     end
 
     function cleanupmovie(el)
