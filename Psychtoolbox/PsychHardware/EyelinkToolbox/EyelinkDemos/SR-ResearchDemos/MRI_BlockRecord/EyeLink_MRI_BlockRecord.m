@@ -183,8 +183,8 @@ try
     %-------------------------------------------------------------------------------------------
     
     % Hide mouse cursor
-    HideCursor(screenNumber);
-    % Start listening for keyboard input. Suppress keypresses to Matlab windows.
+    HideCursor(window);
+    % Suppress keypress output to command window.
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
@@ -313,23 +313,23 @@ try
             Screen('DrawTexture', window, backgroundTexture); % Prepare background texture on backbuffer
             Screen('DrawLine', window, 0, round(width/2-20), round(height/2), round(width/2+20), round(height/2), 5);
             Screen('DrawLine', window, 0, round(width/2), round(height/2-20), round(width/2), round(height/2+20), 5);
-                % Check that eye tracker is  still recording. Otherwise close and transfer copy of EDF file to Display PC
-                err = Eyelink('CheckRecording');
-                if(err ~= 0)
-                    fprintf('EyeLink Recording stopped!\n');
-                    % Transfer a copy of the EDF file to Display PC
-                    Eyelink('SetOfflineMode');% Put tracker in idle/offline mode
-                    Eyelink('CloseFile'); % Close EDF file on Host PC
-                    Eyelink('Command', 'clear_screen 0'); % Clear trial image on Host PC at the end of the experiment
-                    WaitSecs(0.1); % Allow some time for screen drawing
-                    % Transfer a copy of the EDF file to Display PC
-                    transferFile; % See transferFile function below
-                    cleanup; % Abort experiment (see cleanup function below)
-                    return
-                end
-                Screen('Flip', window, stimDur + vbl - 0.5*ifi); % Present crosshairs. Allow half flip interval for precise flip timing)
-                % Write message to EDF file to mark time when blank screen is presented
-                Eyelink('Message', 'BLANK_SCREEN');
+            % Check that eye tracker is  still recording. Otherwise close and transfer copy of EDF file to Display PC
+            err = Eyelink('CheckRecording');
+            if(err ~= 0)
+                fprintf('EyeLink Recording stopped!\n');
+                % Transfer a copy of the EDF file to Display PC
+                Eyelink('SetOfflineMode');% Put tracker in idle/offline mode
+                Eyelink('CloseFile'); % Close EDF file on Host PC
+                Eyelink('Command', 'clear_screen 0'); % Clear trial image on Host PC at the end of the experiment
+                WaitSecs(0.1); % Allow some time for screen drawing
+                % Transfer a copy of the EDF file to Display PC
+                transferFile; % See transferFile function below
+                cleanup; % Abort experiment (see cleanup function below)
+                return
+            end
+            Screen('Flip', window, stimDur + vbl - 0.5*ifi); % Present crosshairs. Allow half flip interval for precise flip timing)
+            % Write message to EDF file to mark time when blank screen is presented
+            Eyelink('Message', 'BLANK_SCREEN');
                 
             % STEP 7.5: CREATE VARIABLES FOR DATAVIEWER; WAIT FOR END OF LAST TRIAL IN BLOCK 
             
@@ -409,12 +409,9 @@ PsychPortAudio('Close', pamaster);
 
 % Cleanup function used throughout the script above
     function cleanup
-        try
-            Screen('CloseAll'); % Close window if it is open
-        end
+        sca; % PTB's wrapper for Screen('CloseAll') & related cleanup, e.g. ShowCursor
         Eyelink('Shutdown'); % Close EyeLink connection
         ListenChar(0); % Restore keyboard output to Matlab
-        ShowCursor; % Restore mouse cursor
         if ~IsOctave; commandwindow; end % Bring Command Window to front
     end
 

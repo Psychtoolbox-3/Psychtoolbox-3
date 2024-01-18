@@ -106,6 +106,7 @@ try
     end
     PsychDefaultSetup(2);
     window = PsychImaging('OpenWindow', screenNumber, GrayIndex(screenNumber)); % Open graphics window
+    % Enable alpha blending for drawing of smooth points
     Screen(window,'BlendFunction',GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     Screen('Flip', window);
     
@@ -158,8 +159,8 @@ try
     % Allow a supported EyeLink Host PC button box to accept calibration or drift-check/correction targets via button 5
     Eyelink('Command', 'button_function 5 "accept_target_fixation"');
     % Hide mouse cursor
-    HideCursor(screenNumber);
-    % Start listening for keyboard input. Suppress keypresses to Matlab windows.
+    HideCursor(window);
+    % Suppress keypress output to command window.
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
@@ -250,8 +251,6 @@ try
                 return
             end
             % Prepare and show the screen.
-            % Enable alpha blending for drawing of smooth points
-            Screen('BlendFunction', window, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             Screen('FillRect', window, el.backgroundcolour);
             Screen('FillOval', window,[255 0 0], targ);
             [~, stTime] = Screen('Flip', window); % Present stimulus
@@ -366,12 +365,9 @@ PsychPortAudio('Close', pamaster);
 
 % Cleanup function used throughout the script above
     function cleanup
-        try
-            Screen('CloseAll'); % Close window if it is open
-        end
+        sca; % PTB's wrapper for Screen('CloseAll') & related cleanup, e.g. ShowCursor
         Eyelink('Shutdown'); % Close EyeLink connection
         ListenChar(0); % Restore keyboard output to Matlab
-        ShowCursor; % Restore mouse cursor
         if ~IsOctave; commandwindow; end % Bring Command Window to front
     end
 

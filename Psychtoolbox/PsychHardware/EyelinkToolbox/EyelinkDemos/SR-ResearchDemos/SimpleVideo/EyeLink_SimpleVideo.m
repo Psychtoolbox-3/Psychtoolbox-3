@@ -25,14 +25,6 @@ if (nargin < 1)
     screenNumber = [];
 end
 
-% Check if Psychtoolbox is conigured for video presentation:
-AssertOpenGL;
-if IsWin && ~IsOctave && psychusejava('jvm')
-    fprintf('Running on Matlab for Microsoft Windows, with JVM enabled!\n');
-    fprintf('This may crash. See ''help GStreamer'' for problem and workaround.\n');
-    warning('Running on Matlab for Microsoft Windows, with JVM enabled!');
-end
-
 try
     %% STEP 1: INITIALIZE EYELINK CONNECTION; OPEN EDF FILE; GET EYELINK TRACKER VERSION
     
@@ -179,8 +171,8 @@ try
     % Allow a supported EyeLink Host PC button box to accept calibration or drift-check/correction targets via button 5
     Eyelink('Command', 'button_function 5 "accept_target_fixation"');
     % Hide mouse cursor
-    HideCursor(screenNumber);
-    % Start listening for keyboard input. Suppress keypresses to Matlab windows.
+    HideCursor(window);
+    % Suppress keypress output to command window.
     ListenChar(-1);
     % Clear Host PC display from any previus drawing
     Eyelink('Command', 'clear_screen 0');
@@ -202,13 +194,17 @@ try
         % You must call this function to apply the changes made to the el structure above
         EyelinkUpdateDefaults(el);
         
+        % STEP 5.0 DRIFT-CHECK/CORRECTION
+        % Perform a drift check/correction.
+        % Optionally provide x y target location, otherwise target is presented on screen centre
+        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+        
+        % STEP 5.1: START TRIAL; SHOW TRIAL INFO ON HOST PC; SHOW BACKDROP IMAGE AND/OR DRAW FEEDBACK GRAPHICS ON HOST PC
         % Open movie file:
         movieName = char(vidList(i));
         moviePath = [ pwd '/' movieName ];
         [movie, ~, ~, Movx, Movy] = Screen('OpenMovie', window, moviePath, [], [], spcf1); % spcf1 required to disable audio on macOS Catalina and avoid playback freezing issues
-        
-        % STEP 5.1: START TRIAL; SHOW TRIAL INFO ON HOST PC; SHOW BACKDROP IMAGE AND/OR DRAW FEEDBACK GRAPHICS ON HOST PC; DRIFT-CHECK/CORRECTION
-        
+
         % Write TRIALID message to EDF file: marks the start of a trial for DataViewer
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Defining the Start and End of a Trial
         Eyelink('Message', 'TRIALID %d', i);
@@ -225,10 +221,6 @@ try
         Eyelink('Command', 'draw_box %d %d %d %d 15', round(width/2-Movx/2), round(height/2-Movy/2), round(width/2+Movx/2), round(height/2+Movy/2));
         Eyelink('Command', 'draw_box %d %d %d %d 15', round(width/2-80), round(height/2-70), round(width/2+80), round(height/2+90));
         Eyelink('Command', 'draw_line %d %d %d %d 15', round(width/2-Movx/2), round(height/2)+40, round(width/2+Movx/2), round(height/2)+40);
-        
-        % Perform a drift check/correction.
-        % Optionally provide x y target location, otherwise target is presented on screen centre
-        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
         
         %STEP 5.2: START RECORDING
         
@@ -357,12 +349,9 @@ end
 
 % Cleanup function used throughout the script above
     function cleanup
-        try
-            Screen('CloseAll'); % Close window if it is open
-        end
+        sca; % PTB's wrapper for Screen('CloseAll') & related cleanup, e.g. ShowCursor
         Eyelink('Shutdown'); % Close EyeLink connection
         ListenChar(0); % Restore keyboard output to Matlab
-        ShowCursor; % Restore mouse cursor
         if ~IsOctave; commandwindow; end % Bring Command Window to front
     end
 
