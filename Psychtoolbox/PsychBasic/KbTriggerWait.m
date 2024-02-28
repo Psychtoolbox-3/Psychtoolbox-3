@@ -116,4 +116,4 @@ elseif nargin > 2
 end
 
 % Try to release keyboard queue for 'deviceIndex' from our exclusive use:
-KbQueueReserve(2, 2, deviceNumber);
+KbQueueRelease(2, 2, deviceNumber);
