@@ -1,0 +1,56 @@
+function DKL = XYZToDKL(XYZ,XYZ_background)
+% DKL = XYZToDKL(XYZ)
+%
+% Convert XYZ to DKL.
+%
+% E.g.
+%
+% radius = 0.1;
+% whitepoint = [0.31272;0.32903];
+% nPoints = 100;
+% theta = linspace(0,2*pi,nPoints);
+% x = radius*cos(theta) + whitepoint(1);
+% y = radius*sin(theta) + whitepoint(2);
+% % DrawChromaticity('1931')
+% % scatter(x,y,'k.')
+% % scatter(whitepoint(1),whitepoint(2))
+% XYZ = xyYToXYZ([x;y;ones(1,nPoints)*50]);
+% XYZ_background = xyYToXYZ([whitepoint;50]);
+% DKL = XYZToDKL(XYZ, XYZ_background);
+% % figure, scatter3(DKL(2,:),DKL(3,:),DKL(1,:));
+
+% Load cone functions
+load T_cones_sp.mat S_cones_sp  T_cones_sp
+S_cones = S_cones_sp;
+T_cones = T_cones_sp;
+
+% Load observer functions
+load T_xyz1931.mat  S_xyz1931   T_xyz1931
+S_xyz = S_xyz1931;
+T_xyz = T_xyz1931;
+
+T_Y = 683*T_xyz(2,:); % Rescale for radiometry
+S_Y = S_xyz;
+T_Y = SplineCmf(S_Y,T_Y,S_cones);
+
+T_xyz = SplineCmf(S_xyz,T_xyz,S_cones);
+
+M_XYZToLMS = (T_xyz'\T_cones')';  
+% T_cones_chk = M_XYZToLMS*T_xyz;
+% figure, hold on
+% plot(T_cones','k')
+% plot(T_cones_chk','r--')
+
+bgLMS  = M_XYZToLMS * XYZ_background;
+LMSinc = M_XYZToLMS * (XYZ - XYZ_background);
+
+[M_ConeIncToDKL] = ComputeDKL_M(bgLMS, T_cones, T_Y);
+DKL = M_ConeIncToDKL * LMSinc;
+
+% figure,
+% scatter3(DKL(2,:),DKL(3,:),DKL(1,:),'DisplayName','DKL')
+% xlabel('L-M')
+% ylabel('S-(L+M)')
+% zlabel('L+M')
+% view(2)
+% legend
