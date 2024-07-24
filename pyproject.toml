@@ -6,9 +6,6 @@
 requires = [
     "setuptools",
     "wheel",
-    "oldest-supported-numpy; python_version<'3.7'",
-    # we need to build with at least 1.16.5 for a limited API bugfix
-    "numpy==1.16.5; python_version=='3.7'",
-    "oldest-supported-numpy; python_version>='3.8'"
+    "numpy>=2,<3",
 ]
 build-backend = "setuptools.build_meta"

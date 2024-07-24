@@ -686,8 +686,8 @@ void mxSetField(PyObject* pStructOuter, int index, const char* fieldName, PyObje
 {
     if (psych_refcount_debug && pStructInner)
         printf("PTB-DEBUG: In mxSetField: refcount of external object %p at enter is %li. %s\n",
-               pStructInner, PyArray_REFCOUNT(pStructInner),
-               (PyArray_REFCOUNT(pStructInner) > 1) ? "MIGHT leak if caller does not take care." : "");
+               pStructInner, Py_REFCNT(pStructInner),
+               (Py_REFCNT(pStructInner) > 1) ? "MIGHT leak if caller does not take care." : "");
 
     if (!mxIsStruct(pStructOuter)) {
         Py_XDECREF(pStructInner);
@@ -1123,9 +1123,9 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     // and just need to return return arguments and clean up:
     if (psych_refcount_debug) {
         for (i = 0; i < MAX_OUTPUT_ARGS; i++) {
-            if (plhsGLUE[recLevel][i] && (PyArray_REFCOUNT(plhsGLUE[recLevel][i]) >= psych_refcount_debug))
+            if (plhsGLUE[recLevel][i] && (Py_REFCNT(plhsGLUE[recLevel][i]) >= psych_refcount_debug))
                 printf("PTB-DEBUG: At non-error exit of PsychScriptingGluePythonDispatch: Refcount of plhsGLUE[recLevel %i][arg %i] = %li.\n",
-                       recLevel, i, PyArray_REFCOUNT(plhsGLUE[recLevel][i]));
+                       recLevel, i, Py_REFCNT(plhsGLUE[recLevel][i]));
         }
     }
 
@@ -1202,9 +1202,9 @@ PythonFunctionCleanup:
     // Release "orphaned" output arguments that haven't been returned to the interpreter,
     // e.g., because of a PythonFunctionCleanup - error return:
     for (i = 0; i < MAX_OUTPUT_ARGS; i++) {
-        if (psych_refcount_debug && plhsGLUE[recLevel][i] && (PyArray_REFCOUNT(plhsGLUE[recLevel][i]) >= psych_refcount_debug))
+        if (psych_refcount_debug && plhsGLUE[recLevel][i] && (Py_REFCNT(plhsGLUE[recLevel][i]) >= psych_refcount_debug))
             printf("PTB-DEBUG: Orphaned output argument at cleanup: Refcount of plhsGLUE[recLevel %i][arg %i] = %li --> unref --> %li.\n",
-                   recLevel, i, PyArray_REFCOUNT(plhsGLUE[recLevel][i]), PyArray_REFCOUNT(plhsGLUE[recLevel][i]) - 1);
+                   recLevel, i, Py_REFCNT(plhsGLUE[recLevel][i]), Py_REFCNT(plhsGLUE[recLevel][i]) - 1);
 
         Py_XDECREF(plhsGLUE[recLevel][i]);
         plhsGLUE[recLevel][i] = NULL;
@@ -1254,9 +1254,9 @@ static PyObject* PsychPyArgGet(int position)
 {
     PyObject *ret = prhsGLUE[recLevel][position];
 
-    if (psych_refcount_debug && (PyArray_REFCOUNT(prhsGLUE[recLevel][position]) >= psych_refcount_debug))
+    if (psych_refcount_debug && (Py_REFCNT(prhsGLUE[recLevel][position]) >= psych_refcount_debug))
         printf("PTB-DEBUG:%s:PsychPyArgGet: Before convert: Refcount of prhsGLUE[recLevel %i][arg %i] = %li.\n",
-               PsychGetFunctionName(), recLevel, position, PyArray_REFCOUNT(prhsGLUE[recLevel][position]));
+               PsychGetFunctionName(), recLevel, position, Py_REFCNT(prhsGLUE[recLevel][position]));
 
     // Does this input argument need conversion to a NumPy array of suitable format?
     if (prhsNeedsConversion[recLevel][position]) {
@@ -1279,7 +1279,7 @@ static PyObject* PsychPyArgGet(int position)
         if (DEBUG_PTBPYTHONGLUE || psych_refcount_debug)
             printf("PTB-DEBUG:%s:PsychPyArgGet: Arg %i: Conversion to NumPy array of %s triggered [refcount now %li]: %s\n",
                    PsychGetFunctionName(),
-                   position, use_C_memory_layout[recLevel] ? "C layout" : "Fortran layout", PyArray_REFCOUNT(ret),
+                   position, use_C_memory_layout[recLevel] ? "C layout" : "Fortran layout", Py_REFCNT(ret),
                    (ret == prhsGLUE[recLevel][position]) ? "No-Op passthrough." : "New object.");
 
         // Now that the new ret is a NumPy array in the wanted final format,
@@ -1296,9 +1296,9 @@ static PyObject* PsychPyArgGet(int position)
         // by dropping its refcount by one to zero.
     }
 
-    if (psych_refcount_debug && (PyArray_REFCOUNT(prhsGLUE[recLevel][position]) >= psych_refcount_debug))
+    if (psych_refcount_debug && (Py_REFCNT(prhsGLUE[recLevel][position]) >= psych_refcount_debug))
         printf("PTB-DEBUG:%s:PsychPyArgGet: After  convert: Refcount of prhsGLUE[recLevel %i][arg %i] = %li.\n",
-                PsychGetFunctionName(), recLevel, position, PyArray_REFCOUNT(prhsGLUE[recLevel][position]));
+                PsychGetFunctionName(), recLevel, position, Py_REFCNT(prhsGLUE[recLevel][position]));
 
     return(ret);
 }
@@ -2980,8 +2980,8 @@ int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGe
 
     if (psych_refcount_debug && pcontent)
         printf("PTB-DEBUG: In mxSetField: refcount of external object %p at enter is %li. %s\n",
-               pcontent, PyArray_REFCOUNT(pcontent),
-               (PyArray_REFCOUNT(pcontent) > 1) ? "MIGHT leak if caller does not take care." : "");
+               pcontent, Py_REFCNT(pcontent),
+               (Py_REFCNT(pcontent) > 1) ? "MIGHT leak if caller does not take care." : "");
 
     // Drop one reference, so the function steals a reference to pcontent and the
     // calling client is no longer responsible for managing it, regardless of success
