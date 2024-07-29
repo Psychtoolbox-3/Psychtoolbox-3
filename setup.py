@@ -305,11 +305,13 @@ IOPort = Extension(name,
                    py_limited_api = py_limited_api,
                   )
 ext_modules.append(IOPort)
+description = 'Pieces of Psychtoolbox-3 ported to CPython.'
 
 setup (name = 'psychtoolbox',
        version = version,
-       description = 'Pieces of Psychtoolbox-3 ported to CPython.',
-       long_description = 'Pieces of Psychtoolbox-3 ported to CPython.',
+       description = description,
+       long_description = description,
+       long_description_content_type = 'text/x-rst',
        author = 'Mario Kleiner',
        author_email = 'mario.kleiner.de@gmail.com',
        url = 'http://psychtoolbox.org',
