@@ -4426,7 +4426,7 @@ end
 % conversion.
 icmshader = [];
 icmstring = [];
-icmconfig = [];
+icmconfig = '';
 icmformatting_downstream = 0;
 
 floc = find(mystrcmp(reqs, 'DisplayColorCorrection'));
@@ -5544,7 +5544,7 @@ if useHDR
             Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
         end
 
-        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', hdrShaderString, hdrShader, '');
+        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', hdrShaderString, hdrShader, icmconfig);
         Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
         outputcount = outputcount + 1;
     end
