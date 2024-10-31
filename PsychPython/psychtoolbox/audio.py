@@ -133,7 +133,9 @@ class Stream:
 
     def close(self):
         """Close the current stream"""
-        if getattr(self, '_closed', False): # if we're already closed don't try again
+        if getattr(self, 'handle', True) or getattr(self, '_closed', False): 
+            # if we're already closed or the `handle` attribute doesn't exist, 
+            # then we don't need to close anything
             return
         try:
             PsychPortAudio('Close', self.handle)
