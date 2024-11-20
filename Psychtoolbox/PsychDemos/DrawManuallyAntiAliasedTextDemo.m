@@ -37,7 +37,12 @@ end
 
 try
     % Disable automatic text anti-aliasing by operating system:
-    oldSetting = Screen('Preference', 'TextAntiAliasing', 0);
+    % Except on Windows, to work around AMD OpenGL driver bugs...
+    oldSetting = Screen('Preference', 'TextAntiAliasing', double(IsWin));
+
+    % Make sure we get the same effect as disabling Anti-Aliasing on
+    % Windows, despite the AMD bug woraround:
+    oldSetting2 = Screen('Preference', 'TextAlphaBlending', double(~IsWin));
 
     % Choosing the display with the highest display number is
     % a best guess about where you want the stimulus displayed.
@@ -67,7 +72,7 @@ try
     Screen('TextStyle', w, 1+2);
     
     % Compute bounding box of textstring:
-    bbox = ceil(Screen('TextBounds', w, 'Hello World!'));
+    bbox = ScaleRect(ceil(Screen('TextBounds', w, 'Hello World!')), 1.1, 1.1);
     
     % Create offscreen window of sufficient size, with a background color
     % that matches the wanted background color, and a alpha value of zero:
@@ -100,6 +105,7 @@ try
     
     % Restore anti-aliasing setting:
     Screen('Preference', 'TextAntiAliasing', oldSetting);
+    Screen('Preference', 'TextAlphaBlending', oldSetting2);
 
 catch %#ok<CTCH>
     % This "catch" section executes in case of an error in the "try" section
@@ -108,6 +114,7 @@ catch %#ok<CTCH>
 
     % Restore anti-aliasing setting:
     Screen('Preference', 'TextAntiAliasing', oldSetting);
+    Screen('Preference', 'TextAlphaBlending', oldSetting2); 
 
     psychrethrow(psychlasterror);
 end

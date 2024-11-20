@@ -15,7 +15,10 @@ function TextToStuffColorMismatchTest
 
 % Setup
 Screen('Preference', 'TextAlphaBlending', 0);
-Screen('Preference', 'TextAntiAliasing', 0);
+
+% Disable automatic text anti-aliasing by operating system:
+% Except on Windows, to work around AMD OpenGL driver bugs...
+Screen('Preference', 'TextAntiAliasing', double(IsWin));
 [window, wsize] = Screen('OpenWindow', 0, 0);
 
 centerX = wsize(3)/2;
