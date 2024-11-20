@@ -50,6 +50,11 @@ if nargin == 0
   Screen('AsyncFlipBegin', w1, t1 + 20, [], 0);
   w1Engaged = 1
   toc
+  % Need to force-enable OpenGL context of window w2, or error checks in
+  % AsyncFlipBegin will fail atm., as we don't have an OpenGL context bound
+  % after initial AsyncFlipBegin. Normally any kind of other Screen()
+  % drawing command would prevent this problem...
+  Screen('GetWindowInfo', w2);
   Screen('AsyncFlipBegin', w2, t2 + 10, [], 0);
   w2Engaged = 1
   toc
@@ -87,7 +92,7 @@ if separateScreens
   end
 
   for i = 1:nrwins
-    w(i) = Screen('Openwindow', screens(i), 0, []);
+    w(i) = Screen('Openwindow', screens(i + double(IsWin)), 0, []);
     ifi(i) = Screen('GetFlipInterval', w(i));
   end
 else
