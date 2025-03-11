@@ -11,6 +11,7 @@ if nargin < 2 || isempty(S)
 	S = [380 5 81];
 end
 
+readStr = strrep(readStr,'0.000e+000','0.000e+00');
 start = findstr(readStr,'380,');
 for k= 1:101
     %fprintf('k: %d, bi: %d, ed: %d\n', k, start+6+17*(k-1), start+6+9+17*(k-1));
