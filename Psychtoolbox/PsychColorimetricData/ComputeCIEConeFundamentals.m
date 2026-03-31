@@ -259,6 +259,12 @@ if (SET_ABSORBANCE)
     params.absorbance = photoreceptors.absorbance;
 end
 
+% Sometimes, we want to know things about how all the pieces came together.
+% So we tuck awaay the photoreceptors structure, which has a lot of
+% information in it.  We put this in a substructure just to make sure we
+% don't collide in some structure name space somewhere else.
+params.info.photoreceptors;
+
 %% Set up for call into the low level routine that computes the CIE fundamentals.
 staticParams.S = photoreceptors.nomogram.S;
 staticParams.fieldSizeDegrees = photoreceptors.fieldSizeDegrees;
