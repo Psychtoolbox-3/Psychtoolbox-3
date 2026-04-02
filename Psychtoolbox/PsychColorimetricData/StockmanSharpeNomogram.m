@@ -1,3 +1,4 @@
+
 function T_absorbance = StockmanSharpeNomogram(S,lambdaMax)
 % T_absorbance = StockmanSharpeNomogram(S,lambdaMax)
 %

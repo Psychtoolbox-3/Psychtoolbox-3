@@ -32,5 +32,5 @@ for i = 1:nT
 						exp( c*(C-wlarg) ) + ...
 						D ...
 						);
-	T(i,:) = T(i,:)/max(T(i,:));
+	%T(i,:) = T(i,:)/max(T(i,:));
 end
