@@ -19,10 +19,10 @@ end
 switch (source)
 	case {'Govardovskii'}
 		T_absorbance = ...
-			GovardovskiiNomogram(S,lambdaMax);	
+			GovardovskiiNomogram(S,lambdaMax);
 	case {'Dawis'}
 		T_absorbance = ...
-			DawisNomogram(S,lambdaMax);	
+			DawisNomogram(S,lambdaMax);
 	case {'Baylor'}
 		T_absorbance = ...
 			BaylorNomogram(S,lambdaMax);
@@ -32,6 +32,14 @@ switch (source)
 	case 'StockmanSharpe'
 		T_absorbance = ...
 			StockmanSharpeNomogram(S,lambdaMax);
+	case 'StockmanRider'
+		if (~exist('StockmanRiderNomogram.m','file'))
+			error(['PhotopigmentNomogram: StockmanRider nomogram requested but ' ...
+			       'StockmanRiderNomogram.m was not found on the MATLAB path. ' ...
+			       'Add the BrainardLabToolbox StockmanRiderFormulae directory to your path.']);
+		end
+		T_absorbance = ...
+			StockmanRiderNomogram(S,lambdaMax);
 	otherwise
 		error('Unknown source for photopigment nomogram');
 end
