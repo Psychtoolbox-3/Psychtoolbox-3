@@ -30,6 +30,11 @@ function T_absorbance = StockmanRiderNomogram(S, lambdaMax)
 % prepended to all of their names to avoid namespace collision with
 % PTB routines that do similar things.
 %
+% Good lambda max values (L, M, S): 551.9, 529.8, 416.9 nm.
+% These are the nominal template peaks built into the Stockman-Rider
+% nomogram itself and reproduce the standard CIE photopigment absorbances
+% well.
+%
 % See also: PhotopigmentNomogram, srLconelog, srMconelog, srSconelog,
 %           srLMSconelog, srDemo
 
