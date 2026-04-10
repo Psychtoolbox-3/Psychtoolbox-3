@@ -54,6 +54,7 @@ b_c = [0.922, 1.104];
 Abeta = 0.26;
 
 % Get wls argument.
+S = MakeItS(S);
 wls = MakeItWls(S);
 
 [nWls,nil] = size(wls);
@@ -102,6 +103,15 @@ for i = 1:nT
         T_absorbance(i,index) = zeros(size(index))';
         index = find(wls > Lmax);
         T_absorbance(i,index) = zeros(size(index))';
+
+        % If wavelength spacing is sufficiently fine, normalize explicitly
+        % to a max of 1.  Seems like a good idea since this should always
+        % be true of absorbance functions.  Don't want to do it if
+        % wavelength spacing is coarse, because the peak may be between the
+        % samples.
+        if (S(2) <= 1)
+            T_absorbance(i,:) = T_absorbance(i,:)/max(T_absorbance(i,:));
+        end
         
     else
         error(sprintf('Lambda Max %g not in range of nomogram\n',theMax));

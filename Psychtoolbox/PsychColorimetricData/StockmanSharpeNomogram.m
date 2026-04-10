@@ -55,6 +55,7 @@ g = 12.487558618387;
 h = -0.289541500599;
 
 % Set up and apply formula
+S = MakeItS(S);
 wls = MakeItWls(S)';
 nWls = length(wls);
 nT = length(lambdaMax);
@@ -75,7 +76,15 @@ for i = 1:nT
 							 f*logWlsNorm.^10 + ...
 							 g*logWlsNorm.^12 + ...
 							 h*logWlsNorm.^14;
-	logDensity = logDensity;
 	T_absorbance(i,:) = 10.^logDensity;
+
+    % If wavelength spacing is sufficiently fine, normalize explicitly
+    % to a max of 1.  Seems like a good idea since this should always
+    % be true of absorbance functions.  Don't want to do it if
+    % wavelength spacing is coarse, because the peak may be between the
+    % samples.
+    if (S(2) <= 1)
+        T_absorbance(i,:) = T_absorbance(i,:)/max(T_absorbance(i,:));
+    end
 end
 

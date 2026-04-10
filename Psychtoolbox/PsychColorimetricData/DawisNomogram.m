@@ -39,11 +39,12 @@ L1 = [380 ; 400 ; 430 ];
 L2 = [510 ; 620 ; 690 ];
 
 % Get wls argument.
+S = MakeItS(S);
 wls = MakeItWls(S);
 
 [nWls,nil] = size(wls);
 [nT,nil] = size(lambdaMax);
-T_absorbance = zeros(nT,nWls);
+T_logAbsorbance = zeros(nT,nWls);
 wlsum = wls/1000;
 
 for i = 1:nT
@@ -62,7 +63,7 @@ for i = 1:nT
 	for k = 1:8
 		logS = logS + bN(which,k)*wlsVec.^k;
 	end
-	T_absorbance(i,:) = logS;
+	T_logAbsorbance(i,:) = logS;
 	
 	% Zero sensitivity outsize valid range.  I shift the
 	% range in the table to slide multiplicatively with 
@@ -70,8 +71,21 @@ for i = 1:nT
 	zeroLow = theMax*L1(which)/Lmax(which);
 	zeroHigh = theMax*L2(which)/Lmax(which);
 	index = find(wls < zeroLow);
-	T_absorbance(i,index) = -Inf;
+	T_logAbsorbance(i,index) = -Inf;
 	index = find(wls > zeroHigh);
-	T_absorbance(i,index) = -Inf;
+	T_logAbsorbance(i,index) = -Inf;
 end
-T_absorbance = 10.^T_absorbance;
+
+% Convert to linear absorbance
+T_absorbance = 10.^T_logAbsorbance;
+
+% If wavelength spacing is sufficiently fine, normalize explicitly
+% to a max of 1.  Seems like a good idea since this should always
+% be true of absorbance functions.  Don't want to do it if
+% wavelength spacing is coarse, because the peak may be between the
+% samples.
+for i = 1:nT
+    if (S(2) <= 1)
+        T_absorbance(i,:) = T_absorbance(i,:)/max(T_absorbance(i,:));
+    end
+end

@@ -1,3 +1,4 @@
+
 function T_absorbance = PhotopigmentNomogram(S,lambdaMax,source)
 % T_absorbance = PhotopigmentNomogram(S,lambdaMax,[source])
 %
@@ -8,9 +9,13 @@ function T_absorbance = PhotopigmentNomogram(S,lambdaMax,source)
 %   Govardovskii (Default)
 %   Lamb
 %   StockmanSharpe
+%   StockmanRider
 %
 % 7/11/03  dhb  Wrote it.
 % 7/16/03  dhb  Add StockmanSharpe.
+% 4/10/26  Add  Add StockmanRider.
+%          Systematially edit all the individual functions so that if wl
+%          spacing is <= 1, they normalize the return to peak of 1.
 
 if (nargin < 3 || isempty(source))
 	source = 'Govardovskii';
@@ -33,11 +38,6 @@ switch (source)
 		T_absorbance = ...
 			StockmanSharpeNomogram(S,lambdaMax);
 	case 'StockmanRider'
-		if (~exist('StockmanRiderNomogram.m','file'))
-			error(['PhotopigmentNomogram: StockmanRider nomogram requested but ' ...
-			       'StockmanRiderNomogram.m was not found on the MATLAB path. ' ...
-			       'Add the BrainardLabToolbox StockmanRiderFormulae directory to your path.']);
-		end
 		T_absorbance = ...
 			StockmanRiderNomogram(S,lambdaMax);
 	otherwise
