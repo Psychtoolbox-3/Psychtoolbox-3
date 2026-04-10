@@ -20,11 +20,12 @@ function T_absorbance = CarrollNeitzNomogram(S, lambdaMax)
 %   x = lambdaMax / (558.5 * wl)
 % which is analogous to the ratio form used by the Govardovskii nomogram.
 %
-% Reference:
-%   Carroll, J., McMahon, C., Neitz, M., & Neitz, J. (2000). Flicker-
-%   photometric electroretinogram estimates of L:M cone photoreceptor
-%   ratio in men with photopigment spectra derived from genetics.
-%   Journal of the Optical Society of America A, 17(3), 499-509.
+% Reasonable lambda max values for (L, M, S): 557.5, 530, 420 nm.
+% These values are from Neitz & Neitz (2011), who report good agreement
+% between this template and CIE cone fundamentals derived from color matching
+% at these peaks; see their Figure 3 and surrounding text.
+%   Neitz, J. & Neitz, M. (2011). The genetics of normal and defective
+%   color vision. Vision Research, 51, 633-651.
 %
 % History:
 %   2026-04-10  dhb  Wrote it, based on spectsens.m from Neitz lab website.
@@ -98,3 +99,4 @@ for ii = 1:nT
         T_absorbance(ii,:) = T_absorbance(ii,:) / max(T_absorbance(ii,:));
     end
 end
+
