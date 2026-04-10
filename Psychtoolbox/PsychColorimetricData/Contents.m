@@ -18,6 +18,7 @@
 %   BaylorNomogram            - Baylor et al. photopigment nomogram.
 %   ComputeCIEConeFundamentals - Compute cone fundamentals according to CIE 170-1:2006
 %   ComputeRawConeFundamentals - Compute cone fundamentals from specification of various components
+%   CarrollNeitzNomogram      - Carroll-Neitz (2000) photopigment nomogram.
 %   DawisNomogram             - Dawis (1981) photopigment nomogram.
 %   DefaultPhotoreceptors     - Set default values for photoreceptors structure.
 %   DegreesToRetinalMM        - Convert foveal retinal extents from degrees to mm of retina.

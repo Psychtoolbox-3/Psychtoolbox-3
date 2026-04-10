@@ -27,6 +27,8 @@ function T_absorbance = CarrollNeitzNomogram(S, lambdaMax)
 %   Neitz, J. & Neitz, M. (2011). The genetics of normal and defective
 %   color vision. Vision Research, 51, 633-651.
 %
+% See also CarrollNeitzNomogramTest, PhotpigmentNomogramDemo.
+
 % History:
 %   2026-04-10  dhb  Wrote it, based on spectsens.m from Neitz lab website.
 
