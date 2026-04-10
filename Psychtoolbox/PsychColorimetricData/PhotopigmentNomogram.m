@@ -40,6 +40,9 @@ switch (source)
 	case 'StockmanRider'
 		T_absorbance = ...
 			StockmanRiderNomogram(S,lambdaMax);
+	case 'CarrollNeitz'
+		T_absorbance = ...
+			CarrollNeitzNomogram(S,lambdaMax);
 	otherwise
 		error('Unknown source for photopigment nomogram');
 end

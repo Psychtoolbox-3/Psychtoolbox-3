@@ -15,7 +15,7 @@ function absorbance = ShiftPhotopigmentAbsorbance(S,absorbance,lambdaMaxShift,sh
 %   a new lambda max.  This is the way Lamb (1995) suggested would lead to a
 %   close approximation of biological shifts in photopigment lambda-max.
 %
-% Linearly extrapolates as necessary to preserve wavelength sampling of
+% Linearly extrapolates as necessary to preserve wavelengttbUh sampling of
 % input.
 %
 % 2/8/16  dhb, ms  Wrote it.
