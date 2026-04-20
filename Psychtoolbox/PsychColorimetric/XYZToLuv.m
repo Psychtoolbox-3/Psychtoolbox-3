@@ -46,7 +46,7 @@ if ( length(lY) ~= 0 )
  luv(1,lY) = 903.3 * (Y(lY)/Yn);
 end  
 
-% Compute u and v
+% Compute u' and v'
 uv = XYZTouv(xyz);
 
 % Compute u* and v*
